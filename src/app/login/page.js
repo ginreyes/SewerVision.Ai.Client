@@ -1,5 +1,5 @@
-"use client";
-import { useState } from "react";
+'use client'
+import { useState, useEffect } from "react";
 import {
   Card,
   CardContent,
@@ -14,11 +14,14 @@ import Link from "next/link";
 import Image from "next/image";
 import { FaEye, FaEyeSlash } from "react-icons/fa";
 import { useForm } from "react-hook-form";
-import { Alert, AlertTitle, AlertDescription } from "@/components/ui/alert";
+import { useRouter } from "next/navigation";
+import Loading from "@/components/ui/loading";
+import Alertv2 from "@/components/ui/alertv2";
 
 const Login = () => {
-  const [message, setMessage] = useState("");
   const [passwordVisible, setPasswordVisible] = useState(false);
+  const [loading, setLoading] = useState(false);
+  const router = useRouter();
 
   const {
     register,
@@ -30,41 +33,52 @@ const Login = () => {
     setPasswordVisible((prevState) => !prevState);
   };
 
+  // Submit function
   const onSubmit = async (data) => {
     try {
+      setLoading(true);
+  
       const response = await fetch("http://localhost:5000/api/auth/login", {
         method: "POST",
         headers: {
           "Content-Type": "application/json",
         },
-        body: JSON.stringify(data),
+        body: JSON.stringify({
+          usernameOrEmail: data.usernameOrEmail,
+          password: data.password,
+        }),
       });
-
+  
       const result = await response.json();
+  
       if (response.ok) {
-        setMessage("Login successful");
         localStorage.setItem("authToken", result.token);
-      } else {
-        setMessage(result.message);
+        router.push("/admin/dashboard");
+      } 
+      else {
       }
-    } catch (error) {
-      setMessage("Error connecting to server");
-      console.error(error);
+      
+
+    } 
+    catch (e) {
+      console.log("Login error:", e.message);
+    } finally {
+      setLoading(false);
     }
   };
+ 
+
+  useEffect(() => {
+    const token = localStorage.getItem("authToken");
+    if (token) {
+      router.push("/admin/dashboard");
+    }
+  }, [router]);
 
   return (
     <div className="relative flex items-center justify-center min-h-screen bg-gray-100">
       {/* Alert at the top */}
-      {message && (
-        <Alert
-          variant={message === "Login successful" ? "default" : "destructive"}
-          className="absolute top-5 left-1/2 transform -translate-x-1/2 w-[350px]"
-        >
-          <AlertTitle>{message === "Login successful" ? "Success!" : "Error!"}</AlertTitle>
-          <AlertDescription>{message}</AlertDescription>
-        </Alert>
-      )}
+     
 
       <Card className="w-full max-w-md p-6 bg-white rounded-2xl shadow-lg">
         <CardHeader className="text-center text-xl font-bold mb-2 justify-center">
@@ -83,23 +97,19 @@ const Login = () => {
           </CardDescription>
           <form onSubmit={handleSubmit(onSubmit)}>
             <div className="mb-4">
-              <Label htmlFor="email">Email or Username</Label>
+              <Label htmlFor="usernameOrEmail">Username or Email</Label>
               <Input
                 type="text"
-                id="email"
-                placeholder="Enter your email"
+                id="usernameOrEmail"
+                placeholder="Enter your email or username"
                 size="xl"
                 className="w-full mt-1 border rounded"
-                {...register("email", {
-                  required: "Email is required",
-                  pattern: {
-                    value: /^[a-zA-Z0-9._-]+@[a-zA-Z0-9.-]+\.[a-zA-Z]{2,}$/,
-                    message: "Invalid email format",
-                  },
+                {...register("usernameOrEmail", {
+                  required: "Username or Email is required",
                 })}
               />
-              {errors.email && (
-                <p className="text-red-500 text-sm">{errors.email.message}</p>
+              {errors.usernameOrEmail && (
+                <p className="text-red-500 text-sm">{errors.usernameOrEmail.message}</p>
               )}
             </div>
             <div className="mb-4 relative">
@@ -141,10 +151,17 @@ const Login = () => {
             </div>
             <Button
               type="submit"
-              className="w-full py-2 mb-4"
+              className="w-full py-2 mb-4 relative"
               variant="rose"
-              text="Login"
-            />
+              text={loading ? "" : "Login"}
+              disabled={loading}
+            >
+              {loading && (
+                <div className="absolute inset-0 flex items-center justify-center">
+                  <Loading />
+                </div>
+              )}
+            </Button>
             <div className="text-center text-sm">
               New on our platform?{" "}
               <span>

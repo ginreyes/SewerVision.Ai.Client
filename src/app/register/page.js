@@ -25,6 +25,8 @@ import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { Controller } from "react-hook-form";
 import { z } from "zod";
+import { useRouter } from "next/navigation";
+
 
 // Zod schema for form validation
 const formSchema = z.object({
@@ -50,6 +52,8 @@ const formSchema = z.object({
 const Register = () => {
   const [passwordVisible, setPasswordVisible] = useState(false);
   const [confirmPasswordVisible, setConfirmPasswordVisible] = useState(false);
+  const router = useRouter();
+
 
   const togglePasswordVisibility = () => {
     setPasswordVisible((prev) => !prev);
@@ -80,22 +84,28 @@ const Register = () => {
         },
         body: JSON.stringify(data),
       });
-
+  
       if (!response.ok) {
         const errorData = await response.json();
         console.error("Error:", errorData.message);
         alert(errorData.message || "Registration failed");
         return;
       }
-
+  
       const responseData = await response.json();
       console.log("Registration successful:", responseData);
+      
+      // Show success message
       alert("Registration successful");
+  
+      // Redirect to login page after successful registration
+      router.push("/login");
     } catch (error) {
       console.error("Error during registration:", error);
       alert("Something went wrong");
     }
   };
+  
 
   return (
     <div className="flex items-center justify-center min-h-screen bg-gray-100">
@@ -208,9 +218,8 @@ const Register = () => {
                 I agree to the privacy policy & terms
               </Label>
             </div>
-            <Button type="submit" className="w-full py-2 mb-4" variant="rose">
-              Register
-            </Button>
+            <Button type="submit" className="w-full py-2 mb-4" variant="rose" text = 'Register'/>
+   
             <div className="text-center text-sm">
               Already have an account?{" "}
               <Link href="/login" className="text-[#D76A84] hover:underline">
