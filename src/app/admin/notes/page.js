@@ -1,11 +1,11 @@
 import React from 'react'
 
-const user = () => {
+const Notes = () => {
   return (
     <div>
-      this is User
+      
     </div>
   )
 }
 
-export default user
+export default Notes

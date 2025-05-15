@@ -1,11 +1,11 @@
 import React from 'react'
 
-const user = () => {
+const report = () => {
   return (
     <div>
-      this is User
+      this report
     </div>
   )
 }
 
-export default user
+export default report

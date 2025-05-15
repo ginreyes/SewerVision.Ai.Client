@@ -21,6 +21,8 @@ import Alertv2 from "@/components/ui/alertv2";
 const Login = () => {
   const [passwordVisible, setPasswordVisible] = useState(false);
   const [loading, setLoading] = useState(false);
+  const [remember, setRemember] = useState(false);
+  const [usernameOrEmail, setUsernameOrEmail] = useState("");
   const router = useRouter();
 
   const {
@@ -52,21 +54,46 @@ const Login = () => {
       const result = await response.json();
   
       if (response.ok) {
-        localStorage.setItem("authToken", result.token);
-        router.push("/admin/dashboard");
-      } 
-      else {
-      }
-      
 
-    } 
-    catch (e) {
+        
+
+        remember 
+          ? localStorage.setItem("rememberedUsername", data.usernameOrEmail) 
+          : localStorage.removeItem("rememberedUsername");
+
+
+        localStorage.setItem("authToken", result.token);
+  
+        localStorage.setItem("username", data.usernameOrEmail);
+  
+        // Get role from response (default to 'viewer' if missing)
+        const role = result.role || "viewer";
+        console.log(role);
+  
+        // Redirect based on role
+        switch (role) {
+          case "admin":
+            router.push("/admin/dashboard");
+            break;
+          case "user":
+            router.push("/users/dashboard");
+            break;
+          case "viewer":
+          default:
+            router.push("/viewer/dashboard");
+            break;
+        }
+      } else {
+        console.error("Login failed:", result.message || "Unknown error");
+      }
+    } catch (e) {
       console.log("Login error:", e.message);
     } finally {
       setLoading(false);
     }
   };
- 
+  
+  
 
   useEffect(() => {
     const token = localStorage.getItem("authToken");
@@ -74,6 +101,15 @@ const Login = () => {
       router.push("/admin/dashboard");
     }
   }, [router]);
+
+  useEffect(() => {
+    const savedUsername = localStorage.getItem("rememberedUsername");
+    if (savedUsername) {
+      setUsernameOrEmail(savedUsername);
+      setRemember(true);
+    }
+  }, []);
+
 
   return (
     <div className="relative flex items-center justify-center min-h-screen bg-gray-100">
@@ -140,7 +176,11 @@ const Login = () => {
             </div>
             <div className="flex items-center justify-between mb-4">
               <div className="flex items-center gap-2">
-                <Checkbox id="remember" />
+                <Checkbox
+                  id="remember"
+                  checked={remember}
+                  onCheckedChange={(checked) => setRemember(checked)}
+                 />
                 <Label htmlFor="remember" className="text-sm">
                   Remember me
                 </Label>
