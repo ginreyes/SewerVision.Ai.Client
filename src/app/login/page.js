@@ -16,14 +16,16 @@ import { FaEye, FaEyeSlash } from "react-icons/fa";
 import { useForm } from "react-hook-form";
 import { useRouter } from "next/navigation";
 import Loading from "@/components/ui/loading";
-import Alertv2 from "@/components/ui/alertv2";
+import { useAlert } from "@/components/providers/AlertProvider";
 
 const Login = () => {
   const [passwordVisible, setPasswordVisible] = useState(false);
   const [loading, setLoading] = useState(false);
   const [remember, setRemember] = useState(false);
   const [usernameOrEmail, setUsernameOrEmail] = useState("");
+
   const router = useRouter();
+  const {showAlert} = useAlert();
 
   const {
     register,
@@ -39,7 +41,7 @@ const Login = () => {
   const onSubmit = async (data) => {
     try {
       setLoading(true);
-  
+
       const response = await fetch("http://localhost:5000/api/auth/login", {
         method: "POST",
         headers: {
@@ -50,26 +52,21 @@ const Login = () => {
           password: data.password,
         }),
       });
-  
+
       const result = await response.json();
-  
+
       if (response.ok) {
-
-        
-
-        remember 
-          ? localStorage.setItem("rememberedUsername", data.usernameOrEmail) 
+        remember
+          ? localStorage.setItem("rememberedUsername", data.usernameOrEmail)
           : localStorage.removeItem("rememberedUsername");
 
-
         localStorage.setItem("authToken", result.token);
-  
         localStorage.setItem("username", data.usernameOrEmail);
-  
-        // Get role from response (default to 'viewer' if missing)
+
         const role = result.role || "viewer";
-        console.log(role);
-  
+
+        showAlert("Login successful!", "success");
+
         // Redirect based on role
         switch (role) {
           case "admin":
@@ -84,10 +81,10 @@ const Login = () => {
             break;
         }
       } else {
-        console.error("Login failed:", result.message || "Unknown error");
+        showAlert(result.message || "Login failed. Please try again.", "error");
       }
     } catch (e) {
-      console.log("Login error:", e.message);
+      showAlert(`Login error: ${e.message}`, "error");
     } finally {
       setLoading(false);
     }
