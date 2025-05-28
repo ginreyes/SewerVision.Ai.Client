@@ -43,6 +43,7 @@ export function DialogProvider({ children }) {
     });
   }, []);
 
+
   const showAlert = useCallback((message, type = "info") => {
     setDialog({
       open: true,
@@ -117,12 +118,18 @@ export function DialogProvider({ children }) {
 
           {(dialog.type === "confirm" || dialog.type === "sessionExpired") ? (
             <DialogFooter>
-              <Button variant="rose" onClick={handleConfirm} text={dialog.type === "sessionExpired" ? "Relogin" : "Confirm"} />
-              <Button variant="secondary" onClick={handleCancel} text="Cancel" />
+             <Button variant="rose" onClick={handleConfirm}>
+              {dialog.type === "sessionExpired" ? "Relogin" : "Confirm"}
+            </Button>
+            <Button variant="secondary" onClick={handleCancel}>
+              Cancel
+            </Button>
             </DialogFooter>
           ) : (
             <DialogFooter>
-              <Button onClick={hideDialog} variant="rose" text="Ok" />
+              <Button onClick={hideDialog} variant="rose">
+                Ok
+              </Button>
             </DialogFooter>
           )}
         </DialogContent>
