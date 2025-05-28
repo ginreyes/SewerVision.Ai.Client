@@ -31,8 +31,32 @@ const buttonVariants = cva(
   }
 );
 
-function Button({ className, variant, size, asChild = false, text, icon, iconComponent: Icon, ...props }) {
+function Button({
+  className,
+  variant,
+  size,
+  asChild = false,
+  text,
+  icon,
+  iconComponent: Icon,
+  children,
+  ...props
+}) {
   const Comp = asChild ? Slot : "button";
+
+  // If children exist, use children; otherwise, use text prop.
+  const content = children ?? (
+    <>
+      {/* Render image if icon prop is provided */}
+      {icon && <img src={icon} alt="" className="mr-2" />}
+      
+      {/* Render React icon if iconComponent is provided */}
+      {Icon && <Icon className="mr-2" />}
+      
+      {/* Render text prop */}
+      {text}
+    </>
+  );
 
   return (
     <Comp
@@ -40,14 +64,7 @@ function Button({ className, variant, size, asChild = false, text, icon, iconCom
       className={cn(buttonVariants({ variant, size, className }))}
       {...props}
     >
-      {/* Render image if icon prop is provided */}
-      {icon && <img src={icon} alt="" className="mr-2" />}
-      
-      {/* Render React icon if iconComponent is provided */}
-      {Icon && <Icon className="mr-2" />}
-      
-      {/* Render button text */}
-      {text}
+      {content}
     </Comp>
   );
 }

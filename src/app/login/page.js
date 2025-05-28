@@ -80,7 +80,8 @@ const Login = () => {
             router.push("/viewer/dashboard");
             break;
         }
-      } else {
+      } 
+      else {
         showAlert(result.message || "Login failed. Please try again.", "error");
       }
     } catch (e) {
