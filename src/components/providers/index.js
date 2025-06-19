@@ -2,12 +2,15 @@
 
 import { AlertProvider } from "./AlertProvider";
 import { DialogProvider } from "./DialogProvider";
+import { UserProvider } from "./UserContext";
 
 export function AppProviders({ children }) {
   return (
     <AlertProvider>
       <DialogProvider>
-        {children}
+        <UserProvider>
+          {children}
+        </UserProvider>
       </DialogProvider>
     </AlertProvider>
   );

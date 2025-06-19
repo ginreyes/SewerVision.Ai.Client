@@ -17,6 +17,7 @@ import { useForm } from "react-hook-form";
 import { useRouter } from "next/navigation";
 import Loading from "@/components/ui/loading";
 import { useAlert } from "@/components/providers/AlertProvider";
+import { api } from "@/lib/helper";
 
 const Login = () => {
   const [passwordVisible, setPasswordVisible] = useState(false);
@@ -37,52 +38,38 @@ const Login = () => {
     setPasswordVisible((prevState) => !prevState);
   };
 
-  // Submit function
   const onSubmit = async (data) => {
     try {
       setLoading(true);
-
-      const response = await fetch("http://localhost:5000/api/auth/login", {
-        method: "POST",
-        headers: {
-          "Content-Type": "application/json",
-        },
-        body: JSON.stringify({
-          usernameOrEmail: data.usernameOrEmail,
-          password: data.password,
-        }),
+  
+      const result = await api("/api/auth/login", "POST", {
+        usernameOrEmail: data.usernameOrEmail,
+        password: data.password,
       });
-
-      const result = await response.json();
-
-      if (response.ok) {
-        remember
-          ? localStorage.setItem("rememberedUsername", data.usernameOrEmail)
-          : localStorage.removeItem("rememberedUsername");
-
-        localStorage.setItem("authToken", result.token);
-        localStorage.setItem("username", data.usernameOrEmail);
-
-        const role = result.role || "viewer";
-
-        showAlert("Login successful!", "success");
-
-        // Redirect based on role
-        switch (role) {
-          case "admin":
-            router.push("/admin/dashboard");
-            break;
-          case "user":
-            router.push("/users/dashboard");
-            break;
-          case "viewer":
-          default:
-            router.push("/viewer/dashboard");
-            break;
-        }
-      } 
-      else {
-        showAlert(result.message || "Login failed. Please try again.", "error");
+  
+      remember
+        ? localStorage.setItem("rememberedUsername", data.usernameOrEmail)
+        : localStorage.removeItem("rememberedUsername");
+  
+      localStorage.setItem("authToken", result.token);
+      localStorage.setItem("username", data.usernameOrEmail);
+  
+      const role = result.role || "viewer";
+  
+      showAlert("Login successful!", "success");
+  
+      // Redirect based on role
+      switch (role) {
+        case "admin":
+          router.push("/admin/dashboard");
+          break;
+        case "user":
+          router.push("/users/dashboard");
+          break;
+        case "viewer":
+        default:
+          router.push("/viewer/dashboard");
+          break;
       }
     } catch (e) {
       showAlert(`Login error: ${e.message}`, "error");
@@ -90,7 +77,6 @@ const Login = () => {
       setLoading(false);
     }
   };
-  
   
 
   useEffect(() => {
@@ -183,23 +169,18 @@ const Login = () => {
                   Remember me
                 </Label>
               </div>
-              <Link href="/forgot-password" className="text- hover:underline">
+              <Link href="/forgotPassword" className="text- hover:underline">
                 Forgot password?
               </Link>
             </div>
             <Button
               type="submit"
-              className="w-full py-2 mb-4 relative"
+              className="w-full py-2 mb-4 relative flex items-center justify-center"
               variant="rose"
-              text={loading ? "" : "Login"}
-              disabled={loading}
             >
-              {loading && (
-                <div className="absolute inset-0 flex items-center justify-center">
-                  <Loading />
-                </div>
-              )}
+              Login
             </Button>
+
             <div className="text-center text-sm">
               New on our platform?{" "}
               <span>
