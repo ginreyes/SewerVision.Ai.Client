@@ -33,6 +33,7 @@ const Calendar = () => {
   const handleFetchListEvents = async () => {
     try {
       const result = await api('/api/calendar/get-event', 'GET');
+      console.log('result')
       setEventList(result);
     } 
     catch (error) {

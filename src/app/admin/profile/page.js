@@ -1,9 +1,11 @@
 import React from 'react'
+import { useParams } from 'next/navigation'
+const ProfilePage = () => {
+    const { user_id } = userParams()
 
-const profile = () => {
   return (
-    <div>profile</div>
+    <div>User</div>
   )
 }
 
-export default profile
+export default ProfilePage
