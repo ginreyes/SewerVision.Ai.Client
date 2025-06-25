@@ -11,9 +11,9 @@ import {
 } from '@/components/ui/drawer'
 import { Input } from '@/components/ui/input'
 import { Button } from '@/components/ui/button'
-import { Checkbox } from '@/components/ui/checkbox'
 import { Label } from '@/components/ui/label'
-import { X } from 'lucide-react'
+import { X ,Trash2, Save, PencilLine, XCircle } from 'lucide-react'
+
 
 import {
   Select,
@@ -27,6 +27,7 @@ import { Switch } from '@/components/ui/switch'
 import { Textarea } from '@/components/ui/textarea'
 import { api } from '@/lib/helper'
 import { useAlert } from '@/components/providers/AlertProvider'
+import { useDialog } from '@/components/providers/DialogProvider'
 
 export default function EventModal(props) {
 
@@ -44,6 +45,7 @@ export default function EventModal(props) {
   const  drawerRef = useRef(null)
   const [drawerContainer, setDrawerContainer] = useState(null)
   const {showAlert} = useAlert();
+  const {showDelete} = useDialog();
 
 
 
@@ -53,9 +55,7 @@ export default function EventModal(props) {
     }
   }, [open])
   
-  useEffect(() => {
-    handleFetchCategories();
-  }, [])
+  
 
   useEffect(() => {
     if (open) {
@@ -114,30 +114,52 @@ export default function EventModal(props) {
         end_date,
       };
   
-      const endpoint = eventData?._id 
-        ? `/api/calendar/update-event/${eventData._id}` 
+      const endpoint = eventData?._id
+        ? `/api/calendar/update-event/${eventData._id}`
         : '/api/calendar/create-event';
-      
-      const method = eventData?._id ? 'PUT' : 'POST';
-      
-      const data = await api(endpoint, method, payload);
   
-      if (data && data._id) {
+      const method = eventData?._id ? 'PUT' : 'POST';
+  
+      const { ok, data } = await api(endpoint, method, payload);
+  
+      if (ok && data?._id) {
         showAlert(eventData ? "Event Updated Successfully!" : "Event Successfully Saved!", "success");
+        if (onEventSaved) onEventSaved();
+        onOpenChange(false);
+      } else {
+        showAlert(`Failed to save event: ${data?.message || 'Unknown error'}`, "error");
       }
-      
-      if (onEventSaved) onEventSaved();
-      onOpenChange(false); 
-    } 
-    catch (error) {
+    } catch (error) {
       console.error('Error saving event:', error.message);
+      showAlert("An error occurred while saving the event", "error");
     }
   };
   
-
-  const handleFetchCategories =()=>{
-    
-  }
+  
+  const handleDeleteEvent = async () => {
+    showDelete({
+      title: "Delete Event",
+      description: "Are you sure you want to delete this event from the calendar?",
+      onConfirm: async () => {
+        try {
+          const { ok, data } = await api(`/api/calendar/delete-event/${eventData._id}`, "DELETE");
+  
+          if (ok) {
+            showAlert("Event deleted successfully", "success");
+            if (onEventSaved) onEventSaved();
+            onOpenChange(false);
+          } else {
+            showAlert(`Failed to delete event: ${data.message}`, "error");
+          }
+        } catch (err) {
+          console.error("Delete error:", err);
+          showAlert("An error occurred while deleting", "error");
+        }
+      },
+      onCancel: () => showAlert("Cancelled", "info"),
+    });
+  };
+  
 
   useEffect(() => {
     const timer = setTimeout(() => {
@@ -322,18 +344,47 @@ export default function EventModal(props) {
           </div>
 
           {/* Footer */}
+          
           <div className="border-t p-4">
-            <div className="flex gap-2">
+            <div className={`flex ${eventData ? 'gap-2 justify-between' : 'gap-2'}`}>
               <DrawerClose asChild>
-                <Button variant="outline" className="flex-1">
+                <Button variant="outline" className="flex-1 flex items-center justify-center gap-1">
+                  <XCircle className="w-4 h-4" />
                   Cancel
                 </Button>
               </DrawerClose>
-              <Button variant="rose" onClick={handleSave} className="flex-1">
-                Save Event
+
+              {eventData && (
+                <Button
+                  variant="destructive"
+                  onClick={handleDeleteEvent}
+                  className="flex-1 flex items-center justify-center gap-1"
+                >
+                  <Trash2 className="w-4 h-4" />
+                  Delete
+                </Button>
+              )}
+
+              <Button
+                variant="success"
+                onClick={handleSave}
+                className="flex-1 flex items-center justify-center gap-1"
+              >
+                {eventData ? (
+                  <>
+                    <PencilLine className="w-4 h-4" />
+                    Update
+                  </>
+                ) : (
+                  <>
+                    <Save className="w-4 h-4" />
+                    Save
+                  </>
+                )}
               </Button>
             </div>
           </div>
+
         </div>
       </DrawerContent>
     </Drawer>

@@ -1,11 +1,15 @@
 "use client";
 
 import React, { useEffect, useState } from "react";
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
-import { UserCheck, Users, UserClock } from "lucide-react";
-import { api } from "@/lib/helper";
+import {
+  Card,
+  CardContent,
+  CardHeader,
+  CardTitle,
+} from "@/components/ui/card";
+import { UserCheck, Users } from "lucide-react";
 import { FaUserClock } from "react-icons/fa";
-
+import { api } from "@/lib/helper";
 
 const CardList = () => {
   const [userStats, setUserStats] = useState({
@@ -13,6 +17,40 @@ const CardList = () => {
     active: 0,
     pending: 0,
   });
+
+  const [userList,setUserList] = useState([])
+
+  const fetchUsers = async () => {
+    try {
+      const { ok, data } = await api("/api/users/get-all-user", "GET");
+  
+      if (!ok || !Array.isArray(data.users)) {
+        console.error("Invalid response format", data);
+        return;
+      }
+  
+      const users = data.users; 
+  
+      setUserList(users);
+  
+      const active = users.filter(user => user.status === "Active").length;
+      const pending = users.filter(user => user.status === "Inactive" || user.status === "Pending").length;
+  
+      setUserStats({
+        total: users.length,
+        active,
+        pending,
+      });
+  
+    } catch (error) {
+      console.error("Error fetching user stats:", error);
+    }
+  };
+  
+
+  useEffect(() => {
+    fetchUsers();
+  }, []);
 
   const stats = [
     {
@@ -37,26 +75,6 @@ const CardList = () => {
       description: "Users awaiting activation.",
     },
   ];
-  
-  const fetchUsers = async () => {
-    try {
-      const res = await api("/api/users/get-all-user", "GET");
-      const active = res.filter((u) => u.status === "Active").length;
-      const pending = res.filter((u) => u.status === "Inactive").length;
-
-      setUserStats({
-        total: res.length,
-        active,
-        pending,
-      });
-    } catch (error) {
-      console.error("Error fetching user stats:", error);
-    }
-  };
-
-  useEffect(() => {
-    fetchUsers();
-  }, []);
 
   return (
     <div className="p-4 max-w-7xl mx-auto grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">

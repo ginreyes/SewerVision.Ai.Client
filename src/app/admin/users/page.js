@@ -1,63 +1,71 @@
-'use client'
-import React, { useState, useEffect } from "react"
-import AddUserModal from "./AddUserModal"
-import { api } from "@/lib/helper"
-import { useAlert } from "@/components/providers/AlertProvider"
-import { useDialog } from "@/components/providers/DialogProvider"
-import SewerTable from "@/components/ui/SewerTable"
-import { useRouter } from "next/navigation"
-import CardList from "./CardList"
-
+"use client";
+import React, { useState, useEffect } from "react";
+import AddUserModal from "./AddUserModal";
+import { api } from "@/lib/helper";
+import { useAlert } from "@/components/providers/AlertProvider";
+import { useDialog } from "@/components/providers/DialogProvider";
+import SewerTable from "@/components/ui/SewerTable";
+import { useRouter } from "next/navigation";
+import CardList from "./CardList";
 
 const UserPage = () => {
-  const [users, setUsers] = useState([])
-  const [search, setSearch] = useState("")
-  const [loading, setLoading] = useState(true)
-  const [filters, setFilters] = useState({ role: "", plan: "", status: "" })
-  const { showAlert } = useAlert()
-  const { showDelete } = useDialog()
-  const router = useRouter()
-
+  const [users, setUsers] = useState([]);
+  const [search, setSearch] = useState("");
+  const [loading, setLoading] = useState(true);
+  const [filters, setFilters] = useState({ role: "", plan: "", status: "" });
+  const { showAlert } = useAlert();
+  const { showDelete } = useDialog();
+  const router = useRouter();
 
   useEffect(() => {
-    fetchUsers()
-  }, [])
+    fetchUsers();
+  }, []);
 
   const fetchUsers = async () => {
     try {
-      const result = await api("/api/users/get-all-user", "GET")
-      setUsers(result)
+      const { ok, data } = await api("/api/users/get-all-user", "GET");
+      
+      if (ok && Array.isArray(data.users)) {
+        setUsers(data.users);
+      } 
+      else {
+        console.error("Failed to fetch users or users is not an array");
+        setUsers([]); // fail-safe
+      }
     } catch (error) {
-      console.error("Fetch users error:", error)
+      console.error("Fetch users error:", error);
+      setUsers([]);
     } finally {
-      setLoading(false)
+      setLoading(false);
     }
-  }
+  };
 
   const handleDelete = async (user_id) => {
     showDelete({
       title: "Delete User",
-      description: "Are you sure it will be deleted to our system but you can create another one ?",
+      description:
+        "Are you sure it will be deleted to our system but you can create another one ?",
       onConfirm: async () => {
         try {
-          await api("/api/users/delete-account", "DELETE", { user_id })
-          setUsers((prev) => prev.filter((u) => u._id !== user_id))
-          showAlert("User deleted", "success")
+          await api("/api/users/delete-account", "DELETE", { user_id });
+          setUsers((prev) => prev.filter((u) => u._id !== user_id));
+          showAlert("User deleted", "success");
+          fetchUsers();
         } catch (error) {
-          showAlert("Failed to delete user", "error")
+          showAlert("Failed to delete user", "error");
         }
       },
       onCancel: () => showAlert("Cancelled", "info"),
-    })
-  }
+    });
+  };
 
   const filteredUsers = users.filter((u) => {
-    const matchesSearch = u.name?.toLowerCase().includes(search.toLowerCase())
-    const matchesRole = filters.role ? u.role === filters.role : true
-    const matchesPlan = filters.plan ? u.plan === filters.plan : true
-    const matchesStatus = filters.status ? u.status === filters.status : true
-    return matchesSearch && matchesRole && matchesPlan && matchesStatus
-  })
+    const matchesSearch = u.name?.toLowerCase().includes(search.toLowerCase());
+    const matchesRole = filters.role ? u.role === filters.role : true;
+    const matchesPlan = filters.plan ? u.plan === filters.plan : true;
+    const matchesStatus = filters.status ? u.status === filters.status : true;
+    return matchesSearch && matchesRole && matchesPlan && matchesStatus;
+  });
 
   const columns = [
     { key: "user", name: "USER" },
@@ -65,7 +73,7 @@ const UserPage = () => {
     { key: "plan", name: "PLAN" },
     { key: "billing", name: "BILLING" },
     { key: "status", name: "STATUS" },
-  ]
+  ];
 
   const tableData = filteredUsers.map((u) => ({
     user: {
@@ -78,7 +86,7 @@ const UserPage = () => {
     plan: u.plan,
     billing: u.billing || "N/A",
     status: u.status,
-  }))
+  }));
 
   const filterOptions = [
     {
@@ -107,24 +115,15 @@ const UserPage = () => {
         { label: "Pending", value: "Pending" },
       ],
     },
-  ]
+  ];
 
   const handleFilterChange = (key, val) => {
-    setFilters((prev) => ({ ...prev, [key]: val }))
+    setFilters((prev) => ({ ...prev, [key]: val }));
   };
 
-
-
-  
-
   return (
-
     <div className="">
-    
-      
-      <CardList
-        
-      />
+      <CardList />
 
       <SewerTable
         data={tableData}
@@ -134,16 +133,14 @@ const UserPage = () => {
         onSearch={setSearch}
         onFilterChange={handleFilterChange}
         loading={loading}
-        ButtonPlacement={<AddUserModal />}
+        ButtonPlacement={<AddUserModal fetchUser = {fetchUsers} />}
         onDelete={handleDelete}
         onView={(item) => {
-          router.push(`/admin/profile/${item.user.user_id}`)
+          router.push(`/admin/profile/${item.user.user_id}`);
         }}
       />
-
-      
     </div>
-  )
-}
+  );
+};
 
-export default UserPage
+export default UserPage;

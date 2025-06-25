@@ -1,15 +1,8 @@
 import React, { useState } from "react";
 import { Checkbox } from "@/components/ui/checkbox";
 
-export default function EventFilters() {
-  const [filters, setFilters] = useState({
-    viewAll: false,
-    personal: false,
-    business: false,
-    family: false,
-    holiday: false,
-    etc: false,
-  });
+export default function EventFilters({ filters, setFilters }) {
+
 
   const handleFilterChange = (filterName) => {
     if (filterName === "viewAll") {

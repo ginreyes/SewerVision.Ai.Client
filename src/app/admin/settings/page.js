@@ -18,6 +18,7 @@ import { Label } from "@/components/ui/label";
 import { Switch } from "@/components/ui/switch";
 import { use } from "react";
 import { Checkbox } from "@/components/ui/checkbox";
+import { api } from "@/lib/helper";
 
 
 const AccountSettings = () => {
@@ -26,6 +27,7 @@ const AccountSettings = () => {
     lastName: "",
     email: "",
     role: "",
+    avatar:'',
   });
 
   const [avatar, setAvatar] = useState("/avatar_default.png");
@@ -53,39 +55,53 @@ const AccountSettings = () => {
     if (originalData) {
       setFormData(originalData);
     }
-    setAvatar("/avatar_default.png"); // Optional: reset avatar as well
+    setAvatar("/avatar_default.png"); 
     setIsDirty(false);
   };
 
  
-  const handleAvatarUpload = (e) => {
-
+  const handleAvatarUpload = async (e) => {
     const file = e.target.files[0];
+    const username = localStorage.getItem("username");
+    
 
-    if (file) {
-      if (!file.type.startsWith("image/")) {
-        showAlert({
-          type: "error",
-          title: "Invalid File",
-          description: "Only image files are allowed.",
-        });
-        return;
-      }
   
-      if (file.size > 2 * 1024 * 1024) {
-        ({
-          type: "error",
-          title: "File Too Large",
-          description: "File size should be under 2MB.",
-        });
-        return;
-      }
+    if (!file) return;
+    if (!username) {
+      showAlert("You are not logged in.", "error");
+      return;
+    }
+    if (!file.type.startsWith("image/")) {
+      showAlert("Only image files are accepted", "error");
+      return;
+    }
+    if (file.size > 5 * 1024 * 1024) {
+      showAlert("File size should be under 5MB.", "error");
+      return;
+    }
   
-      const imageUrl = URL.createObjectURL(file);
-      setAvatar(imageUrl);
-      setIsDirty(true);
+    const formData = new FormData();
+    formData.append("avatar", file);
+    formData.append("username", username);
+  
+    try {
+      const { ok, data } = await api("/api/users/upload-avatar", "POST", formData);
+  
+      if (ok) {
+        showSuccess("Avatar uploaded successfully");
+        setAvatar(data.avatarUrl);
+        setIsDirty(true);
+      } else {
+        showAlert(data?.message || "Failed to upload avatar", "error");
+      }
+    } catch (err) {
+      console.error(err);
+      showAlert(err.message || "Error uploading avatar", "error");
     }
   };
+  
+  
+  
 
   
   const handleAvatarReset = () => {
@@ -98,35 +114,29 @@ const AccountSettings = () => {
       const username = localStorage.getItem("username");
       if (!username) return;
   
-      const res = await fetch(`http://localhost:5000/api/users/change-account`, {
-        method: "POST",  // your backend uses POST
-        headers: {
-          "Content-Type": "application/json",
-        },
-        body: JSON.stringify({
-          usernameOrEmail: username,   
-          first_name: formData.firstName,
-          last_name: formData.lastName,
-          role: formData.role,
-          avatar: avatar,
-        }),
-      });
+      const payload = {
+        usernameOrEmail: username,
+        first_name: formData.firstName,
+        last_name: formData.lastName,
+        role: formData.role,
+        avatar: avatar,
+      };
   
-      const data = await res.json();
+      const { ok, data } = await api('/api/users/change-account', 'POST', payload);
   
-      if (res.ok) {
-        showSuccess( "Account is already Updated.");
+      if (ok) {
+        showSuccess("Account is already Updated.");
         setIsDirty(false);
         setOriginalData(formData);
-      }
-       else {
-        showAlert(data.message || "Failed to change Account.", "error");
+      } else {
+        showAlert(data?.message || "Failed to change Account.", "error");
       }
     } catch (err) {
       console.error(err);
       showAlert(err.message || "Failed to change Account.", "error");
     }
   };
+  
   
 
   const confirmDelete = (event) => {
@@ -163,17 +173,13 @@ const AccountSettings = () => {
 
   const deleteAccount = async (event) => {
     event.preventDefault();
+
     const usernameOrEmail = localStorage.getItem('username');
+
     if (!usernameOrEmail) return;
   
     try {
-      const res = await fetch('http://localhost:5000/api/users/delete-account', {
-        method: 'DELETE',
-        headers: {
-          'Content-Type': 'application/json',
-        },
-        body: JSON.stringify({ usernameOrEmail }),
-      });
+      const res = await api('/api/users/delete-account','DELETE');
   
       const data = await res.json();
   
@@ -191,37 +197,34 @@ const AccountSettings = () => {
   };
   
   
-
   useEffect(() => {
     const getUser = async () => {
       const username = localStorage.getItem("username");
       if (!username) return;
   
       try {
-        const res = await fetch(`http://localhost:5000/api/users/get-user/${username}`);
-
-        const data = await res.json();
+        const { ok, data } = await api(`/api/users/get-user/${username}`, "GET");
   
-        console.log(data);
-  
-        if (res.ok) {
+        if (ok) {
           const user = data.user;
           const userData = {
             firstName: user.first_name || "",
             lastName: user.last_name || "",
             email: user.email || "",
             role: user.role || "",
+            avatar:user.avatar || '',
           };
           setFormData(userData);
           setOriginalData(userData);
-          if (user.avatarUrl) {
-            setAvatar(user.avatarUrl);
+  
+          if (user.avatar) {
+            setAvatar(user.avatar);
           }
         } else {
-          console.error(data.message);
+          console.error(data?.message || "Failed to fetch user");
         }
       } catch (err) {
-        console.error("Fetch error:", err);
+        console.error("Fetch error:", err.message || err);
       }
     };
   
@@ -235,9 +238,9 @@ const AccountSettings = () => {
       <CardContent className="flex gap-6 items-start">
         {/* Avatar Box */}
         <div className="flex flex-col items-center p-4 border rounded-md">
-          <Avatar className="w-32 h-32">
-            <img src={avatar} alt="User Avatar" className="rounded-md" />
-          </Avatar>
+        <Avatar className="w-32 h-32">
+          <img src={avatar || "/avatar_default.png"} alt="User Avatar" />
+        </Avatar>
         </div>
 
         {/* Upload Section on the Right Side of Avatar */}
@@ -441,61 +444,63 @@ const SecuritySettings = () => {
       return;
     }
   
-    const passwordValid = /^(?=.*[a-z])(?=.*[\d\s\W]).{8,}$/.test(newPassword);
+    const passwordValid = /^(?=.*[a-z])(?=.*[\d\W]).{8,}$/.test(newPassword);
     if (!passwordValid) {
-      showAlert("New password does not meet the requirements.", "error");
+      showAlert(
+        "Password must be at least 8 characters long and contain a lowercase letter and a digit or symbol.",
+        "error"
+      );
+      return;
+    }
+  
+    const usernameOrEmail = localStorage.getItem("username");
+    const token = localStorage.getItem("authToken");
+  
+    if (!usernameOrEmail || !token) {
+      showSessionExpiredDialog();
       return;
     }
   
     try {
       setLoading(true);
   
-      const usernameOrEmail = localStorage.getItem("username");
+      const payload = {
+        isChangePassword: true,
+        currentPassword,
+        newPassword,
+        usernameOrEmail,
+      };
   
-      if (!usernameOrEmail) {
-        showSessionExpiredDialog(); 
-        setLoading(false);
-        return;
-      }
+      const { ok, data } = await api(
+        "/api/auth/change-password",
+        "POST",
+        payload,
+        {
+          Authorization: `Bearer ${token}`,
+        }
+      );
   
-      const response = await fetch("http://localhost:5000/api/auth/change-password", {
-        method: "POST",
-        headers: {
-          "Content-Type": "application/json",
-          Authorization: `Bearer ${localStorage.getItem("authToken")}`,
-        },
-        body: JSON.stringify({
-          isChangePassword: true,
-          currentPassword,
-          newPassword,
-          usernameOrEmail,
-        }),
-      });
-  
-      const result = await response.json();
-  
-      if (!response.ok) {
-
-        if (response.status === 401 && result.message.includes("expired")) {
+      if (ok) {
+        showAlert("Password changed successfully!", "success");
+        resetForm();
+      } else {
+        if (
+          data?.message?.toLowerCase().includes("expired") ||
+          data?.message?.toLowerCase().includes("unauthorized")
+        ) {
           showSessionExpiredDialog();
+        } else {
+          showAlert(data?.message || "Failed to change password.", "error");
         }
-        else {
-          showAlert(result.message || "Failed to change password.", "error");
-        }
-  
-        throw new Error(result.message || "Failed to change password.");
       }
-  
-      showAlert("Password changed successfully!", "success");
-      resetForm();
-    } 
-    catch (e) {
-      console.log(`Error: ${e.message}`);
-    } 
-    finally {
+    } catch (err) {
+      console.error("Error changing password:", err);
+      showAlert(err.message || "Failed to change password.", "error");
+    } finally {
       setLoading(false);
     }
   };
+  
   
   
   

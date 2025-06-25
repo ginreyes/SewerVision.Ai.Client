@@ -32,7 +32,7 @@ const UserProfile = () => {
   const { user_id } = useParams()
   const fileInputRef = useRef(null)
   const { showAlert } = useAlert()
-
+  const [selectedAvatar, setSelectedAvatar] = useState(null);
   const [user, setUser] = useState(null)
   const [loading, setLoading] = useState(true)
   const [isEdit, setIsEdit] = useState(false)
@@ -40,16 +40,20 @@ const UserProfile = () => {
 
   const [form, setForm] = useState({
     first_name: "", last_name: "", email: "",
-    username: "", role: "", active: false, avatar: ""
+    username: "", role: "", active: false, 
+    avatar: ""
   })
+
 
   useEffect(() => {
     const fetchUser = async () => {
       try {
-        const result = await api(`/api/users/get-user-details/${user_id}`, "GET")
-        if (result?.user) {
-          const u = result.user
-          setUser(u)
+        const { ok, data } = await api(`/api/users/get-user-details/${user_id}`, "GET");
+  
+        if (ok) {
+          const u = data.user;
+  
+          setUser(u);
           setForm({
             first_name: u.first_name || "",
             last_name: u.last_name || "",
@@ -57,19 +61,19 @@ const UserProfile = () => {
             username: u.username || "",
             role: u.role || "",
             active: u.active ?? false,
-            avatar: u.avatar || ""
-          })
+            avatar: u.avatar || "",
+          });
         }
       } catch (err) {
-        console.error("Fetch error:", err)
+        console.error("Fetch error:", err);
       } finally {
-        setLoading(false)
+        setLoading(false);
       }
-    }
-
-    if (user_id) fetchUser()
-  }, [user_id])
-
+    };
+  
+    if (user_id) fetchUser();
+  }, [user_id]);
+  
   const handleSave = async () => {
     const payload = {
       user_id: user_id,
@@ -87,7 +91,27 @@ const UserProfile = () => {
       description: "Are you sure you want to save these changes to the user's profile?",
       onConfirm: async () => {
         try {
-          await api("/api/users/change-info", "PUT", payload);
+          // ✅ Upload avatar if selected
+          if (selectedAvatar) {
+            const avatarForm = new FormData();
+            avatarForm.append("avatar", selectedAvatar);
+            avatarForm.append("username", payload.username);
+  
+            const { ok, data } = await api("/api/users/upload-avatar", "POST", avatarForm);
+  
+            if (!ok) {
+              throw new Error(data?.message || "Avatar upload failed");
+            }
+  
+            payload.avatar = data.avatarUrl;
+          }
+  
+          // ✅ Update user info
+          const { ok: updateOk, data: updateData } = await api("/api/users/change-info", "PUT", payload);
+  
+          if (!updateOk) {
+            throw new Error(updateData?.message || "Failed to update user");
+          }
   
           setUser((prev) => ({ ...prev, ...form }));
           setIsEdit(false);
@@ -99,18 +123,26 @@ const UserProfile = () => {
       },
       onCancel: () => {
         console.log("User cancelled the save operation.");
-      }
+      },
     });
   };
   
+  
 
   const handleAvatarChange = (e) => {
-    const file = e.target.files?.[0]
+    const file = e.target.files?.[0];
     if (file) {
-      const previewUrl = URL.createObjectURL(file)
-      setForm(prev => ({ ...prev, avatar: previewUrl }))
+      if (!file.type.startsWith("image/")) {
+        showAlert("Please select a valid image file", "warning");
+        return;
+      }
+  
+      const previewUrl = URL.createObjectURL(file);
+      setForm(prev => ({ ...prev, avatar: previewUrl }));
+      setSelectedAvatar(file);
     }
-  }
+  };
+  
 
   if (loading) return <div className="text-center py-10 text-lg">Loading user profile...</div>
   if (!user) return <div className="text-center py-10 text-lg">User not found.</div>
@@ -138,7 +170,7 @@ const UserProfile = () => {
 
           <div className="flex flex-col items-center">
             <img
-              src={avatarUrl}
+              src={form.avatar || "/default-avatar.png"}
               alt="User Avatar"
               className="w-32 h-32 rounded-full border-4 border-white shadow-md object-cover cursor-pointer hover:opacity-80 transition"
               onClick={() => isEdit && fileInputRef.current?.click()}

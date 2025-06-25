@@ -22,7 +22,7 @@ import {
   SelectItem,
 } from "@/components/ui/select"
 
-const AddUserModal = () => {
+const AddUserModal = ({fetchUser}) => {
   const [open, setOpen] = useState(false)
   const [formData, setFormData] = useState({
     username: "",
@@ -65,6 +65,7 @@ const AddUserModal = () => {
       })
       setOpen(false)
       showAlert("User creation is successful but still not active", "success")
+      fetchUser()
     } catch (error) {
       showAlert(`User creation failed: ${error.message}`, "error")
     }
