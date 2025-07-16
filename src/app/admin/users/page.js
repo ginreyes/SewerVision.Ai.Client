@@ -59,13 +59,34 @@ const UserPage = () => {
     });
   };
 
+
+
   const filteredUsers = users.filter((u) => {
-    const matchesSearch = u.name?.toLowerCase().includes(search.toLowerCase());
-    const matchesRole = filters.role ? u.role === filters.role : true;
-    const matchesPlan = filters.plan ? u.plan === filters.plan : true;
-    const matchesStatus = filters.status ? u.status === filters.status : true;
+    // Search filter - check multiple fields for better search experience
+    const matchesSearch = search ? (
+      u.name?.toLowerCase().includes(search.toLowerCase()) ||
+      u.username?.toLowerCase().includes(search.toLowerCase()) ||
+      u.email?.toLowerCase().includes(search.toLowerCase()) ||
+      `${u.first_name} ${u.last_name}`.toLowerCase().includes(search.toLowerCase())
+    ) : true;
+  
+    // Role filter - "all" means show all roles
+    const matchesRole = filters.role && filters.role !== "all" ? u.role === filters.role : true;
+  
+    // Plan filter - "all" means show all plans
+    const matchesPlan = filters.plan && filters.plan !== "all" ? u.plan === filters.plan : true;
+  
+    // Status filter - "all" means show all statuses
+    const matchesStatus = filters.status && filters.status !== "all" ? (
+      filters.status === "Active" ? u.active === true :
+      filters.status === "Inactive" ? u.active === false :
+      filters.status === "Pending" ? u.active === null || u.active === undefined :
+      true
+    ) : true;
+  
     return matchesSearch && matchesRole && matchesPlan && matchesStatus;
   });
+  
 
   const columns = [
     { key: "user", name: "USER" },
@@ -93,15 +114,19 @@ const UserPage = () => {
       key: "role",
       label: "Role",
       options: [
+        { label: "Show All", value: "all" },
         { label: "Admin", value: "admin" },
         { label: "User", value: "user" },
         { label: "Viewer", value: "viewer" },
+        { label: "QC Technician", value: "Qc-Technician" },
+        { label: "Operator", value: "Operator" },
       ],
     },
     {
       key: "plan",
       label: "Plan",
       options: [
+        { label: "Show All", value: "all" },
         { label: "Enterprise", value: "Enterprise" },
         { label: "Basic", value: "Basic" },
       ],
@@ -110,6 +135,7 @@ const UserPage = () => {
       key: "status",
       label: "Status",
       options: [
+        { label: "Show All", value: "all" },
         { label: "Active", value: "Active" },
         { label: "Inactive", value: "Inactive" },
         { label: "Pending", value: "Pending" },
@@ -136,7 +162,7 @@ const UserPage = () => {
         ButtonPlacement={<AddUserModal fetchUser = {fetchUsers} />}
         onDelete={handleDelete}
         onView={(item) => {
-          router.push(`/admin/profile/${item.user.user_id}`);
+          router.push(`/admin/users/${item.user.user_id}`);
         }}
       />
     </div>

@@ -117,7 +117,6 @@ const SewerTable = (props) => {
   }
 
   const handleComfirmImport = ()=> {
-    console.log("Confirmed import:", previewData);
     setShowImportModal(false);
   }
 
