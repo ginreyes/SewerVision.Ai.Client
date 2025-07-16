@@ -2,7 +2,6 @@ import { NextResponse } from 'next/server';
 
 export async function GET(request, context) {
   try {
-    // Destructure the username correctly from context.params
     const { username } = await context.params;
 
     const backendRes = await fetch(`${process.env.BACKEND_URL}/api/users/role/${username}`);

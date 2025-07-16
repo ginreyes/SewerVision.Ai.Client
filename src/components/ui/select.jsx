@@ -27,13 +27,13 @@ function SelectValue({
 
 function SelectTrigger({
   className,
-  size = "md", // Default to 'md' size
+  size = "md",
   children,
   ...props
 }) {
   const sizeClasses = {
     sm: "h-8 text-sm px-2 py-1",
-    md: "h-9 text-base px-3 py-2",
+    md: "h-10 text-sm px-3 py-2",
     xl: "h-12 text-lg px-4 py-3",
   };
 
@@ -42,10 +42,14 @@ function SelectTrigger({
       data-slot="select-trigger"
       data-size={size}
       className={cn(
-        "border-input data-[placeholder]:text-muted-foreground [&_svg:not([class*='text-'])]:text-muted-foreground focus-visible:border-ring focus-visible:ring-ring/50 aria-invalid:ring-destructive/20 dark:aria-invalid:ring-destructive/40 aria-invalid:border-destructive dark:bg-input/30 dark:hover:bg-input/50 flex w-fit items-center justify-between gap-2 rounded-md border bg-transparent shadow-xs transition-[color,box-shadow] outline-none disabled:cursor-not-allowed disabled:opacity-50",
-        sizeClasses[size], // Apply dynamic size classes
+        "border border-input bg-background placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-offset-2 ring-offset-background flex items-center justify-between gap-2 rounded-md shadow-sm disabled:cursor-not-allowed disabled:opacity-50 transition-colors",
+        sizeClasses[size],
         className
       )}
+      style={{
+        '--tw-ring-color': '#d76b84' 
+      }}
+      
       {...props}
     >
       {children}
@@ -55,6 +59,7 @@ function SelectTrigger({
     </SelectPrimitive.Trigger>
   );
 }
+
 
 function SelectContent({
   className,

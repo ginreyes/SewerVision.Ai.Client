@@ -26,26 +26,18 @@ import { zodResolver } from "@hookform/resolvers/zod";
 import { Controller } from "react-hook-form";
 import { z } from "zod";
 import { useRouter } from "next/navigation";
+import { useAlert } from "@/components/providers/AlertProvider";
+import { api } from "@/lib/helper";
 
 
 // Zod schema for form validation
 const formSchema = z.object({
-  username: z
-    .string()
-    .min(2, "Username must be at least 2 characters.")
-    .nonempty("Username is required."),
-  email: z
-    .string()
-    .email("Invalid email address.")
-    .nonempty("Email is required."),
-  password: z
-    .string()
-    .min(6, "Password must be at least 6 characters.")
-    .nonempty("Password is required."),
-  confirmPassword: z
-    .string()
-    .min(6, "Confirm password must be at least 6 characters.")
-    .nonempty("Confirmation password is required."),
+  first_name: z.string().min(1, "First name is required."),
+  last_name: z.string().min(1, "Last name is required."),
+  username: z.string().min(2, "Username must be at least 2 characters."),
+  email: z.string().email("Invalid email address."),
+  password: z.string().min(6, "Password must be at least 6 characters."),
+  confirmPassword: z.string().min(6, "Confirmation password is required."),
   role: z.enum(["user", "admin"], { required_error: "Role is required." }),
 });
 
@@ -53,6 +45,7 @@ const Register = () => {
   const [passwordVisible, setPasswordVisible] = useState(false);
   const [confirmPasswordVisible, setConfirmPasswordVisible] = useState(false);
   const router = useRouter();
+  const {showAlert} = useAlert();
 
 
   const togglePasswordVisibility = () => {
@@ -77,32 +70,13 @@ const Register = () => {
   const onSubmit = async (data) => {
     try {
       data.isRegister = true;
-      const response = await fetch("http://localhost:5000/api/auth/register", {
-        method: "POST",
-        headers: {
-          "Content-Type": "application/json",
-        },
-        body: JSON.stringify(data),
-      });
-  
-      if (!response.ok) {
-        const errorData = await response.json();
-        console.error("Error:", errorData.message);
-        alert(errorData.message || "Registration failed");
-        return;
-      }
-  
-      const responseData = await response.json();
-      console.log("Registration successful:", responseData);
+      await api("/api/auth/register", "POST", data);
       
-      // Show success message
-      alert("Registration successful");
-  
-      // Redirect to login page after successful registration
+      showAlert("Registration successful!", "success");
       router.push("/login");
     } catch (error) {
       console.error("Error during registration:", error);
-      alert("Something went wrong");
+      showAlert(`Registration error: ${error.message}`, "error");
     }
   };
   
@@ -124,28 +98,29 @@ const Register = () => {
             Join SewerVision.ai and Transform Sewer Management!
           </CardDescription>
           <form onSubmit={handleSubmit(onSubmit)}>
-            {["username", "email"].map((field) => (
-              <div key={field} className="mb-4">
-                <Label htmlFor={field}>
-                  {field
-                    .replace(/([A-Z])/g, " $1")
-                    .replace(/^./, (str) => str.toUpperCase())}
-                </Label>
-                <Input
-                  {...register(field)}
-                  type="text"
-                  id={field}
-                  placeholder={`Enter your ${field}`}
-                  size="xl"
-                  className="w-full mt-1 border rounded"
-                />
-                {errors[field] && (
-                  <span className="text-red-500 text-sm">
-                    {errors[field].message}
-                  </span>
-                )}
-              </div>
-            ))}
+          {["first_name", "last_name", "username", "email"].map((field) => (
+            <div key={field} className="mb-4">
+              <Label htmlFor={field}>
+                {field
+                  .replace(/([A-Z])/g, " $1")
+                  .replace(/^./, (str) => str.toUpperCase())}
+              </Label>
+              <Input
+                {...register(field)}
+                type="text"
+                id={field}
+                placeholder={`Enter your ${field}`}
+                size="xl"
+                className="w-full mt-1 border rounded"
+              />
+              {errors[field] && (
+                <span className="text-red-500 text-sm">
+                  {errors[field].message}
+                </span>
+              )}
+            </div>
+          ))}
+
             {["password", "confirmPassword"].map((field, index) => (
               <div key={field} className="mb-4 relative">
                 <Label htmlFor={field}>

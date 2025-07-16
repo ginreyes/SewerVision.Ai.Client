@@ -16,6 +16,7 @@ const buttonVariants = cva(
         ghost: "hover:bg-accent hover:text-accent-foreground dark:hover:bg-accent/50",
         link: "text-primary underline-offset-4 hover:underline",
         rose: "bg-[#d76b84] text-white shadow-xs hover:bg-[#d76b84]/90",
+        success: "bg-green-600 text-white hover:bg-green-700 shadow-xs focus-visible:ring-green-300 dark:bg-green-700 dark:hover:bg-green-600",
       },
       size: {
         default: "h-9 px-4 py-2 has-[>svg]:px-3",
@@ -31,8 +32,32 @@ const buttonVariants = cva(
   }
 );
 
-function Button({ className, variant, size, asChild = false, text, icon, iconComponent: Icon, ...props }) {
+function Button({
+  className,
+  variant,
+  size,
+  asChild = false,
+  text,
+  icon,
+  iconComponent: Icon,
+  children,
+  ...props
+}) {
   const Comp = asChild ? Slot : "button";
+
+  // If children exist, use children; otherwise, use text prop.
+  const content = children ?? (
+    <>
+      {/* Render image if icon prop is provided */}
+      {icon && <img src={icon} alt="" className="mr-2" />}
+      
+      {/* Render React icon if iconComponent is provided */}
+      {Icon && <Icon className="mr-2" />}
+      
+      {/* Render text prop */}
+      {text}
+    </>
+  );
 
   return (
     <Comp
@@ -40,14 +65,7 @@ function Button({ className, variant, size, asChild = false, text, icon, iconCom
       className={cn(buttonVariants({ variant, size, className }))}
       {...props}
     >
-      {/* Render image if icon prop is provided */}
-      {icon && <img src={icon} alt="" className="mr-2" />}
-      
-      {/* Render React icon if iconComponent is provided */}
-      {Icon && <Icon className="mr-2" />}
-      
-      {/* Render button text */}
-      {text}
+      {content}
     </Comp>
   );
 }
