@@ -17,12 +17,33 @@ const buttonVariants = cva(
         link: "text-primary underline-offset-4 hover:underline",
         rose: "bg-[#d76b84] text-white shadow-xs hover:bg-[#d76b84]/90",
         success: "bg-green-600 text-white hover:bg-green-700 shadow-xs focus-visible:ring-green-300 dark:bg-green-700 dark:hover:bg-green-600",
+        
+        // SewerVision.ai Custom Variants
+        ai: "bg-purple-600 text-white hover:bg-purple-700 shadow-xs focus-visible:ring-purple-300 dark:bg-purple-700 dark:hover:bg-purple-600",
+        recording: "bg-red-600 text-white hover:bg-red-700 shadow-xs focus-visible:ring-red-300 dark:bg-red-700 dark:hover:bg-red-600 animate-pulse",
+        processing: "bg-yellow-600 text-white hover:bg-yellow-700 shadow-xs focus-visible:ring-yellow-300 dark:bg-yellow-700 dark:hover:bg-yellow-600",
+        online: "bg-green-500 text-white hover:bg-green-600 shadow-xs focus-visible:ring-green-300",
+        offline: "bg-gray-500 text-white hover:bg-gray-600 shadow-xs focus-visible:ring-gray-300",
+        warning: "bg-orange-500 text-white hover:bg-orange-600 shadow-xs focus-visible:ring-orange-300",
+        info: "bg-blue-500 text-white hover:bg-blue-600 shadow-xs focus-visible:ring-blue-300",
+        
+        // Gradient variants for special actions
+        gradient: "bg-gradient-to-r from-blue-500 to-purple-600 text-white hover:from-blue-600 hover:to-purple-700 shadow-xs",
+        gradientSuccess: "bg-gradient-to-r from-green-500 to-emerald-600 text-white hover:from-green-600 hover:to-emerald-700 shadow-xs",
+        gradientWarning: "bg-gradient-to-r from-orange-500 to-red-600 text-white hover:from-orange-600 hover:to-red-700 shadow-xs",
+        
+        // Outline variants with custom colors
+        outlineAi: "border-purple-500 text-purple-600 hover:bg-purple-50 hover:text-purple-700 dark:text-purple-400 dark:hover:bg-purple-950",
+        outlineSuccess: "border-green-500 text-green-600 hover:bg-green-50 hover:text-green-700 dark:text-green-400 dark:hover:bg-green-950",
+        outlineWarning: "border-orange-500 text-orange-600 hover:bg-orange-50 hover:text-orange-700 dark:text-orange-400 dark:hover:bg-orange-950",
       },
       size: {
         default: "h-9 px-4 py-2 has-[>svg]:px-3",
         sm: "h-8 rounded-md gap-1.5 px-3 has-[>svg]:px-2.5",
         lg: "h-10 rounded-md px-6 has-[>svg]:px-4",
         icon: "size-9",
+        iconSm: "size-8",
+        iconLg: "size-10",
       },
     },
     defaultVariants: {

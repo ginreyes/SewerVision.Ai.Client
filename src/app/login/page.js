@@ -55,10 +55,11 @@ const Login = () => {
       localStorage.setItem("username", data.usernameOrEmail);
   
       const role = result.role || "viewer";
+      console.log('role',role)
   
       showAlert("Login successful!", "success");
   
-      // Redirect based on role
+
       switch (role) {
         case "admin":
           router.push("/admin/dashboard");
