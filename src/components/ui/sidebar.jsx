@@ -39,12 +39,6 @@ const Sidebar = ({ isOpen, role }) => {
     { label: "Settings", icon: "settings.svg", path: "/users/settings" },
   ];
 
-  const viewer = [
-    { label: "Dashboard", icon: "dashboard.svg", path: "/viewer/dashboard" },
-    { label: "Projects", icon: "projects.svg", path: "/viewer/project" },
-    { label: "Calendar", icon: "calendar.svg", path: "/viewer/calendar" },
-    { label: "Notes", icon: "notes.svg", path: "/viewer/notes" },
-  ];
 
   const qcTechnician = [
     { label: "Dashboard", icon: "dashboard.svg", path: "/qc-technician/dashboard" },
@@ -69,8 +63,8 @@ const Sidebar = ({ isOpen, role }) => {
     role === 'admin' ? admin :
     role === 'user' ? user :
     role === 'Qc-Technician' ? qcTechnician :
-    role === 'Operator' ? operator :
-    viewer;
+    role === 'Operator' ? operator : admin
+
 
   return (
     <nav className="h-full bg-gray-200 p-4">

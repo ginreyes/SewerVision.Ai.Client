@@ -405,7 +405,7 @@ const AddDeviceModal = (props) => {
                       <SelectContent>
                         {operators.length > 0 ? (
                           operators.map((op) => (
-                            <SelectItem key={op.id} value={op.id}>
+                            <SelectItem key={op._id} value={op._id}>
                               {op.name || `${op.firstName} ${op.lastName}`}
                             </SelectItem>
                           ))
