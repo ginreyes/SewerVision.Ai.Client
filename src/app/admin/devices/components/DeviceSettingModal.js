@@ -5,26 +5,10 @@ import {
   Battery,
   Camera,
   Brain,
-  Shield,
   AlertTriangle,
-  CheckCircle,
-  X,
   Save,
   RotateCcw,
   Trash2,
-  Power,
-  Monitor,
-  Volume2,
-  Zap,
-  MapPin,
-  User,
-  Calendar,
-  HardDrive,
-  Signal,
-  Lock,
-  Unlock,
-  Bell,
-  BellOff,
   Info
 } from 'lucide-react'
 import { Button } from '@/components/ui/button'
@@ -61,8 +45,8 @@ const DeviceSettingsModal = ({ isOpen, onClose, device }) => {
     frameRate: 30,
     compressionLevel: 'medium',
     autoRecord: true,
-    maxRecordingDuration: 120, // minutes
-    storageThreshold: [85], // percentage
+    maxRecordingDuration: 120, 
+    storageThreshold: [85],
     
     // AI Settings
     aiEnabled: device?.settings?.aiEnabled ?? true,

@@ -1,17 +1,8 @@
 'use client'
-import React, { useState } from 'react'
-import { 
-  X, 
-  Camera, 
-  Laptop, 
-  Tablet, 
-  Smartphone, 
-  Monitor, 
-  Brain, 
+import React, { useEffect, useState } from 'react'
+import {  
   Cloud, 
-  FileText,
   Truck,
-  Wifi,
   MapPin,
   User,
   Settings,
@@ -31,8 +22,15 @@ import { Slider } from '@/components/ui/slider'
 import { Switch } from '@/components/ui/switch'
 import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle, DialogFooter } from '@/components/ui/dialog'
 import { Alert, AlertDescription } from '@/components/ui/alert'
+import { connectivityOptions, deviceTypes } from './DataTypes'
+import { api } from '@/lib/helper'
+import { useUser } from '@/components/providers/UserContext'
+import { userAgent } from 'next/server'
 
-const AddDeviceModal = ({ isOpen, onClose, onAddDevice }) => {
+const AddDeviceModal = (props) => {
+
+  const {isOpen, onClose, onAddDevice } = props
+
   const [currentStep, setCurrentStep] = useState(1)
   const [deviceData, setDeviceData] = useState({
     name: '',
@@ -62,31 +60,37 @@ const AddDeviceModal = ({ isOpen, onClose, onAddDevice }) => {
       qualityThreshold: [80],
       confidenceThreshold: [85]
     }
-  })
-  const [isSubmitting, setIsSubmitting] = useState(false)
-  const [errors, setErrors] = useState({})
+  });
+  const [isSubmitting, setIsSubmitting] = useState(false);
+  const [errors, setErrors] = useState({});
+  const [operators, setOperators] = useState({});
+  const {userId} = useUser();
 
-  const deviceTypes = {
-    field: [
-      { id: 'inspection-camera', name: 'CCTV Inspection Camera', icon: Camera, description: 'Main pipeline inspection equipment' },
-      { id: 'tablet', name: 'Mobile Tablet', icon: Tablet, description: 'Portable data collection device' },
-      { id: 'console', name: 'Truck Console', icon: Monitor, description: 'Vehicle-mounted control system' },
-      { id: 'scanner', name: 'Handheld Scanner', icon: Smartphone, description: 'Quick inspection tool' },
-      { id: 'truck', name: 'Inspection Truck', icon: Truck, description: 'Mobile inspection vehicle' }
-    ],
-    cloud: [
-      { id: 'ai-server', name: 'AI Processing Node', icon: Brain, description: 'AI model processing server' },
-      { id: 'storage', name: 'Cloud Storage', icon: Cloud, description: 'Data storage server' },
-      { id: 'workstation', name: 'QC Workstation', icon: FileText, description: 'Quality control review station' }
-    ]
-  }
-
-  const connectivityOptions = [
-    { id: 'wifi', name: 'Wi-Fi', icon: Wifi },
-    { id: 'cellular', name: 'Cellular', icon: Smartphone },
-    { id: 'ethernet', name: 'Ethernet', icon: Settings },
-    { id: 'bluetooth', name: 'Bluetooth', icon: Settings }
-  ]
+  useEffect(() => {
+    const fetchOperators = async () => {
+      try {
+        const { ok, data } = await api("/api/users/get-all-user", "GET");
+  
+        if (!ok || !Array.isArray(data.users)) {
+          setOperators([]);
+          return;
+        }
+  
+        const operatorsOnly = data.users.filter(
+          (user) => user.role?.toLowerCase() === "operator"
+        );
+  
+        setOperators(operatorsOnly);
+        
+      } catch (error) {
+        console.log(`error fetching operators ${error.message}`);
+        setOperators([]);
+      }
+    };
+  
+    fetchOperators();
+  }, []);
+  
 
   const handleInputChange = (field, value) => {
     if (field.includes('.')) {
@@ -105,7 +109,6 @@ const AddDeviceModal = ({ isOpen, onClose, onAddDevice }) => {
       }))
     }
     
-    // Clear error when user starts typing
     if (errors[field]) {
       setErrors(prev => ({
         ...prev,
@@ -121,9 +124,7 @@ const AddDeviceModal = ({ isOpen, onClose, onAddDevice }) => {
       if (!deviceData.name) newErrors.name = 'Device name is required'
       if (!deviceData.type) newErrors.type = 'Device type is required'
       if (!deviceData.location) newErrors.location = 'Location is required'
-      if (deviceData.category === 'field' && !deviceData.operator) {
-        newErrors.operator = 'Operator is required for field devices'
-      }
+   
     }
     
     if (step === 2) {
@@ -151,30 +152,34 @@ const AddDeviceModal = ({ isOpen, onClose, onAddDevice }) => {
   }
 
   const handleSubmit = async () => {
-    if (!validateStep(currentStep)) return
-    
-    setIsSubmitting(true)
-    
+    if (!validateStep(currentStep)) return;
+  
+    setIsSubmitting(true);
+  
     try {
-      // Simulate API call
-      await new Promise(resolve => setTimeout(resolve, 2000))
-      
-      const newDevice = {
-        id: Date.now(),
+      const payload = {
         ...deviceData,
-        status: 'offline',
-        dateAdded: new Date().toISOString(),
-        lastSeen: 'Never',
+        createdBy: userId, 
         settings: {
           ...deviceData.settings,
           qualityThreshold: deviceData.settings.qualityThreshold[0],
           confidenceThreshold: deviceData.settings.confidenceThreshold[0]
         }
-      }
-      
-      onAddDevice(newDevice)
-      onClose()
-      
+      };
+  
+      const { data, error } = await api('/api/devices/create-device', 'POST', payload);
+      if (error) throw error;
+  
+      const createdDevice = {
+        id: data?.id || Date.now(),
+        ...payload,
+        status: 'offline',
+        dateAdded: new Date().toISOString(),
+        lastSeen: 'Never',
+      };
+  
+      onAddDevice(createdDevice);
+      onClose();
       // Reset form
       setDeviceData({
         name: '',
@@ -204,14 +209,18 @@ const AddDeviceModal = ({ isOpen, onClose, onAddDevice }) => {
           qualityThreshold: [80],
           confidenceThreshold: [85]
         }
-      })
-      setCurrentStep(1)
-    } catch (error) {
-      console.error('Error adding device:', error)
-    } finally {
-      setIsSubmitting(false)
+      });
+      setCurrentStep(1);
+    } 
+    catch (error) {
+      console.error('Error adding device:', error);
+    } 
+    finally {
+      setIsSubmitting(false);
     }
-  }
+  };
+  
+  
 
   const toggleConnectivity = (option) => {
     const current = deviceData.specifications.connectivity
@@ -378,27 +387,46 @@ const AddDeviceModal = ({ isOpen, onClose, onAddDevice }) => {
                 </div>
 
                 {/* Operator (Field devices only) */}
-                {deviceData.category === 'field' && (
-                  <div className="space-y-2 mb-4">
-                    <Label htmlFor="operator">Assigned Operator</Label>
-                    <div className="relative">
-                      <User className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400 w-4 h-4" />
-                      <Input
+              {deviceData.category === 'field' && (
+                <div className="space-y-2 mb-4">
+                  <Label htmlFor="operator">Assigned Operator</Label>
+                  <div className="flex items-center relative w-full">
+                    <User className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400 w-4 h-4 pointer-events-none" />
+                    <Select
+                      value={deviceData.operator}
+                      onValueChange={(value) => handleInputChange('operator', value)}
+                    >
+                      <SelectTrigger
                         id="operator"
-                        value={deviceData.operator}
-                        onChange={(e) => handleInputChange('operator', e.target.value)}
-                        className={`pl-10 ${errors.operator ? 'border-red-500' : ''}`}
-                        placeholder="Enter operator name"
-                      />
-                    </div>
-                    {errors.operator && (
-                      <Alert variant="destructive">
-                        <AlertCircle className="h-4 w-4" />
-                        <AlertDescription>{errors.operator}</AlertDescription>
-                      </Alert>
-                    )}
+                        className={`pl-10 w-full ${errors.operator ? 'border-red-500' : ''}`}
+                      >
+                        <SelectValue placeholder="" />
+                      </SelectTrigger>
+                      <SelectContent>
+                        {operators.length > 0 ? (
+                          operators.map((op) => (
+                            <SelectItem key={op.id} value={op.id}>
+                              {op.name || `${op.firstName} ${op.lastName}`}
+                            </SelectItem>
+                          ))
+                        ) : (
+                          <SelectItem disabled value="">
+                            No operators available
+                          </SelectItem>
+                        )}
+                      </SelectContent>
+                    </Select>
                   </div>
-                )}
+                  {errors.operator && (
+                    <Alert variant="destructive">
+                      <AlertCircle className="h-4 w-4" />
+                      <AlertDescription>{errors.operator}</AlertDescription>
+                    </Alert>
+                  )}
+                </div>
+              )}
+
+
               </div>
             </div>
           )}
@@ -708,7 +736,10 @@ const AddDeviceModal = ({ isOpen, onClose, onAddDevice }) => {
             </Button>
             
             {currentStep < 4 ? (
-              <Button onClick={handleNext}>
+              <Button 
+                onClick={handleNext}
+                variant='rose'
+              >
                 Next
               </Button>
             ) : (
