@@ -1,4 +1,5 @@
 "use client";
+import { api } from "@/lib/helper";
 import { createContext, useContext, useState, useEffect } from "react";
 
 const UserContext = createContext();
@@ -10,17 +11,19 @@ export const UserProvider = ({ children }) => {
     const token = localStorage.getItem("authToken");
     const username = localStorage.getItem("username");
 
-    const fetchUser = async () => {
-      try {
-        const res = await fetch(`${process.env.NEXT_PUBLIC_BACKEND_URL}/api/users/get-user/${username}`);
-        const data = await res.json();
-        setUserId(data.user._id);
-      } catch (err) {
-        console.error("Failed to fetch user ID", err);
+    const fetchuser = async() =>{
+      const {data ,error } = await api(`/api/users/get-user/${username}`)
+      const user_id = data.user.user_id
+      if (!error) {
+        setUserId(user_id)
+      } 
+      else {
+        console.log('error fetching user profile')
       }
-    };
-
-    if (username && token) fetchUser();
+      
+    }
+    fetchuser()
+  
   }, []);
 
   return <UserContext.Provider value={{ userId }}>{children}</UserContext.Provider>;

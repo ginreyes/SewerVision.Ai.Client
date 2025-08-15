@@ -6,6 +6,8 @@ export const metadata = {
   description: 'An awesome app',
 };
 
+;
+
 export default function RootLayout({ children }) {
   return (
     <html lang="en">
