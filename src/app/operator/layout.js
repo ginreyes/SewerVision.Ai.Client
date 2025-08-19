@@ -1,7 +1,7 @@
 'use client';
 
+import OperatorSidebar from "@/components/ui/OperatorSidebar";
 import Navbar from "@/components/ui/navbar";
-import OperatorSidebar from "@/components/ui/sidebar";
 import { api } from "@/lib/helper";
 import { useEffect, useState } from "react";
 
@@ -40,7 +40,7 @@ export default function userLayout({ children }) {
             openSidebar ? "w-[270px]" : "w-[90px]"
           }`}
         >
-          <OperatorSidebar isOpen={openSidebar} role={role} />
+          < OperatorSidebar isOpen={openSidebar} role={role} />
         </div>
 
         <div

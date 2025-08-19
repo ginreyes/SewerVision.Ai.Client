@@ -29,7 +29,7 @@ const OperatorSidebar = ({ isOpen, role }) => {
   const operator = [
     { label: "Dashboard", icon: LayoutDashboard, path: "/operator/dashboard" },
     { label: "Operations", icon: SearchX, path: "/operator/operations" },
-    { label: "Equipment", icon: Monitor, path: "/operator/equipment" },
+    { label: "Equipment", icon: Monitor, path: "/operator/equipement" },
     { label: "Maintenance", icon: Wrench, path: "/operator/maintenance" },
     { label: "Logs", icon: BookOpen, path: "/operator/logs" },
     { label: "Reports", icon: BarChart2, path: "/operator/reports" },
