@@ -1,6 +1,7 @@
 import React, { useState } from 'react';
 import Image from 'next/image';
 import Link from 'next/link';
+import { UserSearch } from 'lucide-react';
 
 const Sidebar = ({ isOpen, role }) => {
   const [activeItem, setActiveItem] = useState("Dashboard");
@@ -51,7 +52,7 @@ const Sidebar = ({ isOpen, role }) => {
 
   const operator = [
     { label: "Dashboard", icon: "dashboard.svg", path: "/operator/dashboard" },
-    { label: "Operations", icon: "operations.svg", path: "/operator/operations" },
+    { label: "Operations", icon: UserSearch, path: "/operator/operations" },
     { label: "Equipment", icon: "devices.svg", path: "/operator/equipment" },
     { label: "Maintenance", icon: "maintenance.svg", path: "/operator/maintenance" },
     { label: "Logs", icon: "logs.svg", path: "/operator/logs" },

@@ -47,32 +47,46 @@ const Login = () => {
         password: data.password,
       });
   
+      console.log('result', result); // Keep for debugging
+  
+      // ✅ Extract the actual data from the nested structure
+      const responseData = result.data.data;
+  
+      if (!responseData || !responseData.token || !responseData.role) {
+        throw new Error("Invalid response from server");
+      }
+  
+      const { token, role } = responseData;
+  
       remember
         ? localStorage.setItem("rememberedUsername", data.usernameOrEmail)
         : localStorage.removeItem("rememberedUsername");
+
+      const normalizedRole = role.toLowerCase();  
   
-      localStorage.setItem("authToken", result.token);
+      localStorage.setItem("authToken", token);
       localStorage.setItem("username", data.usernameOrEmail);
+      localStorage.setItem("role", normalizedRole);
   
-      const role = result.role || "viewer";
-      console.log('role',role)
+
   
       showAlert("Login successful!", "success");
   
-
-      switch (role) {
-        case "admin":
-          router.push("/admin/dashboard");
-          break;
-        case "user":
-          router.push("/users/dashboard");
-          break;
-        case "viewer":
-        default:
-          router.push("/viewer/dashboard");
-          break;
+      // Redirect based on role
+      if (normalizedRole === "admin") {
+        router.push("/admin/dashboard");
+      } else if (normalizedRole === "user") {
+        router.push("/users/dashboard");
+      } else if (normalizedRole === "operator") {
+        router.push("/operator/dashboard");
+      } else if (normalizedRole === "qc-technician") {
+        router.push("/qc-technician/dashboard");
+      } else {
+        showAlert(`Unknown role: ${normalizedRole}`, "warning");
+        router.push("/");
       }
     } catch (e) {
+      console.error("Login error:", e);
       showAlert(`Login error: ${e.message}`, "error");
     } finally {
       setLoading(false);
@@ -81,9 +95,9 @@ const Login = () => {
   
 
   useEffect(() => {
-    const token = localStorage.getItem("authToken");
-    if (token) {
-      router.push("/admin/dashboard");
+    const role = localStorage.getItem("role");
+    if (role) {
+      router.push(`/${role}/dashboard`);
     }
   }, [router]);
 

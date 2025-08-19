@@ -193,6 +193,7 @@ const Calendar = () => {
 
   return (
     <>
+      <div className="max-w-7xl mx-auto ">
       <Card className="flex auto w-full flex-row overflow-hidden">
         <div className="w-[309px] border-r flex flex-col p-4 bg-gray-50">
           {/* Add Event Button - Centered */}
@@ -302,6 +303,7 @@ const Calendar = () => {
           />
         </div>
       </Card>
+      </div>
     </>
   );
 };

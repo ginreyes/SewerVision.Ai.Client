@@ -8,14 +8,15 @@ export default function NotFound() {
     const router = useRouter();
     
     useEffect(() => {
-        const token = localStorage.getItem("authToken");
-        if (!token) {
-            router.push("/login");
+        const role = localStorage.getItem("role");
+        if (role) {
+          router.push(`/${role}/dashboard`);
         }
-    }, [router]);
+      }, [router])
+      
 
     const goHome = () => {
-        router.push("/");
+        router.push(`/${role}/dashboard`);
     };
 
     return (
