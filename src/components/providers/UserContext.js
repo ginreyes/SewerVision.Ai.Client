@@ -8,19 +8,13 @@ export const UserProvider = ({ children }) => {
   const [userId, setUserId] = useState(null);
 
   useEffect(() => {
-    const token = localStorage.getItem("authToken");
     const username = localStorage.getItem("username");
 
     const fetchuser = async() =>{
       const {data ,error } = await api(`/api/users/get-user/${username}`)
-      const user_id = data.user.user_id
-      if (!error) {
-        setUserId(user_id)
-      } 
-      else {
-        console.log('error fetching user profile')
-      }
       
+      const user_id = data.user._id
+      setUserId(user_id)
     }
     fetchuser()
   
