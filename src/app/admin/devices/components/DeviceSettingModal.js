@@ -1,4 +1,6 @@
-import React, { useState } from 'react'
+'use client'
+
+import React, { useState, useEffect } from 'react' // ✅ Added useEffect
 import {
   Settings,
   Wifi,
@@ -13,7 +15,7 @@ import {
 } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
-import { Label } from '@/components/ui/label'
+import { Label } from '@/components/ui/Label'
 import { Switch } from '@/components/ui/switch'
 import { Slider } from '@/components/ui/slider'
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select'
@@ -24,76 +26,82 @@ import { Alert, AlertDescription } from '@/components/ui/alert'
 import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle, DialogFooter } from '@/components/ui/dialog'
 import { Separator } from '@/components/ui/separator'
 
-const DeviceSettingsModal = ({ isOpen, onClose, device }) => {
-  const [settings, setSettings] = useState({
-    // General Settings
-    deviceName: device?.name || '',
-    location: device?.location || '',
-    operator: device?.operator || '',
-    
-    // Network Settings
-    wifiEnabled: true,
-    wifiSSID: 'SewerVision-Field',
-    wifiPassword: '********',
-    cellularEnabled: device?.type !== 'workstation',
-    ipAddress: device?.ipAddress || '192.168.1.100',
-    subnet: '255.255.255.0',
-    gateway: '192.168.1.1',
-    
-    // Recording Settings
-    videoQuality: device?.specifications?.resolution || '1080p',
-    frameRate: 30,
-    compressionLevel: 'medium',
-    autoRecord: true,
-    maxRecordingDuration: 120, 
-    storageThreshold: [85],
-    
-    // AI Settings
-    aiEnabled: device?.settings?.aiEnabled ?? true,
-    autoUpload: device?.settings?.autoUpload ?? true,
-    aiConfidenceThreshold: device?.settings?.confidenceThreshold ? [device.settings.confidenceThreshold] : [85],
-    realTimeProcessing: false,
-    defectCategories: {
-      cracks: true,
-      roots: true,
-      joints: true,
-      fractures: true,
-      blockages: true
-    },
-    
-    // Power Management
-    batteryOptimization: true,
-    sleepMode: true,
-    sleepTimeout: 15, // minutes
-    lowBatteryAlert: [20], // percentage
-    autoShutdown: [10], // percentage
-    
-    // Security Settings
-    deviceLocked: false,
-    pinCode: '',
-    encryptStorage: true,
-    secureTransmission: true,
-    
-    // Notifications
-    statusNotifications: true,
-    errorAlerts: true,
-    completionNotifications: true,
-    maintenanceReminders: true,
-    
-    // Maintenance
-    calibrationDate: device?.calibrationDate || '2024-06-15',
-    nextMaintenance: device?.nextMaintenance || '2024-12-15',
-    operatingHours: device?.operatingHours || 1247,
-    
-    // Advanced
-    debugMode: false,
-    verboseLogging: false,
-    firmwareVersion: device?.firmwareVersion || '2.4.1',
-    autoUpdate: true
-  })
+const DeviceSettingsModal = (props) => {
+  const { isOpen, onClose, device } = props
 
+  const [settings, setSettings] = useState({})
   const [hasChanges, setHasChanges] = useState(false)
   const [showResetDialog, setShowResetDialog] = useState(false)
+
+  useEffect(() => {
+    if (!device) return
+
+    const newSettings = {
+      deviceName: device.name || '',
+      location: device.location || '',
+      operator: device.operator || '',
+      
+      wifiEnabled: true,
+      wifiSSID: 'SewerVision-Field',
+      wifiPassword: '********',
+      cellularEnabled: !['workstation', 'ai-server', 'storage'].includes(device.type),
+      ipAddress: device.ipAddress || '192.168.1.100',
+      subnet: '255.255.255.0',
+      gateway: '192.168.1.1',
+      
+      videoQuality: device.specifications?.resolution || '1080p',
+      frameRate: 30,
+      compressionLevel: 'medium',
+      autoRecord: true,
+      maxRecordingDuration: 120,
+      storageThreshold: [85],
+      
+      // AI Settings
+      aiEnabled: device.settings?.aiEnabled ?? true,
+      autoUpload: device.settings?.autoUpload ?? true,
+      aiConfidenceThreshold: device.settings?.confidenceThreshold ? [device.settings.confidenceThreshold] : [85],
+      realTimeProcessing: false,
+      defectCategories: {
+        cracks: true,
+        roots: true,
+        joints: true,
+        fractures: true,
+        blockages: true
+      },
+      
+      batteryOptimization: true,
+      sleepMode: true,
+      sleepTimeout: 15,
+      lowBatteryAlert: [20],
+      autoShutdown: [10],
+      
+      // Security Settings
+      deviceLocked: false,
+      pinCode: '',
+      encryptStorage: true,
+      secureTransmission: true,
+      
+      // Notifications
+      statusNotifications: true,
+      errorAlerts: true,
+      completionNotifications: true,
+      maintenanceReminders: true,
+      
+      // Maintenance
+      calibrationDate: device.calibrationDate || '2024-06-15',
+      nextMaintenance: device.nextMaintenance || '2024-12-15',
+      operatingHours: device.operatingHours || 1247,
+      
+      // Advanced
+      debugMode: false,
+      verboseLogging: false,
+      firmwareVersion: device.firmwareVersion || '2.4.1',
+      autoUpdate: true
+    }
+
+    setSettings(newSettings)
+    setHasChanges(false) 
+  }, [device]) 
 
   const handleSettingChange = (key, value) => {
     setSettings(prev => ({
@@ -121,9 +129,60 @@ const DeviceSettingsModal = ({ isOpen, onClose, device }) => {
   }
 
   const handleReset = () => {
-    // Reset to default/original values
-    setSettings({
-      // ... reset to defaults
+    // Reset to defaults based on current device
+    if (!device) return
+    // You can re-trigger effect by setting device to null then back, or compute defaults again
+    setSettings(prev => {
+      const resetSettings = {
+        deviceName: device.name || '',
+        location: device.location || '',
+        operator: device.operator || '',
+        wifiEnabled: true,
+        wifiSSID: 'SewerVision-Field',
+        wifiPassword: '********',
+        cellularEnabled: !['workstation', 'ai-server', 'storage'].includes(device.type),
+        ipAddress: device.ipAddress || '192.168.1.100',
+        subnet: '255.255.255.0',
+        gateway: '192.168.1.1',
+        videoQuality: device.specifications?.resolution || '1080p',
+        frameRate: 30,
+        compressionLevel: 'medium',
+        autoRecord: true,
+        maxRecordingDuration: 120,
+        storageThreshold: [85],
+        aiEnabled: device.settings?.aiEnabled ?? true,
+        autoUpload: device.settings?.autoUpload ?? true,
+        aiConfidenceThreshold: device.settings?.confidenceThreshold ? [device.settings.confidenceThreshold] : [85],
+        realTimeProcessing: false,
+        defectCategories: {
+          cracks: true,
+          roots: true,
+          joints: true,
+          fractures: true,
+          blockages: true
+        },
+        batteryOptimization: true,
+        sleepMode: true,
+        sleepTimeout: 15,
+        lowBatteryAlert: [20],
+        autoShutdown: [10],
+        deviceLocked: false,
+        pinCode: '',
+        encryptStorage: true,
+        secureTransmission: true,
+        statusNotifications: true,
+        errorAlerts: true,
+        completionNotifications: true,
+        maintenanceReminders: true,
+        calibrationDate: device.calibrationDate || '2024-06-15',
+        nextMaintenance: device.nextMaintenance || '2024-12-15',
+        operatingHours: device.operatingHours || 1247,
+        debugMode: false,
+        verboseLogging: false,
+        firmwareVersion: device.firmwareVersion || '2.4.1',
+        autoUpdate: true
+      }
+      return resetSettings
     })
     setHasChanges(false)
     setShowResetDialog(false)
@@ -201,7 +260,7 @@ const DeviceSettingsModal = ({ isOpen, onClose, device }) => {
                       <Label htmlFor="deviceName">Device Name</Label>
                       <Input
                         id="deviceName"
-                        value={settings.deviceName}
+                        value={settings.deviceName || ''}
                         onChange={(e) => handleSettingChange('deviceName', e.target.value)}
                       />
                     </div>
@@ -209,7 +268,7 @@ const DeviceSettingsModal = ({ isOpen, onClose, device }) => {
                       <Label htmlFor="location">Location</Label>
                       <Input
                         id="location"
-                        value={settings.location}
+                        value={settings.location || ''}
                         onChange={(e) => handleSettingChange('location', e.target.value)}
                       />
                     </div>
@@ -220,7 +279,7 @@ const DeviceSettingsModal = ({ isOpen, onClose, device }) => {
                       <Label htmlFor="operator">Assigned Operator</Label>
                       <Input
                         id="operator"
-                        value={settings.operator}
+                        value={settings.operator || ''}
                         onChange={(e) => handleSettingChange('operator', e.target.value)}
                       />
                     </div>
@@ -275,7 +334,7 @@ const DeviceSettingsModal = ({ isOpen, onClose, device }) => {
                       <p className="text-sm text-gray-500">Connect to wireless networks</p>
                     </div>
                     <Switch
-                      checked={settings.wifiEnabled}
+                      checked={settings.wifiEnabled || false}
                       onCheckedChange={(checked) => handleSettingChange('wifiEnabled', checked)}
                     />
                   </div>
@@ -285,7 +344,7 @@ const DeviceSettingsModal = ({ isOpen, onClose, device }) => {
                       <div className="space-y-2">
                         <Label>Network SSID</Label>
                         <Input
-                          value={settings.wifiSSID}
+                          value={settings.wifiSSID || ''}
                           onChange={(e) => handleSettingChange('wifiSSID', e.target.value)}
                         />
                       </div>
@@ -293,7 +352,7 @@ const DeviceSettingsModal = ({ isOpen, onClose, device }) => {
                         <Label>Password</Label>
                         <Input
                           type="password"
-                          value={settings.wifiPassword}
+                          value={settings.wifiPassword || ''}
                           onChange={(e) => handleSettingChange('wifiPassword', e.target.value)}
                         />
                       </div>
@@ -307,7 +366,7 @@ const DeviceSettingsModal = ({ isOpen, onClose, device }) => {
                         <p className="text-sm text-gray-500">Use cellular when Wi-Fi unavailable</p>
                       </div>
                       <Switch
-                        checked={settings.cellularEnabled}
+                        checked={settings.cellularEnabled || false}
                         onCheckedChange={(checked) => handleSettingChange('cellularEnabled', checked)}
                       />
                     </div>
@@ -321,21 +380,21 @@ const DeviceSettingsModal = ({ isOpen, onClose, device }) => {
                       <div className="space-y-2">
                         <Label>IP Address</Label>
                         <Input
-                          value={settings.ipAddress}
+                          value={settings.ipAddress || ''}
                           onChange={(e) => handleSettingChange('ipAddress', e.target.value)}
                         />
                       </div>
                       <div className="space-y-2">
                         <Label>Subnet Mask</Label>
                         <Input
-                          value={settings.subnet}
+                          value={settings.subnet || ''}
                           onChange={(e) => handleSettingChange('subnet', e.target.value)}
                         />
                       </div>
                       <div className="space-y-2">
                         <Label>Gateway</Label>
                         <Input
-                          value={settings.gateway}
+                          value={settings.gateway || ''}
                           onChange={(e) => handleSettingChange('gateway', e.target.value)}
                         />
                       </div>
@@ -359,7 +418,7 @@ const DeviceSettingsModal = ({ isOpen, onClose, device }) => {
                     <div className="grid grid-cols-2 gap-4">
                       <div className="space-y-2">
                         <Label>Video Quality</Label>
-                        <Select value={settings.videoQuality} onValueChange={(value) => handleSettingChange('videoQuality', value)}>
+                        <Select value={settings.videoQuality || ''} onValueChange={(value) => handleSettingChange('videoQuality', value)}>
                           <SelectTrigger>
                             <SelectValue />
                           </SelectTrigger>
@@ -373,7 +432,7 @@ const DeviceSettingsModal = ({ isOpen, onClose, device }) => {
                       
                       <div className="space-y-2">
                         <Label>Frame Rate</Label>
-                        <Select value={settings.frameRate.toString()} onValueChange={(value) => handleSettingChange('frameRate', parseInt(value))}>
+                        <Select value={settings.frameRate?.toString() || '30'} onValueChange={(value) => handleSettingChange('frameRate', parseInt(value))}>
                           <SelectTrigger>
                             <SelectValue />
                           </SelectTrigger>
@@ -387,9 +446,9 @@ const DeviceSettingsModal = ({ isOpen, onClose, device }) => {
                     </div>
 
                     <div className="space-y-3">
-                      <Label>Storage Alert Threshold: {settings.storageThreshold[0]}%</Label>
+                      <Label>Storage Alert Threshold: {settings.storageThreshold?.[0] || 85}%</Label>
                       <Slider
-                        value={settings.storageThreshold}
+                        value={settings.storageThreshold || [85]}
                         onValueChange={(value) => handleSettingChange('storageThreshold', value)}
                         max={95}
                         min={50}
@@ -407,7 +466,7 @@ const DeviceSettingsModal = ({ isOpen, onClose, device }) => {
                         <p className="text-sm text-gray-500">Start recording automatically</p>
                       </div>
                       <Switch
-                        checked={settings.autoRecord}
+                        checked={settings.autoRecord || false}
                         onCheckedChange={(checked) => handleSettingChange('autoRecord', checked)}
                       />
                     </div>
@@ -432,7 +491,7 @@ const DeviceSettingsModal = ({ isOpen, onClose, device }) => {
                       <p className="text-sm text-gray-500">Enable automatic defect detection</p>
                     </div>
                     <Switch
-                      checked={settings.aiEnabled}
+                      checked={settings.aiEnabled || false}
                       onCheckedChange={(checked) => handleSettingChange('aiEnabled', checked)}
                     />
                   </div>
@@ -440,9 +499,9 @@ const DeviceSettingsModal = ({ isOpen, onClose, device }) => {
                   {settings.aiEnabled && (
                     <div className="space-y-4 pl-4 border-l-2 border-purple-100">
                       <div className="space-y-3">
-                        <Label>Confidence Threshold: {settings.aiConfidenceThreshold[0]}%</Label>
+                        <Label>Confidence Threshold: {settings.aiConfidenceThreshold?.[0] || 85}%</Label>
                         <Slider
-                          value={settings.aiConfidenceThreshold}
+                          value={settings.aiConfidenceThreshold || [85]}
                           onValueChange={(value) => handleSettingChange('aiConfidenceThreshold', value)}
                           max={100}
                           min={60}
@@ -460,7 +519,7 @@ const DeviceSettingsModal = ({ isOpen, onClose, device }) => {
                           <p className="text-sm text-gray-500">Upload footage automatically</p>
                         </div>
                         <Switch
-                          checked={settings.autoUpload}
+                          checked={settings.autoUpload || false}
                           onCheckedChange={(checked) => handleSettingChange('autoUpload', checked)}
                         />
                       </div>
@@ -468,10 +527,10 @@ const DeviceSettingsModal = ({ isOpen, onClose, device }) => {
                       <div className="space-y-3">
                         <Label>Detection Categories</Label>
                         <div className="grid grid-cols-2 gap-2">
-                          {Object.entries(settings.defectCategories).map(([category, enabled]) => (
+                          {Object.entries(settings.defectCategories || {}).map(([category, enabled]) => (
                             <div key={category} className="flex items-center space-x-2">
                               <Switch
-                                checked={enabled}
+                                checked={enabled || false}
                                 onCheckedChange={(checked) => handleNestedChange('defectCategories', category, checked)}
                               />
                               <Label className="capitalize">{category}</Label>
@@ -502,15 +561,15 @@ const DeviceSettingsModal = ({ isOpen, onClose, device }) => {
                         <p className="text-sm text-gray-500">Extend battery life</p>
                       </div>
                       <Switch
-                        checked={settings.batteryOptimization}
+                        checked={settings.batteryOptimization || false}
                         onCheckedChange={(checked) => handleSettingChange('batteryOptimization', checked)}
                       />
                     </div>
 
                     <div className="space-y-3">
-                      <Label>Low Battery Alert: {settings.lowBatteryAlert[0]}%</Label>
+                      <Label>Low Battery Alert: {settings.lowBatteryAlert?.[0] || 20}%</Label>
                       <Slider
-                        value={settings.lowBatteryAlert}
+                        value={settings.lowBatteryAlert || [20]}
                         onValueChange={(value) => handleSettingChange('lowBatteryAlert', value)}
                         max={50}
                         min={10}
@@ -519,9 +578,9 @@ const DeviceSettingsModal = ({ isOpen, onClose, device }) => {
                     </div>
 
                     <div className="space-y-3">
-                      <Label>Auto Shutdown: {settings.autoShutdown[0]}%</Label>
+                      <Label>Auto Shutdown: {settings.autoShutdown?.[0] || 10}%</Label>
                       <Slider
-                        value={settings.autoShutdown}
+                        value={settings.autoShutdown || [10]}
                         onValueChange={(value) => handleSettingChange('autoShutdown', value)}
                         max={20}
                         min={5}
@@ -535,7 +594,7 @@ const DeviceSettingsModal = ({ isOpen, onClose, device }) => {
                         <p className="text-sm text-gray-500">Enter sleep when inactive</p>
                       </div>
                       <Switch
-                        checked={settings.sleepMode}
+                        checked={settings.sleepMode || false}
                         onCheckedChange={(checked) => handleSettingChange('sleepMode', checked)}
                       />
                     </div>
@@ -568,7 +627,7 @@ const DeviceSettingsModal = ({ isOpen, onClose, device }) => {
                         <p className="text-sm text-gray-500">Enable detailed logging</p>
                       </div>
                       <Switch
-                        checked={settings.debugMode}
+                        checked={settings.debugMode || false}
                         onCheckedChange={(checked) => handleSettingChange('debugMode', checked)}
                       />
                     </div>
@@ -579,7 +638,7 @@ const DeviceSettingsModal = ({ isOpen, onClose, device }) => {
                         <p className="text-sm text-gray-500">Install firmware updates automatically</p>
                       </div>
                       <Switch
-                        checked={settings.autoUpdate}
+                        checked={settings.autoUpdate || false}
                         onCheckedChange={(checked) => handleSettingChange('autoUpdate', checked)}
                       />
                     </div>
@@ -589,14 +648,14 @@ const DeviceSettingsModal = ({ isOpen, onClose, device }) => {
                     <div className="space-y-2">
                       <Label>Firmware Version</Label>
                       <div className="flex items-center justify-between">
-                        <span className="text-sm">{settings.firmwareVersion}</span>
+                        <span className="text-sm">{settings.firmwareVersion || '2.4.1'}</span>
                         <Button variant="outline" size="sm">Check for Updates</Button>
                       </div>
                     </div>
 
                     <div className="space-y-2">
                       <Label>Operating Hours</Label>
-                      <div className="text-sm text-gray-600">{settings.operatingHours} hours</div>
+                      <div className="text-sm text-gray-600">{settings.operatingHours || 1247} hours</div>
                     </div>
                   </div>
 

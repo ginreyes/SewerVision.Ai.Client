@@ -6,7 +6,6 @@ const MaintenancePage = () => {
   const [selectedSystem, setSelectedSystem] = useState('all')
   const [refreshing, setRefreshing] = useState(false)
 
-  // Mock system status data
   const systemStatus = [
     {
       id: 'cloud-infrastructure',

@@ -27,8 +27,6 @@ import ViewFootage from './components/ViewFotage'
 import DeviceSettingsModal from './components/DeviceSettingModal'
 import { api } from '@/lib/helper'
 
-// --- Extracted Components (Must be outside main component) ---
-
 const StatCard = ({ title, value, subtitle, icon: Icon, color }) => (
   <div className="bg-white rounded-xl shadow-lg p-6">
     <div className="flex items-center justify-between">
@@ -44,14 +42,16 @@ const StatCard = ({ title, value, subtitle, icon: Icon, color }) => (
   </div>
 )
 
-const DeviceCard = ({ device, isField = true, onSettings, onViewFootage }) => {
+const DeviceCard = ({ device, isField = true, onSettings, onViewFootage, isSelected }) => {
   const Icon = getDeviceIcon(device.type)
   const aiStatus = isField ? getAIProcessingStatus(device.aiProcessing) : null
 
   return (
     <div
-      className={`bg-white rounded-xl shadow-lg hover:shadow-xl transition-all duration-300 cursor-pointer transform hover:-translate-y-1 ${
-        device.selected ? 'ring-2 ring-blue-500' : ''
+      className={`bg-white rounded-xl shadow-lg hover:shadow-xl transition-all duration-300 cursor-pointer ${
+        isSelected
+          ? 'ring-2 ring-blue-500 scale-[1.02] bg-blue-50'
+          : 'hover:-translate-y-1'
       }`}
       onClick={() => onSettings(device)}
     >
@@ -174,7 +174,7 @@ const getDeviceIcon = (type) => {
     storage: Cloud,
     workstation: FileText,
     scanner: Smartphone,
-    default: Device => <Monitor className="w-6 h-6" />,
+    default: Monitor,
   }
   return icons[type] || icons.default
 }
@@ -233,63 +233,67 @@ const Devices = () => {
   const [selectedSettingsDevice, setSelectedSettingsDevice] = useState(null)
   const [fieldDevices, setFieldDevices] = useState([])
   const [cloudDevices, setCloudDevices] = useState([])
+  const [selectedDeviceId, setSelectedDeviceId] = useState(null)
 
-  useEffect(() => {
-    const fetchDevices = async () => {
-      try {
-        const { data, error } = await api('/api/devices/get-device')
-        if (error) {
-          console.error('Error fetching devices:', error)
-          return
+  // ✅ Define fetchDevices as a reusable function
+  const fetchDevices = async () => {
+    try {
+      const { data, error } = await api('/api/devices/get-device')
+      if (error) {
+        console.error('Error fetching devices:', error)
+        return
+      }
+
+      const enriched = data.map(device => {
+        const colorMap = {
+          camera: 'bg-gradient-to-br from-blue-500 to-purple-600',
+          tablet: 'bg-gradient-to-br from-green-500 to-emerald-600',
+          smartphone: 'bg-gradient-to-br from-gray-500 to-gray-700',
+          console: 'bg-gradient-to-br from-orange-500 to-red-600',
+          'ai-server': 'bg-gradient-to-br from-purple-500 to-pink-600',
+          storage: 'bg-gradient-to-br from-blue-500 to-cyan-600',
+          workstation: 'bg-gradient-to-br from-indigo-500 to-blue-600',
+          default: 'bg-gradient-to-br from-gray-400 to-gray-600',
         }
 
-        const enriched = data.map(device => {
-          const colorMap = {
-            camera: 'bg-gradient-to-br from-blue-500 to-purple-600',
-            tablet: 'bg-gradient-to-br from-green-500 to-emerald-600',
-            smartphone: 'bg-gradient-to-br from-gray-500 to-gray-700',
-            console: 'bg-gradient-to-br from-orange-500 to-red-600',
-            'ai-server': 'bg-gradient-to-br from-purple-500 to-pink-600',
-            storage: 'bg-gradient-to-br from-blue-500 to-cyan-600',
-            workstation: 'bg-gradient-to-br from-indigo-500 to-blue-600',
-            default: 'bg-gradient-to-br from-gray-400 to-gray-600',
-          }
+        const type = device.type?.toLowerCase() || 'default'
+        const color = colorMap[type] || colorMap.default
 
-          const type = device.type.toLowerCase()
-          const color = colorMap[type] || colorMap.default
+        // Simulate real UI data
+        const isField = device.category === 'field'
+        const fakeBattery = isField ? Math.floor(Math.random() * 100) : null
+        const fakeFootage = isField ? `${Math.floor(Math.random() * 10)} GB` : null
+        const fakeDuration = isField ? `${Math.floor(Math.random() * 60) + 10} min` : null
+        const fakeConfidence = isField ? Math.floor(Math.random() * 15) + 85 : null
 
-          // Simulate real UI data
-          const isField = device.category === 'field'
-          const fakeBattery = isField ? Math.floor(Math.random() * 100) : null
-          const fakeFootage = isField ? `${Math.floor(Math.random() * 10)} GB` : null
-          const fakeDuration = isField ? `${Math.floor(Math.random() * 60) + 10} min` : null
-          const fakeConfidence = isField ? Math.floor(Math.random() * 15) + 85 : null
+        return {
+          ...device,
+          id: device._id,
+          color,
+          battery: fakeBattery,
+          footage: fakeFootage,
+          duration: fakeDuration,
+          confidence: fakeConfidence,
+          hasFootage: !!fakeFootage,
+          aiProcessing: device.settings?.aiEnabled ? 'ready' : 'completed',
+          operator: device.operator || 'Unassigned',
+          icon: getDeviceIcon(type),
+        }
+      })
 
-          return {
-            ...device,
-            id: device._id,
-            color,
-            battery: fakeBattery,
-            footage: fakeFootage,
-            duration: fakeDuration,
-            confidence: fakeConfidence,
-            hasFootage: !!fakeFootage,
-            aiProcessing: device.settings?.aiEnabled ? 'ready' : 'completed',
-            operator: 'Unassigned',
-            icon: getDeviceIcon(type),
-          }
-        })
-
-        setFieldDevices(enriched.filter(d => d.category === 'field'))
-        setCloudDevices(enriched.filter(d => d.category === 'cloud'))
-      } catch (err) {
-        console.error('Fetch error:', err)
-      }
+      setFieldDevices(enriched.filter(d => d.category === 'field'))
+      setCloudDevices(enriched.filter(d => d.category === 'cloud'))
+    } catch (err) {
+      console.error('Fetch error:', err)
     }
+  }
 
+  // ✅ Fetch devices on mount
+  useEffect(() => {
     fetchDevices()
   }, [])
 
+  // ✅ Helper to get current device list
   const getDevices = () => {
     return activeTab === 'field' ? fieldDevices : cloudDevices
   }
@@ -302,8 +306,11 @@ const Devices = () => {
     return matchesSearch && matchesFilter
   })
 
+  // ✅ FIXED: Set correct device + clear footage state to avoid cross-contamination
   const handleViewFootage = (device) => {
     if (device.hasFootage) {
+      console.log('▶️ Viewing footage for:', device.name, device._id)
+      setSelectedDeviceId(device._id)
       setSelectedFootageDevice(device)
       setCurrentView('footage')
     } else {
@@ -312,16 +319,20 @@ const Devices = () => {
   }
 
   const handleBackToDevices = () => {
+    console.log('🔙 Returning to device list')
     setCurrentView('devices')
     setSelectedFootageDevice(null)
+    // Keep selection: setSelectedDeviceId(null)
   }
 
   const handleOpenSettings = (device) => {
-    setSelectedSettingsDevice(device)
+    console.log('⚙️ Opening settings for:', device.name, device._id)
+    setSelectedDeviceId(device._id)
+    setSelectedSettingsDevice(device) 
+    setSelectedFootageDevice(null)   
     setShowSettingsModal(true)
   }
 
-  // Conditional render for footage view
   if (currentView === 'footage' && selectedFootageDevice) {
     return (
       <ViewFootage
@@ -353,11 +364,23 @@ const Devices = () => {
         </div>
       </div>
 
-      <AddDeviceModal isOpen={showModal} onClose={() => setShowModal(false)} onAddDevice={() => {}} />
+      <AddDeviceModal 
+        isOpen={showModal} 
+        onClose={() => setShowModal(false)} 
+        onAddDevice={(newDevice) => {
+          console.log('✅ New device added:', newDevice)
+        }}
+        onSuccess={fetchDevices}
+      />
+
+      {/* ✅ Pass selectedSettingsDevice — now always correct */}
       <DeviceSettingsModal
         isOpen={showSettingsModal}
-        onClose={() => setShowSettingsModal(false)}
-        device={selectedSettingsDevice}
+        onClose={() => {
+          setShowSettingsModal(false)
+          // Optionally clear: setSelectedDeviceId(null)
+        }}
+        device={selectedSettingsDevice} // ✅ This is now properly set
       />
 
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
@@ -430,7 +453,8 @@ const Devices = () => {
               device={device}
               isField={activeTab === 'field'}
               onViewFootage={handleViewFootage}
-              onSettings={handleOpenSettings}
+              onSettings={handleOpenSettings} // ✅ Now properly sets correct device
+              isSelected={device._id === selectedDeviceId}
             />
           ))}
         </div>

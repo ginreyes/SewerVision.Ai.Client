@@ -1,4 +1,5 @@
 'use client'
+
 import React, { useEffect, useState } from 'react'
 import {  
   Cloud, 
@@ -25,11 +26,11 @@ import { Alert, AlertDescription } from '@/components/ui/alert'
 import { connectivityOptions, deviceTypes } from './DataTypes'
 import { api } from '@/lib/helper'
 import { useUser } from '@/components/providers/UserContext'
-import { userAgent } from 'next/server'
+
+// ❌ REMOVED: import { userAgent } from 'next/server' — causes client/server conflict
 
 const AddDeviceModal = (props) => {
-
-  const {isOpen, onClose, onAddDevice } = props
+  const { isOpen, onClose, onAddDevice ,onSuccess} = props
 
   const [currentStep, setCurrentStep] = useState(1)
   const [deviceData, setDeviceData] = useState({
@@ -60,37 +61,35 @@ const AddDeviceModal = (props) => {
       qualityThreshold: [80],
       confidenceThreshold: [85]
     }
-  });
-  const [isSubmitting, setIsSubmitting] = useState(false);
-  const [errors, setErrors] = useState({});
-  const [operators, setOperators] = useState({});
-  const {userId} = useUser();
+  })
+  const [isSubmitting, setIsSubmitting] = useState(false)
+  const [errors, setErrors] = useState({})
+  const [operators, setOperators] = useState([]) // ✅ Fixed: was {}, now []
+  const { userId } = useUser()
 
   useEffect(() => {
     const fetchOperators = async () => {
       try {
-        const { ok, data } = await api("/api/users/get-all-user", "GET");
-  
-        if (!ok || !Array.isArray(data.users)) {
-          setOperators([]);
-          return;
+        const { ok, data } = await api("/api/users/get-all-user", "GET")
+
+        if (!ok || !Array.isArray(data?.users)) {
+          setOperators([])
+          return
         }
-  
+
         const operatorsOnly = data.users.filter(
           (user) => user.role?.toLowerCase() === "operator"
-        );
-  
-        setOperators(operatorsOnly);
-        
+        )
+
+        setOperators(operatorsOnly)
       } catch (error) {
-        console.log(`error fetching operators ${error.message}`);
-        setOperators([]);
+        console.error(`Error fetching operators:`, error.message)
+        setOperators([])
       }
-    };
-  
-    fetchOperators();
-  }, []);
-  
+    }
+
+    fetchOperators()
+  }, [])
 
   const handleInputChange = (field, value) => {
     if (field.includes('.')) {
@@ -124,7 +123,10 @@ const AddDeviceModal = (props) => {
       if (!deviceData.name) newErrors.name = 'Device name is required'
       if (!deviceData.type) newErrors.type = 'Device type is required'
       if (!deviceData.location) newErrors.location = 'Location is required'
-   
+      // ✅ ADDED: Validate operator for field devices
+      if (deviceData.category === 'field' && !deviceData.operator) {
+        newErrors.operator = 'Operator is required for field devices'
+      }
     }
     
     if (step === 2) {
@@ -152,23 +154,24 @@ const AddDeviceModal = (props) => {
   }
 
   const handleSubmit = async () => {
-    if (!validateStep(currentStep)) return;
+    if (!validateStep(currentStep)) return
   
-    setIsSubmitting(true);
+    setIsSubmitting(true)
   
     try {
       const payload = {
         ...deviceData,
-        createdBy: userId, 
+        createdBy: userId,
         settings: {
           ...deviceData.settings,
           qualityThreshold: deviceData.settings.qualityThreshold[0],
           confidenceThreshold: deviceData.settings.confidenceThreshold[0]
         }
-      };
+      }
   
-      const { data, error } = await api('/api/devices/create-device', 'POST', payload);
-      if (error) throw error;
+  
+      const { data, error } = await api('/api/devices/create-device', 'POST', payload)
+      if (error) throw error
   
       const createdDevice = {
         id: data?.id || Date.now(),
@@ -176,11 +179,14 @@ const AddDeviceModal = (props) => {
         status: 'offline',
         dateAdded: new Date().toISOString(),
         lastSeen: 'Never',
-      };
+      }
   
-      onAddDevice(createdDevice);
-      onClose();
-      // Reset form
+      onAddDevice(createdDevice)
+
+      if (onSuccess) onSuccess() 
+
+      onClose()
+  
       setDeviceData({
         name: '',
         type: '',
@@ -209,19 +215,14 @@ const AddDeviceModal = (props) => {
           qualityThreshold: [80],
           confidenceThreshold: [85]
         }
-      });
-      setCurrentStep(1);
-    } 
-    catch (error) {
-      console.error('Error adding device:', error);
-    } 
-    finally {
-      setIsSubmitting(false);
+      })
+      setCurrentStep(1)
+    } catch (error) {
+      console.error('Error adding device:', error)
+    } finally {
+      setIsSubmitting(false)
     }
-  };
-  
-  
-
+  }
   const toggleConnectivity = (option) => {
     const current = deviceData.specifications.connectivity
     const updated = current.includes(option)
@@ -282,6 +283,7 @@ const AddDeviceModal = (props) => {
                       onClick={() => {
                         handleInputChange('category', 'field')
                         handleInputChange('type', '')
+                        handleInputChange('operator', '') // ✅ Reset operator when switching category
                       }}
                     >
                       <CardContent className="p-4 text-center">
@@ -299,6 +301,7 @@ const AddDeviceModal = (props) => {
                       onClick={() => {
                         handleInputChange('category', 'cloud')
                         handleInputChange('type', '')
+                        handleInputChange('operator', '') // ✅ Reset operator
                       }}
                     >
                       <CardContent className="p-4 text-center">
@@ -387,46 +390,45 @@ const AddDeviceModal = (props) => {
                 </div>
 
                 {/* Operator (Field devices only) */}
-              {deviceData.category === 'field' && (
-                <div className="space-y-2 mb-4">
-                  <Label htmlFor="operator">Assigned Operator</Label>
-                  <div className="flex items-center relative w-full">
-                    <User className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400 w-4 h-4 pointer-events-none" />
-                    <Select
-                      value={deviceData.operator}
-                      onValueChange={(value) => handleInputChange('operator', value)}
-                    >
-                      <SelectTrigger
-                        id="operator"
-                        className={`pl-10 w-full ${errors.operator ? 'border-red-500' : ''}`}
+                {deviceData.category === 'field' && (
+                  <div className="space-y-2 mb-4">
+                    <Label htmlFor="operator">Assigned Operator</Label>
+                    <div className="flex items-center relative w-full">
+                      <User className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400 w-4 h-4 pointer-events-none" />
+                      <Select
+                        value={deviceData.operator}
+                        onValueChange={(value) => handleInputChange('operator', value)}
                       >
-                        <SelectValue placeholder="" />
-                      </SelectTrigger>
-                      <SelectContent>
-                        {operators.length > 0 ? (
-                          operators.map((op) => (
-                            <SelectItem key={op._id} value={op._id}>
-                              {op.name || `${op.firstName} ${op.lastName}`}
+                        <SelectTrigger
+                          id="operator"
+                          className={`pl-10 w-full ${errors.operator ? 'border-red-500' : ''}`}
+                        >
+                          <SelectValue placeholder="Select an operator" />
+                        </SelectTrigger>
+                        <SelectContent>
+                          {operators.length > 0 ? (
+                            operators.map((op) => (
+                              <SelectItem key={op._id} value={op._id}>
+                                {/* ✅ FIXED: Safe rendering of operator name */}
+                                {op.name || `${op.firstName || ''} ${op.lastName || ''}`.trim() || 'Unnamed Operator'}
+                              </SelectItem>
+                            ))
+                          ) : (
+                            <SelectItem disabled value="">
+                              No operators available
                             </SelectItem>
-                          ))
-                        ) : (
-                          <SelectItem disabled value="">
-                            No operators available
-                          </SelectItem>
-                        )}
-                      </SelectContent>
-                    </Select>
+                          )}
+                        </SelectContent>
+                      </Select>
+                    </div>
+                    {errors.operator && (
+                      <Alert variant="destructive">
+                        <AlertCircle className="h-4 w-4" />
+                        <AlertDescription>{errors.operator}</AlertDescription>
+                      </Alert>
+                    )}
                   </div>
-                  {errors.operator && (
-                    <Alert variant="destructive">
-                      <AlertCircle className="h-4 w-4" />
-                      <AlertDescription>{errors.operator}</AlertDescription>
-                    </Alert>
-                  )}
-                </div>
-              )}
-
-
+                )}
               </div>
             </div>
           )}
@@ -710,7 +712,14 @@ const AddDeviceModal = (props) => {
                     <div><span className="font-medium">Name:</span> {deviceData.name}</div>
                     <div><span className="font-medium">Type:</span> {selectedDeviceType?.name}</div>
                     <div><span className="font-medium">Location:</span> {deviceData.location}</div>
-                    {deviceData.operator && <div><span className="font-medium">Operator:</span> {deviceData.operator}</div>}
+                    {deviceData.operator && (
+                      <div>
+                        <span className="font-medium">Operator:</span> 
+                        {operators.find(op => op._id === deviceData.operator)?.name ||
+                         `${operators.find(op => op._id === deviceData.operator)?.firstName || ''} ${operators.find(op => op._id === deviceData.operator)?.lastName || ''}`.trim() ||
+                         'Unknown Operator'}
+                      </div>
+                    )}
                     <div><span className="font-medium">AI Enabled:</span> {deviceData.settings.aiEnabled ? 'Yes' : 'No'}</div>
                     <div><span className="font-medium">Auto Upload:</span> {deviceData.settings.autoUpload ? 'Yes' : 'No'}</div>
                   </div>

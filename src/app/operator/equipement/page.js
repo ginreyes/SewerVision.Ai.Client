@@ -2,21 +2,19 @@
 
 import React, { useState } from 'react'
 
-// Icons
 import { 
-  Video,           // Better icon for camera
+  Video,           
   Tablet, 
   Smartphone, 
   Battery, 
   MapPin, 
   Search, 
-  Signal,          // For status
-  CheckCircle,     // For online
-  AlertCircle      // For recording
+  Signal,          
+  CheckCircle,  
+  AlertCircle      
 } from 'lucide-react'
 
 const EquipmentPage = () => {
-  // 🌟 Mock Data – Realistic & Varied
   const mockDevices = [
     {
       id: 'dev-101',
