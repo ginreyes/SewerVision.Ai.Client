@@ -27,7 +27,7 @@ import { Separator } from "@/components/ui/separator"
 
 const AddUserModal = ({fetchUser}) => {
   const [open, setOpen] = useState(false)
-  const [step, setStep] = useState(1) // 1: Role Selection, 2: User Details
+  const [step, setStep] = useState(1) 
   const [formData, setFormData] = useState({
     username: "",
     email: "",

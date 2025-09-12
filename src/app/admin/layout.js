@@ -5,6 +5,7 @@ import Sidebar from "@/components/ui/sidebar";
 import { useEffect, useState } from "react";
 import { usePathname, useRouter } from "next/navigation";
 import { api } from "@/lib/helper";
+import AdminSidebar from "@/components/ui/AdminSidebar";
 
 export default function AdminLayout({ children }) {
   const [openSidebar, setOpenSidebar] = useState(false);
@@ -57,7 +58,7 @@ export default function AdminLayout({ children }) {
           openSidebar ? "w-[270px]" : "w-[90px]"
         }`}
       >
-        <Sidebar isOpen={openSidebar} role={role} />
+        <AdminSidebar isOpen={openSidebar} role={role} />
       </div>
 
       <div

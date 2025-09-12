@@ -1,737 +1,659 @@
-"use client";
-import { Avatar } from "@/components/ui/avatar";
-import { Card, CardContent, CardFooter, CardHeader } from "@/components/ui/card";
+'use client'
+
+import React, { useState } from 'react'
+
 import {
   Tabs,
+  TabsList,
+  TabsTrigger,
   TabsContent,
-  TabsListAlt,
-  TabsTriggerAlt,
-} from "@/components/ui/tabs";
-import { Input } from "@/components/ui/input";
-import { Button } from "@/components/ui/button";
-import React, { useEffect, useRef, useState } from "react";
-import { FaUser, FaLock, FaBell, FaCreditCard } from "react-icons/fa";
-import { FaEye, FaEyeSlash } from "react-icons/fa";
-import { useDialog } from "@/components/providers/DialogProvider";
-import { useAlert } from "@/components/providers/AlertProvider";
-import { Label } from "@/components/ui/label";
-import { Switch } from "@/components/ui/switch";
-import { use } from "react";
-import { Checkbox } from "@/components/ui/checkbox";
-import { api } from "@/lib/helper";
+} from '@/components/ui/tabs'
 
+import {
+  Card,
+  CardHeader,
+  CardTitle,
+  CardDescription,
+  CardContent,
+  CardFooter,
+} from '@/components/ui/card'
 
-const AccountSettings = () => {
-  const [formData, setFormData] = useState({
-    firstName: "",
-    lastName: "",
-    email: "",
-    role: "",
-    avatar:'',
-  });
+import { Label } from '@/components/ui/label'
+import { Switch } from '@/components/ui/switch'
+import { Slider } from '@/components/ui/slider'
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from '@/components/ui/select'
+import { Button } from '@/components/ui/button'
+import { Input } from '@/components/ui/input'
+import { Separator } from '@/components/ui/separator'
+import {
+  Table,
+  TableBody,
+  TableCell,
+  TableHead,
+  TableHeader,
+  TableRow,
+} from '@/components/ui/table'
 
-  const [avatar, setAvatar] = useState("/avatar_default.png");
-  const [isDirty, setIsDirty] = useState(false);
-  const [isChecked, setIsChecked] = useState(false);
-  const [originalData, setOriginalData] = useState(null);
+const SettingsPage = () => {
+  const [confidenceThreshold, setConfidenceThreshold] = useState([75])
+  const [autoSaveEnabled, setAutoSaveEnabled] = useState(true)
+  const [streamQuality, setStreamQuality] = useState('high')
+  const [notificationsEnabled, setNotificationsEnabled] = useState(true)
+  const [feedbackLoopEnabled, setFeedbackLoopEnabled] = useState(true)
+  const [selectedModels, setSelectedModels] = useState({
+    fractures: true,
+    cracks: true,
+    brokenPipes: true,
+    roots: true,
+  })
 
-  const { showAlert, showDelete , showSuccess} = useDialog();
-  const {showConfirm}= useDialog()
+  // NEW: User Management State
+  const [users, setUsers] = useState([
+    { id: 1, name: 'Alice Chen', email: 'alice@sewervision.ai', role: 'Admin', status: 'Active' },
+    { id: 2, name: 'Bob Rivera', email: 'bob@sewervision.ai', role: 'QC Technician', status: 'Active' },
+    { id: 3, name: 'Carol Kim', email: 'carol@sewervision.ai', role: 'Viewer', status: 'Disabled' },
+  ])
 
-  const fileInputRef = useRef(null);
+  // NEW: Model Weights State
+  const [modelVersion, setModelVersion] = useState('v2.1.4')
+  const [uploadedModel, setUploadedModel] = useState(null)
 
-  const triggerFileInput = () => {
-    fileInputRef.current?.click();
-  };
-  
-  const handleInputChange = (e) => {
-    setFormData({ ...formData, [e.target.name]: e.target.value });
-    setIsDirty(true);
-  };
+  // NEW: AWS Credentials State
+  const [awsConfig, setAwsConfig] = useState({
+    bucket: 'sewervision-prod-videos',
+    region: 'us-east-1',
+    accessKey: 'AKIA************',
+    secretKey: '••••••••••••••••••••••••••••••••••••••••',
+    showSecret: false,
+  })
 
-  
+  // NEW: Logs & Monitoring
+  const [logs, setLogs] = useState([
+    { id: 1, timestamp: '2025-04-04 10:22:01', level: 'INFO', message: 'AI model v2.1.4 loaded successfully' },
+    { id: 2, timestamp: '2025-04-04 09:45:33', level: 'WARN', message: 'High latency detected in stream segment #8812' },
+    { id: 3, timestamp: '2025-04-04 08:30:12', level: 'ERROR', message: 'Failed to upload video segment #7709 – retrying...' },
+  ])
 
-  const handleCancel = () => {
-    if (originalData) {
-      setFormData(originalData);
+  const handleModelToggle = (key) => {
+    setSelectedModels((prev) => ({
+      ...prev,
+      [key]: !prev[key],
+    }))
+  }
+
+  const saveSettings = (section) => {
+    console.log(`${section} settings saved`)
+    // Here you would typically call your API
+  }
+
+  const handleFileUpload = (e) => {
+    const file = e.target.files[0]
+    if (file) {
+      setUploadedModel(file)
+      alert(`Model file "${file.name}" selected. Click Save to deploy.`)
     }
-    setAvatar("/avatar_default.png"); 
-    setIsDirty(false);
-  };
+  }
 
- 
-  const handleAvatarUpload = async (e) => {
-    const file = e.target.files[0];
-    const username = localStorage.getItem("username");
-    
-
-  
-    if (!file) return;
-    if (!username) {
-      showAlert("You are not logged in.", "error");
-      return;
-    }
-    if (!file.type.startsWith("image/")) {
-      showAlert("Only image files are accepted", "error");
-      return;
-    }
-    if (file.size > 5 * 1024 * 1024) {
-      showAlert("File size should be under 5MB.", "error");
-      return;
-    }
-  
-    const formData = new FormData();
-    formData.append("avatar", file);
-    formData.append("username", username);
-  
-    try {
-      const { ok, data } = await api("/api/users/upload-avatar", "POST", formData);
-  
-      if (ok) {
-        showSuccess("Avatar uploaded successfully");
-        setAvatar(data.avatarUrl);
-        setIsDirty(true);
-      } else {
-        showAlert(data?.message || "Failed to upload avatar", "error");
-      }
-    } catch (err) {
-      console.error(err);
-      showAlert(err.message || "Error uploading avatar", "error");
-    }
-  };
-  
-  
-  
-
-  
-  const handleAvatarReset = () => {
-    setAvatar("/avatar_default.png");
-    setIsDirty(true);
-  };
-
-  const handleSave = async () => {
-    try {
-      const username = localStorage.getItem("username");
-      if (!username) return;
-  
-      const payload = {
-        usernameOrEmail: username,
-        first_name: formData.firstName,
-        last_name: formData.lastName,
-        role: formData.role,
-        avatar: avatar,
-      };
-  
-      const { ok, data } = await api('/api/users/change-account', 'POST', payload);
-  
-      if (ok) {
-        showSuccess("Account is already Updated.");
-        setIsDirty(false);
-        setOriginalData(formData);
-      } else {
-        showAlert(data?.message || "Failed to change Account.", "error");
-      }
-    } catch (err) {
-      console.error(err);
-      showAlert(err.message || "Failed to change Account.", "error");
-    }
-  };
-  
-  
-
-  const confirmDelete = (event) => {
-    event.preventDefault();
-    if (!isChecked) return;
-  
-    showDelete({
-      title: "Delete Account",
-      description: "Once you delete your account, there is no going back. Please be certain.",
-      onConfirm: () => {
-        deleteAccount(event);
-      },
-      onCancel: () => {
-        console.log("Account deletion cancelled");
-      }
-    });
-  };
-
-  const ConfirmSave = (event) => {
-    event.preventDefault();
-  
-    if(!isDirty) return;
-  
-    showConfirm({
-      title: "Do you want to save changes?",
-      description:
-        "Please confirm you want to save the changes to your account. This action will update your account information.",
-      onConfirm: () => {
-        handleSave(); 
-      },
-    });
-  };
-  
-
-  const deleteAccount = async (event) => {
-    event.preventDefault();
-
-    const usernameOrEmail = localStorage.getItem('username');
-
-    if (!usernameOrEmail) return;
-  
-    try {
-      const res = await api('/api/users/delete-account','DELETE');
-  
-      const data = await res.json();
-  
-      if (res.ok) {
-        showAlert("Account Delete Is successful", "success");
-        localStorage.clear();
-        window.location.href = '/login'; 
-      } 
-      else {
-        showAlert(`Delete failed: ${data.message}`, "error");
-      }
-    } catch (error) {
-      console.error('Error deleting account:', error);
-    }
-  };
-  
-  
-  useEffect(() => {
-    const getUser = async () => {
-      const username = localStorage.getItem("username");
-      if (!username) return;
-  
-      try {
-        const { ok, data } = await api(`/api/users/get-user/${username}`, "GET");
-  
-        if (ok) {
-          const user = data.user;
-          const userData = {
-            firstName: user.first_name || "",
-            lastName: user.last_name || "",
-            email: user.email || "",
-            role: user.role || "",
-            avatar:user.avatar || '',
-          };
-          setFormData(userData);
-          setOriginalData(userData);
-  
-          if (user.avatar) {
-            setAvatar(user.avatar);
-          }
-        } else {
-          console.error(data?.message || "Failed to fetch user");
-        }
-      } catch (err) {
-        console.error("Fetch error:", err.message || err);
-      }
-    };
-  
-    getUser();
-  }, []);
-  
+  const toggleSecretKey = () => {
+    setAwsConfig(prev => ({
+      ...prev,
+      showSecret: !prev.showSecret
+    }))
+  }
 
   return (
-    <>
-    <Card className="p-4">
-      <CardContent className="flex gap-6 items-start">
-        {/* Avatar Box */}
-        <div className="flex flex-col items-center p-4 border rounded-md">
-        <Avatar className="w-32 h-32">
-          <img src={avatar || "/avatar_default.png"} alt="User Avatar" />
-        </Avatar>
-        </div>
+    <div className="p-6 max-w-7xl mx-auto">
+      <h1 className="text-3xl font-bold mb-6">Admin Settings</h1>
 
-        {/* Upload Section on the Right Side of Avatar */}
-        <div className="flex flex-col gap-2">
-          <div className="flex justify-between gap-2">
-            <Button onClick={triggerFileInput} variant="rose" text="Upload new photo" />
-              <input
-                ref={fileInputRef}
-                type="file"
-                accept="image/*"
-                className="hidden"
-                onChange={handleAvatarUpload}
-              />
-            {/* Reset Button on the Right */}
-            <Button
-              variant="secondary"
-              onClick={handleAvatarReset}
-              text="Reset"
-            />
-          </div>
-
-          {/* File Format Info */}
-          <p className="text-gray-500 text-sm mt-1 text-center">
-            Allowed: JPG, GIF, PNG. Max size: 2MB.
-          </p>
-        </div>
-      </CardContent>
-
-      {/* User Information */}
-      <CardContent className="pt-4">
-        <form className="grid grid-cols-1 md:grid-cols-2 gap-4">
-          <div>
-            <label htmlFor="firstName" className="block text-sm font-medium">
-              First Name
-            </label>
-            <Input
-              id="firstName"
-              name="firstName"
-              placeholder="First Name"
-              className="w-full"
-              value={formData.firstName}
-              onChange={handleInputChange}
-            />
-          </div>
-          <div>
-            <label htmlFor="lastName" className="block text-sm font-medium">
-              Last Name
-            </label>
-            <Input
-              id="lastName"
-              name="lastName"
-              placeholder="Last Name"
-              className="w-full"
-              value={formData.lastName}
-              onChange={handleInputChange}
-            />
-          </div>
-          <div>
-            <label htmlFor="email" className="block text-sm font-medium">
-              Email
-            </label>
-            <Input
-              id="email"
-              name="email"
-              type="email"
-              placeholder="Email"
-              className="w-full"
-              value={formData.email}
-              onChange={handleInputChange}
-            />
-          </div>
-          <div>
-            <label htmlFor="role" className="block text-sm font-medium">
-              Role
-            </label>
-            <select
-              id="role"
-              name="role"
-              className="w-full p-2 border rounded-md"
-              value={formData.role}
-              onChange={handleInputChange}
-            >
-              <option value="" disabled>
-                Select Role
-              </option>
-              <option value="admin">Admin</option>
-              <option value="user">User</option>
-              <option value="manager">Manager</option>
-              <option value="guest">Guest</option>
-            </select>
-          </div>
-        </form>
-      </CardContent>
-
-      {isDirty && (
-        <CardFooter className="flex justify-start gap-2 pt-4">
-          <Button onClick={ConfirmSave} variant="rose" text="Save Changes" />
-          <Button variant="secondary" onClick={handleCancel} text="Cancel" />
-        </CardFooter>
-      )}
-    </Card>
-
-    <div className="pt-5">
       <Card>
-        <CardHeader>
-          <h2 className="text-lg font-semibold">Delete Account</h2>
-        </CardHeader>
-        <CardContent className="space-y-4">
-          <Card className="bg-[#fff2d6] rounded-2xl">
-            <CardHeader>
-              <h1 className="text-[#ffb725] font-bold text-2xl">
-                Are you sure you want to delete your account?
-              </h1>
-              <p className="text-[#ffb725] font-bold">
-                Once you delete your account, there is no going back. Please be certain.
-              </p>
-            </CardHeader>
-          </Card>
+        <CardContent className="pt-6">
+          <Tabs defaultValue="ai-models" className="w-full">
+            <TabsList className="grid w-full grid-cols-1 md:grid-cols-5 lg:grid-cols-7 gap-1 mb-8">
+              <TabsTrigger value="ai-models">AI Models</TabsTrigger>
+              <TabsTrigger value="cloud-streaming">Cloud & Streaming</TabsTrigger>
+              <TabsTrigger value="qc-workflow">QC Workflow</TabsTrigger>
+              <TabsTrigger value="notifications">Notifications</TabsTrigger>
+              <TabsTrigger value="feedback-loop">AI Learning</TabsTrigger>
+              <TabsTrigger value="manage-users">Manage Users</TabsTrigger>
+              <TabsTrigger value="system-admin">System Admin</TabsTrigger>
+            </TabsList>
 
-          <div className="flex items-center space-x-2">
-            <Checkbox
-              id="confirm-delete"
-              checked={isChecked}
-              onCheckedChange={(checked) => setIsChecked(!!checked)}
-            />
-            <label
-              htmlFor="confirm-delete"
-              className="text-sm font-medium leading-none peer-disabled:cursor-not-allowed peer-disabled:opacity-70"
-            >
-              I confirm my account deactivation
-            </label>
-          </div>
+            {/* ===== AI Models Tab ===== */}
+            <TabsContent value="ai-models">
+              <Card>
+                <CardHeader>
+                  <CardTitle>AI Detection Models</CardTitle>
+                  <CardDescription>
+                    Configure which defects AI should detect and adjust sensitivity.
+                  </CardDescription>
+                </CardHeader>
+                <CardContent className="space-y-6">
+                  <div className="space-y-4">
+                    {Object.entries(selectedModels).map(([key, enabled]) => (
+                      <div key={key} className="flex items-center justify-between">
+                        <Label className="capitalize">
+                          {key.replace(/([A-Z])/g, ' $1').trim()}
+                        </Label>
+                        <Switch
+                          checked={enabled}
+                          onCheckedChange={() => handleModelToggle(key)}
+                        />
+                      </div>
+                    ))}
+                  </div>
 
-          {isChecked && (
-            <Button 
-              variant="destructive" 
-              className="mt-2" 
-              text='Delete Account'
-              onClick={confirmDelete}
-            />
-   
-          )}
+                  <div className="space-y-2">
+                    <Label>
+                      Confidence Threshold: {confidenceThreshold[0]}%
+                    </Label>
+                    <Slider
+                      value={confidenceThreshold}
+                      onValueChange={setConfidenceThreshold}
+                      min={50}
+                      max={99}
+                      step={1}
+                    />
+                    <p className="text-xs text-muted-foreground">
+                      Lower = more detections (higher false positives), Higher = fewer but more certain.
+                    </p>
+                  </div>
+                </CardContent>
+                <CardFooter>
+                  <Button onClick={() => saveSettings('AI Models')}>
+                    Save AI Settings
+                  </Button>
+                </CardFooter>
+              </Card>
+            </TabsContent>
+
+            {/* ===== Cloud & Streaming Tab ===== */}
+            <TabsContent value="cloud-streaming">
+              <Card>
+                <CardHeader>
+                  <CardTitle>Cloud & Video Streaming</CardTitle>
+                  <CardDescription>
+                    Configure upload, storage, and streaming preferences.
+                  </CardDescription>
+                </CardHeader>
+                <CardContent className="space-y-6">
+                  <div className="space-y-2">
+                    <Label>Default Stream Quality</Label>
+                    <Select value={streamQuality} onValueChange={setStreamQuality}>
+                      <SelectTrigger>
+                        <SelectValue placeholder="Select quality" />
+                      </SelectTrigger>
+                      <SelectContent>
+                        <SelectItem value="low">Low (Faster, Less Data)</SelectItem>
+                        <SelectItem value="medium">Medium</SelectItem>
+                        <SelectItem value="high">High (Best Quality)</SelectItem>
+                      </SelectContent>
+                    </Select>
+                  </div>
+
+                  <div className="flex items-center justify-between">
+                    <Label>Auto-Save Processed Data</Label>
+                    <Switch
+                      checked={autoSaveEnabled}
+                      onCheckedChange={setAutoSaveEnabled}
+                    />
+                  </div>
+
+                  <div className="rounded-md bg-blue-50 p-4 text-sm text-blue-800">
+                    <strong>Note:</strong> All inspection videos are automatically uploaded to SewerVision.ai
+                    Cloud upon capture for real-time access.
+                  </div>
+                </CardContent>
+                <CardFooter>
+                  <Button onClick={() => saveSettings('Cloud & Streaming')}>
+                    Save Streaming Settings
+                  </Button>
+                </CardFooter>
+              </Card>
+            </TabsContent>
+
+            {/* ===== QC Workflow Tab ===== */}
+            <TabsContent value="qc-workflow">
+              <Card>
+                <CardHeader>
+                  <CardTitle>QC Technician Workflow</CardTitle>
+                  <CardDescription>
+                    Configure review and annotation workflow for PACP/LACP Certified Staff.
+                  </CardDescription>
+                </CardHeader>
+                <CardContent className="space-y-6">
+                  <div className="space-y-2">
+                    <Label>Default Review Priority</Label>
+                    <Select defaultValue="high-confidence">
+                      <SelectTrigger>
+                        <SelectValue />
+                      </SelectTrigger>
+                      <SelectContent>
+                        <SelectItem value="high-confidence">High Confidence First</SelectItem>
+                        <SelectItem value="low-confidence">Low Confidence First</SelectItem>
+                        <SelectItem value="chronological">Chronological</SelectItem>
+                        <SelectItem value="by-segment">By Pipe Segment</SelectItem>
+                      </SelectContent>
+                    </Select>
+                  </div>
+
+                  <div className="space-y-2">
+                    <Label>Annotation Tools Enabled</Label>
+                    <div className="grid grid-cols-2 gap-4">
+                      {[
+                        { label: 'Add Defect Tags', defaultChecked: true },
+                        { label: 'Add Measurements', defaultChecked: true },
+                        { label: 'Add Severity Ratings', defaultChecked: true },
+                        { label: 'Add Repair Recommendations', defaultChecked: true },
+                      ].map((tool, i) => (
+                        <div key={i} className="flex items-center space-x-2">
+                          <Switch id={`tool-${i}`} defaultChecked={tool.defaultChecked} />
+                          <Label htmlFor={`tool-${i}`}>{tool.label}</Label>
+                        </div>
+                      ))}
+                    </div>
+                  </div>
+
+                  <div className="space-y-2">
+                    <Label>Auto-Assign QC Reviewer</Label>
+                    <Select defaultValue="round-robin">
+                      <SelectTrigger>
+                        <SelectValue />
+                      </SelectTrigger>
+                      <SelectContent>
+                        <SelectItem value="round-robin">Round Robin</SelectItem>
+                        <SelectItem value="least-loaded">Least Loaded</SelectItem>
+                        <SelectItem value="by-expertise">By Expertise</SelectItem>
+                      </SelectContent>
+                    </Select>
+                  </div>
+                </CardContent>
+                <CardFooter>
+                  <Button onClick={() => saveSettings('QC Workflow')}>
+                    Save QC Workflow Settings
+                  </Button>
+                </CardFooter>
+              </Card>
+            </TabsContent>
+
+            {/* ===== Notifications Tab ===== */}
+            <TabsContent value="notifications">
+              <Card>
+                <CardHeader>
+                  <CardTitle>Customer & Admin Notifications</CardTitle>
+                  <CardDescription>
+                    Configure when and how notifications are sent.
+                  </CardDescription>
+                </CardHeader>
+                <CardContent className="space-y-6">
+                  <div className="flex items-center justify-between">
+                    <Label>Notify Customer When PACP Deliverables Ready</Label>
+                    <Switch
+                      checked={notificationsEnabled}
+                      onCheckedChange={setNotificationsEnabled}
+                    />
+                  </div>
+
+                  <div className="space-y-2">
+                    <Label>Notification Channels</Label>
+                    <div className="space-y-2">
+                      {[
+                        { label: 'Email', defaultChecked: true },
+                        { label: 'SMS', defaultChecked: false },
+                        { label: 'In-App Notification', defaultChecked: true },
+                      ].map((channel, i) => (
+                        <div key={i} className="flex items-center space-x-2">
+                          <Switch id={`channel-${i}`} defaultChecked={channel.defaultChecked} />
+                          <Label htmlFor={`channel-${i}`}>{channel.label}</Label>
+                        </div>
+                      ))}
+                    </div>
+                  </div>
+
+                  <div className="space-y-2">
+                    <Label>Admin Alerts</Label>
+                    <div className="space-y-2">
+                      {[
+                        { label: 'AI Processing Errors', defaultChecked: true },
+                        { label: 'QC Review Backlog > 24hrs', defaultChecked: true },
+                        { label: 'Storage Usage > 80%', defaultChecked: false },
+                      ].map((alert, i) => (
+                        <div key={i} className="flex items-center space-x-2">
+                          <Switch id={`alert-${i}`} defaultChecked={alert.defaultChecked} />
+                          <Label htmlFor={`alert-${i}`}>{alert.label}</Label>
+                        </div>
+                      ))}
+                    </div>
+                  </div>
+                </CardContent>
+                <CardFooter>
+                  <Button onClick={() => saveSettings('Notifications')}>
+                    Save Notification Settings
+                  </Button>
+                </CardFooter>
+              </Card>
+            </TabsContent>
+
+            {/* ===== Feedback Loop Tab ===== */}
+            <TabsContent value="feedback-loop">
+              <Card>
+                <CardHeader>
+                  <CardTitle>AI Learning & Feedback Loop</CardTitle>
+                  <CardDescription>
+                    Configure how QC annotations improve AI models.
+                  </CardDescription>
+                </CardHeader>
+                <CardContent className="space-y-6">
+                  <div className="flex items-center justify-between">
+                    <Label>Enable Continuous AI Learning</Label>
+                    <Switch
+                      checked={feedbackLoopEnabled}
+                      onCheckedChange={setFeedbackLoopEnabled}
+                    />
+                  </div>
+
+                  <div className="space-y-2">
+                    <Label>Training Data Frequency</Label>
+                    <Select defaultValue="per-project">
+                      <SelectTrigger>
+                        <SelectValue />
+                      </SelectTrigger>
+                      <SelectContent>
+                        <SelectItem value="per-project">After Every Project</SelectItem>
+                        <SelectItem value="weekly">Weekly</SelectItem>
+                        <SelectItem value="bi-weekly">Bi-Weekly</SelectItem>
+                        <SelectItem value="manual">Manually Triggered</SelectItem>
+                      </SelectContent>
+                    </Select>
+                  </div>
+
+                  <div className="space-y-2">
+                    <Label>Minimum Annotations per Defect Type</Label>
+                    <Input type="number" defaultValue="50" className="w-32" />
+                    <p className="text-xs text-muted-foreground">
+                      Minimum QC-reviewed annotations required before model retraining.
+                    </p>
+                  </div>
+
+                  <div className="rounded-md bg-green-50 p-4 text-sm space-y-1 text-green-800">
+                    <h4 className="font-medium">Current AI Performance Metrics</h4>
+                    <ul className="list-disc list-inside">
+                      <li>Accuracy: 92.4%</li>
+                      <li>False Positive Rate: 6.1%</li>
+                      <li>Last Model Update: 2 days ago</li>
+                      <li>Next Training Scheduled: Tomorrow</li>
+                    </ul>
+                  </div>
+                </CardContent>
+                <CardFooter>
+                  <Button onClick={() => saveSettings('AI Learning')}>
+                    Save Feedback Settings
+                  </Button>
+                </CardFooter>
+              </Card>
+            </TabsContent>
+
+            {/* ===== Manage Users Tab ===== */}
+            <TabsContent value="manage-users">
+              <Card>
+                <CardHeader>
+                  <CardTitle>Manage Users</CardTitle>
+                  <CardDescription>
+                    Add, edit, or disable user accounts and permissions.
+                  </CardDescription>
+                </CardHeader>
+                <CardContent>
+                  <div className="flex justify-between items-center mb-4">
+                    <Button variant="outline" size="sm">+ Invite User</Button>
+                    <Button variant="outline" size="sm">Export CSV</Button>
+                  </div>
+
+                  <Table>
+                    <TableHeader>
+                      <TableRow>
+                        <TableHead>Name</TableHead>
+                        <TableHead>Email</TableHead>
+                        <TableHead>Role</TableHead>
+                        <TableHead>Status</TableHead>
+                        <TableHead>Actions</TableHead>
+                      </TableRow>
+                    </TableHeader>
+                    <TableBody>
+                      {users.map((user) => (
+                        <TableRow key={user.id}>
+                          <TableCell>{user.name}</TableCell>
+                          <TableCell>{user.email}</TableCell>
+                          <TableCell>{user.role}</TableCell>
+                          <TableCell>
+                            <span className={`px-2 py-1 rounded-full text-xs ${
+                              user.status === 'Active'
+                                ? 'bg-green-100 text-green-800'
+                                : 'bg-red-100 text-red-800'
+                            }`}>
+                              {user.status}
+                            </span>
+                          </TableCell>
+                          <TableCell>
+                            <Button variant="ghost" size="sm">Edit</Button>
+                            <Button variant="ghost" size="sm" className="text-red-600">Remove</Button>
+                          </TableCell>
+                        </TableRow>
+                      ))}
+                    </TableBody>
+                  </Table>
+                </CardContent>
+                <CardFooter>
+                  <Button>Save User Changes</Button>
+                </CardFooter>
+              </Card>
+            </TabsContent>
+
+            {/* ===== System Admin Tab ===== */}
+            <TabsContent value="system-admin">
+              <div className="space-y-6">
+
+                {/* Model Weights Section */}
+                <Card>
+                  <CardHeader>
+                    <CardTitle>Update AI Model Weights</CardTitle>
+                    <CardDescription>
+                      Upload and deploy new trained model versions.
+                    </CardDescription>
+                  </CardHeader>
+                  <CardContent className="space-y-4">
+                    <div>
+                      <Label>Current Model Version</Label>
+                      <div className="mt-1 p-2 bg-muted rounded-md font-mono">
+                        {modelVersion}
+                      </div>
+                    </div>
+
+                    <div>
+                      <Label>Upload New Model (.pt, .onnx, .bin)</Label>
+                      <Input type="file" accept=".pt,.onnx,.bin" onChange={handleFileUpload} />
+                      {uploadedModel && (
+                        <p className="text-sm text-green-600 mt-1">
+                          Selected: {uploadedModel.name} ({(uploadedModel.size / (1024 * 1024)).toFixed(2)} MB)
+                        </p>
+                      )}
+                    </div>
+
+                    <div className="bg-yellow-50 p-3 rounded-md text-sm text-yellow-800">
+                      ⚠️ Deploying a new model will restart inference services. Schedule during maintenance window.
+                    </div>
+                  </CardContent>
+                  <CardFooter>
+                    <Button disabled={!uploadedModel}>Deploy New Model</Button>
+                  </CardFooter>
+                </Card>
+
+                <Separator />
+
+                {/* AWS Credentials Section */}
+                <Card>
+                  <CardHeader>
+                    <CardTitle>AWS Storage Configuration</CardTitle>
+                    <CardDescription>
+                      Configure S3 bucket and credentials for video storage.
+                    </CardDescription>
+                  </CardHeader>
+                  <CardContent className="space-y-4">
+                    <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                      <div>
+                        <Label>S3 Bucket Name</Label>
+                        <Input
+                          value={awsConfig.bucket}
+                          onChange={(e) => setAwsConfig(prev => ({ ...prev, bucket: e.target.value }))}
+                        />
+                      </div>
+                      <div>
+                        <Label>AWS Region</Label>
+                        <Select
+                          value={awsConfig.region}
+                          onValueChange={(value) => setAwsConfig(prev => ({ ...prev, region: value }))}
+                        >
+                          <SelectTrigger>
+                            <SelectValue />
+                          </SelectTrigger>
+                          <SelectContent>
+                            <SelectItem value="us-east-1">us-east-1 (N. Virginia)</SelectItem>
+                            <SelectItem value="us-west-2">us-west-2 (Oregon)</SelectItem>
+                            <SelectItem value="eu-west-1">eu-west-1 (Ireland)</SelectItem>
+                          </SelectContent>
+                        </Select>
+                      </div>
+                    </div>
+
+                    <div>
+                      <Label>AWS Access Key ID</Label>
+                      <Input
+                        value={awsConfig.accessKey}
+                        onChange={(e) => setAwsConfig(prev => ({ ...prev, accessKey: e.target.value }))}
+                      />
+                    </div>
+
+                    <div>
+                      <Label>AWS Secret Access Key</Label>
+                      <div className="flex">
+                        <Input
+                          type={awsConfig.showSecret ? "text" : "password"}
+                          value={awsConfig.secretKey}
+                          onChange={(e) => setAwsConfig(prev => ({ ...prev, secretKey: e.target.value }))}
+                          className="flex-1"
+                        />
+                        <Button
+                          type="button"
+                          variant="outline"
+                          size="icon"
+                          onClick={toggleSecretKey}
+                          className="ml-2"
+                        >
+                          {awsConfig.showSecret ? '🙈' : '👁️'}
+                        </Button>
+                      </div>
+                    </div>
+                  </CardContent>
+                  <CardFooter>
+                    <Button>Save AWS Configuration</Button>
+                  </CardFooter>
+                </Card>
+
+                <Separator />
+
+                {/* Logs & Monitoring Section */}
+                <Card>
+                  <CardHeader>
+                    <CardTitle>System Logs & Monitoring</CardTitle>
+                    <CardDescription>
+                      View recent system events, errors, and performance metrics.
+                    </CardDescription>
+                  </CardHeader>
+                  <CardContent>
+                    <div className="flex justify-between items-center mb-4">
+                      <div className="flex space-x-2">
+                        <Button variant="outline" size="sm">Refresh</Button>
+                        <Button variant="outline" size="sm">Export Logs</Button>
+                      </div>
+                      <Select defaultValue="24h">
+                        <SelectTrigger className="w-32">
+                          <SelectValue />
+                        </SelectTrigger>
+                        <SelectContent>
+                          <SelectItem value="1h">Last Hour</SelectItem>
+                          <SelectItem value="24h">Last 24 Hours</SelectItem>
+                          <SelectItem value="7d">Last 7 Days</SelectItem>
+                        </SelectContent>
+                      </Select>
+                    </div>
+
+                    <div className="rounded-md border">
+                      <Table>
+                        <TableHeader>
+                          <TableRow>
+                            <TableHead>Time</TableHead>
+                            <TableHead>Level</TableHead>
+                            <TableHead>Message</TableHead>
+                          </TableRow>
+                        </TableHeader>
+                        <TableBody>
+                          {logs.map((log) => (
+                            <TableRow key={log.id}>
+                              <TableCell className="font-mono text-xs">{log.timestamp}</TableCell>
+                              <TableCell>
+                                <span className={`px-2 py-1 rounded-full text-xs font-medium ${
+                                  log.level === 'ERROR'
+                                    ? 'bg-red-100 text-red-800'
+                                    : log.level === 'WARN'
+                                    ? 'bg-yellow-100 text-yellow-800'
+                                    : 'bg-green-100 text-green-800'
+                                }`}>
+                                  {log.level}
+                                </span>
+                              </TableCell>
+                              <TableCell className="text-sm">{log.message}</TableCell>
+                            </TableRow>
+                          ))}
+                        </TableBody>
+                      </Table>
+                    </div>
+
+                    <div className="mt-4 p-4 bg-muted rounded-md">
+                      <h4 className="font-medium mb-2">System Health</h4>
+                      <div className="grid grid-cols-2 md:grid-cols-4 gap-4 text-sm">
+                        <div>
+                          <div className="text-muted-foreground">CPU Usage</div>
+                          <div className="font-bold">42%</div>
+                        </div>
+                        <div>
+                          <div className="text-muted-foreground">Memory</div>
+                          <div className="font-bold">6.2 GB / 16 GB</div>
+                        </div>
+                        <div>
+                          <div className="text-muted-foreground">Storage</div>
+                          <div className="font-bold">1.2 TB / 5 TB</div>
+                        </div>
+                        <div>
+                          <div className="text-muted-foreground">Uptime</div>
+                          <div className="font-bold">14 days</div>
+                        </div>
+                      </div>
+                    </div>
+                  </CardContent>
+                </Card>
+
+              </div>
+            </TabsContent>
+
+          </Tabs>
         </CardContent>
       </Card>
     </div>
-    
+  )
+}
 
-    </>
-  );
-};
-
-const SecuritySettings = () => {
-  const [currentPassword, setCurrentPassword] = useState("");
-  const [showCurrent, setShowCurrent] = useState(false);
-  const [newPassword, setNewPassword] = useState("");
-  const [showNew, setShowNew] = useState(false);
-  const [confirmPassword, setConfirmPassword] = useState("");
-  const [showConfirmVisible, setShowConfirmVisible] = useState(false);
-  const [loading, setLoading] = useState(false);
-  const [enabled, setEnabled] = useState(false)
-
-  const {showAlert} = useAlert(); 
-
-  const { showConfirm  } = useDialog();
-  const { showSessionExpiredDialog } = useDialog();
-  
-  const hasChanges =
-    currentPassword !== "" || newPassword !== "" || confirmPassword !== "";
-
-  const resetForm = () => {
-    setCurrentPassword("");
-    setNewPassword("");
-    setConfirmPassword("");
-    setShowCurrent(false);
-    setShowNew(false);
-    setShowConfirmVisible(false);
-  };
-
-  const confirmBeforeSubmit = (event) => {
-    event.preventDefault();
-    if (!hasChanges) return;
-  
-    showConfirm({
-      title: "Confirm Password Change",
-      description: `
-        ⚠️ Take note: You can only change your password up to 3 times per month. 
-        You will need to verify your account again after changing your password. 
-        Are you sure you want to proceed? 🔒
-      `,
-      onConfirm: () => {
-        handlePasswordChange(event);
-      },
-    });
-  };
-  
-  const handlePasswordChange = async (event) => {
-    event.preventDefault();
-  
-    if (newPassword !== confirmPassword) {
-      showAlert("New password and confirm password do not match.", "error");
-      return;
-    }
-  
-    const passwordValid = /^(?=.*[a-z])(?=.*[\d\W]).{8,}$/.test(newPassword);
-    if (!passwordValid) {
-      showAlert(
-        "Password must be at least 8 characters long and contain a lowercase letter and a digit or symbol.",
-        "error"
-      );
-      return;
-    }
-  
-    const usernameOrEmail = localStorage.getItem("username");
-    const token = localStorage.getItem("authToken");
-  
-    if (!usernameOrEmail || !token) {
-      showSessionExpiredDialog();
-      return;
-    }
-  
-    try {
-      setLoading(true);
-  
-      const payload = {
-        isChangePassword: true,
-        currentPassword,
-        newPassword,
-        usernameOrEmail,
-      };
-  
-      const { ok, data } = await api(
-        "/api/auth/change-password",
-        "POST",
-        payload,
-        {
-          Authorization: `Bearer ${token}`,
-        }
-      );
-  
-      if (ok) {
-        showAlert("Password changed successfully!", "success");
-        resetForm();
-      } else {
-        if (
-          data?.message?.toLowerCase().includes("expired") ||
-          data?.message?.toLowerCase().includes("unauthorized")
-        ) {
-          showSessionExpiredDialog();
-        } else {
-          showAlert(data?.message || "Failed to change password.", "error");
-        }
-      }
-    } catch (err) {
-      console.error("Error changing password:", err);
-      showAlert(err.message || "Failed to change password.", "error");
-    } finally {
-      setLoading(false);
-    }
-  };
-  
-  
-  
-  
-  return (
-    <>
-    <Card className='pb-5'> 
-      <CardContent>
-        <form onSubmit={confirmBeforeSubmit} className="space-y-6 max-w-xl ">
-          <h2 className="text-lg font-semibold">Change Password</h2>
-
-          {/* Current Password: fixed width same as combined width of new + confirm */}
-          <div className="w-full">
-            <label
-              htmlFor="current-password"
-              className="block font-medium mb-1"
-            >
-              Current Password
-            </label>
-            <div className="relative">
-              <Input
-                id="current-password"
-                type={showCurrent ? "text" : "password"}
-                value={currentPassword}
-                onChange={(e) => setCurrentPassword(e.target.value)}
-                className="input input-bordered w-full pr-10"
-                required
-              />
-              <button
-                type="button"
-                onClick={() => setShowCurrent(!showCurrent)}
-                className="absolute right-2 top-1/2 -translate-y-1/2 text-gray-500 hover:text-gray-700"
-                tabIndex={-1}
-              >
-                {showCurrent ? <FaEyeSlash /> : <FaEye />}
-              </button>
-            </div>
-          </div>
-
-          {/* New + Confirm Password side by side, fills the same width as current */}
-          <div className="flex gap-6 w-full">
-            {/* New Password */}
-            <div className="flex-1">
-              <label htmlFor="new-password" className="block font-medium mb-1">
-                New Password
-              </label>
-              <div className="relative">
-                <Input
-                  id="new-password"
-                  type={showNew ? "text" : "password"}
-                  value={newPassword}
-                  onChange={(e) => setNewPassword(e.target.value)}
-                  className="input input-bordered w-full pr-10"
-                  required
-                />
-                <button
-                  type="button"
-                  onClick={() => setShowNew(!showNew)}
-                  className="absolute right-2 top-1/2 -translate-y-1/2 text-gray-500 hover:text-gray-700"
-                  tabIndex={-1}
-                >
-                  {showNew ? <FaEyeSlash /> : <FaEye />}
-                </button>
-              </div>
-            </div>
-
-            {/* Confirm New Password */}
-            <div className="flex-1">
-              <label
-                htmlFor="confirm-password"
-                className="block font-medium mb-1"
-              >
-                Confirm New Password
-              </label>
-              <div className="relative">
-                <Input
-                  id="confirm-password"
-                  type={showConfirmVisible ? "text" : "password"}
-                  value={confirmPassword}
-                  onChange={(e) => setConfirmPassword(e.target.value)}
-                  className="input input-bordered w-full pr-10"
-                  required
-                />
-                <button
-                  type="button"
-                  onClick={() => setShowConfirmVisible(!showConfirmVisible)}
-                  className="absolute right-2 top-1/2 -translate-y-1/2 text-gray-500 hover:text-gray-700"
-                  tabIndex={-1}
-                >
-                  {showConfirmVisible ? <FaEyeSlash /> : <FaEye />}
-                </button>
-              </div>
-            </div>
-          </div>
-
-          {/* Password Requirements */}
-          <div className="text-sm text-gray-500 space-y-1">
-            <p>Password Requirements:</p>
-            <ul className="list-disc list-inside">
-              <li>Minimum 8 characters long - the more, the better</li>
-              <li>At least one lowercase character</li>
-              <li>At least one number, symbol, or whitespace character</li>
-            </ul>
-          </div>
-
-          {/* Buttons */}
-          <div className="flex gap-4">
-            <Button
-              type="submit"
-              disabled={!hasChanges}
-              onClick={confirmBeforeSubmit}
-              variant="rose"
-              text="Save Changes"
-              className={`${
-                !hasChanges ? "opacity-50 cursor-not-allowed" : ""
-              }`}
-            />
-            <Button
-              type="button"
-              disabled={!hasChanges}
-              onClick={resetForm}
-              variant="secondary"
-              text="Reset"
-              className={`${
-                !hasChanges ? "opacity-50 cursor-not-allowed" : ""
-              }`}
-            />
-          </div>
-        </form>
-      </CardContent>
-    </Card>
-
-    <div className="pt-5"> 
-      <Card>
-        <CardHeader>
-          <h2 className="text-lg font-semibold">Two-steps verification</h2>
-          <h2 className="text-lg font-semibold text-black">Two factor authentication is not enabled yet.</h2>
-        </CardHeader>
-        <CardContent className="space-y-4">
-          <div className="flex items-center justify-between">
-            <Label htmlFor="two-fa-toggle">Two-factor authentication adds an additional layer of security to your account by requiring more than just a password to log in.</Label>
-            <Switch
-              id="two-fa-toggle"
-              checked={enabled}
-              onCheckedChange={setEnabled}
-            />
-          </div>
-
-          {enabled && (
-            <Button variant="rose" 
-              onClick={() => alert('2FA Setup Process')} 
-              text='Enable Two Factor Authentication'
-            />
-          )}
-        </CardContent>
-      </Card>
-    </div>
-    
-    </>
-  );
-};
-
-const Notifications = () => {
-    const [emailNotifications, setEmailNotifications] = useState(true);
-    
-    return (
-        <Card className='p-7'>
-            <CardContent>
-                <h2 className="text-lg font-semibold">Notifications</h2>
-                <p>Manage your notification settings here.</p>
-            </CardContent>
-        </Card>
-    )
-};
-
-const Settings = () => {
-  return (
-    <div className="w-full h-full flex flex-col">
-      <div className="flex pb-6">
-        <h1 className="font-bold text-3xl md:text-5xl">Settings</h1>
-      </div>
-
-      <div className="flex flex-col items-center gap-4">
-        <Tabs defaultValue="account" className="w-full pb-4">
-          <TabsListAlt className="flex justify-center gap-4 w-full ">
-            <TabsTriggerAlt
-              className="w-1/4 flex items-center gap-2"
-              value="account"
-            >
-              <FaUser className="text-lg" />
-              Account
-            </TabsTriggerAlt>
-            <TabsTriggerAlt
-              className="w-1/4 flex items-center gap-2"
-              value="security"
-            >
-              <FaLock className="text-lg" />
-              Security
-            </TabsTriggerAlt>
-            <TabsTriggerAlt
-              className="w-1/4 flex items-center gap-2"
-              value="notifications"
-            >
-              <FaBell className="text-lg" />
-              Notifications
-            </TabsTriggerAlt>
-            <TabsTriggerAlt
-              className="w-1/4 flex items-center gap-2"
-              value="billing"
-            >
-              <FaCreditCard className="text-lg" />
-              Billing
-            </TabsTriggerAlt>
-          </TabsListAlt>
-
-          <div className="pt-4">
-            <TabsContent value="account">
-              <AccountSettings />
-            </TabsContent>
-
-            <TabsContent value="security">
-              <SecuritySettings />
-            </TabsContent>
-
-            <TabsContent value ='notifications'>
-              <Notifications />
-            </TabsContent>
-          </div>
-        </Tabs>
-      </div>
-    </div>
-  );
-};
-
-export default Settings;
+export default SettingsPage

@@ -47,9 +47,6 @@ const Login = () => {
         password: data.password,
       });
   
-      console.log('result', result); // Keep for debugging
-  
-      // ✅ Extract the actual data from the nested structure
       const responseData = result.data.data;
   
       if (!responseData || !responseData.token || !responseData.role) {
@@ -75,13 +72,17 @@ const Login = () => {
       // Redirect based on role
       if (normalizedRole === "admin") {
         router.push("/admin/dashboard");
-      } else if (normalizedRole === "user") {
+      } 
+      else if (normalizedRole === "user") {
         router.push("/users/dashboard");
-      } else if (normalizedRole === "operator") {
+      } 
+      else if (normalizedRole === "operator") {
         router.push("/operator/dashboard");
-      } else if (normalizedRole === "qc-technician") {
+      } 
+      else if (normalizedRole === "qc-technician") {
         router.push("/qc-technician/dashboard");
-      } else {
+      } 
+      else {
         showAlert(`Unknown role: ${normalizedRole}`, "warning");
         router.push("/");
       }

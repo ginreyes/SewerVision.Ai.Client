@@ -110,7 +110,6 @@ const AdminDashboard = () => {
 
   // Create charts
   useEffect(() => {
-    // Destroy previous instances
     if (pieChartInstance.current) pieChartInstance.current.destroy()
     if (workflowChartInstance.current) workflowChartInstance.current.destroy()
     if (productivityChartInstance.current) productivityChartInstance.current.destroy()
@@ -440,22 +439,7 @@ const AdminDashboard = () => {
                 <Camera className="w-8 h-8 text-blue-600" />
                 <h1 className="text-2xl font-bold text-gray-900">SewerVision.ai</h1>
               </div>
-              <span className="px-3 py-1 bg-blue-100 text-blue-800 text-sm rounded-full font-medium">Admin Panel</span>
-            </div>
-            <div className="flex items-center space-x-4">
-              <div className="relative">
-                <Search className="w-4 h-4 absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400" />
-                <input 
-                  type="text" 
-                  placeholder="Search projects..." 
-                  className="pl-10 pr-4 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent"
-                />
-              </div>
-              <Bell className="w-6 h-6 text-gray-600 hover:text-gray-900 cursor-pointer" />
-              <Settings className="w-6 h-6 text-gray-600 hover:text-gray-900 cursor-pointer" />
-              <div className="w-8 h-8 bg-blue-600 rounded-full flex items-center justify-center">
-                <span className="text-white text-sm font-medium">AD</span>
-              </div>
+              <span className="px-3 py-1 bg-blue-100 text-blue-800 text-sm rounded-full font-medium">Dashboard</span>
             </div>
           </div>
         </div>

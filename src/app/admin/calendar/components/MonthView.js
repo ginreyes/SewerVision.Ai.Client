@@ -47,7 +47,7 @@ export default function MonthViewCalendar({ currentYear, currentMonth, today, ev
             const clickedDate = day ? new Date(currentYear, currentMonth, day) : null
             const clickedDateString = clickedDate?.toDateString()
 
-            const events = event_list.filter(event => {
+            const events = event_list?.filter(event => {
               const eventDate = new Date(event.start_date).toDateString()
               return eventDate === clickedDateString
             })

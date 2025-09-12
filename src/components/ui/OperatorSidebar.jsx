@@ -21,11 +21,9 @@ const OperatorSidebar = ({ isOpen, role }) => {
     setActiveItem(item);
   };
 
-  // Active and inactive styles
   const activeStyle = "bg-[#826AF91A] text-[#2D99FF] font-semibold";
   const inactiveStyle = "text-gray-700";
 
-  // Define sidebar items with Lucide icons
   const operator = [
     { label: "Dashboard", icon: LayoutDashboard, path: "/operator/dashboard" },
     { label: "Operations", icon: SearchX, path: "/operator/operations" },
@@ -57,7 +55,7 @@ const OperatorSidebar = ({ isOpen, role }) => {
           </div>
         ) : (
           sidebarItems.map((item, index) => {
-            const Icon = item.icon; // Destructure the Lucide component
+            const Icon = item.icon; 
             return (
               <Link key={item.label} href={item.path}>
                 <div

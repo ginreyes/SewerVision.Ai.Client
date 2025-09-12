@@ -109,11 +109,9 @@ const Navbar = ({ openSideBar }) => {
     debouncedSearch(value);
   };
 
-  // Handle search submission
   const handleSearchSubmit = (finalQuery = searchQuery) => {
     if (!finalQuery.trim()) return;
 
-    // Update history
     const newHistory = [finalQuery, ...searchHistory.filter((item) => item !== finalQuery)].slice(0, 10);
     setSearchHistory(newHistory);
     localStorage.setItem('searchHistory', JSON.stringify(newHistory));
@@ -122,25 +120,21 @@ const Navbar = ({ openSideBar }) => {
     setRecentSearches(newRecent);
     localStorage.setItem('recentSearches', JSON.stringify(newRecent));
 
-    // Navigate to results page
     router.push(`/search?q=${encodeURIComponent(finalQuery)}`);
     setSearchOpen(false);
     setSearchQuery('');
   };
 
-  // Click on a result
   const handleResultClick = (result) => {
     handleSearchSubmit(result.title);
     router.push(result.url);
   };
 
-  // Click on recent/popular search
   const handleRecentSearchClick = (term) => {
     setSearchQuery(term);
     handleSearchSubmit(term);
   };
 
-  // Clear history
   const clearSearchHistory = () => {
     setSearchHistory([]);
     setRecentSearches([]);
@@ -148,7 +142,6 @@ const Navbar = ({ openSideBar }) => {
     localStorage.removeItem('recentSearches');
   };
 
-  // Close dropdown on outside click
   useEffect(() => {
     const handleClickOutside = (event) => {
       if (

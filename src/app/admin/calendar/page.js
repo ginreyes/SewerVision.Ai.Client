@@ -108,8 +108,8 @@ const Calendar = () => {
   };
 
   const filteredEvents = filters.viewAll
-  ? event_list
-  : event_list.filter(event => filters[event.category]);
+  ? (Array.isArray(event_list) ? event_list : [])
+  : (Array.isArray(event_list) ? event_list.filter(event => filters[event.category]) : []);
 
 
   const handlePrevious = () => {
