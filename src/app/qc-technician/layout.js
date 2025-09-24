@@ -1,5 +1,6 @@
 'use client';
 
+import QcSidebar from "@/components/ui/QcSidebar";
 import Navbar from "@/components/ui/navbar";
 import Sidebar from "@/components/ui/sidebar";
 import { useEffect, useState } from "react";
@@ -41,7 +42,7 @@ export default function userLayout({ children }) {
             openSidebar ? "w-[270px]" : "w-[90px]"
           }`}
         >
-          <Sidebar isOpen={openSidebar} role={role} />
+          <QcSidebar isOpen={openSidebar} role={role} />
         </div>
 
         <div

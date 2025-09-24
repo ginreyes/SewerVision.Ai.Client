@@ -47,7 +47,27 @@ const Login = () => {
         password: data.password,
       });
   
-      const responseData = result.data.data;
+      // 🔍 Debug: Always log the full response during dev
+      console.log("API Response:", result);
+  
+      // ✅ CASE 1: Login failed (401, 400, etc.)
+      if (!result.ok) {
+        const errorData = result.data?.error;
+  
+        if (errorData === "Wrong username or email") {
+          showAlert("Wrong username or email", "error");
+        } else if (errorData === "Wrong password") {
+          showAlert("Wrong password", "error");
+        } else if (errorData === "Username/Email and Password are required") {
+          showAlert("Please enter both username/email and password", "error");
+        } else {
+          showAlert(errorData || "Login failed. Please try again.", "error");
+        }
+  
+        return; // ⚠️ Exit early — don’t proceed to redirect
+      }
+  
+      const responseData = result.data.data
   
       if (!responseData || !responseData.token || !responseData.role) {
         throw new Error("Invalid response from server");
@@ -58,37 +78,41 @@ const Login = () => {
       remember
         ? localStorage.setItem("rememberedUsername", data.usernameOrEmail)
         : localStorage.removeItem("rememberedUsername");
-
-      const normalizedRole = role.toLowerCase();  
+  
+      const normalizedRole = role.toLowerCase();
   
       localStorage.setItem("authToken", token);
       localStorage.setItem("username", data.usernameOrEmail);
       localStorage.setItem("role", normalizedRole);
   
-
-  
       showAlert("Login successful!", "success");
   
-      // Redirect based on role
       if (normalizedRole === "admin") {
         router.push("/admin/dashboard");
-      } 
-      else if (normalizedRole === "user") {
+      } else if (normalizedRole === "user") {
         router.push("/users/dashboard");
-      } 
-      else if (normalizedRole === "operator") {
+      } else if (normalizedRole === "operator") {
         router.push("/operator/dashboard");
-      } 
-      else if (normalizedRole === "qc-technician") {
+      } else if (normalizedRole === "qc-technician") {
         router.push("/qc-technician/dashboard");
-      } 
-      else {
+      } else {
         showAlert(`Unknown role: ${normalizedRole}`, "warning");
         router.push("/");
       }
     } catch (e) {
       console.error("Login error:", e);
-      showAlert(`Login error: ${e.message}`, "error");
+  
+      let errorMessage = "An unexpected error occurred. Please try again.";
+  
+      if (e.message === "Invalid response from server") {
+        errorMessage = "Server returned incomplete data. Please contact support.";
+      } else if (e.message.includes("401")) {
+        errorMessage = "Wrong username or email";
+      } else if (e.message.includes("password")) {
+        errorMessage = "Wrong password";
+      }
+  
+      showAlert(errorMessage, "error");
     } finally {
       setLoading(false);
     }

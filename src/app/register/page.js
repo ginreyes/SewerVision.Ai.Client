@@ -37,7 +37,7 @@ const baseSchema = z.object({
   email: z.string().email("Invalid email address."),
   password: z.string().min(6, "Password must be at least 6 characters."),
   confirmPassword: z.string().min(6, "Confirmation password is required."),
-  role: z.enum(["user", "admin", "viewer", "Qc-Technician", "Operator"], { 
+  role: z.enum(["user", "admin", "viewer", "qc-technician", "Operator"], { 
     required_error: "Role is required." 
   }),
   privacy: z.boolean().refine((val) => val === true, {
@@ -81,7 +81,7 @@ const Register = () => {
   // Update form schema based on selected role
   useEffect(() => {
     switch (selectedRole) {
-      case "Qc-Technician":
+      case "qc-technician":
         setFormSchema(qcTechnicianSchema);
         break;
       case "Operator":
@@ -157,7 +157,7 @@ const Register = () => {
       color: 'bg-green-500'
     },
     { 
-      value: 'Qc-Technician', 
+      value: 'qc-technician', 
       label: 'QC Technician', 
       description: 'Quality control and technical operations',
       color: 'bg-purple-500'
@@ -172,7 +172,7 @@ const Register = () => {
 
   const getRoleSpecificFields = () => {
     switch (selectedRole) {
-      case "Qc-Technician":
+      case "qc-technician":
         return (
           <div className="space-y-4">
             <div className="mb-4 p-3 bg-purple-50 rounded-lg border border-purple-200">
