@@ -159,7 +159,7 @@ export default function CreateProjectPage() {
       if (ok && data?.users) {
         // Filter users by role
         const operatorUsers = data.users.filter(user => user.role === 'Operator');
-        const qcUsers = data.users.filter(user => user.role === 'Qc-Technician');
+        const qcUsers = data.users.filter(user => user.role === 'qc-technician');
         
         setOperators(operatorUsers);
         setQcTechnicians(qcUsers);

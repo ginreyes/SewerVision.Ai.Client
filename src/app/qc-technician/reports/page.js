@@ -1,41 +1,39 @@
 'use client'
-import React, { useState } from 'react';
+import React, { useState } from 'react'
 import { 
   FileText, 
   Download, 
   Eye, 
-  Calendar,
   Search,
   Filter,
   Plus,
   CheckCircle,
   Clock,
-  AlertTriangle,
-  User,
-  MapPin,
   BarChart3,
   PieChart,
   Target,
-  Activity,
-  Upload,
   Share2,
   Edit3,
-  Copy,
-  Archive,
   RefreshCw,
-  ChevronDown,
-  ChevronRight,
   FileCheck,
   Award,
-  TrendingUp
-} from 'lucide-react';
+  TrendingUp,
+  X
+} from 'lucide-react'
+import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card'
+import { Button } from '@/components/ui/button'
+import { Input } from '@/components/ui/input'
+import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs'
+import { Badge } from '@/components/ui/badge'
+import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from '@/components/ui/dialog'
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select'
+import { useRouter } from 'next/navigation'
 
 const QualityReportPage = () => {
-  const [activeTab, setActiveTab] = useState('reports');
-  const [selectedReport, setSelectedReport] = useState(null);
-  const [filterStatus, setFilterStatus] = useState('all');
-  const [expandedReport, setExpandedReport] = useState(null);
-  const [reportType, setReportType] = useState('pacp');
+  const router = useRouter()
+  const [selectedReport, setSelectedReport] = useState(null)
+  const [filterStatus, setFilterStatus] = useState('all')
+  const [isModalOpen, setIsModalOpen] = useState(false)
 
   // Mock data for reports
   const reports = [
@@ -103,7 +101,7 @@ const QualityReportPage = () => {
       downloadCount: 8,
       lastModified: "2025-09-16 13:20"
     }
-  ];
+  ]
 
   // Mock data for report templates
   const reportTemplates = [
@@ -128,94 +126,118 @@ const QualityReportPage = () => {
       fields: ["Priority Matrix", "Cost Estimates", "Timeline", "Risk Assessment"],
       lastUsed: "2025-09-12"
     }
-  ];
+  ]
 
-  const getStatusColor = (status) => {
+  const getStatusVariant = (status) => {
     switch (status) {
-      case 'completed': return 'bg-green-100 text-green-700 border-green-200';
-      case 'draft': return 'bg-yellow-100 text-yellow-700 border-yellow-200';
-      case 'pending_review': return 'bg-blue-100 text-blue-700 border-blue-200';
-      case 'in_progress': return 'bg-purple-100 text-purple-700 border-purple-200';
-      default: return 'bg-gray-100 text-gray-700 border-gray-200';
+      case 'completed': return 'default'
+      case 'draft': return 'secondary'
+      case 'pending_review': return 'outline'
+      default: return 'outline'
     }
-  };
+  }
 
   const getGradeColor = (grade) => {
     switch (grade) {
-      case 'Grade 1': return 'bg-green-100 text-green-700';
-      case 'Grade 2': return 'bg-yellow-100 text-yellow-700';
-      case 'Grade 3': return 'bg-orange-100 text-orange-700';
-      case 'Grade 4': return 'bg-red-100 text-red-700';
-      default: return 'bg-gray-100 text-gray-700';
+      case 'Grade 1': return 'bg-green-100 text-green-700'
+      case 'Grade 2': return 'bg-yellow-100 text-yellow-700'
+      case 'Grade 3': return 'bg-orange-100 text-orange-700'
+      case 'Grade 4': return 'bg-red-100 text-red-700'
+      default: return 'bg-gray-100 text-gray-700'
     }
-  };
+  }
+
+  const handleViewReport = (report) => {
+    // Navigate to full report view page
+    router.push(`/qc-technician/reports/${report.id}`)
+  }
+
+  const handleDownloadReport = (report) => {
+    alert(`Downloading report: ${report.projectName}`)
+  }
+
+  const handleShareReport = (report) => {
+    setSelectedReport(report)
+    setIsModalOpen(true)
+  }
 
   const ReportCard = ({ report }) => (
-    <div className={`bg-white border rounded-2xl p-6 hover:shadow-md transition-all cursor-pointer ${
-      selectedReport?.id === report.id ? 'border-[#2D99FF] shadow-lg' : 'border-gray-200'
-    }`}
-    onClick={() => setSelectedReport(report)}>
-      <div className="flex items-start justify-between mb-4">
-        <div className="flex-1">
-          <h3 className="font-bold text-gray-900 mb-1">{report.projectName}</h3>
-          <p className="text-sm text-gray-600">{report.reportType}</p>
+    <Card className="hover:shadow-md transition-all cursor-pointer">
+      <CardContent className="pt-6">
+        <div className="flex items-start justify-between mb-4">
+          <div className="flex-1">
+            <h3 className="font-bold text-gray-900 mb-1">{report.projectName}</h3>
+            <p className="text-sm text-gray-600">{report.reportType}</p>
+          </div>
+          <div className="flex flex-col gap-2 items-end">
+            <Badge variant={getStatusVariant(report.status)}>
+              {report.status.replace('_', ' ')}
+            </Badge>
+            <Badge className={getGradeColor(report.overallGrade)}>
+              {report.overallGrade}
+            </Badge>
+          </div>
         </div>
-        <div className="flex flex-col gap-2 items-end">
-          <span className={`px-3 py-1 rounded-xl text-xs font-semibold border ${getStatusColor(report.status)}`}>
-            {report.status.replace('_', ' ')}
-          </span>
-          <span className={`px-3 py-1 rounded-xl text-xs font-semibold ${getGradeColor(report.overallGrade)}`}>
-            {report.overallGrade}
-          </span>
-        </div>
-      </div>
 
-      <div className="grid grid-cols-2 gap-4 text-sm mb-4">
-        <div>
-          <span className="text-gray-600">Operator:</span>
-          <p className="font-medium text-gray-900">{report.operator}</p>
+        <div className="grid grid-cols-2 gap-4 text-sm mb-4">
+          <div>
+            <span className="text-gray-600">Operator:</span>
+            <p className="font-medium text-gray-900">{report.operator}</p>
+          </div>
+          <div>
+            <span className="text-gray-600">QC Tech:</span>
+            <p className="font-medium text-gray-900">{report.qcTechnician}</p>
+          </div>
+          <div>
+            <span className="text-gray-600">Length:</span>
+            <p className="font-medium text-gray-900">{report.pipeLength}</p>
+          </div>
+          <div>
+            <span className="text-gray-600">Defects:</span>
+            <p className="font-medium text-gray-900">{report.totalDefects} total</p>
+          </div>
         </div>
-        <div>
-          <span className="text-gray-600">QC Tech:</span>
-          <p className="font-medium text-gray-900">{report.qcTechnician}</p>
-        </div>
-        <div>
-          <span className="text-gray-600">Length:</span>
-          <p className="font-medium text-gray-900">{report.pipeLength}</p>
-        </div>
-        <div>
-          <span className="text-gray-600">Defects:</span>
-          <p className="font-medium text-gray-900">{report.totalDefects} total</p>
-        </div>
-      </div>
 
-      <div className="flex items-center justify-between pt-4 border-t border-gray-100">
-        <div className="flex items-center gap-4 text-xs text-gray-600">
-          <span>Created: {report.createdDate}</span>
-          <span>Downloads: {report.downloadCount}</span>
+        <div className="flex items-center justify-between pt-4 border-t">
+          <div className="flex items-center gap-4 text-xs text-gray-600">
+            <span>Created: {report.createdDate}</span>
+            <span>Downloads: {report.downloadCount}</span>
+          </div>
+          <div className="flex gap-2">
+            <Button 
+              variant="ghost" 
+              size="icon"
+              onClick={() => handleViewReport(report)}
+            >
+              <Eye className="h-4 w-4" />
+            </Button>
+            <Button 
+              variant="ghost" 
+              size="icon"
+              onClick={() => handleDownloadReport(report)}
+            >
+              <Download className="h-4 w-4" />
+            </Button>
+            <Button 
+              variant="ghost" 
+              size="icon"
+              onClick={() => handleShareReport(report)}
+            >
+              <Share2 className="h-4 w-4" />
+            </Button>
+          </div>
         </div>
-        <div className="flex gap-2">
-          <button className="p-2 hover:bg-gray-100 rounded-lg transition-colors">
-            <Eye className="h-4 w-4 text-gray-600" />
-          </button>
-          <button className="p-2 hover:bg-gray-100 rounded-lg transition-colors">
-            <Download className="h-4 w-4 text-gray-600" />
-          </button>
-          <button className="p-2 hover:bg-gray-100 rounded-lg transition-colors">
-            <Share2 className="h-4 w-4 text-gray-600" />
-          </button>
-        </div>
-      </div>
-    </div>
-  );
+      </CardContent>
+    </Card>
+  )
 
   return (
     <div className="min-h-screen bg-gray-50">
       {/* Header */}
-      <div className="bg-white border-b border-gray-200 p-6">
+      <div className="bg-white border-b p-6">
         <div className="flex items-center justify-between">
           <div className="flex items-center gap-4">
-            <div className="w-10 h-10 bg-gradient-to-br from-[#2D99FF] to-[#826AF9] rounded-2xl flex items-center justify-center">
+            <div className="w-10 h-10 bg-gradient-to-br from-blue-500 to-purple-600 rounded-lg flex items-center justify-center">
               <FileText className="h-5 w-5 text-white" />
             </div>
             <div>
@@ -223,151 +245,142 @@ const QualityReportPage = () => {
               <p className="text-sm text-gray-600">Generate and manage PACP inspection reports</p>
             </div>
           </div>
-          <div className="flex items-center gap-3">
-            <button className="px-4 py-2 bg-gradient-to-r from-[#2D99FF] to-[#826AF9] text-white rounded-xl hover:shadow-lg transition-all font-semibold">
-              <Plus className="h-4 w-4 mr-2 inline" />
-              New Report
-            </button>
-          </div>
+          <Button className="bg-gradient-to-r from-blue-500 to-purple-600">
+            <Plus className="h-4 w-4 mr-2" />
+            New Report
+          </Button>
         </div>
       </div>
 
       {/* Tabs */}
-      <div className="bg-white border-b border-gray-200">
-        <div className="px-6">
-          <div className="flex">
-            <button
-              className={`px-6 py-4 border-b-2 font-semibold text-sm transition-all ${
-                activeTab === 'reports' 
-                  ? 'border-[#2D99FF] text-[#2D99FF]' 
-                  : 'border-transparent text-gray-500 hover:text-gray-700'
-              }`}
-              onClick={() => setActiveTab('reports')}
-            >
-              <div className="flex items-center gap-2">
-                <FileText className="h-4 w-4" />
-                My Reports
-              </div>
-            </button>
-            <button
-              className={`px-6 py-4 border-b-2 font-semibold text-sm transition-all ${
-                activeTab === 'templates' 
-                  ? 'border-[#2D99FF] text-[#2D99FF]' 
-                  : 'border-transparent text-gray-500 hover:text-gray-700'
-              }`}
-              onClick={() => setActiveTab('templates')}
-            >
-              <div className="flex items-center gap-2">
-                <FileCheck className="h-4 w-4" />
-                Templates
-              </div>
-            </button>
-            <button
-              className={`px-6 py-4 border-b-2 font-semibold text-sm transition-all ${
-                activeTab === 'analytics' 
-                  ? 'border-[#2D99FF] text-[#2D99FF]' 
-                  : 'border-transparent text-gray-500 hover:text-gray-700'
-              }`}
-              onClick={() => setActiveTab('analytics')}
-            >
-              <div className="flex items-center gap-2">
-                <BarChart3 className="h-4 w-4" />
-                Analytics
-              </div>
-            </button>
-          </div>
-        </div>
-      </div>
+      <div className="bg-white border-b px-6">
+        <Tabs defaultValue="reports" className="w-full">
+          <TabsList className="bg-transparent border-b-0">
+            <TabsTrigger value="reports" className="data-[state=active]:border-b-2 data-[state=active]:border-blue-500">
+              <FileText className="h-4 w-4 mr-2" />
+              My Reports
+            </TabsTrigger>
+            <TabsTrigger value="templates" className="data-[state=active]:border-b-2 data-[state=active]:border-blue-500">
+              <FileCheck className="h-4 w-4 mr-2" />
+              Templates
+            </TabsTrigger>
+            <TabsTrigger value="analytics" className="data-[state=active]:border-b-2 data-[state=active]:border-blue-500">
+              <BarChart3 className="h-4 w-4 mr-2" />
+              Analytics
+            </TabsTrigger>
+          </TabsList>
 
-      {/* Tab Content */}
-      <div className="p-6">
-        {activeTab === 'reports' && (
-          <div className="space-y-6">
+          {/* Reports Tab Content */}
+          <TabsContent value="reports" className="p-6 space-y-6">
             {/* Filters and Search */}
-            <div className="bg-white rounded-2xl border border-gray-200 p-6">
-              <div className="flex items-center justify-between gap-4">
-                <div className="flex items-center gap-4 flex-1">
-                  <div className="relative flex-1 max-w-md">
-                    <Search className="h-4 w-4 absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400" />
-                    <input 
-                      type="text" 
-                      placeholder="Search reports..." 
-                      className="pl-10 pr-4 py-2 w-full border border-gray-200 rounded-xl text-sm focus:border-[#2D99FF] outline-none"
-                    />
+            <Card>
+              <CardContent className="pt-6">
+                <div className="flex items-center justify-between gap-4">
+                  <div className="flex items-center gap-4 flex-1">
+                    <div className="relative flex-1 max-w-md">
+                      <Search className="h-4 w-4 absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400" />
+                      <Input 
+                        type="text" 
+                        placeholder="Search reports..." 
+                        className="pl-10"
+                      />
+                    </div>
+                    <Select value={filterStatus} onValueChange={setFilterStatus}>
+                      <SelectTrigger className="w-[180px]">
+                        <SelectValue placeholder="All Status" />
+                      </SelectTrigger>
+                      <SelectContent>
+                        <SelectItem value="all">All Status</SelectItem>
+                        <SelectItem value="completed">Completed</SelectItem>
+                        <SelectItem value="draft">Draft</SelectItem>
+                        <SelectItem value="pending_review">Pending Review</SelectItem>
+                      </SelectContent>
+                    </Select>
+                    <Select defaultValue="30days">
+                      <SelectTrigger className="w-[180px]">
+                        <SelectValue placeholder="Time range" />
+                      </SelectTrigger>
+                      <SelectContent>
+                        <SelectItem value="7days">Last 7 days</SelectItem>
+                        <SelectItem value="30days">Last 30 days</SelectItem>
+                        <SelectItem value="90days">Last 90 days</SelectItem>
+                        <SelectItem value="custom">Custom range</SelectItem>
+                      </SelectContent>
+                    </Select>
                   </div>
-                  <select 
-                    value={filterStatus}
-                    onChange={(e) => setFilterStatus(e.target.value)}
-                    className="px-4 py-2 border border-gray-200 rounded-xl bg-white text-sm focus:border-[#2D99FF] outline-none"
-                  >
-                    <option value="all">All Status</option>
-                    <option value="completed">Completed</option>
-                    <option value="draft">Draft</option>
-                    <option value="pending_review">Pending Review</option>
-                  </select>
-                  <select className="px-4 py-2 border border-gray-200 rounded-xl bg-white text-sm focus:border-[#2D99FF] outline-none">
-                    <option>Last 30 days</option>
-                    <option>Last 7 days</option>
-                    <option>Last 90 days</option>
-                    <option>Custom range</option>
-                  </select>
+                  <div className="flex gap-2">
+                    <Button variant="outline" size="icon">
+                      <RefreshCw className="h-4 w-4" />
+                    </Button>
+                    <Button variant="outline" size="icon">
+                      <Filter className="h-4 w-4" />
+                    </Button>
+                  </div>
                 </div>
-                <div className="flex gap-2">
-                  <button className="p-2 hover:bg-gray-100 rounded-xl transition-colors">
-                    <RefreshCw className="h-4 w-4 text-gray-600" />
-                  </button>
-                  <button className="p-2 hover:bg-gray-100 rounded-xl transition-colors">
-                    <Filter className="h-4 w-4 text-gray-600" />
-                  </button>
-                </div>
-              </div>
-            </div>
+              </CardContent>
+            </Card>
 
             {/* Quick Stats */}
             <div className="grid grid-cols-1 md:grid-cols-4 gap-6">
-              <div className="bg-white rounded-2xl p-6 border border-gray-200">
-                <div className="flex items-center justify-between mb-4">
-                  <div className="w-12 h-12 bg-green-100 rounded-2xl flex items-center justify-center">
-                    <CheckCircle className="h-6 w-6 text-green-600" />
+              <Card>
+                <CardHeader className="pb-3">
+                  <div className="flex items-center justify-between">
+                    <div className="w-12 h-12 bg-green-100 rounded-lg flex items-center justify-center">
+                      <CheckCircle className="h-6 w-6 text-green-600" />
+                    </div>
+                    <Badge className="bg-green-100 text-green-600">+2</Badge>
                   </div>
-                  <span className="text-sm font-semibold text-green-600 bg-green-100 px-2 py-1 rounded-lg">+2</span>
-                </div>
-                <h3 className="text-2xl font-bold text-gray-900 mb-1">12</h3>
-                <p className="text-gray-600 text-sm">Completed Reports</p>
-              </div>
+                </CardHeader>
+                <CardContent>
+                  <CardTitle className="text-2xl mb-1">12</CardTitle>
+                  <CardDescription>Completed Reports</CardDescription>
+                </CardContent>
+              </Card>
 
-              <div className="bg-white rounded-2xl p-6 border border-gray-200">
-                <div className="flex items-center justify-between mb-4">
-                  <div className="w-12 h-12 bg-yellow-100 rounded-2xl flex items-center justify-center">
-                    <Clock className="h-6 w-6 text-yellow-600" />
+              <Card>
+                <CardHeader className="pb-3">
+                  <div className="flex items-center justify-between">
+                    <div className="w-12 h-12 bg-yellow-100 rounded-lg flex items-center justify-center">
+                      <Clock className="h-6 w-6 text-yellow-600" />
+                    </div>
+                    <Badge className="bg-yellow-100 text-yellow-600">1</Badge>
                   </div>
-                  <span className="text-sm font-semibold text-yellow-600 bg-yellow-100 px-2 py-1 rounded-lg">1</span>
-                </div>
-                <h3 className="text-2xl font-bold text-gray-900 mb-1">3</h3>
-                <p className="text-gray-600 text-sm">Draft Reports</p>
-              </div>
+                </CardHeader>
+                <CardContent>
+                  <CardTitle className="text-2xl mb-1">3</CardTitle>
+                  <CardDescription>Draft Reports</CardDescription>
+                </CardContent>
+              </Card>
 
-              <div className="bg-white rounded-2xl p-6 border border-gray-200">
-                <div className="flex items-center justify-between mb-4">
-                  <div className="w-12 h-12 bg-blue-100 rounded-2xl flex items-center justify-center">
-                    <Target className="h-6 w-6 text-blue-600" />
+              <Card>
+                <CardHeader className="pb-3">
+                  <div className="flex items-center justify-between">
+                    <div className="w-12 h-12 bg-blue-100 rounded-lg flex items-center justify-center">
+                      <Target className="h-6 w-6 text-blue-600" />
+                    </div>
+                    <Badge className="bg-blue-100 text-blue-600">94%</Badge>
                   </div>
-                  <span className="text-sm font-semibold text-blue-600 bg-blue-100 px-2 py-1 rounded-lg">94%</span>
-                </div>
-                <h3 className="text-2xl font-bold text-gray-900 mb-1">92%</h3>
-                <p className="text-gray-600 text-sm">Avg Accuracy</p>
-              </div>
+                </CardHeader>
+                <CardContent>
+                  <CardTitle className="text-2xl mb-1">92%</CardTitle>
+                  <CardDescription>Avg Accuracy</CardDescription>
+                </CardContent>
+              </Card>
 
-              <div className="bg-white rounded-2xl p-6 border border-gray-200">
-                <div className="flex items-center justify-between mb-4">
-                  <div className="w-12 h-12 bg-purple-100 rounded-2xl flex items-center justify-center">
-                    <Download className="h-6 w-6 text-purple-600" />
+              <Card>
+                <CardHeader className="pb-3">
+                  <div className="flex items-center justify-between">
+                    <div className="w-12 h-12 bg-purple-100 rounded-lg flex items-center justify-center">
+                      <Download className="h-6 w-6 text-purple-600" />
+                    </div>
+                    <Badge className="bg-purple-100 text-purple-600">+5</Badge>
                   </div>
-                  <span className="text-sm font-semibold text-purple-600 bg-purple-100 px-2 py-1 rounded-lg">+5</span>
-                </div>
-                <h3 className="text-2xl font-bold text-gray-900 mb-1">47</h3>
-                <p className="text-gray-600 text-sm">Total Downloads</p>
-              </div>
+                </CardHeader>
+                <CardContent>
+                  <CardTitle className="text-2xl mb-1">47</CardTitle>
+                  <CardDescription>Total Downloads</CardDescription>
+                </CardContent>
+              </Card>
             </div>
 
             {/* Reports Grid */}
@@ -378,184 +391,187 @@ const QualityReportPage = () => {
                   <ReportCard key={report.id} report={report} />
                 ))}
             </div>
-          </div>
-        )}
+          </TabsContent>
 
-        {activeTab === 'templates' && (
-          <div className="space-y-6">
-            {/* Template Header */}
-            <div className="bg-white rounded-2xl border border-gray-200 p-6">
-              <div className="flex items-center justify-between">
-                <div>
-                  <h2 className="text-xl font-bold text-gray-900 mb-2">Report Templates</h2>
-                  <p className="text-gray-600">Pre-configured templates for consistent reporting</p>
+          {/* Templates Tab Content */}
+          <TabsContent value="templates" className="p-6 space-y-6">
+            <Card>
+              <CardHeader>
+                <div className="flex items-center justify-between">
+                  <div>
+                    <CardTitle>Report Templates</CardTitle>
+                    <CardDescription>Pre-configured templates for consistent reporting</CardDescription>
+                  </div>
+                  <Button className="bg-gradient-to-r from-blue-500 to-purple-600">
+                    <Plus className="h-4 w-4 mr-2" />
+                    Create Template
+                  </Button>
                 </div>
-                <button className="px-4 py-2 bg-gradient-to-r from-[#2D99FF] to-[#826AF9] text-white rounded-xl hover:shadow-lg transition-all font-semibold">
-                  <Plus className="h-4 w-4 mr-2 inline" />
-                  Create Template
-                </button>
-              </div>
-            </div>
+              </CardHeader>
+            </Card>
 
-            {/* Templates Grid */}
             <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
               {reportTemplates.map((template) => (
-                <div key={template.id} className="bg-white border border-gray-200 rounded-2xl p-6 hover:shadow-md transition-all">
-                  <div className="flex items-start justify-between mb-4">
-                    <div className="w-12 h-12 bg-gradient-to-br from-[#2D99FF] to-[#826AF9] rounded-2xl flex items-center justify-center">
-                      <FileCheck className="h-6 w-6 text-white" />
+                <Card key={template.id} className="hover:shadow-md transition-all">
+                  <CardHeader>
+                    <div className="flex items-start justify-between mb-4">
+                      <div className="w-12 h-12 bg-gradient-to-br from-blue-500 to-purple-600 rounded-lg flex items-center justify-center">
+                        <FileCheck className="h-6 w-6 text-white" />
+                      </div>
+                      <Button variant="ghost" size="icon">
+                        <Edit3 className="h-4 w-4" />
+                      </Button>
                     </div>
-                    <button className="p-2 hover:bg-gray-100 rounded-lg transition-colors">
-                      <Edit3 className="h-4 w-4 text-gray-600" />
-                    </button>
-                  </div>
-                  
-                  <h3 className="font-bold text-gray-900 mb-2">{template.name}</h3>
-                  <p className="text-sm text-gray-600 mb-4">{template.description}</p>
-                  
-                  <div className="mb-4">
-                    <p className="text-xs font-semibold text-gray-700 mb-2">Included Sections:</p>
-                    <div className="flex flex-wrap gap-1">
-                      {template.fields.map((field, index) => (
-                        <span key={index} className="px-2 py-1 bg-gray-100 text-gray-700 rounded text-xs">
-                          {field}
-                        </span>
-                      ))}
+                    <CardTitle className="text-base">{template.name}</CardTitle>
+                    <CardDescription>{template.description}</CardDescription>
+                  </CardHeader>
+                  <CardContent>
+                    <div className="mb-4">
+                      <p className="text-xs font-semibold text-gray-700 mb-2">Included Sections:</p>
+                      <div className="flex flex-wrap gap-1">
+                        {template.fields.map((field, index) => (
+                          <Badge key={index} variant="secondary" className="text-xs">
+                            {field}
+                          </Badge>
+                        ))}
+                      </div>
                     </div>
-                  </div>
-                  
-                  <div className="flex items-center justify-between pt-4 border-t border-gray-100">
-                    <span className="text-xs text-gray-500">Last used: {template.lastUsed}</span>
-                    <div className="flex gap-2">
-                      <button className="px-3 py-1 bg-[#2D99FF] text-white rounded-lg text-xs hover:bg-[#826AF9] transition-colors">
-                        Use Template
-                      </button>
+                    
+                    <div className="flex items-center justify-between pt-4 border-t">
+                      <span className="text-xs text-gray-500">Last used: {template.lastUsed}</span>
+                      <Button size="sm">Use Template</Button>
                     </div>
-                  </div>
-                </div>
+                  </CardContent>
+                </Card>
               ))}
             </div>
-          </div>
-        )}
+          </TabsContent>
 
-        {activeTab === 'analytics' && (
-          <div className="space-y-6">
-            {/* Analytics Header */}
-            <div className="bg-white rounded-2xl border border-gray-200 p-6">
-              <div className="flex items-center justify-between">
-                <div>
-                  <h2 className="text-xl font-bold text-gray-900 mb-2">Report Analytics</h2>
-                  <p className="text-gray-600">Insights into your reporting performance and trends</p>
+          {/* Analytics Tab Content */}
+          <TabsContent value="analytics" className="p-6 space-y-6">
+            <Card>
+              <CardHeader>
+                <div className="flex items-center justify-between">
+                  <div>
+                    <CardTitle>Report Analytics</CardTitle>
+                    <CardDescription>Insights into your reporting performance and trends</CardDescription>
+                  </div>
+                  <Select defaultValue="30days">
+                    <SelectTrigger className="w-[180px]">
+                      <SelectValue placeholder="Time range" />
+                    </SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="30days">Last 30 days</SelectItem>
+                      <SelectItem value="90days">Last 90 days</SelectItem>
+                      <SelectItem value="6months">Last 6 months</SelectItem>
+                      <SelectItem value="year">Last year</SelectItem>
+                    </SelectContent>
+                  </Select>
                 </div>
-                <div className="flex gap-2">
-                  <select className="px-4 py-2 border border-gray-200 rounded-xl bg-white text-sm focus:border-[#2D99FF] outline-none">
-                    <option>Last 30 days</option>
-                    <option>Last 90 days</option>
-                    <option>Last 6 months</option>
-                    <option>Last year</option>
-                  </select>
-                </div>
-              </div>
-            </div>
+              </CardHeader>
+            </Card>
 
-            {/* Analytics Charts */}
             <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-              {/* Report Generation Trends */}
-              <div className="bg-white rounded-2xl border border-gray-200 p-6">
-                <h3 className="text-lg font-bold text-gray-900 mb-4">Report Generation Trends</h3>
-                <div className="h-64 bg-gradient-to-r from-gray-50 to-gray-100 rounded-xl flex items-center justify-center border border-gray-200">
-                  <div className="text-center">
-                    <TrendingUp className="h-12 w-12 text-gray-400 mx-auto mb-2" />
-                    <p className="text-gray-600">Monthly report generation chart</p>
+              <Card>
+                <CardHeader>
+                  <CardTitle>Report Generation Trends</CardTitle>
+                </CardHeader>
+                <CardContent>
+                  <div className="h-64 bg-gradient-to-r from-gray-50 to-gray-100 rounded-lg flex items-center justify-center border">
+                    <div className="text-center">
+                      <TrendingUp className="h-12 w-12 text-gray-400 mx-auto mb-2" />
+                      <p className="text-gray-600">Monthly report generation chart</p>
+                    </div>
                   </div>
-                </div>
-              </div>
+                </CardContent>
+              </Card>
 
-              {/* Defect Categories */}
-              <div className="bg-white rounded-2xl border border-gray-200 p-6">
-                <h3 className="text-lg font-bold text-gray-900 mb-4">Defect Categories Distribution</h3>
-                <div className="h-64 bg-gradient-to-r from-gray-50 to-gray-100 rounded-xl flex items-center justify-center border border-gray-200">
-                  <div className="text-center">
-                    <PieChart className="h-12 w-12 text-gray-400 mx-auto mb-2" />
-                    <p className="text-gray-600">Defect type breakdown chart</p>
+              <Card>
+                <CardHeader>
+                  <CardTitle>Defect Categories Distribution</CardTitle>
+                </CardHeader>
+                <CardContent>
+                  <div className="h-64 bg-gradient-to-r from-gray-50 to-gray-100 rounded-lg flex items-center justify-center border">
+                    <div className="text-center">
+                      <PieChart className="h-12 w-12 text-gray-400 mx-auto mb-2" />
+                      <p className="text-gray-600">Defect type breakdown chart</p>
+                    </div>
                   </div>
-                </div>
-              </div>
+                </CardContent>
+              </Card>
             </div>
 
-            {/* Performance Metrics */}
-            <div className="bg-white rounded-2xl border border-gray-200 p-6">
-              <h3 className="text-lg font-bold text-gray-900 mb-6">Quality Performance Metrics</h3>
-              <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
-                <div className="text-center p-4 bg-green-50 rounded-xl">
-                  <div className="w-16 h-16 bg-green-100 rounded-full flex items-center justify-center mx-auto mb-3">
-                    <Award className="h-8 w-8 text-green-600" />
+            <Card>
+              <CardHeader>
+                <CardTitle>Quality Performance Metrics</CardTitle>
+              </CardHeader>
+              <CardContent>
+                <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
+                  <div className="text-center p-4 bg-green-50 rounded-lg">
+                    <div className="w-16 h-16 bg-green-100 rounded-full flex items-center justify-center mx-auto mb-3">
+                      <Award className="h-8 w-8 text-green-600" />
+                    </div>
+                    <h4 className="text-2xl font-bold text-green-600 mb-1">94.2%</h4>
+                    <p className="text-sm text-gray-600">Average Report Accuracy</p>
                   </div>
-                  <h4 className="text-2xl font-bold text-green-600 mb-1">94.2%</h4>
-                  <p className="text-sm text-gray-600">Average Report Accuracy</p>
-                </div>
 
-                <div className="text-center p-4 bg-blue-50 rounded-xl">
-                  <div className="w-16 h-16 bg-blue-100 rounded-full flex items-center justify-center mx-auto mb-3">
-                    <Clock className="h-8 w-8 text-blue-600" />
+                  <div className="text-center p-4 bg-blue-50 rounded-lg">
+                    <div className="w-16 h-16 bg-blue-100 rounded-full flex items-center justify-center mx-auto mb-3">
+                      <Clock className="h-8 w-8 text-blue-600" />
+                    </div>
+                    <h4 className="text-2xl font-bold text-blue-600 mb-1">2.3h</h4>
+                    <p className="text-sm text-gray-600">Avg Time to Complete</p>
                   </div>
-                  <h4 className="text-2xl font-bold text-blue-600 mb-1">2.3h</h4>
-                  <p className="text-sm text-gray-600">Avg Time to Complete</p>
-                </div>
 
-                <div className="text-center p-4 bg-purple-50 rounded-xl">
-                  <div className="w-16 h-16 bg-purple-100 rounded-full flex items-center justify-center mx-auto mb-3">
-                    <Target className="h-8 w-8 text-purple-600" />
+                  <div className="text-center p-4 bg-purple-50 rounded-lg">
+                    <div className="w-16 h-16 bg-purple-100 rounded-full flex items-center justify-center mx-auto mb-3">
+                      <Target className="h-8 w-8 text-purple-600" />
+                    </div>
+                    <h4 className="text-2xl font-bold text-purple-600 mb-1">98.1%</h4>
+                    <p className="text-sm text-gray-600">Client Approval Rate</p>
                   </div>
-                  <h4 className="text-2xl font-bold text-purple-600 mb-1">98.1%</h4>
-                  <p className="text-sm text-gray-600">Client Approval Rate</p>
                 </div>
-              </div>
-            </div>
-          </div>
-        )}
+              </CardContent>
+            </Card>
+          </TabsContent>
+        </Tabs>
       </div>
 
-      {/* Report Detail Modal (if report is selected) */}
-      {selectedReport && (
-        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center p-4 z-50">
-          <div className="bg-white rounded-2xl max-w-4xl w-full max-h-[90vh] overflow-y-auto">
-            <div className="p-6 border-b border-gray-200">
-              <div className="flex items-center justify-between">
-                <h2 className="text-xl font-bold text-gray-900">{selectedReport.projectName}</h2>
-                <button 
-                  onClick={() => setSelectedReport(null)}
-                  className="p-2 hover:bg-gray-100 rounded-lg transition-colors"
-                >
-                  ✕
-                </button>
-              </div>
+      {/* Share Report Dialog */}
+      <Dialog open={isModalOpen} onOpenChange={setIsModalOpen}>
+        <DialogContent>
+          <DialogHeader>
+            <DialogTitle>Share Report</DialogTitle>
+            <DialogDescription>
+              Share "{selectedReport?.projectName}" with team members
+            </DialogDescription>
+          </DialogHeader>
+          <div className="space-y-4">
+            <div>
+              <label className="text-sm font-medium">Email Address</label>
+              <Input type="email" placeholder="colleague@company.com" className="mt-1" />
             </div>
-            
-            <div className="p-6">
-              <div className="bg-gray-50 rounded-xl p-6 text-center">
-                <FileText className="h-16 w-16 text-gray-400 mx-auto mb-4" />
-                <h3 className="text-lg font-semibold text-gray-900 mb-2">Report Preview</h3>
-                <p className="text-gray-600 mb-4">
-                  {selectedReport.reportType} for {selectedReport.projectName}
-                </p>
-                <div className="flex gap-3 justify-center">
-                  <button className="px-4 py-2 bg-gradient-to-r from-[#2D99FF] to-[#826AF9] text-white rounded-xl hover:shadow-lg transition-all">
-                    <Eye className="h-4 w-4 mr-2 inline" />
-                    View Full Report
-                  </button>
-                  <button className="px-4 py-2 bg-green-600 text-white rounded-xl hover:bg-green-700 transition-all">
-                    <Download className="h-4 w-4 mr-2 inline" />
-                    Download PDF
-                  </button>
-                </div>
-              </div>
+            <div>
+              <label className="text-sm font-medium">Message (Optional)</label>
+              <Input placeholder="Add a message..." className="mt-1" />
             </div>
           </div>
-        </div>
-      )}
+          <DialogFooter>
+            <Button variant="outline" onClick={() => setIsModalOpen(false)}>
+              Cancel
+            </Button>
+            <Button onClick={() => {
+              setIsModalOpen(false)
+              alert('Report shared successfully!')
+            }}>
+              <Share2 className="h-4 w-4 mr-2" />
+              Share Report
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
     </div>
-  );
-};
+  )
+}
 
-export default QualityReportPage;
+export default QualityReportPage

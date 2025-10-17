@@ -25,7 +25,6 @@ const QcSidebar = ({ isOpen, role }) => {
   const qcTechnician = [
     { label: "Dashboard", icon: LayoutDashboard, path: "/qc-technician/dashboard" },
     { label: "Quality Control", icon: ClipboardCheck, path: "/qc-technician/quality-control" },
-    { label: "Inspections", icon: SearchCheck, path: "/qc-technician/inspections" },
     { label: "Reports", icon: FileText, path: "/qc-technician/reports" },
     { label: "Certifications", icon: BadgeCheck, path: "/qc-technician/certifications" },
     { label: "Settings", icon: Settings, path: "/qc-technician/settings" },

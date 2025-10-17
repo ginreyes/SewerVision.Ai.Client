@@ -3,6 +3,7 @@
 import QcSidebar from "@/components/ui/QcSidebar";
 import Navbar from "@/components/ui/navbar";
 import Sidebar from "@/components/ui/sidebar";
+import { api } from "@/lib/helper";
 import { useEffect, useState } from "react";
 
 export default function userLayout({ children }) {
@@ -20,10 +21,13 @@ export default function userLayout({ children }) {
         const storedUsername = localStorage.getItem("username");
         if (!storedUsername) return;
 
-        const res = await fetch(`/api/users/role/${storedUsername}`);
-        if (!res.ok) throw new Error("Failed to fetch user role");
-
-        const data = await res.json();
+        const {data ,error} = await api(`/api/users/role/${storedUsername}`);
+        
+        if (error) {
+          console.error("Error fetching user role:", error);
+          return;
+        }
+      
         setUsername(storedUsername);
         setRole(data.role);
       } catch (error) {

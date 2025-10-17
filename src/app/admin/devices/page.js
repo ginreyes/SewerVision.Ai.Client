@@ -235,7 +235,6 @@ const Devices = () => {
   const [cloudDevices, setCloudDevices] = useState([])
   const [selectedDeviceId, setSelectedDeviceId] = useState(null)
 
-  // ✅ Define fetchDevices as a reusable function
   const fetchDevices = async () => {
     try {
       const { data, error } = await api('/api/devices/get-device')

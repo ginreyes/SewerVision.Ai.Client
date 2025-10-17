@@ -24,7 +24,6 @@ import {
   RefreshCw
 } from 'lucide-react'
 
-// Chart.js setup (ensure you've installed chart.js and react-chartjs-2)
 import Chart from 'chart.js/auto'
 
 const QCTechnicianDashboard = () => {
@@ -203,7 +202,6 @@ const QCTechnicianDashboard = () => {
     { priority: 'Low', count: 8 },
   ]
 
-  // Initialize Charts
   useEffect(() => {
     const destroyCharts = () => {
       if (qcStatsChartInstance.current) qcStatsChartInstance.current.destroy()

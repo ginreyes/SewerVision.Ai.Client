@@ -12,6 +12,7 @@ import { FiSearch, FiClock, FiTrendingUp, FiFile, FiUsers, FiSettings } from 're
 import Link from 'next/link';
 import Image from 'next/image';
 import { api } from '@/lib/helper';
+import NotificationPanel from '../NotoficationPanel';
 
 // Search categories for icons and styling
 const searchCategories = {
@@ -25,7 +26,8 @@ const searchCategories = {
   calendar: { icon: FiClock, label: 'Events', color: 'text-indigo-600' },
 };
 
-const Navbar = ({ openSideBar }) => {
+const Navbar = (props) => {
+  const {openSideBar , role}  = props
   const [open, setOpen] = useState(false);
   const [notificationOpen, setNotificationOpen] = useState(false);
   const [searchQuery, setSearchQuery] = useState('');
@@ -59,7 +61,6 @@ const Navbar = ({ openSideBar }) => {
     }
   }, []);
 
-  // Debounced search function
   const debouncedSearch = useCallback((query) => {
     if (debounceTimer.current) {
       clearTimeout(debounceTimer.current);
@@ -102,7 +103,6 @@ const Navbar = ({ openSideBar }) => {
     }
   };
 
-  // Handle input change
   const handleSearchChange = (e) => {
     const value = e.target.value;
     setSearchQuery(value);
@@ -319,7 +319,7 @@ const Navbar = ({ openSideBar }) => {
               </button>
             </PopoverTrigger>
             <PopoverContent className="w-80 p-0">
-              <div className="p-4 border-b">Notifications</div>
+             <NotificationPanel/>
             </PopoverContent>
           </Popover>
 
