@@ -16,18 +16,18 @@ const AdminSidebar = ({ isOpen }) => {
   const [loadingItem, setLoadingItem] = useState(null);
 
   const handleItemClick = (item) => {
-    if (loadingItem) return; // Prevent clicking while loading
+    if (loadingItem) return; 
     
     setLoadingItem(item);
     setActiveItem(item);
     
-    // Simulate loading time (you can adjust this or remove it based on your actual navigation)
+    
     setTimeout(() => {
       setLoadingItem(null);
-    }, 5000); // 5 seconds to see the full workflow animation
+    }, 5000); 
   };
 
-  // Active and inactive styles (keeping your original styles)
+
   const activeStyle = "bg-[#826AF91A] text-[#2D99FF] font-semibold"; 
   const inactiveStyle = "text-gray-700";
 

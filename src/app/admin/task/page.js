@@ -11,20 +11,15 @@ import {
   FileText,
   Brain,
   Eye,
-  Truck,
-  Plus,
-  Search,
-  Filter,
+  Download,
   MoreHorizontal,
   Play,
-  Pause,
-  Download,
-  Settings,
-  ChevronRight,
+  Search,
   Star,
   Flag
 } from 'lucide-react'
 import { Button } from '@/components/ui/button'
+import AddNewTaskModal from './components/AddNewTaskModal '
 
 const Task = () => {
   const [searchQuery, setSearchQuery] = useState('')
@@ -32,8 +27,7 @@ const Task = () => {
   const [filterPriority, setFilterPriority] = useState('all')
   const [activeTab, setActiveTab] = useState('active')
   const [selectedTask, setSelectedTask] = useState(null)
-
-  const tasks = [
+  const [tasks, setTasks] = useState([
     {
       id: 1,
       title: 'Main St Pipeline Inspection',
@@ -133,7 +127,11 @@ const Task = () => {
       aiProcessing: 'processing',
       footage: '0.8 GB'
     }
-  ]
+  ])
+
+  const handleAddTask = (newTask) => {
+    setTasks(prevTasks => [newTask, ...prevTasks])
+  }
 
   const getFilteredTasks = () => {
     let filtered = tasks
@@ -377,10 +375,7 @@ const Task = () => {
               </span>
             </div>
             <div className="flex items-center space-x-4">
-              <Button variant="gradient">
-                <Plus className="w-4 h-4 mr-2" />
-                New Task
-              </Button>
+              <AddNewTaskModal onAddTask={handleAddTask} />
             </div>
           </div>
         </div>
