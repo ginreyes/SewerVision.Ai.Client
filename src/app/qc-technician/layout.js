@@ -2,7 +2,6 @@
 
 import QcSidebar from "@/components/ui/QcSidebar";
 import Navbar from "@/components/ui/navbar";
-import Sidebar from "@/components/ui/sidebar";
 import { api } from "@/lib/helper";
 import { useEffect, useState } from "react";
 
@@ -22,6 +21,7 @@ export default function userLayout({ children }) {
         if (!storedUsername) return;
 
         const {data ,error} = await api(`/api/users/role/${storedUsername}`);
+        console.log('data',data)
         
         if (error) {
           console.error("Error fetching user role:", error);

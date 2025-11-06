@@ -50,7 +50,7 @@ const baseSchema = z.object({
   email: z.string().email("Invalid email address."),
   password: z.string().min(6, "Password must be at least 6 characters."),
   confirmPassword: z.string().min(6, "Confirmation password is required."),
-  role: z.enum(["user", "admin", "viewer", "qc-technician", "Operator"], { 
+  role: z.enum(["user", "admin", "viewer", "qc-technician", "operator"], { 
     required_error: "Role is required." 
   }),
   privacy: z.boolean().refine((val) => val === true, {
@@ -98,7 +98,7 @@ const Register = () => {
       case "qc-technician":
         setFormSchema(qcTechnicianSchema);
         break;
-      case "Operator":
+      case "operator":
         setFormSchema(operatorSchema);
         break;
       default:
@@ -131,8 +131,9 @@ const Register = () => {
     reset();
   };
 
-  // Handle form submission
   const onSubmit = async (data) => {
+    console.log("Form Data:", data);
+
     if (data.password !== data.confirmPassword) {
       showAlert("Passwords do not match!", "error");
       return;
@@ -144,7 +145,7 @@ const Register = () => {
       await api("/api/auth/register", "POST", data);
       
       showAlert("Registration successful!", "success");
-      router.push("/login");
+      router.push("/");
     } catch (error) {
       console.error("Error during registration:", error);
       showAlert(`Registration error: ${error.message}`, "error");
@@ -195,7 +196,7 @@ const Register = () => {
       hoverBorder: 'hover:border-purple-400'
     },
     { 
-      value: 'Operator', 
+      value: 'operator', 
       label: 'Operator', 
       description: 'Equipment operation and maintenance',
       icon: <FaTools className="h-7 w-7" />,
@@ -283,7 +284,7 @@ const Register = () => {
           </div>
         );
 
-      case "Operator":
+      case "operator":
         return (
           <div className="space-y-4 mb-6">
             <div className={`p-5 bg-gradient-to-r ${currentRole.bgGradient} rounded-xl border-2 ${currentRole.borderColor}`}>

@@ -293,7 +293,7 @@ const AdminUploads = () => {
                             {upload.originalName}
                           </h4>
                           <p className="text-sm text-gray-500">
-                            {upload.uploadedBy.email} •{" "}
+                            {/* {upload.uploadedBy.email} •{" "} */}
                             {new Date(upload.uploadedAt).toLocaleDateString()} •{" "}
                             {upload.size}
                           </p>

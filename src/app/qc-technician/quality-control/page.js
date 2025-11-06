@@ -35,6 +35,7 @@ const QualityControlPage = () => {
 
   const user_id = useUser();
 
+  console.log('user_id',user_id)
 
   useEffect(() => {
     const user = user_id.userData;

@@ -1,88 +1,60 @@
 'use client'
-import React, { useState } from 'react'
-import { FileCheck, Download, Eye, Calendar, Award, CheckCircle, Clock, AlertCircle, X, ExternalLink } from 'lucide-react'
+
+import React, { useState, useEffect } from 'react'
+import { FileCheck, Download, Eye, Calendar, Award, CheckCircle, Clock, AlertCircle, X, ExternalLink, Plus } from 'lucide-react'
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from '@/components/ui/dialog'
 import { Button } from '@/components/ui/button'
 import { Badge } from '@/components/ui/badge'
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card'
 import { Tabs, TabsList, TabsTrigger } from '@/components/ui/tabs'
+import { useUser } from '@/components/providers/UserContext'
+import { api } from '@/lib/helper'
+import { Input } from '@/components/ui/input'
+import { Textarea } from '@/components/ui/textarea'
+import { Label } from '@/components/ui/label'
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select'
 
 const CertificationsPage = () => {
   const [filter, setFilter] = useState('all')
   const [selectedCert, setSelectedCert] = useState(null)
-  const [isModalOpen, setIsModalOpen] = useState(false)
-  
-  // Sample certification data
-  const certifications = [
-    {
-      id: 1,
-      name: 'ISO 9001:2015 Quality Management',
-      issuer: 'International Organization for Standardization',
-      issueDate: '2024-01-15',
-      expiryDate: '2027-01-15',
-      status: 'active',
-      credentialId: 'ISO-QM-2024-001',
-      category: 'Quality Management',
-      description: 'This certification demonstrates proficiency in implementing and maintaining quality management systems according to ISO 9001:2015 standards.',
-      skills: ['Quality Control', 'Process Management', 'Documentation', 'Audit Preparation'],
-      verificationUrl: 'https://verify.iso.org/ISO-QM-2024-001'
-    },
-    {
-      id: 2,
-      name: 'Six Sigma Green Belt',
-      issuer: 'American Society for Quality',
-      issueDate: '2023-06-20',
-      expiryDate: '2026-06-20',
-      status: 'active',
-      credentialId: 'SSGB-2023-456',
-      category: 'Process Improvement',
-      description: 'Certified in Six Sigma methodologies for process improvement and defect reduction in manufacturing and service processes.',
-      skills: ['DMAIC', 'Statistical Analysis', 'Root Cause Analysis', 'Project Management'],
-      verificationUrl: 'https://verify.asq.org/SSGB-2023-456'
-    },
-    {
-      id: 3,
-      name: 'Laboratory Safety Certification',
-      issuer: 'National Safety Council',
-      issueDate: '2024-03-10',
-      expiryDate: '2025-03-10',
-      status: 'expiring',
-      credentialId: 'LSC-2024-789',
-      category: 'Safety',
-      description: 'Comprehensive certification covering laboratory safety protocols, hazardous material handling, and emergency response procedures.',
-      skills: ['Chemical Safety', 'PPE Usage', 'Emergency Response', 'Hazard Communication'],
-      verificationUrl: 'https://verify.nsc.org/LSC-2024-789'
-    },
-    {
-      id: 4,
-      name: 'Advanced Materials Testing',
-      issuer: 'Institute of Quality Assurance',
-      issueDate: '2022-11-05',
-      expiryDate: '2024-11-05',
-      status: 'expired',
-      credentialId: 'AMT-2022-321',
-      category: 'Technical Skills',
-      description: 'Advanced certification in materials testing techniques including tensile testing, hardness testing, and spectroscopy.',
-      skills: ['Tensile Testing', 'Hardness Testing', 'Spectroscopy', 'Data Analysis'],
-      verificationUrl: 'https://verify.iqa.org/AMT-2022-321'
-    },
-    {
-      id: 5,
-      name: 'GMP Certification',
-      issuer: 'FDA Training Institute',
-      issueDate: '2024-02-28',
-      expiryDate: '2027-02-28',
-      status: 'active',
-      credentialId: 'GMP-2024-654',
-      category: 'Compliance',
-      description: 'Good Manufacturing Practice certification for pharmaceutical and medical device quality control and compliance.',
-      skills: ['GMP Compliance', 'Documentation', 'Quality Assurance', 'Regulatory Standards'],
-      verificationUrl: 'https://verify.fda.gov/GMP-2024-654'
+  const [isViewModalOpen, setIsViewModalOpen] = useState(false)
+  const [isAddModalOpen, setIsAddModalOpen] = useState(false)
+  const [certifications, setCertifications] = useState([])
+  const [loading, setLoading] = useState(false)
+
+  // Form state for new certification
+  const [formData, setFormData] = useState({
+    name: '',
+    issuer: '',
+    issueDate: '',
+    expiryDate: '',
+    credentialId: '',
+    description: '',
+    category: '',
+    skills: '',
+    verificationUrl: '',
+    status: 'active' // default
+  })
+
+  const { userId } = useUser()
+
+  useEffect(() => {
+    const fetchCerts = async () => {
+      try {
+        const { data, ok } = await api(`/api/qc-technicians/get-certifications/${userId}`)
+        if (ok && data?.data) {
+          setCertifications(data.data)
+        }
+      } catch (err) {
+        console.error('Error fetching certifications:', err.message)
+      }
     }
-  ]
+
+    if (userId) fetchCerts()
+  }, [userId])
 
   const getStatusVariant = (status) => {
-    switch(status) {
+    switch (status) {
       case 'active': return 'default'
       case 'expiring': return 'secondary'
       case 'expired': return 'destructive'
@@ -91,7 +63,7 @@ const CertificationsPage = () => {
   }
 
   const getStatusIcon = (status) => {
-    switch(status) {
+    switch (status) {
       case 'active': return <CheckCircle className="w-3 h-3" />
       case 'expiring': return <Clock className="w-3 h-3" />
       case 'expired': return <AlertCircle className="w-3 h-3" />
@@ -101,7 +73,7 @@ const CertificationsPage = () => {
 
   const handleViewCertificate = (cert) => {
     setSelectedCert(cert)
-    setIsModalOpen(true)
+    setIsViewModalOpen(true)
   }
 
   const handleDownloadCertificate = (cert) => {
@@ -139,6 +111,65 @@ Verification URL: ${cert.verificationUrl}
     window.URL.revokeObjectURL(url)
   }
 
+  const handleInputChange = (e) => {
+    const { name, value } = e.target
+    setFormData((prev) => ({ ...prev, [name]: value }))
+  }
+
+  const handleSelectChange = (name, value) => {
+    setFormData((prev) => ({ ...prev, [name]: value }))
+  }
+
+  const handleSubmit = async (e) => {
+    e.preventDefault()
+    setLoading(true)
+  
+    const skills = formData.skills
+      ? formData.skills.split(',').map(s => s.trim()).filter(Boolean)
+      : []
+  
+    const payload = {
+      ...formData,
+      skills,
+    }
+  
+    try {
+      const { ok, data } = await api(
+        `/api/qc-technicians/create-certificate/${userId}`,
+        'POST',
+        payload
+      )
+  
+      if (ok) {
+
+        const { data: certData } = await api(`/api/qc-tecget-certifications/${userId}`)
+        setCertifications(certData.data || [])
+        setIsAddModalOpen(false)
+        setFormData({
+          name: '',
+          issuer: '',
+          issueDate: '',
+          expiryDate: '',
+          credentialId: '',
+          description: '',
+          category: '',
+          skills: '',
+          verificationUrl: '',
+          status: 'active'
+        })
+      } 
+      else {
+        console.error('Failed to add certification:', data)
+        alert('Failed to add certification. Please try again.')
+      }
+    } catch (err) {
+      console.error('Submission error:', err)
+      alert('An error occurred. Please try again.')
+    } finally {
+      setLoading(false)
+    }
+  }
+
   const filteredCertifications = certifications.filter(cert => {
     if (filter === 'all') return true
     return cert.status === filter
@@ -152,16 +183,21 @@ Verification URL: ${cert.verificationUrl}
   }
 
   return (
-    <div className="min-h-screen bg-gray-50 p-6">
+    <div className="min-h-screen p-6">
       <div className="max-w-7xl mx-auto">
         {/* Header */}
-        <div className="mb-8">
-          <div className="flex items-center gap-3 mb-2">
+        <div className="mb-8 flex flex-col sm:flex-row sm:items-center sm:justify-between">
+          <div className="flex items-center gap-3 mb-4 sm:mb-0">
             <Award className="w-8 h-8 text-blue-600" />
             <h1 className="text-3xl font-bold text-gray-900">My Certifications</h1>
           </div>
-          <p className="text-gray-600">Manage and track your professional certifications</p>
+          <Button onClick={() => setIsAddModalOpen(true)} className="flex items-center gap-2">
+            <Plus className="w-4 h-4" />
+            Add Certification
+          </Button>
         </div>
+
+        <p className="text-gray-600 mb-6">Manage and track your professional certifications</p>
 
         {/* Stats Cards */}
         <div className="grid grid-cols-1 md:grid-cols-4 gap-4 mb-6">
@@ -176,7 +212,6 @@ Verification URL: ${cert.verificationUrl}
               </div>
             </CardHeader>
           </Card>
-          
           <Card>
             <CardHeader className="pb-3">
               <div className="flex items-center justify-between">
@@ -188,7 +223,6 @@ Verification URL: ${cert.verificationUrl}
               </div>
             </CardHeader>
           </Card>
-          
           <Card>
             <CardHeader className="pb-3">
               <div className="flex items-center justify-between">
@@ -200,7 +234,6 @@ Verification URL: ${cert.verificationUrl}
               </div>
             </CardHeader>
           </Card>
-          
           <Card>
             <CardHeader className="pb-3">
               <div className="flex items-center justify-between">
@@ -231,7 +264,7 @@ Verification URL: ${cert.verificationUrl}
         {/* Certifications List */}
         <div className="space-y-4">
           {filteredCertifications.map(cert => (
-            <Card key={cert.id} className="hover:shadow-md transition-shadow">
+            <Card key={cert._id} className="hover:shadow-md transition-shadow">
               <CardContent className="pt-6">
                 <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">
                   <div className="flex-1">
@@ -248,7 +281,7 @@ Verification URL: ${cert.verificationUrl}
                         {cert.status.charAt(0).toUpperCase() + cert.status.slice(1)}
                       </Badge>
                     </div>
-                    
+
                     <div className="grid grid-cols-1 md:grid-cols-3 gap-4 text-sm mb-3">
                       <div className="flex items-center gap-2 text-gray-600">
                         <Calendar className="w-4 h-4" />
@@ -262,12 +295,12 @@ Verification URL: ${cert.verificationUrl}
                         <span className="font-medium">ID:</span> {cert.credentialId}
                       </div>
                     </div>
-                    
+
                     <div>
                       <Badge variant="outline">{cert.category}</Badge>
                     </div>
                   </div>
-                  
+
                   <div className="flex gap-2">
                     <Button
                       variant="outline"
@@ -304,7 +337,7 @@ Verification URL: ${cert.verificationUrl}
       </div>
 
       {/* View Certificate Dialog */}
-      <Dialog open={isModalOpen} onOpenChange={setIsModalOpen}>
+      <Dialog open={isViewModalOpen} onOpenChange={setIsViewModalOpen}>
         <DialogContent className="max-w-3xl max-h-[90vh] overflow-y-auto">
           <DialogHeader>
             <DialogTitle className="text-2xl">Certificate Details</DialogTitle>
@@ -312,7 +345,6 @@ Verification URL: ${cert.verificationUrl}
 
           {selectedCert && (
             <div className="space-y-6">
-              {/* Certificate Badge */}
               <div className="text-center p-8 bg-gradient-to-br from-blue-50 to-indigo-50 rounded-lg border-2 border-blue-200">
                 <Award className="w-20 h-20 text-blue-600 mx-auto mb-4" />
                 <h3 className="text-2xl font-bold text-gray-900 mb-2">{selectedCert.name}</h3>
@@ -323,7 +355,6 @@ Verification URL: ${cert.verificationUrl}
                 </Badge>
               </div>
 
-              {/* Certificate Information */}
               <div className="space-y-4">
                 <div>
                   <h4 className="text-sm font-semibold text-gray-500 uppercase mb-2">Description</h4>
@@ -364,9 +395,9 @@ Verification URL: ${cert.verificationUrl}
 
                 <div>
                   <h4 className="text-sm font-semibold text-gray-500 uppercase mb-2">Verification</h4>
-                  <a 
-                    href={selectedCert.verificationUrl} 
-                    target="_blank" 
+                  <a
+                    href={selectedCert.verificationUrl}
+                    target="_blank"
                     rel="noopener noreferrer"
                     className="text-blue-600 hover:text-blue-800 underline break-all flex items-center gap-1"
                   >
@@ -379,7 +410,7 @@ Verification URL: ${cert.verificationUrl}
           )}
 
           <DialogFooter>
-            <Button variant="outline" onClick={() => setIsModalOpen(false)}>
+            <Button variant="outline" onClick={() => setIsViewModalOpen(false)}>
               Close
             </Button>
             <Button onClick={() => handleDownloadCertificate(selectedCert)}>
@@ -387,6 +418,144 @@ Verification URL: ${cert.verificationUrl}
               Download Certificate
             </Button>
           </DialogFooter>
+        </DialogContent>
+      </Dialog>
+
+      {/* Add Certification Modal */}
+      <Dialog open={isAddModalOpen} onOpenChange={setIsAddModalOpen}>
+        <DialogContent className="max-w-2xl max-h-[90vh] overflow-y-auto">
+          <DialogHeader>
+            <DialogTitle>Add New Certification</DialogTitle>
+          </DialogHeader>
+
+          <form onSubmit={handleSubmit} className="space-y-4">
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+              <div>
+                <Label htmlFor="name">Certification Name *</Label>
+                <Input
+                  id="name"
+                  name="name"
+                  value={formData.name}
+                  onChange={handleInputChange}
+                  required
+                />
+              </div>
+              <div>
+                <Label htmlFor="issuer">Issuer *</Label>
+                <Input
+                  id="issuer"
+                  name="issuer"
+                  value={formData.issuer}
+                  onChange={handleInputChange}
+                  required
+                />
+              </div>
+            </div>
+
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+              <div>
+                <Label htmlFor="issueDate">Issue Date *</Label>
+                <Input
+                  id="issueDate"
+                  name="issueDate"
+                  type="date"
+                  value={formData.issueDate}
+                  onChange={handleInputChange}
+                  required
+                />
+              </div>
+              <div>
+                <Label htmlFor="expiryDate">Expiry Date *</Label>
+                <Input
+                  id="expiryDate"
+                  name="expiryDate"
+                  type="date"
+                  value={formData.expiryDate}
+                  onChange={handleInputChange}
+                  required
+                />
+              </div>
+            </div>
+
+            <div>
+              <Label htmlFor="credentialId">Credential ID</Label>
+              <Input
+                id="credentialId"
+                name="credentialId"
+                value={formData.credentialId}
+                onChange={handleInputChange}
+              />
+            </div>
+
+            <div>
+              <Label htmlFor="category">Category</Label>
+              <Input
+                id="category"
+                name="category"
+                value={formData.category}
+                onChange={handleInputChange}
+              />
+            </div>
+
+            <div>
+              <Label htmlFor="skills">Skills (comma-separated)</Label>
+              <Input
+                id="skills"
+                name="skills"
+                placeholder="e.g. React, Leadership, SEO"
+                value={formData.skills}
+                onChange={handleInputChange}
+              />
+            </div>
+
+            <div>
+              <Label htmlFor="verificationUrl">Verification URL</Label>
+              <Input
+                id="verificationUrl"
+                name="verificationUrl"
+                type="url"
+                value={formData.verificationUrl}
+                onChange={handleInputChange}
+              />
+            </div>
+
+            <div>
+              <Label htmlFor="status">Status</Label>
+              <Select
+                value={formData.status}
+                onValueChange={(value) => handleSelectChange('status', value)}
+              >
+                <SelectTrigger>
+                  <SelectValue />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="active">Active</SelectItem>
+                  <SelectItem value="expiring">Expiring Soon</SelectItem>
+                  <SelectItem value="expired">Expired</SelectItem>
+                </SelectContent>
+              </Select>
+            </div>
+
+            <div>
+              <Label htmlFor="description">Description</Label>
+              <Textarea
+                id="description"
+                name="description"
+                value={formData.description}
+                onChange={handleInputChange}
+                rows={3}
+              />
+            </div>
+
+            <DialogFooter>
+              <Button type="button" variant="outline" onClick={() => setIsAddModalOpen(false)}>
+                Cancel
+              </Button>
+              <Button type="submit" disabled={loading}>
+                {loading ? 'Adding...' : 'Add Certification'}
+              </Button>
+            </DialogFooter>
+          </form>
         </DialogContent>
       </Dialog>
     </div>
