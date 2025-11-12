@@ -59,8 +59,8 @@ const AddUserModal = ({fetchUser}) => {
       icon: '👤'
     },
     { 
-      value: 'viewer', 
-      label: 'Viewer', 
+      value: 'customer', 
+      label: 'Customer', 
       description: 'Read-only access to reports',
       color: 'bg-green-100 text-green-800 border-green-200',
       icon: '👁️'

@@ -1,14 +1,13 @@
 'use client';
 
 import Navbar from "@/components/ui/navbar";
-import Sidebar from "@/components/ui/sidebar";
 import { useEffect, useState } from "react";
 import { usePathname, useRouter } from "next/navigation";
 import { api } from "@/lib/helper";
-import AdminSidebar from "@/components/ui/AdminSidebar";
+import CustomerSidebar from "./components/CustomerSidebar";
 
-export default function AdminLayout({ children }) {
-  const [openSidebar, setOpenSidebar] = useState(false);
+export default function CustomerLayout({ children }) {
+  const [openSidebar, setOpenSidebar] = useState(true);
   const [role, setRole] = useState(null);
   const router = useRouter();
   const pathname = usePathname();
@@ -27,16 +26,13 @@ export default function AdminLayout({ children }) {
         }
 
         const { data, error } = await api(`/api/users/role/${storedUsername}`, "GET");
+        
         if (!error && data.role) {
+          if (data.role !== 'customer') {
+            router.push(`/${data.role}/dashboard`);
+            return;
+          }
           setRole(data.role);
-
-          if (data.role === "customer" && pathname.startsWith("/admin")) {
-            router.push("/viewer/dashboard");
-          }
-
-          if (data.role === "admin" && pathname.startsWith("/viewer")) {
-            router.push("/admin/dashboard");
-          }
         } else {
           router.push("/login");
         }
@@ -54,11 +50,11 @@ export default function AdminLayout({ children }) {
   return (
     <div className="flex">
       <div
-        className={`fixed top-0 left-0 h-full transition-all duration-300 border-2 bg-gray-100 ${
+        className={`fixed top-0 left-0 h-full transition-all duration-300 border-2  ${
           openSidebar ? "w-[270px]" : "w-[90px]"
         }`}
       >
-        <AdminSidebar isOpen={openSidebar} role={role} />
+        <CustomerSidebar isOpen={openSidebar} />
       </div>
 
       <div
@@ -66,8 +62,8 @@ export default function AdminLayout({ children }) {
           openSidebar ? "ml-[270px]" : "ml-[90px]"
         }`}
       >
-        <Navbar openSideBar={handleToggleSidebar} />
-        <main className="p-4">{children}</main>
+        <Navbar openSideBar={handleToggleSidebar} role="customer" />
+        <main className="p-4  min-h-screen">{children}</main>
       </div>
     </div>
   );

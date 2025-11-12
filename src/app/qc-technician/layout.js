@@ -21,7 +21,6 @@ export default function userLayout({ children }) {
         if (!storedUsername) return;
 
         const {data ,error} = await api(`/api/users/role/${storedUsername}`);
-        console.log('data',data)
         
         if (error) {
           console.error("Error fetching user role:", error);

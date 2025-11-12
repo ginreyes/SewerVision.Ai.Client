@@ -57,7 +57,7 @@ const SettingsPage = () => {
   const [users, setUsers] = useState([
     { id: 1, name: 'Alice Chen', email: 'alice@sewervision.ai', role: 'Admin', status: 'Active' },
     { id: 2, name: 'Bob Rivera', email: 'bob@sewervision.ai', role: 'QC Technician', status: 'Active' },
-    { id: 3, name: 'Carol Kim', email: 'carol@sewervision.ai', role: 'Viewer', status: 'Disabled' },
+    { id: 3, name: 'Carol Kim', email: 'carol@sewervision.ai', role: 'customer', status: 'Disabled' },
   ])
 
   // NEW: Model Weights State

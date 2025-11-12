@@ -92,6 +92,8 @@ const Login = () => {
         router.push("/operator/dashboard");
       } else if (normalizedRole === "qc-technician") {
         router.push("/qc-technician/dashboard");
+      } else if (normalizedRole === "customer") {
+        router.push("/customer/dashboard");
       } else {
         showAlert(`Unknown role: ${normalizedRole}`, "warning");
         router.push("/");
@@ -115,12 +117,17 @@ const Login = () => {
     }
   };
 
-  useEffect(() => {
-    const role = localStorage.getItem("role");
-    if (role) {
-      router.push(`/${role}/dashboard`);
-    }
-  }, [router]);
+    useEffect(() => {
+      const role = localStorage.getItem("role");
+      const token = localStorage.getItem("authToken");
+
+      // Only redirect if we have a valid token AND a known role
+      const knownRoles = ["admin", "user", "operator", "qc-technician", "customer"];
+
+      if (token && role && knownRoles.includes(role)) {
+        router.push(`/${role}/dashboard`);
+      }
+    }, [router]);
 
   useEffect(() => {
     const savedUsername = localStorage.getItem("rememberedUsername");

@@ -117,7 +117,7 @@ const UserPage = () => {
         { label: "Show All", value: "all" },
         { label: "Admin", value: "admin" },
         { label: "User", value: "user" },
-        { label: "Viewer", value: "viewer" },
+        { label: "Customer", value: "customer" },
         { label: "QC Technician", value: "Qc-Technician" },
         { label: "Operator", value: "Operator" },
       ],
