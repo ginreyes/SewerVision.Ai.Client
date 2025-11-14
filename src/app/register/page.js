@@ -50,7 +50,7 @@ const baseSchema = z.object({
   email: z.string().email("Invalid email address."),
   password: z.string().min(6, "Password must be at least 6 characters."),
   confirmPassword: z.string().min(6, "Confirmation password is required."),
-  role: z.enum(["user", "admin", "viewer", "qc-technician", "operator"], { 
+  role: z.enum(["user", "admin", "customer", "qc-technician", "operator"], { 
     required_error: "Role is required." 
   }),
   privacy: z.boolean().refine((val) => val === true, {
@@ -176,8 +176,8 @@ const Register = () => {
       hoverBorder: 'hover:border-blue-400'
     },
     { 
-      value: 'viewer', 
-      label: 'Viewer', 
+      value: 'customer', 
+      label: 'Customer', 
       description: 'Read-only access to reports and data',
       icon: <FaUserTag className="h-7 w-7" />,
       gradient: 'from-green-500 to-green-600',
