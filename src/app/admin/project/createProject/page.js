@@ -7,17 +7,9 @@ import { Label } from "@/components/ui/label";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { useAlert } from "@/components/providers/AlertProvider";
 import { api } from "@/lib/helper";
-import { 
-  FolderPlus, 
-  Building2, 
-  MapPin, 
-  Ruler, 
-  Package, 
-  Circle, 
-  FileText, 
+import {
+  FolderPlus,
   Calendar,
-  ArrowUp,
-  ArrowDown,
   Upload,
   Loader2,
   ChevronRight,
@@ -28,9 +20,9 @@ import {
   CheckCircle,
   AlertTriangle,
   ArrowLeft,
-  Home,
   UserCheck,
-  Search
+  Search,
+  Building2
 } from "lucide-react";
 import { Textarea } from "@/components/ui/textarea";
 import { useRouter } from "next/navigation";
@@ -74,7 +66,7 @@ const steps = [
   }
 ];
 
-// Memoized Input Field Component
+
 const InputField = memo(({ label, name, value, onChange, required = false, type = "text", error, placeholder }) => {
   const handleChange = useCallback((e) => {
     onChange(name, e.target.value);
@@ -113,12 +105,15 @@ export default function CreateProjectPage() {
   const [videoFile, setVideoFile] = useState(null);
   const { showAlert } = useAlert();
   const router = useRouter();
-  const {userId} = useUser()
+  const { userId } = useUser()
 
   // User data states
   const [operators, setOperators] = useState([]);
   const [qcTechnicians, setQcTechnicians] = useState([]);
   const [loadingUsers, setLoadingUsers] = useState(false);
+  const [customers, setCustomers] = useState([]);
+  const [loadingCustomers, setLoadingCustomers] = useState(false);
+  const [customerId, setCustomerId] = useState("");
 
   // Project Details - Step 1
   const [name, setName] = useState("");
@@ -155,12 +150,12 @@ export default function CreateProjectPage() {
     try {
       setLoadingUsers(true);
       const { ok, data } = await api("/api/users/get-all-user", "GET");
-      
+
       if (ok && data?.users) {
         // Filter users by role
         const operatorUsers = data.users.filter(user => user.role === 'Operator');
         const qcUsers = data.users.filter(user => user.role === 'qc-technician');
-        
+
         setOperators(operatorUsers);
         setQcTechnicians(qcUsers);
       }
@@ -172,11 +167,28 @@ export default function CreateProjectPage() {
     }
   }, [showAlert]);
 
+    const fetchCustomers = useCallback(async () => {
+      try {
+        setLoadingCustomers(true);
+        const response = await api("/api/users/get-customers", "GET");
+        const data = response.data.data.customers
+        setCustomers(data)
+      } 
+      catch (error) {
+        showAlert("Failed to fetch customers", "error");
+        console.error("Error fetching customers:", error);
+      } 
+      finally {
+        setLoadingCustomers(false);
+      }
+   }, [showAlert]);
 
-  
+
+
   useEffect(() => {
     fetchUsers();
-  }, [fetchUsers]);
+    fetchCustomers();
+  }, [fetchUsers ,fetchCustomers]);
 
   const handleOperatorSelect = useCallback((userId) => {
     const selectedOperator = operators.find(op => op.user_id === userId);
@@ -200,10 +212,14 @@ export default function CreateProjectPage() {
     }
   }, [qcTechnicians]);
 
+
+
+
   const fieldSetters = {
     name: setName,
     location: setLocation,
     client: setClient,
+    customerId: setCustomerId, 
     workOrder: setWorkOrder,
     priority: setPriority,
     totalLength: setTotalLength,
@@ -230,6 +246,7 @@ export default function CreateProjectPage() {
     name,
     location,
     client,
+    customerId,
     workOrder,
     priority,
     totalLength,
@@ -270,6 +287,7 @@ export default function CreateProjectPage() {
     name,
     location,
     client,
+    customerId,
     totalLength,
     pipelineMaterial,
     pipelineShape,
@@ -295,18 +313,19 @@ export default function CreateProjectPage() {
       material: metadataMaterial,
       remarks,
     },
-  }), [name, location, client, totalLength, pipelineMaterial, pipelineShape, workOrder, priority,
-      operatorUserId, operatorName, operatorEmail, operatorCertification,
-      qcUserId, qcName, qcEmail, qcCertification,
-      recordingDate, upstreamMH, downstreamMH, metadataShape, metadataMaterial, remarks]);
+  }), [name, location, client,customerId, totalLength, pipelineMaterial, pipelineShape, workOrder, priority,
+    operatorUserId, operatorName, operatorEmail, operatorCertification,
+    qcUserId, qcName, qcEmail, qcCertification,
+    recordingDate, upstreamMH, downstreamMH, metadataShape, metadataMaterial, remarks]);
 
   const validateStep = useCallback((step) => {
     const newErrors = {};
-    
+
     switch (step) {
       case 1:
         if (!name) newErrors.name = "Project name is required";
         if (!client) newErrors.client = "Client is required";
+        if (!customerId) newErrors.customerId = "Customer must be selected";
         if (!location) newErrors.location = "Location is required";
         if (!workOrder) newErrors.workOrder = "Work order is required";
         break;
@@ -327,11 +346,11 @@ export default function CreateProjectPage() {
         if (!metadataShape) newErrors["metadata.shape"] = "Shape is required";
         break;
     }
-    
+
     setErrors(newErrors);
     return Object.keys(newErrors).length === 0;
   }, [name, client, location, workOrder, totalLength, pipelineMaterial, pipelineShape,
-      operatorUserId, qcUserId, recordingDate, upstreamMH, downstreamMH, metadataMaterial, metadataShape]);
+    operatorUserId, qcUserId, recordingDate, upstreamMH, downstreamMH, metadataMaterial, metadataShape,customerId]);
 
   const nextStep = useCallback(() => {
     if (validateStep(currentStep)) {
@@ -345,105 +364,155 @@ export default function CreateProjectPage() {
 
   const handleSubmit = useCallback(async () => {
     if (!validateStep(currentStep)) return;
-  
+
     try {
       const formData = getFormData();
-  
+
       const { userId, ...projectFields } = formData;
-  
+
       const form = new FormData();
-      form.append("userId", userId); 
-      form.append("projectData", JSON.stringify(projectFields)); 
-  
-    
-  
+      form.append("userId", userId);
+      form.append("projectData", JSON.stringify(projectFields));
+
+
+
       if (videoFile) {
         form.append("video", videoFile);
       }
-  
+
       const { ok, data } = await api("/api/projects/create-project", "POST", form);
-  
+
       if (!ok) {
         showAlert("Project creation failed", "error");
         return;
       }
-  
+
       showAlert("Project created successfully", "success");
       setCurrentStep(1);
       router.push("/admin/project");
-  
+
     } catch (error) {
       showAlert(error.message || "Failed to create project", "error");
     }
   }, [currentStep, getFormData, showAlert, validateStep, videoFile, router]);
-  
+
 
   const renderStepContent = () => {
     switch (currentStep) {
       case 1:
-        return (
-          <div className="space-y-8">
-            <div className="text-center pb-4">
-              <div className="inline-flex p-3 bg-blue-100 rounded-xl mb-4">
-                <Building2 className="h-8 w-8 text-blue-500" />
-              </div>
-              <h3 className="text-xl font-bold text-gray-900 mb-2">Project Details</h3>
-              <p className="text-gray-600">Let's start with the basic project information</p>
-            </div>
-            
-            <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-              <InputField
-                label="Project Name"
-                name="name"
-                value={fieldValues.name}
-                onChange={handleFieldChange}
-                required
-                error={errors.name}
-                placeholder="Enter project name"
-              />
-              <InputField
-                label="Client"
-                name="client"
-                value={fieldValues.client}
-                onChange={handleFieldChange}
-                required
-                error={errors.client}
-                placeholder="Enter client name"
-              />
-              <InputField
-                label="Location"
-                name="location"
-                value={fieldValues.location}
-                onChange={handleFieldChange}
-                required
-                error={errors.location}
-                placeholder="Enter project location"
-              />
-              <InputField
-                label="Work Order"
-                name="workOrder"
-                value={fieldValues.workOrder}
-                onChange={handleFieldChange}
-                required
-                error={errors.workOrder}
-                placeholder="Enter work order number"
-              />
-              <div className="space-y-2">
-                <Label className="text-sm font-medium text-gray-700">Priority</Label>
-                <Select value={priority} onValueChange={(value) => handleFieldChange("priority", value)}>
-                  <SelectTrigger className="h-10">
-                    <SelectValue placeholder="Select priority" />
-                  </SelectTrigger>
-                  <SelectContent>
-                    <SelectItem value="low">Low Priority</SelectItem>
-                    <SelectItem value="medium">Medium Priority</SelectItem>
-                    <SelectItem value="high">High Priority</SelectItem>
-                  </SelectContent>
-                </Select>
-              </div>
-            </div>
-          </div>
-        );
+  return (
+    <div className="space-y-8">
+      <div className="text-center pb-4">
+        <div className="inline-flex p-3 bg-blue-100 rounded-xl mb-4">
+          <Building2 className="h-8 w-8 text-blue-500" />
+        </div>
+        <h3 className="text-xl font-bold text-gray-900 mb-2">Project Details</h3>
+        <p className="text-gray-600">Let's start with the basic project information</p>
+      </div>
+      
+      <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+        <InputField
+          label="Project Name"
+          name="name"
+          value={fieldValues.name}
+          onChange={handleFieldChange}
+          required
+          error={errors.name}
+          placeholder="Enter project name"
+        />
+        
+        {/* Customer Selection Dropdown */}
+        <div className="space-y-2">
+          <Label className="text-sm font-medium text-gray-700">
+            Customer
+            <span className="text-red-500 ml-1">*</span>
+          </Label>
+          <Select 
+            value={customerId} 
+            onValueChange={(value) => handleFieldChange("customerId", value)}
+          >
+            <SelectTrigger className={`h-10 ${errors.customerId ? 'border-red-500 focus:border-red-500 focus:ring-red-100' : 'border-gray-200 focus:border-blue-500 focus:ring-blue-100'}`}>
+              <SelectValue placeholder="Select a customer..." />
+            </SelectTrigger>
+            <SelectContent>
+              {loadingCustomers ? (
+                <SelectItem value="loading" disabled>
+                  Loading customers...
+                </SelectItem>
+              ) : customers.length === 0 ? (
+                <SelectItem value="no-customers" disabled>
+                  No customers available
+                </SelectItem>
+              ) : (
+                customers.map((customer) => (
+                  <SelectItem key={customer._id} value={customer._id}>
+                    <div className="flex items-center gap-2">
+                      <span className="font-medium">
+                        {customer.first_name} {customer.last_name}
+                      </span>
+                      <span className="text-xs text-gray-500">
+                        ({customer.email})
+                      </span>
+                    </div>
+                  </SelectItem>
+                ))
+              )}
+            </SelectContent>
+          </Select>
+          {errors.customerId && (
+            <span className="text-red-500 text-sm flex items-center gap-1">
+              <AlertTriangle className="h-3 w-3" />
+              {errors.customerId}
+            </span>
+          )}
+        </div>
+
+        <InputField
+          label="Client (Organization Name)"
+          name="client"
+          value={fieldValues.client}
+          onChange={handleFieldChange}
+          required
+          error={errors.client}
+          placeholder="Enter client organization name"
+        />
+        
+        <InputField
+          label="Location"
+          name="location"
+          value={fieldValues.location}
+          onChange={handleFieldChange}
+          required
+          error={errors.location}
+          placeholder="Enter project location"
+        />
+        
+        <InputField
+          label="Work Order"
+          name="workOrder"
+          value={fieldValues.workOrder}
+          onChange={handleFieldChange}
+          required
+          error={errors.workOrder}
+          placeholder="Enter work order number"
+        />
+        
+        <div className="space-y-2">
+          <Label className="text-sm font-medium text-gray-700">Priority</Label>
+          <Select value={priority} onValueChange={(value) => handleFieldChange("priority", value)}>
+            <SelectTrigger className="h-10">
+              <SelectValue placeholder="Select priority" />
+            </SelectTrigger>
+            <SelectContent>
+              <SelectItem value="low">Low Priority</SelectItem>
+              <SelectItem value="medium">Medium Priority</SelectItem>
+              <SelectItem value="high">High Priority</SelectItem>
+            </SelectContent>
+          </Select>
+        </div>
+      </div>
+    </div>
+  );
 
       case 2:
         return (
@@ -455,7 +524,7 @@ export default function CreateProjectPage() {
               <h3 className="text-xl font-bold text-gray-900 mb-2">Pipeline Information</h3>
               <p className="text-gray-600">Technical specifications of the pipeline</p>
             </div>
-            
+
             <div className="grid grid-cols-1 lg:grid-cols-2 gap-6 max-w-4xl mx-auto">
               <InputField
                 label="Total Length"
@@ -498,14 +567,14 @@ export default function CreateProjectPage() {
               <h3 className="text-xl font-bold text-gray-900 mb-2">Team Assignment</h3>
               <p className="text-gray-600">Assign operators and quality control technicians</p>
             </div>
-            
+
             {loadingUsers && (
               <div className="text-center py-8">
                 <Loader2 className="h-8 w-8 animate-spin mx-auto mb-4 text-blue-500" />
                 <p className="text-gray-600">Loading available users...</p>
               </div>
             )}
-            
+
             <div className="space-y-8 max-w-5xl mx-auto">
               {/* Operator Selection */}
               <div className="bg-gradient-to-r from-blue-50 to-indigo-50 p-6 rounded-xl border border-blue-200">
@@ -515,14 +584,14 @@ export default function CreateProjectPage() {
                   </div>
                   Assigned Operator
                 </h4>
-                
+
                 <div className="space-y-4">
                   <div className="space-y-2">
                     <Label className="text-sm font-medium text-gray-700">
                       Select Operator *
                     </Label>
-                    <Select 
-                      value={operatorUserId} 
+                    <Select
+                      value={operatorUserId}
                       onValueChange={handleOperatorSelect}
                     >
                       <SelectTrigger className={`h-10 ${errors["assignedOperator.userId"] ? 'border-red-500' : ''}`}>
@@ -589,14 +658,14 @@ export default function CreateProjectPage() {
                   </div>
                   QC Technician
                 </h4>
-                
+
                 <div className="space-y-4">
                   <div className="space-y-2">
                     <Label className="text-sm font-medium text-gray-700">
                       Select QC Technician *
                     </Label>
-                    <Select 
-                      value={qcUserId} 
+                    <Select
+                      value={qcUserId}
                       onValueChange={handleQcSelect}
                     >
                       <SelectTrigger className={`h-10 ${errors["qcTechnician.userId"] ? 'border-red-500' : ''}`}>
@@ -685,7 +754,7 @@ export default function CreateProjectPage() {
               <h3 className="text-xl font-bold text-gray-900 mb-2">Inspection Data</h3>
               <p className="text-gray-600">Recording details and metadata</p>
             </div>
-            
+
             <div className="grid grid-cols-1 lg:grid-cols-2 gap-6 max-w-5xl mx-auto">
               <InputField
                 label="Recording Date"
@@ -762,7 +831,7 @@ export default function CreateProjectPage() {
               <h3 className="text-xl font-bold text-gray-900 mb-2">Video Upload</h3>
               <p className="text-gray-600">Upload the inspection video file (optional)</p>
             </div>
-            
+
             <div className="space-y-6 max-w-3xl mx-auto">
               <div className="border-2 border-dashed border-gray-300 rounded-xl p-8 text-center hover:border-blue-400 transition-colors bg-gray-50">
                 <Upload className="h-12 w-12 text-gray-400 mx-auto mb-4" />
@@ -781,7 +850,7 @@ export default function CreateProjectPage() {
                   <p className="text-gray-400 mt-2 text-sm">Supports MP4, AVI, MOV files</p>
                 </Label>
               </div>
-              
+
               {videoFile && (
                 <div className="bg-green-50 p-4 rounded-xl border border-green-200">
                   <div className="flex items-center justify-between">
@@ -815,7 +884,7 @@ export default function CreateProjectPage() {
     }
   };
 
-  const handleBack = ()=> {
+  const handleBack = () => {
     router.push('/admin/project')
   }
 
@@ -851,40 +920,38 @@ export default function CreateProjectPage() {
 
       {/* Progress Bar */}
       <div className="bg-white border-b border-gray-200">
-        <div className="max-w-5xl mx-auto px-4 py-6"> 
-            <div className="flex items-center justify-between mb-6 space-x-4">
+        <div className="max-w-5xl mx-auto px-4 py-6">
+          <div className="flex items-center justify-between mb-6 space-x-4">
             {steps.map((step, index) => (
-                <div key={step.id} className="flex items-center">
-                <div className={`flex items-center justify-center w-14 h-14 rounded-full text-xl font-bold transition-all duration-300 ${
-                    currentStep === step.id 
-                    ? step.color + ' text-white shadow-md transform scale-110' 
-                    : currentStep > step.id 
-                        ? 'bg-green-500 text-white' 
-                        : 'bg-gray-200 text-gray-600'
-                }`}>
-                    {currentStep > step.id ? (
+              <div key={step.id} className="flex items-center">
+                <div className={`flex items-center justify-center w-14 h-14 rounded-full text-xl font-bold transition-all duration-300 ${currentStep === step.id
+                    ? step.color + ' text-white shadow-md transform scale-110'
+                    : currentStep > step.id
+                      ? 'bg-green-500 text-white'
+                      : 'bg-gray-200 text-gray-600'
+                  }`}>
+                  {currentStep > step.id ? (
                     <CheckCircle className="h-6 w-6" />
-                    ) : (
+                  ) : (
                     <step.icon className="h-6 w-6" />
-                    )}
+                  )}
                 </div>
                 {index < steps.length - 1 && (
-                    <div className={`w-16 h-2 mx-3 rounded-full transition-all duration-500 ${
-                    currentStep > step.id ? 'bg-green-500' : 'bg-gray-200'
+                  <div className={`w-16 h-2 mx-3 rounded-full transition-all duration-500 ${currentStep > step.id ? 'bg-green-500' : 'bg-gray-200'
                     }`} />
                 )}
-                </div>
+              </div>
             ))}
-            </div>
+          </div>
 
-            <div className="text-center">
+          <div className="text-center">
             <h2 className="text-2xl font-extrabold text-gray-900">
-                Step {currentStep} of {steps.length}: {steps[currentStep - 1]?.title}
+              Step {currentStep} of {steps.length}: {steps[currentStep - 1]?.title}
             </h2>
             <p className="text-md text-gray-600 mt-2">{steps[currentStep - 1]?.description}</p>
-            </div>
+          </div>
         </div>
-        </div>
+      </div>
 
 
       {/* Main Content */}
@@ -907,7 +974,7 @@ export default function CreateProjectPage() {
               <ChevronLeft className="h-4 w-4" />
               Previous
             </Button>
-            
+
             <div className="flex gap-3">
               <Button
                 variant="outline"
@@ -917,7 +984,7 @@ export default function CreateProjectPage() {
               >
                 Cancel
               </Button>
-              
+
               {currentStep < steps.length ? (
                 <Button
                   onClick={nextStep}

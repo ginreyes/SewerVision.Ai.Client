@@ -1,6 +1,6 @@
 'use client';
 
-import { useState } from 'react';
+import { useEffect, useState } from 'react';
 import { useRouter } from 'next/navigation';
 import {
   Search,
@@ -11,6 +11,7 @@ import {
   FileText,
   CheckCircle,
   Clock,
+  Loader2,
 } from 'lucide-react';
 
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
@@ -23,42 +24,8 @@ import {
   SelectValue,
 } from '@/components/ui/select';
 import { Badge } from '@/components/ui/badge';
-
-// Mock data
-const mockProjects = [
-  {
-    _id: 'proj-001',
-    name: 'Downtown Sewer Inspection',
-    location: 'Beirut, Lebanon',
-    status: 'completed',
-    created_at: '2025-10-15T10:00:00Z',
-    aiDetections: { total: 8 },
-  },
-  {
-    _id: 'proj-002',
-    name: 'Industrial Zone Pipeline Scan',
-    location: 'Tripoli, Lebanon',
-    status: 'qc-review',
-    created_at: '2025-10-20T14:30:00Z',
-    aiDetections: { total: 25 },
-  },
-  {
-    _id: 'proj-003',
-    name: 'Residential Drain Survey',
-    location: 'Sidon, Lebanon',
-    status: 'ai-processing',
-    created_at: '2025-11-01T09:15:00Z',
-    aiDetections: { total: 0 },
-  },
-  {
-    _id: 'proj-004',
-    name: 'Airport Perimeter Line Check',
-    location: 'Beirut Airport, Lebanon',
-    status: 'customer-notified',
-    created_at: '2025-09-28T16:45:00Z',
-    aiDetections: { total: 12 },
-  },
-];
+import { useUser } from '@/components/providers/UserContext';
+import { api } from '@/lib/helper';
 
 // Helper: status config
 const statusConfig = {
@@ -66,6 +33,10 @@ const statusConfig = {
   'customer-notified': { label: 'Completed', color: 'purple' },
   'qc-review': { label: 'QC Review', color: 'warning' },
   'ai-processing': { label: 'Processing', color: 'secondary' },
+  'field-capture': { label: 'Field Capture', color: 'default' },
+  uploading: { label: 'Uploading', color: 'secondary' },
+  'on-hold': { label: 'On Hold', color: 'destructive' },
+  planning: { label: 'Planning', color: 'outline' },
 };
 
 // Helper: severity config
@@ -76,10 +47,44 @@ const getSeverityConfig = (count) => {
 };
 
 export default function CustomerDashboard() {
-  const [projects] = useState(mockProjects);
+  const [projects, setProjects] = useState([]);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState(null);
   const [searchQuery, setSearchQuery] = useState('');
   const [filterStatus, setFilterStatus] = useState('all');
   const router = useRouter();
+  const { userId } = useUser();
+
+  useEffect(() => {
+  const fetchProjects = async () => {
+    try {
+      setLoading(true);
+      setError(null);
+      
+      const { data, ok, error: apiError } = await api(
+        `/api/customer/get-all-projects/${userId}?page=1&limit=20&status=${filterStatus !== 'all' ? filterStatus : ''}`,
+        'GET'
+      );
+      
+      if (!ok || apiError) {
+        console.error('Error fetching projects:', apiError);
+        setError(apiError || 'Failed to load projects');
+        return;
+      }
+
+      setProjects(data.data || []);
+    } catch (err) {
+      console.error('Fetch error:', err);
+      setError('Failed to load projects');
+    } finally {
+      setLoading(false);
+    }
+  };
+
+    if (userId) {
+      fetchProjects();
+    }
+  }, [userId]);
 
   // Filter projects
   const filteredProjects = projects.filter((project) => {
@@ -104,6 +109,64 @@ export default function CustomerDashboard() {
     const config = statusConfig[status] || { label: 'In Progress', color: 'outline' };
     return <Badge variant={config.color}>{config.label}</Badge>;
   };
+
+  // Loading state
+  if (loading) {
+    return (
+      <div className="space-y-6 p-4 md:p-6">
+        <div>
+          <h1 className="text-3xl font-bold">My Projects</h1>
+          <p className="text-muted-foreground">View and manage your inspection projects</p>
+        </div>
+
+        <div className="grid gap-4 md:grid-cols-3">
+          {[1, 2, 3].map((i) => (
+            <Card key={i}>
+              <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+                <div className="h-4 w-24 bg-gray-200 rounded animate-pulse" />
+                <div className="h-4 w-4 bg-gray-200 rounded animate-pulse" />
+              </CardHeader>
+              <CardContent>
+                <div className="h-8 w-16 bg-gray-200 rounded animate-pulse" />
+              </CardContent>
+            </Card>
+          ))}
+        </div>
+
+        <div className="flex items-center justify-center py-12">
+          <Loader2 className="h-8 w-8 animate-spin text-primary" />
+          <span className="ml-3 text-muted-foreground">Loading projects...</span>
+        </div>
+      </div>
+    );
+  }
+
+  // Error state
+  if (error) {
+    return (
+      <div className="space-y-6 p-4 md:p-6">
+        <div>
+          <h1 className="text-3xl font-bold">My Projects</h1>
+          <p className="text-muted-foreground">View and manage your inspection projects</p>
+        </div>
+
+        <Card>
+          <CardContent className="py-12 text-center">
+            <AlertCircle className="h-12 w-12 text-destructive mx-auto mb-4" />
+            <p className="text-destructive mb-4">
+              {typeof error === 'string' ? error : 'Failed to load projects'}
+            </p>
+            <button
+              onClick={() => window.location.reload()}
+              className="px-4 py-2 bg-primary text-white rounded hover:bg-primary/90"
+            >
+              Try Again
+            </button>
+          </CardContent>
+        </Card>
+      </div>
+    );
+  }
 
   return (
     <div className="space-y-6 p-4 md:p-6">
@@ -161,10 +224,14 @@ export default function CustomerDashboard() {
           </SelectTrigger>
           <SelectContent>
             <SelectItem value="all">All Status</SelectItem>
+            <SelectItem value="planning">Planning</SelectItem>
+            <SelectItem value="field-capture">Field Capture</SelectItem>
+            <SelectItem value="uploading">Uploading</SelectItem>
             <SelectItem value="ai-processing">Processing</SelectItem>
             <SelectItem value="qc-review">QC Review</SelectItem>
             <SelectItem value="completed">Ready for Review</SelectItem>
             <SelectItem value="customer-notified">Completed</SelectItem>
+            <SelectItem value="on-hold">On Hold</SelectItem>
           </SelectContent>
         </Select>
       </div>
@@ -174,7 +241,23 @@ export default function CustomerDashboard() {
         {filteredProjects.length === 0 ? (
           <Card>
             <CardContent className="py-12 text-center">
-              <p className="text-muted-foreground">No projects found</p>
+              <FileText className="h-12 w-12 text-muted-foreground mx-auto mb-4" />
+              <p className="text-muted-foreground">
+                {searchQuery || filterStatus !== 'all' 
+                  ? 'No projects match your filters' 
+                  : 'No projects found'}
+              </p>
+              {(searchQuery || filterStatus !== 'all') && (
+                <button
+                  onClick={() => {
+                    setSearchQuery('');
+                    setFilterStatus('all');
+                  }}
+                  className="mt-4 text-sm text-primary hover:underline"
+                >
+                  Clear filters
+                </button>
+              )}
             </CardContent>
           </Card>
         ) : (

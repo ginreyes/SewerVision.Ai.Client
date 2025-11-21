@@ -26,6 +26,7 @@ export default function CustomerLayout({ children }) {
         }
 
         const { data, error } = await api(`/api/users/role/${storedUsername}`, "GET");
+
         
         if (!error && data.role) {
           if (data.role !== 'customer') {

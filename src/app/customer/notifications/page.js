@@ -8,9 +8,9 @@ import {
   AlertCircle,
   Mail,
   Info,
-  Eye,
-  EyeOff,
   FileText,
+  Loader2,
+  Trash2,
 } from 'lucide-react';
 
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
@@ -18,92 +18,161 @@ import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { Switch } from '@/components/ui/switch';
 import { Label } from '@/components/ui/label';
+import { useUser } from '@/components/providers/UserContext';
+import { api } from '@/lib/helper';
+import { useAlert } from '@/components/providers/AlertProvider';
 
 // Helper Icons
 const FileTextIcon = () => <FileText className="h-4 w-4 text-blue-500" />;
-const BotIcon = () => <Bot className="h-4 w-4 text-green-500" />;
+const BotIcon = () => <AlertCircle className="h-4 w-4 text-green-500" />;
 const UpdateIcon = () => <Clock className="h-4 w-4 text-orange-500" />;
-const Bot = ({ className }) => <AlertCircle className={className} />;
-
-// Mock notifications data
-const mockNotifications = [
-  {
-    id: 'notif-001',
-    type: 'report_ready',
-    title: 'New Inspection Report Ready',
-    message: 'Your report for "Downtown Sewer Inspection" is now available.',
-    projectId: 'proj-001',
-    read: false,
-    createdAt: '2025-11-10T14:30:00Z',
-  },
-  {
-    id: 'notif-002',
-    type: 'ai_complete',
-    title: 'AI Processing Complete',
-    message: 'AI analysis finished for "Industrial Zone Pipeline Scan".',
-    projectId: 'proj-002',
-    read: true,
-    createdAt: '2025-11-08T09:15:00Z',
-  },
-  {
-    id: 'notif-003',
-    type: 'status_update',
-    title: 'Project Status Updated',
-    message: '"Residential Drain Survey" moved to QC Review.',
-    projectId: 'proj-003',
-    read: false,
-    createdAt: '2025-11-12T11:20:00Z',
-  },
-  {
-    id: 'notif-004',
-    type: 'system',
-    title: 'Scheduled Maintenance',
-    message: 'System maintenance planned for Nov 15, 2–4 AM EET.',
-    projectId: null,
-    read: false,
-    createdAt: '2025-11-07T16:00:00Z',
-  },
-];
-
-// Mock user notification preferences
-const mockPreferences = {
-  email: true,
-  push: true,
-  reportReady: true,
-  aiComplete: true,
-  statusUpdate: false,
-};
 
 const NotificationPageCustomer = () => {
+  const { userId } = useUser();
+  const { showAlert } = useAlert();
+  
   const [notifications, setNotifications] = useState([]);
-  const [preferences, setPreferences] = useState(mockPreferences);
+  const [preferences, setPreferences] = useState({
+    email: true,
+    push: true,
+    reportReady: true,
+    aiComplete: true,
+    statusUpdate: true,
+    qcReview: true,
+    defectFound: true,
+  });
   const [loading, setLoading] = useState(true);
+  const [unreadCount, setUnreadCount] = useState(0);
 
-  // Simulate loading
+  // Fetch notifications
   useEffect(() => {
-    const loadNotifications = async () => {
-      await new Promise((r) => setTimeout(r, 400));
-      setNotifications(mockNotifications);
-      setLoading(false);
+    const fetchNotifications = async () => {
+      if (!userId) return;
+
+      try {
+        setLoading(true);
+        const { data, ok, error } = await api(
+          `/api/customer/notifications/${userId}?limit=50`,
+          'GET'
+        );
+
+        if (ok && data) {
+          setNotifications(data.data || []);
+          setUnreadCount(data.unreadCount || 0);
+        } else {
+          console.error('Error fetching notifications:', error);
+        }
+      } catch (err) {
+        console.error('Error:', err);
+      } finally {
+        setLoading(false);
+      }
     };
-    loadNotifications();
-  }, []);
 
-  const markAsRead = (id) => {
-    setNotifications((prev) =>
-      prev.map((n) => (n.id === id ? { ...n, read: true } : n))
-    );
+    fetchNotifications();
+  }, [userId]);
+
+  // Fetch preferences
+  useEffect(() => {
+    const fetchPreferences = async () => {
+      if (!userId) return;
+
+      try {
+        const { data, ok } = await api(
+          `/api/customer/notification-preferences/${userId}`,
+          'GET'
+        );
+
+        if (ok && data?.data) {
+          setPreferences(data.data);
+        }
+      } catch (err) {
+        console.error('Error fetching preferences:', err);
+      }
+    };
+
+    fetchPreferences();
+  }, [userId]);
+
+  const markAsRead = async (notificationId) => {
+    try {
+      const { ok } = await api(
+        `/api/customer/notifications/${notificationId}/read`,
+        'PUT',
+        { userId }
+      );
+
+      if (ok) {
+        setNotifications((prev) =>
+          prev.map((n) => (n._id === notificationId ? { ...n, read: true } : n))
+        );
+        setUnreadCount((prev) => Math.max(0, prev - 1));
+      }
+    } catch (err) {
+      console.error('Error marking as read:', err);
+    }
   };
 
-  const markAllAsRead = () => {
-    setNotifications((prev) => prev.map((n) => ({ ...n, read: true })));
+  const markAllAsRead = async () => {
+    try {
+      const { ok } = await api(
+        `/api/customer/notifications/${userId}/read-all`,
+        'PUT'
+      );
+
+      if (ok) {
+        setNotifications((prev) => prev.map((n) => ({ ...n, read: true })));
+        setUnreadCount(0);
+        showAlert('All notifications marked as read', 'success');
+      }
+    } catch (err) {
+      console.error('Error marking all as read:', err);
+      showAlert('Failed to mark notifications as read', 'error');
+    }
   };
 
-  const togglePreference = (key) => {
-    setPreferences((prev) => ({
-      ...prev,
-      [key]: !prev[key],
-    }));
+  const deleteNotification = async (notificationId) => {
+    try {
+      const { ok } = await api(
+        `/api/customer/notifications/${notificationId}`,
+        'DELETE',
+        { userId }
+      );
+
+      if (ok) {
+        setNotifications((prev) => prev.filter((n) => n._id !== notificationId));
+        showAlert('Notification deleted', 'success');
+      }
+    } catch (err) {
+      console.error('Error deleting notification:', err);
+      showAlert('Failed to delete notification', 'error');
+    }
+  };
+
+  const togglePreference = async (key) => {
+    const newPreferences = {
+      ...preferences,
+      [key]: !preferences[key],
+    };
+
+    setPreferences(newPreferences);
+
+    try {
+      const { ok } = await api(
+        `/api/customer/notification-preferences/${userId}`,
+        'PUT',
+        newPreferences
+      );
+
+      if (ok) {
+        showAlert('Preferences updated', 'success');
+      }
+    } catch (err) {
+      console.error('Error updating preferences:', err);
+      showAlert('Failed to update preferences', 'error');
+      // Revert on error
+      setPreferences(preferences);
+    }
   };
 
   const getNotificationIcon = (type) => {
@@ -111,8 +180,10 @@ const NotificationPageCustomer = () => {
       case 'report_ready':
         return <FileTextIcon />;
       case 'ai_complete':
+      case 'defect_found':
         return <BotIcon />;
       case 'status_update':
+      case 'qc_review':
         return <UpdateIcon />;
       default:
         return <Info className="h-4 w-4" />;
@@ -126,6 +197,7 @@ const NotificationPageCustomer = () => {
 
     if (diffInHours < 1) return 'Just now';
     if (diffInHours < 24) return `${diffInHours}h ago`;
+    if (diffInHours < 48) return 'Yesterday';
     return date.toLocaleDateString();
   };
 
@@ -134,10 +206,17 @@ const NotificationPageCustomer = () => {
       {/* Header */}
       <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
         <div>
-          <h1 className="text-3xl font-bold">Notifications</h1>
+          <h1 className="text-3xl font-bold flex items-center gap-2">
+            Notifications
+            {unreadCount > 0 && (
+              <Badge variant="destructive" className="ml-2">
+                {unreadCount}
+              </Badge>
+            )}
+          </h1>
           <p className="text-muted-foreground">Manage alerts and view recent updates</p>
         </div>
-        <Button variant="outline" size="sm" onClick={markAllAsRead}>
+        <Button variant="outline" size="sm" onClick={markAllAsRead} disabled={unreadCount === 0}>
           <Check className="h-4 w-4 mr-2" />
           Mark All as Read
         </Button>
@@ -155,26 +234,18 @@ const NotificationPageCustomer = () => {
             </CardHeader>
             <CardContent className="space-y-4">
               {loading ? (
-                Array.from({ length: 3 }).map((_, i) => (
-                  <div key={i} className="flex items-start gap-3 p-3 rounded-md border">
-                    <div className="mt-1">
-                      <div className="h-2 w-2 rounded-full bg-muted" />
-                    </div>
-                    <div className="flex-1 space-y-2">
-                      <div className="h-4 w-1/3 bg-muted rounded" />
-                      <div className="h-3 w-2/3 bg-muted rounded" />
-                      <div className="h-2 w-16 bg-muted rounded" />
-                    </div>
-                  </div>
-                ))
+                <div className="flex items-center justify-center py-8">
+                  <Loader2 className="h-6 w-6 animate-spin text-primary" />
+                  <span className="ml-3 text-muted-foreground">Loading notifications...</span>
+                </div>
               ) : notifications.length === 0 ? (
-                <p className="text-muted-foreground text-center py-6">No notifications</p>
+                <p className="text-muted-foreground text-center py-8">No notifications yet</p>
               ) : (
                 notifications.map((notification) => (
                   <div
-                    key={notification.id}
-                    className={`flex items-start gap-3 p-3 rounded-md border ${
-                      !notification.read ? 'bg-accent/30 border-primary/20' : 'border-transparent'
+                    key={notification._id}
+                    className={`flex items-start gap-3 p-3 rounded-md border transition-colors ${
+                      !notification.read ? 'bg-accent/30 border-primary/20' : 'border-transparent hover:bg-accent/10'
                     }`}
                   >
                     <div className="mt-1">
@@ -187,16 +258,26 @@ const NotificationPageCustomer = () => {
                         <span className="text-xs text-muted-foreground">
                           {formatDate(notification.createdAt)}
                         </span>
-                        {!notification.read && (
+                        <div className="flex items-center gap-2">
+                          {!notification.read && (
+                            <Button
+                              variant="ghost"
+                              size="sm"
+                              className="h-auto p-1"
+                              onClick={() => markAsRead(notification._id)}
+                            >
+                              <Check className="h-3 w-3" />
+                            </Button>
+                          )}
                           <Button
                             variant="ghost"
                             size="sm"
-                            className="h-auto p-1"
-                            onClick={() => markAsRead(notification.id)}
+                            className="h-auto p-1 text-destructive hover:text-destructive"
+                            onClick={() => deleteNotification(notification._id)}
                           >
-                            <Check className="h-3 w-3" />
+                            <Trash2 className="h-3 w-3" />
                           </Button>
-                        )}
+                        </div>
                       </div>
                     </div>
                   </div>
@@ -279,6 +360,28 @@ const NotificationPageCustomer = () => {
                   onCheckedChange={() => togglePreference('statusUpdate')}
                 />
               </div>
+
+              <div className="flex items-center justify-between">
+                <Label htmlFor="qc-review" className="text-sm">
+                  QC Review Updates
+                </Label>
+                <Switch
+                  id="qc-review"
+                  checked={preferences.qcReview}
+                  onCheckedChange={() => togglePreference('qcReview')}
+                />
+              </div>
+
+              <div className="flex items-center justify-between">
+                <Label htmlFor="defect-found" className="text-sm">
+                  Defect Alerts
+                </Label>
+                <Switch
+                  id="defect-found"
+                  checked={preferences.defectFound}
+                  onCheckedChange={() => togglePreference('defectFound')}
+                />
+              </div>
             </CardContent>
           </Card>
         </div>
@@ -286,7 +389,5 @@ const NotificationPageCustomer = () => {
     </div>
   );
 };
-
-
 
 export default NotificationPageCustomer;
