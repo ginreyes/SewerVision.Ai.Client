@@ -186,7 +186,7 @@ const SupportPageCustomer = () => {
                     />
                   </div>
 
-                  <Button type="submit" disabled={isSubmitting} className="w-full md:w-auto">
+                  <Button type="submit" disabled={isSubmitting} className="w-full md:w-auto" variant="rose">
                     {isSubmitting ? 'Sending...' : 'Send Message'}
                   </Button>
                 </form>

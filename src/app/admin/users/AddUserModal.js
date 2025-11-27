@@ -24,6 +24,7 @@ import {
 import { Card, CardContent } from "@/components/ui/card"
 import { Badge } from "@/components/ui/badge"
 import { Separator } from "@/components/ui/separator"
+import { Textarea } from "@/components/ui/textarea"
 
 const AddUserModal = ({fetchUser}) => {
   const [open, setOpen] = useState(false)
@@ -34,12 +35,21 @@ const AddUserModal = ({fetchUser}) => {
     first_name: "",
     last_name: "",
     role: "",
-    // Role-specific fields
+    // QC Technician & Operator fields
     certification: "",
     license_number: "",
     experience_years: "",
     shift_preference: "",
     equipment_experience: "",
+    // Customer fields
+    company_name: "",
+    industry: "",
+    phone_number: "",
+    address: "",
+    account_type: "standard",
+    company_size: "",
+    tax_id: "",
+    billing_contact: "",
   })
   const { showAlert } = useAlert()
 
@@ -52,28 +62,21 @@ const AddUserModal = ({fetchUser}) => {
       icon: '⚡'
     },
     { 
-      value: 'user', 
-      label: 'User', 
-      description: 'Standard user with basic access',
-      color: 'bg-blue-100 text-blue-800 border-blue-200',
-      icon: '👤'
-    },
-    { 
       value: 'customer', 
       label: 'Customer', 
-      description: 'Read-only access to reports',
+      description: 'Client account with project access',
       color: 'bg-green-100 text-green-800 border-green-200',
-      icon: '👁️'
+      icon: '🏢'
     },
     { 
-      value: 'Qc-Technician', 
+      value: 'qc-technician', 
       label: 'QC Technician', 
       description: 'Quality control and technical operations',
       color: 'bg-purple-100 text-purple-800 border-purple-200',
       icon: '🔧'
     },
     { 
-      value: 'Operator', 
+      value: 'operator', 
       label: 'Operator', 
       description: 'Equipment operation and maintenance',
       color: 'bg-orange-100 text-orange-800 border-orange-200',
@@ -90,12 +93,20 @@ const AddUserModal = ({fetchUser}) => {
     setFormData((prev) => ({ 
       ...prev, 
       role: role,
-      // Reset role-specific fields when role changes
+      // Reset all role-specific fields
       certification: "",
       license_number: "",
       experience_years: "",
       shift_preference: "",
       equipment_experience: "",
+      company_name: "",
+      industry: "",
+      phone_number: "",
+      address: "",
+      account_type: "standard",
+      company_size: "",
+      tax_id: "",
+      billing_contact: "",
     }))
     setStep(2)
   }
@@ -120,20 +131,29 @@ const AddUserModal = ({fetchUser}) => {
         role: formData.role,
       }
 
-      // Add role-specific fields only if they exist and are not empty
-      if (formData.role === 'Qc-Technician') {
-        if (formData.certification) payload.certification = formData.certification
-        if (formData.license_number) payload.license_number = formData.license_number
-        if (formData.experience_years) payload.experience_years = formData.experience_years
-      } else if (formData.role === 'Operator') {
-        if (formData.certification) payload.certification = formData.certification
-        if (formData.shift_preference) payload.shift_preference = formData.shift_preference
-        if (formData.equipment_experience) payload.equipment_experience = formData.equipment_experience
+      // Add role-specific fields based on role
+      if (formData.role === 'qc-technician') {
+        payload.certification = formData.certification
+        payload.license_number = formData.license_number
+        payload.experience_years = formData.experience_years
+      } else if (formData.role === 'operator') {
+        payload.certification = formData.certification
+        payload.shift_preference = formData.shift_preference
+        payload.equipment_experience = formData.equipment_experience
+      } else if (formData.role === 'customer') {
+        payload.company_name = formData.company_name
+        payload.industry = formData.industry
+        payload.phone_number = formData.phone_number
+        payload.address = formData.address
+        payload.account_type = formData.account_type
+        payload.company_size = formData.company_size
+        payload.tax_id = formData.tax_id
+        payload.billing_contact = formData.billing_contact
       }
 
       await api("/api/users/create-user", "POST", payload)
 
-      // Reset form and close modal
+      // Reset form
       setFormData({
         username: "",
         email: "",
@@ -145,10 +165,18 @@ const AddUserModal = ({fetchUser}) => {
         experience_years: "",
         shift_preference: "",
         equipment_experience: "",
+        company_name: "",
+        industry: "",
+        phone_number: "",
+        address: "",
+        account_type: "standard",
+        company_size: "",
+        tax_id: "",
+        billing_contact: "",
       })
       setStep(1)
       setOpen(false)
-      showAlert("User created successfully! Account is pending activation.", "success")
+      showAlert("User created successfully! Account credentials sent via email.", "success")
       fetchUser()
     } catch (error) {
       showAlert(`User creation failed: ${error.message}`, "error")
@@ -167,6 +195,14 @@ const AddUserModal = ({fetchUser}) => {
       experience_years: "",
       shift_preference: "",
       equipment_experience: "",
+      company_name: "",
+      industry: "",
+      phone_number: "",
+      address: "",
+      account_type: "standard",
+      company_size: "",
+      tax_id: "",
+      billing_contact: "",
     })
     setStep(1)
     setOpen(false)
@@ -176,7 +212,7 @@ const AddUserModal = ({fetchUser}) => {
 
   const getRoleSpecificFields = () => {
     switch (formData.role) {
-      case "Qc-Technician":
+      case "qc-technician":
         return (
           <Card className="border-purple-200">
             <CardContent className="p-4">
@@ -184,7 +220,7 @@ const AddUserModal = ({fetchUser}) => {
                 <span className="text-2xl">🔧</span>
                 <div>
                   <h4 className="font-semibold text-purple-700">QC Technician Details</h4>
-                  <p className="text-sm text-gray-600">Please provide certification information</p>
+                  <p className="text-sm text-gray-600">Certification and experience information</p>
                 </div>
               </div>
               <div className="space-y-4">
@@ -195,7 +231,7 @@ const AddUserModal = ({fetchUser}) => {
                     value={formData.certification}
                     onChange={handleChange}
                     required
-                    placeholder="Enter certification name"
+                    placeholder="e.g., ACI Level II, ASNT NDT"
                     className="mt-1"
                   />
                 </div>
@@ -206,7 +242,7 @@ const AddUserModal = ({fetchUser}) => {
                     value={formData.license_number}
                     onChange={handleChange}
                     required
-                    placeholder="Enter license number"
+                    placeholder="Enter license/certification number"
                     className="mt-1"
                   />
                 </div>
@@ -219,7 +255,7 @@ const AddUserModal = ({fetchUser}) => {
                     value={formData.experience_years}
                     onChange={handleChange}
                     required
-                    placeholder="Enter years of experience"
+                    placeholder="Total years of QC experience"
                     className="mt-1"
                   />
                 </div>
@@ -228,7 +264,7 @@ const AddUserModal = ({fetchUser}) => {
           </Card>
         )
 
-      case "Operator":
+      case "operator":
         return (
           <Card className="border-orange-200">
             <CardContent className="p-4">
@@ -236,7 +272,7 @@ const AddUserModal = ({fetchUser}) => {
                 <span className="text-2xl">⚙️</span>
                 <div>
                   <h4 className="font-semibold text-orange-700">Operator Details</h4>
-                  <p className="text-sm text-gray-600">Please provide operational information</p>
+                  <p className="text-sm text-gray-600">Operational qualifications and preferences</p>
                 </div>
               </div>
               <div className="space-y-4">
@@ -247,7 +283,7 @@ const AddUserModal = ({fetchUser}) => {
                     value={formData.certification}
                     onChange={handleChange}
                     required
-                    placeholder="Enter certification name"
+                    placeholder="e.g., Heavy Equipment Operator License"
                     className="mt-1"
                   />
                 </div>
@@ -256,31 +292,172 @@ const AddUserModal = ({fetchUser}) => {
                   <Select 
                     value={formData.shift_preference} 
                     onValueChange={(value) => handleSelectChange('shift_preference', value)}
+                    required
                   >
                     <SelectTrigger className="w-full mt-1">
                       <SelectValue placeholder="Select preferred shift" />
                     </SelectTrigger>
                     <SelectContent>
-                      <SelectItem value="day">🌅 Day Shift</SelectItem>
-                      <SelectItem value="night">🌙 Night Shift</SelectItem>
+                      <SelectItem value="day">🌅 Day Shift (6 AM - 2 PM)</SelectItem>
+                      <SelectItem value="night">🌙 Night Shift (10 PM - 6 AM)</SelectItem>
                       <SelectItem value="rotating">🔄 Rotating Shift</SelectItem>
                     </SelectContent>
                   </Select>
                 </div>
                 <div>
                   <Label htmlFor="equipment_experience">Equipment Experience *</Label>
-                  <Input
+                  <Textarea
                     name="equipment_experience"
                     value={formData.equipment_experience}
                     onChange={handleChange}
                     required
-                    placeholder="Describe equipment experience"
+                    placeholder="List equipment types and years of experience (e.g., Excavators - 5 years, Cranes - 3 years)"
                     className="mt-1"
+                    rows={3}
                   />
                 </div>
               </div>
             </CardContent>
           </Card>
+        )
+
+      case "customer":
+        return (
+          <div className="space-y-4">
+            {/* Company Information */}
+            <Card className="border-green-200">
+              <CardContent className="p-4">
+                <div className="flex items-center gap-2 mb-4">
+                  <span className="text-2xl">🏢</span>
+                  <div>
+                    <h4 className="font-semibold text-green-700">Company Information</h4>
+                    <p className="text-sm text-gray-600">Business details and contact information</p>
+                  </div>
+                </div>
+                <div className="space-y-4">
+                  <div>
+                    <Label htmlFor="company_name">Company Name *</Label>
+                    <Input
+                      name="company_name"
+                      value={formData.company_name}
+                      onChange={handleChange}
+                      required
+                      placeholder="Enter company/organization name"
+                      className="mt-1"
+                    />
+                  </div>
+                  <div className="grid grid-cols-2 gap-4">
+                    <div>
+                      <Label htmlFor="industry">Industry *</Label>
+                      <Input
+                        name="industry"
+                        value={formData.industry}
+                        onChange={handleChange}
+                        required
+                        placeholder="e.g., Construction, Infrastructure"
+                        className="mt-1"
+                      />
+                    </div>
+                    <div>
+                      <Label htmlFor="company_size">Company Size</Label>
+                      <Select 
+                        value={formData.company_size} 
+                        onValueChange={(value) => handleSelectChange('company_size', value)}
+                      >
+                        <SelectTrigger className="mt-1">
+                          <SelectValue placeholder="Select size" />
+                        </SelectTrigger>
+                        <SelectContent>
+                          <SelectItem value="1-10">1-10 employees</SelectItem>
+                          <SelectItem value="11-50">11-50 employees</SelectItem>
+                          <SelectItem value="51-200">51-200 employees</SelectItem>
+                          <SelectItem value="201-500">201-500 employees</SelectItem>
+                          <SelectItem value="500+">500+ employees</SelectItem>
+                        </SelectContent>
+                      </Select>
+                    </div>
+                  </div>
+                  <div className="grid grid-cols-2 gap-4">
+                    <div>
+                      <Label htmlFor="phone_number">Phone Number *</Label>
+                      <Input
+                        name="phone_number"
+                        value={formData.phone_number}
+                        onChange={handleChange}
+                        required
+                        placeholder="+961 1 234 567"
+                        className="mt-1"
+                      />
+                    </div>
+                    <div>
+                      <Label htmlFor="tax_id">Tax ID / Registration No.</Label>
+                      <Input
+                        name="tax_id"
+                        value={formData.tax_id}
+                        onChange={handleChange}
+                        placeholder="Company tax ID"
+                        className="mt-1"
+                      />
+                    </div>
+                  </div>
+                  <div>
+                    <Label htmlFor="address">Address *</Label>
+                    <Textarea
+                      name="address"
+                      value={formData.address}
+                      onChange={handleChange}
+                      required
+                      placeholder="Enter complete company address"
+                      className="mt-1"
+                      rows={2}
+                    />
+                  </div>
+                </div>
+              </CardContent>
+            </Card>
+
+            {/* Account Settings */}
+            <Card className="border-blue-200">
+              <CardContent className="p-4">
+                <div className="flex items-center gap-2 mb-4">
+                  <span className="text-2xl">👑</span>
+                  <div>
+                    <h4 className="font-semibold text-blue-700">Account Settings</h4>
+                    <p className="text-sm text-gray-600">Account type and billing preferences</p>
+                  </div>
+                </div>
+                <div className="space-y-4">
+                  <div>
+                    <Label htmlFor="account_type">Account Type</Label>
+                    <Select 
+                      value={formData.account_type} 
+                      onValueChange={(value) => handleSelectChange('account_type', value)}
+                    >
+                      <SelectTrigger className="mt-1">
+                        <SelectValue />
+                      </SelectTrigger>
+                      <SelectContent>
+                        <SelectItem value="trial">🌟 Trial (30 days)</SelectItem>
+                        <SelectItem value="standard">💼 Standard</SelectItem>
+                        <SelectItem value="premium">👑 Premium</SelectItem>
+                      </SelectContent>
+                    </Select>
+                  </div>
+                  <div>
+                    <Label htmlFor="billing_contact">Billing Contact Email</Label>
+                    <Input
+                      name="billing_contact"
+                      type="email"
+                      value={formData.billing_contact}
+                      onChange={handleChange}
+                      placeholder="Leave empty to use account email"
+                      className="mt-1"
+                    />
+                  </div>
+                </div>
+              </CardContent>
+            </Card>
+          </div>
         )
 
       default:
@@ -295,7 +472,7 @@ const AddUserModal = ({fetchUser}) => {
           <span>+</span> Add New User
         </Button>
       </DialogTrigger>
-      <DialogContent className="sm:max-w-[600px] max-h-[90vh] overflow-y-auto">
+      <DialogContent className="sm:max-w-[650px] max-h-[90vh] overflow-y-auto">
         <DialogHeader>
           <DialogTitle className="text-xl flex items-center gap-2">
             {step === 1 ? (
@@ -402,7 +579,7 @@ const AddUserModal = ({fetchUser}) => {
                     value={formData.username}
                     onChange={handleChange}
                     required
-                    placeholder="Enter username"
+                    placeholder="Unique username"
                     className="mt-1"
                   />
                 </div>
@@ -414,7 +591,7 @@ const AddUserModal = ({fetchUser}) => {
                     value={formData.email}
                     onChange={handleChange}
                     required
-                    placeholder="Enter email address"
+                    placeholder="user@company.com"
                     className="mt-1"
                   />
                 </div>

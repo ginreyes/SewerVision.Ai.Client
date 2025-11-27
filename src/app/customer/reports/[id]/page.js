@@ -16,55 +16,9 @@ import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { Skeleton } from '@/components/ui/skeleton';
+import { api } from '@/lib/helper';
 
-const fetchReportById = async (id) => {
-  await new Promise((resolve) => setTimeout(resolve, 600));
 
-  const mockReport = {
-    _id: id,
-    name: id === 'proj-001' ? 'Downtown Sewer Inspection' : 'Airport Perimeter Line Check',
-    location: id === 'proj-001' ? 'Beirut, Lebanon' : 'Beirut Airport, Lebanon',
-    client: id === 'proj-001' ? 'Beirut Municipality' : 'Lebanese Civil Aviation',
-    status: 'customer-notified',
-    created_at: '2025-10-15T10:00:00Z',
-    totalLength: id === 'proj-001' ? '1.2 km' : '3.4 km',
-    pipelineMaterial: id === 'proj-001' ? 'Concrete' : 'PVC',
-    pipelineShape: id === 'proj-001' ? 'Circular' : 'Oval',
-    workOrder: id === 'proj-001' ? 'WO-8842' : 'WO-8721',
-    confidence: id === 'proj-001' ? 0.94 : 0.89,
-    assignedOperator: {
-      name: 'Ali Khoury',
-      email: 'ali@fieldops.com',
-    },
-    qcTechnician: {
-      name: 'Sarah Nader',
-      email: 'sarah@qc.com',
-    },
-    aiDetections: {
-      fractures: id === 'proj-001' ? 3 : 2,
-      cracks: id === 'proj-001' ? 5 : 6,
-      broken_pipes: id === 'proj-001' ? 0 : 1,
-      roots: id === 'proj-001' ? 0 : 3,
-      total: id === 'proj-001' ? 8 : 12,
-    },
-    metadata: {
-      recordingDate: id === 'proj-001' ? '2025-10-10' : '2025-09-25',
-      upstreamMH: id === 'proj-001' ? 'MH-112' : 'MH-A7',
-      downstreamMH: id === 'proj-001' ? 'MH-118' : 'MH-A15',
-      shape: id === 'proj-001' ? 'Circular' : 'Oval',
-      material: id === 'proj-001' ? 'Concrete' : 'PVC',
-      remarks: id === 'proj-001'
-        ? 'Minor surface cracks observed.'
-        : 'Root intrusion in segment A10–A12.',
-    },
-  };
-
-  if (!['proj-001', 'proj-004'].includes(id)) {
-    throw new Error('Report not found');
-  }
-
-  return mockReport;
-};
 
 const getSeverityConfig = (count) => {
   if (count > 20) return { label: 'High', variant: 'destructive' };
@@ -86,7 +40,8 @@ export default function ReportDetailPage({params}) {
 
     const loadReport = async () => {
       try {
-        const data = await fetchReportById(id);
+        const response = await api(`/api/customer/get-report/${id}`, 'GET');
+        const data = response.data.data;
         setReport(data);
         setError(null);
       } catch (err) {
@@ -270,7 +225,6 @@ export default function ReportDetailPage({params}) {
   );
 }
 
-// Helper components for cleaner layout
 function InfoRow({ label, value, icon }) {
   return (
     <div className="flex items-start gap-2">

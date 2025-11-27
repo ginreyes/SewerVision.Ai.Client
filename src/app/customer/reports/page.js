@@ -16,70 +16,8 @@ import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { Skeleton } from '@/components/ui/skeleton';
-
-// Mock API – replace with real fetch in production
-const fetchReports = async () => {
-  // Simulate API delay
-  await new Promise((resolve) => setTimeout(resolve, 500));
-  return [
-    {
-      _id: 'proj-001',
-      name: 'Downtown Sewer Inspection',
-      location: 'Beirut, Lebanon',
-      client: 'Beirut Municipality',
-      status: 'customer-notified',
-      created_at: '2025-10-15T10:00:00Z',
-      totalLength: '1.2 km',
-      pipelineMaterial: 'Concrete',
-      pipelineShape: 'Circular',
-      workOrder: 'WO-8842',
-      confidence: 0.94,
-      aiDetections: {
-        fractures: 3,
-        cracks: 5,
-        broken_pipes: 0,
-        roots: 0,
-        total: 8,
-      },
-      metadata: {
-        recordingDate: '2025-10-10',
-        upstreamMH: 'MH-112',
-        downstreamMH: 'MH-118',
-        shape: 'Circular',
-        material: 'Concrete',
-        remarks: 'Minor surface cracks observed.',
-      },
-    },
-    {
-      _id: 'proj-004',
-      name: 'Airport Perimeter Line Check',
-      location: 'Beirut Airport, Lebanon',
-      client: 'Lebanese Civil Aviation',
-      status: 'completed',
-      created_at: '2025-09-28T16:45:00Z',
-      totalLength: '3.4 km',
-      pipelineMaterial: 'PVC',
-      pipelineShape: 'Oval',
-      workOrder: 'WO-8721',
-      confidence: 0.89,
-      aiDetections: {
-        fractures: 2,
-        cracks: 6,
-        broken_pipes: 1,
-        roots: 3,
-        total: 12,
-      },
-      metadata: {
-        recordingDate: '2025-09-25',
-        upstreamMH: 'MH-A7',
-        downstreamMH: 'MH-A15',
-        shape: 'Oval',
-        material: 'PVC',
-        remarks: 'Root intrusion in segment A10–A12.',
-      },
-    },
-  ];
-};
+import { api } from '@/lib/helper';
+import { useUser } from '@/components/providers/UserContext';
 
 const getSeverityConfig = (count) => {
   if (count > 20) return { label: 'High', variant: 'destructive' };
@@ -96,15 +34,22 @@ export default function MyReportsPage() {
   const [reports, setReports] = useState([]);
   const [loading, setLoading] = useState(true);
   const router = useRouter();
+  const {userId} = useUser();
+
 
   useEffect(() => {
     const loadReports = async () => {
       try {
-        const data = await fetchReports();
+        const response = await api(`/api/customer/get-all-reports/${userId}`, 'GET');
+
+        const data = response.data.data
+        
         setReports(data);
-      } catch (error) {
+      } 
+      catch (error) {
         console.error('Failed to load reports:', error);
-      } finally {
+      } 
+      finally {
         setLoading(false);
       }
     };
@@ -116,7 +61,6 @@ export default function MyReportsPage() {
   };
 
   const handleDownload = (id) => {
-    // In real app: call /api/reports/${id}/download or generate PDF
     alert(`Downloading report for project ${id}`);
   };
 
@@ -163,8 +107,23 @@ export default function MyReportsPage() {
       ) : reports.length === 0 ? (
         <Card>
           <CardContent className="py-12 text-center">
-            <FileText className="mx-auto h-10 w-10 text-muted-foreground" />
-            <p className="mt-3 text-muted-foreground">No reports available yet</p>
+            <FileText className="mx-auto h-12 w-12 text-muted-foreground mb-4" />
+            <h3 className="text-lg font-semibold mb-2">No Reports Available Yet</h3>
+            <p className="text-muted-foreground mb-6 max-w-md mx-auto">
+              Your inspection reports will appear here once they have been finalized and delivered. 
+              Reports are generated after the inspection is completed and quality control is finished.
+            </p>
+            <div className="flex flex-col items-center gap-2">
+              <Button 
+                variant="outline" 
+                onClick={() => router.push('/customer/projects')}
+              >
+                View My Projects
+              </Button>
+              <p className="text-sm text-muted-foreground mt-2">
+                Check your projects to see their current status
+              </p>
+            </div>
           </CardContent>
         </Card>
       ) : (

@@ -92,7 +92,6 @@ const Register = () => {
     setConfirmPasswordVisible((prev) => !prev);
   };
 
-  // Update form schema based on selected role
   useEffect(() => {
     switch (selectedRole) {
       case "qc-technician":
