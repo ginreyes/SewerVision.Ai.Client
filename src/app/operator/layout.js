@@ -5,7 +5,7 @@ import Navbar from "@/components/ui/navbar";
 import { api } from "@/lib/helper";
 import { useEffect, useState } from "react";
 
-export default function userLayout({ children }) {
+export default function OperatorLayout({ children }) {
   const [openSidebar, setOpenSidebar] = useState(false);
   const [username, setUsername] = useState(null);
   const [role, setRole] = useState(null);
