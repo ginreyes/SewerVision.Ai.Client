@@ -257,7 +257,7 @@ const QualityControlPage = () => {
 
             {/* Today's Progress */}
             <div className="bg-gradient-to-r from-purple-100 to-blue-100 rounded-2xl p-4 mb-6">
-              <h3 className="font-bold text-gray-900 mb-3">Today's Progress</h3>
+              <h3 className="font-bold text-gray-900 mb-3">Today Progress</h3>
               <div className="grid grid-cols-2 gap-4 text-center">
                 <div>
                   <div className="text-2xl font-bold text-blue-600">

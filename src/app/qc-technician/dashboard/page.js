@@ -6,22 +6,13 @@ import {
   CheckCircle,
   XCircle,
   AlertTriangle,
-  Play,
-  Pause,
-  SkipBack,
-  SkipForward,
   Video,
-  FileText,
   Clock,
-  User,
-  Filter,
   Search,
   ChevronDown,
   ChevronRight,
-  TrendingUp,
-  Activity,
-  Zap,
-  RefreshCw
+  RefreshCw,
+  Image
 } from 'lucide-react'
 
 import Chart from 'chart.js/auto'

@@ -2,29 +2,12 @@ import { clsx } from "clsx";
 import { twMerge } from "tailwind-merge"
 
 import { 
-  Upload, 
-  Download, 
-  Trash2, 
-  Search, 
-
-  Brain, 
-  AlertTriangle, 
-  CheckCircle, 
-
+  File, 
+  Database, 
+  Image,
   FileVideo,
-
   Archive,
-  HardDrive,
-  Server,
-  Activity,
-  RefreshCw,
 
-  CloudUpload,
-  FolderOpen,
-  ShieldCheck,
-  TrendingUp,
-  AlertCircle,
-  Info
 } from 'lucide-react'
 
 export function cn(...inputs) {

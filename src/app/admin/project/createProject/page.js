@@ -407,7 +407,7 @@ export default function CreateProjectPage() {
           <Building2 className="h-8 w-8 text-blue-500" />
         </div>
         <h3 className="text-xl font-bold text-gray-900 mb-2">Project Details</h3>
-        <p className="text-gray-600">Let's start with the basic project information</p>
+        <p className="text-gray-600">Lets start with the basic project information</p>
       </div>
       
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">

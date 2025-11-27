@@ -543,7 +543,7 @@ const QualityReportPage = () => {
           <DialogHeader>
             <DialogTitle>Share Report</DialogTitle>
             <DialogDescription>
-              Share "{selectedReport?.projectName}" with team members
+              Share &quot;{selectedReport?.projectName}&quot; with team members
             </DialogDescription>
           </DialogHeader>
           <div className="space-y-4">
