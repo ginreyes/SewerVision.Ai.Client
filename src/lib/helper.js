@@ -1,4 +1,4 @@
-const API = process.env.NEXT_PUBLIC_BACKEND_URL;
+const API = process.env.NEXT_PUBLIC_BACKEND_URL || "http://localhost:5000";
 
 export const api = async (path, method = "GET", body = null, headers = {}) => {
   const isFormData = body instanceof FormData;
