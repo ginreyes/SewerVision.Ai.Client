@@ -187,7 +187,6 @@ const AddObservation = (props) => {
   
       if (!ok) {
         console.error('Failed to save observation:', data);
-        // Optionally show toast or alert
       } else {
         console.log('Observation saved:', data);
       }

@@ -1,74 +1,174 @@
-import React, { useState } from 'react';
-import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
+"use client";
+
+import React, { useState, useRef } from 'react';
+import { useRouter } from 'next/navigation';
+import { useNotifications } from '@/components/providers/NotificationProvider';
 import { Button } from '@/components/ui/button';
 import { ScrollArea } from '@/components/ui/scroll-area';
-import { FiCheck, FiTrash2, FiSettings, FiAlertCircle, FiCheckCircle, FiInfo, FiXCircle } from 'react-icons/fi';
+import {
+  Popover,
+  PopoverContent,
+  PopoverTrigger,
+} from '@/components/ui/popover';
+import {
+  Bell,
+  Check,
+  CheckCheck,
+  Trash2,
+  Settings,
+  CheckCircle,
+  Info,
+  XCircle,
+  FileText,
+  Cpu,
+  RefreshCcw,
+  Shield,
+  AlertTriangle,
+  Loader2,
+} from 'lucide-react';
+import { formatDistanceToNow } from 'date-fns';
 
-// Notification types with their icons and colors
-const notificationTypes = {
-  info: { icon: FiInfo, color: 'text-blue-500', bgColor: 'bg-blue-50' },
-  success: { icon: FiCheckCircle, color: 'text-green-500', bgColor: 'bg-green-50' },
-  warning: { icon: FiAlertCircle, color: 'text-yellow-500', bgColor: 'bg-yellow-50' },
-  error: { icon: FiXCircle, color: 'text-red-500', bgColor: 'bg-red-50' },
+// Notification type configurations
+const notificationTypeConfig = {
+  report_ready: {
+    icon: FileText,
+    color: 'text-emerald-600',
+    bgColor: 'bg-emerald-50',
+    borderColor: 'border-emerald-200',
+  },
+  ai_complete: {
+    icon: Cpu,
+    color: 'text-violet-600',
+    bgColor: 'bg-violet-50',
+    borderColor: 'border-violet-200',
+  },
+  status_update: {
+    icon: RefreshCcw,
+    color: 'text-blue-600',
+    bgColor: 'bg-blue-50',
+    borderColor: 'border-blue-200',
+  },
+  system: {
+    icon: Info,
+    color: 'text-slate-600',
+    bgColor: 'bg-slate-50',
+    borderColor: 'border-slate-200',
+  },
+  qc_review: {
+    icon: Shield,
+    color: 'text-amber-600',
+    bgColor: 'bg-amber-50',
+    borderColor: 'border-amber-200',
+  },
+  defect_found: {
+    icon: AlertTriangle,
+    color: 'text-rose-600',
+    bgColor: 'bg-rose-50',
+    borderColor: 'border-rose-200',
+  },
 };
 
-const NotificationItem = ({ notification, onMarkAsRead, onDelete }) => {
-  const NotifIcon = notificationTypes[notification.type]?.icon || FiInfo;
-  const iconColor = notificationTypes[notification.type]?.color || 'text-gray-500';
-  const bgColor = notificationTypes[notification.type]?.bgColor || 'bg-gray-50';
+const NotificationItem = ({
+  notification,
+  onMarkAsRead,
+  onDelete,
+  onNavigate,
+}) => {
+  const config = notificationTypeConfig[notification.type] || notificationTypeConfig.system;
+  const IconComponent = config.icon;
+
+  const handleClick = () => {
+    if (!notification.read) {
+      onMarkAsRead(notification._id);
+    }
+    if (notification.actionUrl) {
+      onNavigate(notification.actionUrl);
+    }
+  };
+
+  const timeAgo = formatDistanceToNow(new Date(notification.createdAt), { addSuffix: true });
 
   return (
     <div
-      className={`p-3 border-b border-gray-100 hover:bg-gray-50 transition-colors ${
-        !notification.read ? 'bg-blue-50/30' : ''
-      }`}
+      className={`
+        group relative p-4 border-b border-gray-100 transition-all duration-200
+        hover:bg-gray-50/80 cursor-pointer
+        ${!notification.read ? 'bg-gradient-to-r from-blue-50/50 to-transparent' : ''}
+      `}
+      onClick={handleClick}
     >
-      <div className="flex items-start space-x-3">
-        {/* Icon or Avatar */}
-        {notification.avatar ? (
-          <Avatar className="w-10 h-10 flex-shrink-0">
-            <AvatarImage src={notification.avatar} alt={notification.title} />
-            <AvatarFallback>{notification.title.charAt(0)}</AvatarFallback>
-          </Avatar>
-        ) : (
-          <div className={`w-10 h-10 rounded-full ${bgColor} flex items-center justify-center flex-shrink-0`}>
-            <NotifIcon className={`w-5 h-5 ${iconColor}`} />
-          </div>
-        )}
+      {/* Unread indicator bar */}
+      {!notification.read && (
+        <div className="absolute left-0 top-0 bottom-0 w-1 bg-gradient-to-b from-blue-500 to-violet-500 rounded-r" />
+      )}
+
+      <div className="flex items-start gap-3 pl-1">
+        {/* Icon */}
+        <div className={`
+          flex-shrink-0 w-10 h-10 rounded-xl ${config.bgColor} ${config.borderColor}
+          border flex items-center justify-center transition-transform
+          group-hover:scale-105
+        `}>
+          <IconComponent className={`w-5 h-5 ${config.color}`} />
+        </div>
 
         {/* Content */}
         <div className="flex-1 min-w-0">
-          <div className="flex items-start justify-between">
-            <div className="flex-1">
-              <p className={`text-sm ${!notification.read ? 'font-semibold' : 'font-medium'} text-gray-900`}>
+          <div className="flex items-start justify-between gap-2">
+            <div className="flex-1 min-w-0">
+              <p className={`text-sm leading-tight ${!notification.read ? 'font-semibold text-gray-900' : 'font-medium text-gray-700'}`}>
                 {notification.title}
               </p>
-              <p className="text-sm text-gray-600 mt-0.5">{notification.message}</p>
-              <p className="text-xs text-gray-400 mt-1">{notification.time}</p>
+              <p className="text-sm text-gray-600 mt-1 line-clamp-2">
+                {notification.message}
+              </p>
+              
+              {/* Metadata badges */}
+              {notification.metadata?.severity && (
+                <span className={`
+                  inline-flex items-center px-2 py-0.5 rounded-full text-xs font-medium mt-2
+                  ${notification.metadata.severity === 'critical' ? 'bg-red-100 text-red-700' :
+                    notification.metadata.severity === 'high' ? 'bg-orange-100 text-orange-700' :
+                    notification.metadata.severity === 'medium' ? 'bg-yellow-100 text-yellow-700' :
+                    'bg-gray-100 text-gray-700'}
+                `}>
+                  {notification.metadata.severity.toUpperCase()}
+                </span>
+              )}
+
+              <p className="text-xs text-gray-400 mt-1.5">{timeAgo}</p>
             </div>
 
-            {/* Read indicator */}
+            {/* Unread dot */}
             {!notification.read && (
-              <div className="w-2 h-2 bg-blue-500 rounded-full ml-2 flex-shrink-0 mt-1"></div>
+              <div className="w-2.5 h-2.5 bg-blue-500 rounded-full flex-shrink-0 mt-1 animate-pulse" />
             )}
           </div>
 
-          {/* Action buttons */}
-          <div className="flex items-center space-x-2 mt-2">
+          {/* Action buttons - show on hover */}
+          <div className="flex items-center gap-2 mt-2 opacity-0 group-hover:opacity-100 transition-opacity">
             {!notification.read && (
               <button
-                onClick={() => onMarkAsRead(notification.id)}
-                className="text-xs text-blue-600 hover:text-blue-800 flex items-center"
+                onClick={(e) => {
+                  e.stopPropagation();
+                  onMarkAsRead(notification._id);
+                }}
+                className="inline-flex items-center px-2 py-1 text-xs font-medium text-blue-600 
+                         hover:text-blue-800 hover:bg-blue-50 rounded-md transition-colors"
               >
-                <FiCheck className="w-3 h-3 mr-1" />
-                Mark as read
+                <Check className="w-3 h-3 mr-1" />
+                Mark read
               </button>
             )}
             <button
-              onClick={() => onDelete(notification.id)}
-              className="text-xs text-gray-500 hover:text-red-600 flex items-center"
+              onClick={(e) => {
+                e.stopPropagation();
+                onDelete(notification._id);
+              }}
+              className="inline-flex items-center px-2 py-1 text-xs font-medium text-gray-500 
+                       hover:text-red-600 hover:bg-red-50 rounded-md transition-colors"
             >
-              <FiTrash2 className="w-3 h-3 mr-1" />
+              <Trash2 className="w-3 h-3 mr-1" />
               Delete
             </button>
           </div>
@@ -78,132 +178,249 @@ const NotificationItem = ({ notification, onMarkAsRead, onDelete }) => {
   );
 };
 
-const NotificationPanel = () => {
-  const [notifications, setNotifications] = useState([
-    {
-      id: 1,
-      type: 'info',
-      title: 'New observation added',
-      message: 'Pipeline inspection #3421 has been completed and uploaded.',
-      time: '5 minutes ago',
-      read: false,
-    },
-    {
-      id: 2,
-      type: 'success',
-      title: 'Report generated',
-      message: 'Your monthly maintenance report is ready to download.',
-      time: '1 hour ago',
-      read: false,
-      avatar: null,
-    },
-    {
-      id: 3,
-      type: 'warning',
-      title: 'Maintenance required',
-      message: 'Device #847 requires scheduled maintenance within 7 days.',
-      time: '3 hours ago',
-      read: false,
-    },
-    {
-      id: 4,
-      type: 'info',
-      title: 'New team member',
-      message: 'John Doe has joined your project team.',
-      time: '1 day ago',
-      read: true,
-      avatar: '/avatar_default.png',
-    },
-    {
-      id: 5,
-      type: 'success',
-      title: 'Upload complete',
-      message: 'Video file "inspection_042.mp4" has been processed successfully.',
-      time: '2 days ago',
-      read: true,
-    },
-  ]);
+export const NotificationBell = ({ className }) => {
+  const { unreadCount } = useNotifications();
+  const [isOpen, setIsOpen] = useState(false);
 
-  const unreadCount = notifications.filter((n) => !n.read).length;
+  return (
+    <Popover open={isOpen} onOpenChange={setIsOpen}>
+      <PopoverTrigger asChild>
+        <Button
+          variant="ghost"
+          size="icon"
+          className={`relative ${className}`}
+          aria-label={`Notifications${unreadCount > 0 ? ` (${unreadCount} unread)` : ''}`}
+        >
+          <Bell className="h-5 w-5" />
+          {unreadCount > 0 && (
+            <span className="absolute -top-1 -right-1 h-5 w-5 flex items-center justify-center">
+              <span className="absolute inline-flex h-full w-full rounded-full bg-red-400 opacity-75 animate-ping" />
+              <span className="relative inline-flex items-center justify-center h-5 w-5 rounded-full bg-gradient-to-r from-red-500 to-rose-500 text-[10px] font-bold text-white">
+                {unreadCount > 99 ? '99+' : unreadCount}
+              </span>
+            </span>
+          )}
+        </Button>
+      </PopoverTrigger>
+      <PopoverContent 
+        className="w-96 p-0 shadow-2xl border-0 rounded-2xl overflow-hidden"
+        align="end"
+        sideOffset={8}
+      >
+        <NotificationPanel onClose={() => setIsOpen(false)} />
+      </PopoverContent>
+    </Popover>
+  );
+};
 
-  const handleMarkAsRead = (id) => {
-    setNotifications(notifications.map((n) => (n.id === id ? { ...n, read: true } : n)));
+const NotificationPanel = ({ onClose }) => {
+  const router = useRouter();
+  const {
+    notifications,
+    unreadCount,
+    isLoading,
+    error,
+    hasMore,
+    fetchNotifications,
+    loadMore,
+    markAsRead,
+    markAllAsRead,
+    deleteNotification,
+    deleteAllNotifications,
+  } = useNotifications();
+
+  const scrollRef = useRef(null);
+  const [isClearing, setIsClearing] = useState(false);
+
+  const handleMarkAsRead = async (id) => {
+    try {
+      await markAsRead(id);
+    } catch (err) {
+      console.error('Failed to mark as read:', err);
+    }
   };
 
-  const handleDelete = (id) => {
-    setNotifications(notifications.filter((n) => n.id !== id));
+  const handleDelete = async (id) => {
+    try {
+      await deleteNotification(id);
+    } catch (err) {
+      console.error('Failed to delete notification:', err);
+    }
   };
 
-  const handleMarkAllAsRead = () => {
-    setNotifications(notifications.map((n) => ({ ...n, read: true })));
+  const handleMarkAllAsRead = async () => {
+    try {
+      await markAllAsRead();
+    } catch (err) {
+      console.error('Failed to mark all as read:', err);
+    }
   };
 
-  const handleClearAll = () => {
-    setNotifications([]);
+  const handleClearAll = async () => {
+    setIsClearing(true);
+    try {
+      await deleteAllNotifications();
+    } catch (err) {
+      console.error('Failed to clear all notifications:', err);
+    } finally {
+      setIsClearing(false);
+    }
+  };
+
+  const handleNavigate = (url) => {
+    onClose?.();
+    router.push(url);
+  };
+
+  const handleRefresh = () => {
+    fetchNotifications(true);
+  };
+
+  // Infinite scroll
+  const handleScroll = (e) => {
+    const { scrollTop, scrollHeight, clientHeight } = e.currentTarget;
+    if (scrollHeight - scrollTop - clientHeight < 100 && hasMore && !isLoading) {
+      loadMore();
+    }
   };
 
   return (
-    <div className="w-80 bg-white rounded-lg shadow-lg border border-gray-200">
+    <div className="bg-white rounded-2xl">
       {/* Header */}
-      <div className="p-4 border-b border-gray-200">
+      <div className="p-4 border-b border-gray-100 bg-gradient-to-r from-gray-50 to-white">
         <div className="flex items-center justify-between">
           <div>
             <h3 className="text-lg font-semibold text-gray-900">Notifications</h3>
             {unreadCount > 0 && (
-              <p className="text-xs text-gray-500 mt-0.5">{unreadCount} unread</p>
+              <p className="text-sm text-gray-500 mt-0.5">
+                {unreadCount} unread notification{unreadCount !== 1 ? 's' : ''}
+              </p>
             )}
           </div>
-          <Button variant="ghost" size="sm" className="h-8 w-8 p-0">
-            <FiSettings className="w-4 h-4" />
-          </Button>
+          <div className="flex items-center gap-1">
+            <Button
+              variant="ghost"
+              size="icon"
+              onClick={handleRefresh}
+              disabled={isLoading}
+              className="h-8 w-8 text-gray-500 hover:text-gray-700"
+            >
+              <RefreshCcw className={`h-4 w-4 ${isLoading ? 'animate-spin' : ''}`} />
+            </Button>
+            <Button
+              variant="ghost"
+              size="icon"
+              onClick={() => router.push('/admin/settings/notifications')}
+              className="h-8 w-8 text-gray-500 hover:text-gray-700"
+            >
+              <Settings className="h-4 w-4" />
+            </Button>
+          </div>
         </div>
 
         {/* Actions */}
         {notifications.length > 0 && (
-          <div className="flex items-center space-x-2 mt-3">
+          <div className="flex items-center gap-2 mt-3">
             {unreadCount > 0 && (
               <Button
-                variant="ghost"
+                variant="outline"
                 size="sm"
                 onClick={handleMarkAllAsRead}
-                className="text-xs h-7 px-2"
+                className="text-xs h-7 px-3 rounded-lg hover:bg-blue-50 hover:text-blue-600 hover:border-blue-200"
               >
-                <FiCheck className="w-3 h-3 mr-1" />
+                <CheckCheck className="w-3.5 h-3.5 mr-1.5" />
                 Mark all read
               </Button>
             )}
             <Button
-              variant="ghost"
+              variant="outline"
               size="sm"
               onClick={handleClearAll}
-              className="text-xs h-7 px-2 text-red-600 hover:text-red-700"
+              disabled={isClearing}
+              className="text-xs h-7 px-3 rounded-lg text-gray-600 hover:bg-red-50 hover:text-red-600 hover:border-red-200"
             >
-              <FiTrash2 className="w-3 h-3 mr-1" />
+              {isClearing ? (
+                <Loader2 className="w-3.5 h-3.5 mr-1.5 animate-spin" />
+              ) : (
+                <Trash2 className="w-3.5 h-3.5 mr-1.5" />
+              )}
               Clear all
             </Button>
           </div>
         )}
       </div>
 
+      {/* Error state */}
+      {error && (
+        <div className="p-4 bg-red-50 border-b border-red-100">
+          <div className="flex items-center gap-2 text-red-600">
+            <XCircle className="w-4 h-4" />
+            <p className="text-sm">{error}</p>
+          </div>
+        </div>
+      )}
+
       {/* Notifications List */}
-      <ScrollArea className="h-96">
+      <ScrollArea 
+        className="h-[400px]" 
+        ref={scrollRef}
+        onScrollCapture={handleScroll}
+      >
         {notifications.length > 0 ? (
-          notifications.map((notification) => (
-            <NotificationItem
-              key={notification.id}
-              notification={notification}
-              onMarkAsRead={handleMarkAsRead}
-              onDelete={handleDelete}
-            />
-          ))
+          <>
+            {notifications.map((notification) => (
+              <NotificationItem
+                key={notification._id}
+                notification={notification}
+                onMarkAsRead={handleMarkAsRead}
+                onDelete={handleDelete}
+                onNavigate={handleNavigate}
+              />
+            ))}
+            {isLoading && (
+              <div className="flex items-center justify-center py-4">
+                <Loader2 className="w-5 h-5 animate-spin text-gray-400" />
+              </div>
+            )}
+            {!hasMore && notifications.length > 5 && (
+              <div className="py-4 text-center text-sm text-gray-400">
+                You've reached the end
+              </div>
+            )}
+          </>
+        ) : isLoading ? (
+          <div className="flex flex-col items-center justify-center h-[400px] text-gray-400">
+            <Loader2 className="w-8 h-8 animate-spin mb-3" />
+            <p className="text-sm">Loading notifications...</p>
+          </div>
         ) : (
-          <div className="flex flex-col items-center justify-center h-96 text-gray-400">
-            <FiCheckCircle className="w-12 h-12 mb-2" />
-            <p className="text-sm">No notifications</p>
-            <p className="text-xs mt-1">You're all caught up!</p>
+          <div className="flex flex-col items-center justify-center h-[400px] text-gray-400 px-6">
+            <div className="w-16 h-16 rounded-full bg-gradient-to-br from-emerald-100 to-green-100 flex items-center justify-center mb-4">
+              <CheckCircle className="w-8 h-8 text-emerald-500" />
+            </div>
+            <p className="text-base font-medium text-gray-600">All caught up!</p>
+            <p className="text-sm text-gray-400 mt-1 text-center">
+              You have no notifications at the moment
+            </p>
           </div>
         )}
       </ScrollArea>
+
+      {/* Footer */}
+      {notifications.length > 0 && (
+        <div className="p-3 border-t border-gray-100 bg-gray-50/50">
+          <Button
+            variant="ghost"
+            className="w-full text-sm font-medium text-gray-600 hover:text-gray-900 hover:bg-white"
+            onClick={() => {
+              onClose?.();
+              router.push('/admin/notifications');
+            }}
+          >
+            View all notifications
+          </Button>
+        </div>
+      )}
     </div>
   );
 };

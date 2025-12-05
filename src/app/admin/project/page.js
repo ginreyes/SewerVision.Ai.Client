@@ -43,6 +43,7 @@ const SewerVisionInspectionModule = () => {
         "GET"
       );
       const { data, totalPages } = response.data;
+      console.log('Fetched Projects:', data);
 
       setProjects(data);
       setTotalPages(totalPages);

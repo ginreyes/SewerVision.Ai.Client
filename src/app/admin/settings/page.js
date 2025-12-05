@@ -1,6 +1,8 @@
 'use client'
 
-import React, { useState } from 'react'
+import React, { useState, useEffect } from 'react'
+import { useUser } from '@/components/providers/UserContext'
+import { useAlert } from '@/components/providers/AlertProvider'
 
 import {
   Tabs,
@@ -39,46 +41,174 @@ import {
   TableHeader,
   TableRow,
 } from '@/components/ui/table'
+import { Loader2, RefreshCcw, RotateCcw, Save } from 'lucide-react'
+import settingsApi from '@/data/settingsApi'
 
 const SettingsPage = () => {
+  const { userId } = useUser()
+  const { showAlert } = useAlert()
+  
+  // Loading states
+  const [isLoading, setIsLoading] = useState(true)
+  const [isSaving, setIsSaving] = useState({})
+
+  // AI Models State
   const [confidenceThreshold, setConfidenceThreshold] = useState([75])
-  const [autoSaveEnabled, setAutoSaveEnabled] = useState(true)
-  const [streamQuality, setStreamQuality] = useState('high')
-  const [notificationsEnabled, setNotificationsEnabled] = useState(true)
-  const [feedbackLoopEnabled, setFeedbackLoopEnabled] = useState(true)
   const [selectedModels, setSelectedModels] = useState({
     fractures: true,
     cracks: true,
     brokenPipes: true,
     roots: true,
+    corrosion: false,
+    blockages: false,
   })
 
-  // NEW: User Management State
+  // Cloud & Streaming State
+  const [streamQuality, setStreamQuality] = useState('high')
+  const [autoSaveEnabled, setAutoSaveEnabled] = useState(true)
+
+  // QC Workflow State
+  const [qcWorkflow, setQcWorkflow] = useState({
+    defaultReviewPriority: 'high-confidence',
+    annotationTools: {
+      defectTags: true,
+      measurements: true,
+      severityRatings: true,
+      repairRecommendations: true,
+    },
+    autoAssignMethod: 'round-robin',
+  })
+
+  // Notifications State
+  const [notificationsEnabled, setNotificationsEnabled] = useState(true)
+  const [notificationChannels, setNotificationChannels] = useState({
+    email: true,
+    sms: false,
+    inApp: true,
+  })
+  const [adminAlerts, setAdminAlerts] = useState({
+    aiProcessingErrors: true,
+    qcReviewBacklog: true,
+    storageUsageHigh: false,
+  })
+
+  // AI Learning State
+  const [feedbackLoopEnabled, setFeedbackLoopEnabled] = useState(true)
+  const [trainingFrequency, setTrainingFrequency] = useState('weekly')
+  const [minAnnotations, setMinAnnotations] = useState(50)
+  const [performanceMetrics, setPerformanceMetrics] = useState({
+    accuracy: 92.4,
+    falsePositiveRate: 6.1,
+    lastModelUpdate: null,
+    nextTrainingScheduled: null,
+  })
+
+  // System Admin State
+  const [modelVersion, setModelVersion] = useState('v2.1.4')
+  const [uploadedModel, setUploadedModel] = useState(null)
+  const [systemAdmin, setSystemAdmin] = useState({
+    maintenanceMode: false,
+    debugMode: false,
+    logRetentionDays: 30,
+  })
+
+  // AWS Config State
+  const [awsConfig, setAwsConfig] = useState({
+    bucket: '',
+    region: 'us-east-1',
+    accessKey: '',
+    secretKey: '',
+    showSecret: false,
+  })
+
+  // User Management State
   const [users, setUsers] = useState([
     { id: 1, name: 'Alice Chen', email: 'alice@sewervision.ai', role: 'Admin', status: 'Active' },
     { id: 2, name: 'Bob Rivera', email: 'bob@sewervision.ai', role: 'QC Technician', status: 'Active' },
     { id: 3, name: 'Carol Kim', email: 'carol@sewervision.ai', role: 'customer', status: 'Disabled' },
   ])
 
-  // NEW: Model Weights State
-  const [modelVersion, setModelVersion] = useState('v2.1.4')
-  const [uploadedModel, setUploadedModel] = useState(null)
-
-  // NEW: AWS Credentials State
-  const [awsConfig, setAwsConfig] = useState({
-    bucket: 'sewervision-prod-videos',
-    region: 'us-east-1',
-    accessKey: 'AKIA************',
-    secretKey: '••••••••••••••••••••••••••••••••••••••••',
-    showSecret: false,
-  })
-
-  // NEW: Logs & Monitoring
+  // Logs State
   const [logs, setLogs] = useState([
     { id: 1, timestamp: '2025-04-04 10:22:01', level: 'INFO', message: 'AI model v2.1.4 loaded successfully' },
     { id: 2, timestamp: '2025-04-04 09:45:33', level: 'WARN', message: 'High latency detected in stream segment #8812' },
     { id: 3, timestamp: '2025-04-04 08:30:12', level: 'ERROR', message: 'Failed to upload video segment #7709 – retrying...' },
   ])
+
+  // Fetch settings on mount
+  useEffect(() => {
+    fetchSettings()
+  }, [])
+
+  const fetchSettings = async () => {
+    setIsLoading(true)
+    try {
+      const response = await settingsApi.getSettings()
+      console.log('response',response)
+      const settings = response.data
+
+      // Populate AI Models
+      if (settings.aiModels) {
+        setSelectedModels(settings.aiModels.selectedModels)
+        setConfidenceThreshold([settings.aiModels.confidenceThreshold])
+      }
+
+      // Populate Cloud & Streaming
+      if (settings.cloudStreaming) {
+        setStreamQuality(settings.cloudStreaming.streamQuality)
+        setAutoSaveEnabled(settings.cloudStreaming.autoSaveEnabled)
+      }
+
+      // Populate QC Workflow
+      if (settings.qcWorkflow) {
+        setQcWorkflow(settings.qcWorkflow)
+      }
+
+      // Populate Notifications
+      if (settings.notifications) {
+        setNotificationsEnabled(settings.notifications.notifyCustomerOnDeliverables)
+        setNotificationChannels(settings.notifications.channels)
+        setAdminAlerts(settings.notifications.adminAlerts)
+      }
+
+      // Populate AI Learning
+      if (settings.aiLearning) {
+        setFeedbackLoopEnabled(settings.aiLearning.feedbackLoopEnabled)
+        setTrainingFrequency(settings.aiLearning.trainingFrequency)
+        setMinAnnotations(settings.aiLearning.minAnnotationsPerDefect)
+        if (settings.aiLearning.performanceMetrics) {
+          setPerformanceMetrics(settings.aiLearning.performanceMetrics)
+        }
+      }
+
+      // Populate AWS Config
+      if (settings.awsConfig) {
+        setAwsConfig({
+          bucket: settings.awsConfig.bucket || '',
+          region: settings.awsConfig.region || 'us-east-1',
+          accessKey: settings.awsConfig.accessKeyId || '',
+          secretKey: settings.awsConfig.secretAccessKey || '',
+          showSecret: false,
+        })
+      }
+
+      // Populate System Admin
+      if (settings.systemAdmin) {
+        setModelVersion(settings.systemAdmin.currentModelVersion)
+        setSystemAdmin({
+          maintenanceMode: settings.systemAdmin.maintenanceMode,
+          debugMode: settings.systemAdmin.debugMode,
+          logRetentionDays: settings.systemAdmin.logRetentionDays,
+        })
+      }
+
+    } catch (error) {
+      console.error('Error fetching settings:', error)
+      showAlert('Failed to load settings', 'error')
+    } finally {
+      setIsLoading(false)
+    }
+  }
 
   const handleModelToggle = (key) => {
     setSelectedModels((prev) => ({
@@ -87,16 +217,98 @@ const SettingsPage = () => {
     }))
   }
 
-  const saveSettings = (section) => {
-    console.log(`${section} settings saved`)
-    // Here you would typically call your API
+  const saveSettings = async (section) => {
+    if (!userId) {
+      showAlert('User not logged in', 'error')
+      return
+    }
+
+    setIsSaving(prev => ({ ...prev, [section]: true }))
+    
+    try {
+      switch (section) {
+        case 'AI Models':
+          await settingsApi.updateAIModels({
+            selectedModels,
+            confidenceThreshold: confidenceThreshold[0],
+          }, userId)
+          break
+
+        case 'Cloud & Streaming':
+          await settingsApi.updateCloudStreaming({
+            streamQuality,
+            autoSaveEnabled,
+          }, userId)
+          break
+
+        case 'QC Workflow':
+          await settingsApi.updateQCWorkflow(qcWorkflow, userId)
+          break
+
+        case 'Notifications':
+          await settingsApi.updateNotifications({
+            notifyCustomerOnDeliverables: notificationsEnabled,
+            channels: notificationChannels,
+            adminAlerts,
+          }, userId)
+          break
+
+        case 'AI Learning':
+          await settingsApi.updateAILearning({
+            feedbackLoopEnabled,
+            trainingFrequency,
+            minAnnotationsPerDefect: minAnnotations,
+          }, userId)
+          break
+
+        case 'AWS Config':
+          await settingsApi.updateAWSConfig({
+            bucket: awsConfig.bucket,
+            region: awsConfig.region,
+            accessKeyId: awsConfig.accessKey,
+            secretAccessKey: awsConfig.secretKey,
+          }, userId)
+          break
+
+        case 'System Admin':
+          await settingsApi.updateSystemAdmin({
+            currentModelVersion: modelVersion,
+            maintenanceMode: systemAdmin.maintenanceMode,
+            debugMode: systemAdmin.debugMode,
+            logRetentionDays: systemAdmin.logRetentionDays,
+          }, userId)
+          break
+
+        default:
+          console.log(`Unknown section: ${section}`)
+      }
+
+      showAlert(`${section} settings saved successfully`, 'success')
+    } catch (error) {
+      console.error(`Error saving ${section} settings:`, error)
+      showAlert(`Failed to save ${section} settings`, 'error')
+    } finally {
+      setIsSaving(prev => ({ ...prev, [section]: false }))
+    }
+  }
+
+  const handleResetSection = async (section) => {
+    if (!userId) return
+    
+    try {
+      await settingsApi.resetSettings(section, userId)
+      await fetchSettings()
+      showAlert(`${section} settings reset to defaults`, 'success')
+    } catch (error) {
+      showAlert('Failed to reset settings', 'error')
+    }
   }
 
   const handleFileUpload = (e) => {
     const file = e.target.files[0]
     if (file) {
       setUploadedModel(file)
-      alert(`Model file "${file.name}" selected. Click Save to deploy.`)
+      showAlert(`Model file "${file.name}" selected. Click Deploy to apply.`, 'info')
     }
   }
 
@@ -107,9 +319,24 @@ const SettingsPage = () => {
     }))
   }
 
+  if (isLoading) {
+    return (
+      <div className="flex items-center justify-center min-h-screen">
+        <Loader2 className="w-8 h-8 animate-spin text-primary" />
+        <span className="ml-2">Loading settings...</span>
+      </div>
+    )
+  }
+
   return (
     <div className="p-6 max-w-7xl mx-auto">
-      <h1 className="text-3xl font-bold mb-6">Admin Settings</h1>
+      <div className="flex items-center justify-between mb-6">
+        <h1 className="text-3xl font-bold">Admin Settings</h1>
+        <Button variant="outline" onClick={fetchSettings} className="gap-2">
+          <RefreshCcw className="w-4 h-4" />
+          Refresh
+        </Button>
+      </div>
 
       <Card>
         <CardContent className="pt-6">
@@ -164,8 +391,25 @@ const SettingsPage = () => {
                     </p>
                   </div>
                 </CardContent>
-                <CardFooter>
-                  <Button onClick={() => saveSettings('AI Models')}>
+                <CardFooter className="flex justify-between">
+                  <Button 
+                    variant="outline" 
+                    onClick={() => handleResetSection('aiModels')}
+                    className="gap-2"
+                  >
+                    <RotateCcw className="w-4 h-4" />
+                    Reset to Defaults
+                  </Button>
+                  <Button 
+                    onClick={() => saveSettings('AI Models')}
+                    disabled={isSaving['AI Models']}
+                    className="gap-2"
+                  >
+                    {isSaving['AI Models'] ? (
+                      <Loader2 className="w-4 h-4 animate-spin" />
+                    ) : (
+                      <Save className="w-4 h-4" />
+                    )}
                     Save AI Settings
                   </Button>
                 </CardFooter>
@@ -209,8 +453,17 @@ const SettingsPage = () => {
                     Cloud upon capture for real-time access.
                   </div>
                 </CardContent>
-                <CardFooter>
-                  <Button onClick={() => saveSettings('Cloud & Streaming')}>
+                <CardFooter className="flex justify-end">
+                  <Button 
+                    onClick={() => saveSettings('Cloud & Streaming')}
+                    disabled={isSaving['Cloud & Streaming']}
+                    className="gap-2"
+                  >
+                    {isSaving['Cloud & Streaming'] ? (
+                      <Loader2 className="w-4 h-4 animate-spin" />
+                    ) : (
+                      <Save className="w-4 h-4" />
+                    )}
                     Save Streaming Settings
                   </Button>
                 </CardFooter>
@@ -229,7 +482,10 @@ const SettingsPage = () => {
                 <CardContent className="space-y-6">
                   <div className="space-y-2">
                     <Label>Default Review Priority</Label>
-                    <Select defaultValue="high-confidence">
+                    <Select 
+                      value={qcWorkflow.defaultReviewPriority} 
+                      onValueChange={(value) => setQcWorkflow(prev => ({ ...prev, defaultReviewPriority: value }))}
+                    >
                       <SelectTrigger>
                         <SelectValue />
                       </SelectTrigger>
@@ -245,15 +501,19 @@ const SettingsPage = () => {
                   <div className="space-y-2">
                     <Label>Annotation Tools Enabled</Label>
                     <div className="grid grid-cols-2 gap-4">
-                      {[
-                        { label: 'Add Defect Tags', defaultChecked: true },
-                        { label: 'Add Measurements', defaultChecked: true },
-                        { label: 'Add Severity Ratings', defaultChecked: true },
-                        { label: 'Add Repair Recommendations', defaultChecked: true },
-                      ].map((tool, i) => (
-                        <div key={i} className="flex items-center space-x-2">
-                          <Switch id={`tool-${i}`} defaultChecked={tool.defaultChecked} />
-                          <Label htmlFor={`tool-${i}`}>{tool.label}</Label>
+                      {Object.entries(qcWorkflow.annotationTools).map(([key, enabled]) => (
+                        <div key={key} className="flex items-center space-x-2">
+                          <Switch 
+                            id={`tool-${key}`} 
+                            checked={enabled}
+                            onCheckedChange={(checked) => setQcWorkflow(prev => ({
+                              ...prev,
+                              annotationTools: { ...prev.annotationTools, [key]: checked }
+                            }))}
+                          />
+                          <Label htmlFor={`tool-${key}`} className="capitalize">
+                            {key.replace(/([A-Z])/g, ' $1').trim()}
+                          </Label>
                         </div>
                       ))}
                     </div>
@@ -261,7 +521,10 @@ const SettingsPage = () => {
 
                   <div className="space-y-2">
                     <Label>Auto-Assign QC Reviewer</Label>
-                    <Select defaultValue="round-robin">
+                    <Select 
+                      value={qcWorkflow.autoAssignMethod}
+                      onValueChange={(value) => setQcWorkflow(prev => ({ ...prev, autoAssignMethod: value }))}
+                    >
                       <SelectTrigger>
                         <SelectValue />
                       </SelectTrigger>
@@ -269,12 +532,22 @@ const SettingsPage = () => {
                         <SelectItem value="round-robin">Round Robin</SelectItem>
                         <SelectItem value="least-loaded">Least Loaded</SelectItem>
                         <SelectItem value="by-expertise">By Expertise</SelectItem>
+                        <SelectItem value="manual">Manual Assignment</SelectItem>
                       </SelectContent>
                     </Select>
                   </div>
                 </CardContent>
-                <CardFooter>
-                  <Button onClick={() => saveSettings('QC Workflow')}>
+                <CardFooter className="flex justify-end">
+                  <Button 
+                    onClick={() => saveSettings('QC Workflow')}
+                    disabled={isSaving['QC Workflow']}
+                    className="gap-2"
+                  >
+                    {isSaving['QC Workflow'] ? (
+                      <Loader2 className="w-4 h-4 animate-spin" />
+                    ) : (
+                      <Save className="w-4 h-4" />
+                    )}
                     Save QC Workflow Settings
                   </Button>
                 </CardFooter>
@@ -302,14 +575,16 @@ const SettingsPage = () => {
                   <div className="space-y-2">
                     <Label>Notification Channels</Label>
                     <div className="space-y-2">
-                      {[
-                        { label: 'Email', defaultChecked: true },
-                        { label: 'SMS', defaultChecked: false },
-                        { label: 'In-App Notification', defaultChecked: true },
-                      ].map((channel, i) => (
-                        <div key={i} className="flex items-center space-x-2">
-                          <Switch id={`channel-${i}`} defaultChecked={channel.defaultChecked} />
-                          <Label htmlFor={`channel-${i}`}>{channel.label}</Label>
+                      {Object.entries(notificationChannels).map(([key, enabled]) => (
+                        <div key={key} className="flex items-center space-x-2">
+                          <Switch 
+                            id={`channel-${key}`} 
+                            checked={enabled}
+                            onCheckedChange={(checked) => setNotificationChannels(prev => ({
+                              ...prev, [key]: checked
+                            }))}
+                          />
+                          <Label htmlFor={`channel-${key}`} className="capitalize">{key}</Label>
                         </div>
                       ))}
                     </div>
@@ -318,21 +593,34 @@ const SettingsPage = () => {
                   <div className="space-y-2">
                     <Label>Admin Alerts</Label>
                     <div className="space-y-2">
-                      {[
-                        { label: 'AI Processing Errors', defaultChecked: true },
-                        { label: 'QC Review Backlog > 24hrs', defaultChecked: true },
-                        { label: 'Storage Usage > 80%', defaultChecked: false },
-                      ].map((alert, i) => (
-                        <div key={i} className="flex items-center space-x-2">
-                          <Switch id={`alert-${i}`} defaultChecked={alert.defaultChecked} />
-                          <Label htmlFor={`alert-${i}`}>{alert.label}</Label>
+                      {Object.entries(adminAlerts).map(([key, enabled]) => (
+                        <div key={key} className="flex items-center space-x-2">
+                          <Switch 
+                            id={`alert-${key}`} 
+                            checked={enabled}
+                            onCheckedChange={(checked) => setAdminAlerts(prev => ({
+                              ...prev, [key]: checked
+                            }))}
+                          />
+                          <Label htmlFor={`alert-${key}`} className="capitalize">
+                            {key.replace(/([A-Z])/g, ' $1').trim()}
+                          </Label>
                         </div>
                       ))}
                     </div>
                   </div>
                 </CardContent>
-                <CardFooter>
-                  <Button onClick={() => saveSettings('Notifications')}>
+                <CardFooter className="flex justify-end">
+                  <Button 
+                    onClick={() => saveSettings('Notifications')}
+                    disabled={isSaving['Notifications']}
+                    className="gap-2"
+                  >
+                    {isSaving['Notifications'] ? (
+                      <Loader2 className="w-4 h-4 animate-spin" />
+                    ) : (
+                      <Save className="w-4 h-4" />
+                    )}
                     Save Notification Settings
                   </Button>
                 </CardFooter>
@@ -359,7 +647,7 @@ const SettingsPage = () => {
 
                   <div className="space-y-2">
                     <Label>Training Data Frequency</Label>
-                    <Select defaultValue="per-project">
+                    <Select value={trainingFrequency} onValueChange={setTrainingFrequency}>
                       <SelectTrigger>
                         <SelectValue />
                       </SelectTrigger>
@@ -367,6 +655,7 @@ const SettingsPage = () => {
                         <SelectItem value="per-project">After Every Project</SelectItem>
                         <SelectItem value="weekly">Weekly</SelectItem>
                         <SelectItem value="bi-weekly">Bi-Weekly</SelectItem>
+                        <SelectItem value="monthly">Monthly</SelectItem>
                         <SelectItem value="manual">Manually Triggered</SelectItem>
                       </SelectContent>
                     </Select>
@@ -374,7 +663,12 @@ const SettingsPage = () => {
 
                   <div className="space-y-2">
                     <Label>Minimum Annotations per Defect Type</Label>
-                    <Input type="number" defaultValue="50" className="w-32" />
+                    <Input 
+                      type="number" 
+                      value={minAnnotations}
+                      onChange={(e) => setMinAnnotations(parseInt(e.target.value) || 50)}
+                      className="w-32" 
+                    />
                     <p className="text-xs text-muted-foreground">
                       Minimum QC-reviewed annotations required before model retraining.
                     </p>
@@ -383,15 +677,28 @@ const SettingsPage = () => {
                   <div className="rounded-md bg-green-50 p-4 text-sm space-y-1 text-green-800">
                     <h4 className="font-medium">Current AI Performance Metrics</h4>
                     <ul className="list-disc list-inside">
-                      <li>Accuracy: 92.4%</li>
-                      <li>False Positive Rate: 6.1%</li>
-                      <li>Last Model Update: 2 days ago</li>
-                      <li>Next Training Scheduled: Tomorrow</li>
+                      <li>Accuracy: {performanceMetrics.accuracy}%</li>
+                      <li>False Positive Rate: {performanceMetrics.falsePositiveRate}%</li>
+                      <li>Last Model Update: {performanceMetrics.lastModelUpdate 
+                        ? new Date(performanceMetrics.lastModelUpdate).toLocaleDateString()
+                        : 'N/A'}</li>
+                      <li>Next Training Scheduled: {performanceMetrics.nextTrainingScheduled
+                        ? new Date(performanceMetrics.nextTrainingScheduled).toLocaleDateString()
+                        : 'N/A'}</li>
                     </ul>
                   </div>
                 </CardContent>
-                <CardFooter>
-                  <Button onClick={() => saveSettings('AI Learning')}>
+                <CardFooter className="flex justify-end">
+                  <Button 
+                    onClick={() => saveSettings('AI Learning')}
+                    disabled={isSaving['AI Learning']}
+                    className="gap-2"
+                  >
+                    {isSaving['AI Learning'] ? (
+                      <Loader2 className="w-4 h-4 animate-spin" />
+                    ) : (
+                      <Save className="w-4 h-4" />
+                    )}
                     Save Feedback Settings
                   </Button>
                 </CardFooter>
@@ -447,9 +754,6 @@ const SettingsPage = () => {
                     </TableBody>
                   </Table>
                 </CardContent>
-                <CardFooter>
-                  <Button>Save User Changes</Button>
-                </CardFooter>
               </Card>
             </TabsContent>
 
@@ -559,7 +863,87 @@ const SettingsPage = () => {
                     </div>
                   </CardContent>
                   <CardFooter>
-                    <Button>Save AWS Configuration</Button>
+                    <Button 
+                      onClick={() => saveSettings('AWS Config')}
+                      disabled={isSaving['AWS Config']}
+                      className="gap-2"
+                    >
+                      {isSaving['AWS Config'] ? (
+                        <Loader2 className="w-4 h-4 animate-spin" />
+                      ) : (
+                        <Save className="w-4 h-4" />
+                      )}
+                      Save AWS Configuration
+                    </Button>
+                  </CardFooter>
+                </Card>
+
+                <Separator />
+
+                {/* System Settings */}
+                <Card>
+                  <CardHeader>
+                    <CardTitle>System Settings</CardTitle>
+                    <CardDescription>
+                      Configure system-wide settings and maintenance mode.
+                    </CardDescription>
+                  </CardHeader>
+                  <CardContent className="space-y-4">
+                    <div className="flex items-center justify-between">
+                      <div>
+                        <Label>Maintenance Mode</Label>
+                        <p className="text-xs text-muted-foreground">
+                          Disable access for non-admin users
+                        </p>
+                      </div>
+                      <Switch
+                        checked={systemAdmin.maintenanceMode}
+                        onCheckedChange={(checked) => setSystemAdmin(prev => ({ 
+                          ...prev, maintenanceMode: checked 
+                        }))}
+                      />
+                    </div>
+
+                    <div className="flex items-center justify-between">
+                      <div>
+                        <Label>Debug Mode</Label>
+                        <p className="text-xs text-muted-foreground">
+                          Enable verbose logging
+                        </p>
+                      </div>
+                      <Switch
+                        checked={systemAdmin.debugMode}
+                        onCheckedChange={(checked) => setSystemAdmin(prev => ({ 
+                          ...prev, debugMode: checked 
+                        }))}
+                      />
+                    </div>
+
+                    <div>
+                      <Label>Log Retention (Days)</Label>
+                      <Input
+                        type="number"
+                        value={systemAdmin.logRetentionDays}
+                        onChange={(e) => setSystemAdmin(prev => ({ 
+                          ...prev, logRetentionDays: parseInt(e.target.value) || 30 
+                        }))}
+                        className="w-32"
+                      />
+                    </div>
+                  </CardContent>
+                  <CardFooter>
+                    <Button 
+                      onClick={() => saveSettings('System Admin')}
+                      disabled={isSaving['System Admin']}
+                      className="gap-2"
+                    >
+                      {isSaving['System Admin'] ? (
+                        <Loader2 className="w-4 h-4 animate-spin" />
+                      ) : (
+                        <Save className="w-4 h-4" />
+                      )}
+                      Save System Settings
+                    </Button>
                   </CardFooter>
                 </Card>
 

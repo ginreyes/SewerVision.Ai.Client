@@ -21,8 +21,10 @@ import {
   AlertTriangle,
   ArrowLeft,
   UserCheck,
-  Search,
-  Building2
+  RefreshCw,
+  Building2,
+  Mail,
+  User
 } from "lucide-react";
 import { Textarea } from "@/components/ui/textarea";
 import { useRouter } from "next/navigation";
@@ -127,15 +129,13 @@ export default function CreateProjectPage() {
   const [pipelineMaterial, setPipelineMaterial] = useState("");
   const [pipelineShape, setPipelineShape] = useState("");
 
-  // Team Assignment - Step 3
+  // Team Assignment - Step 3 (removed certification states)
   const [operatorUserId, setOperatorUserId] = useState("");
   const [operatorName, setOperatorName] = useState("");
   const [operatorEmail, setOperatorEmail] = useState("");
-  const [operatorCertification, setOperatorCertification] = useState("");
   const [qcUserId, setQcUserId] = useState("");
   const [qcName, setQcName] = useState("");
   const [qcEmail, setQcEmail] = useState("");
-  const [qcCertification, setQcCertification] = useState("");
 
   // Inspection Data - Step 4
   const [recordingDate, setRecordingDate] = useState("");
@@ -152,8 +152,7 @@ export default function CreateProjectPage() {
       const { ok, data } = await api("/api/users/get-all-user", "GET");
 
       if (ok && data?.users) {
-        // Filter users by role
-        const operatorUsers = data.users.filter(user => user.role === 'Operator');
+        const operatorUsers = data.users.filter(user => user.role === 'operator');
         const qcUsers = data.users.filter(user => user.role === 'qc-technician');
 
         setOperators(operatorUsers);
@@ -167,28 +166,26 @@ export default function CreateProjectPage() {
     }
   }, [showAlert]);
 
-    const fetchCustomers = useCallback(async () => {
-      try {
-        setLoadingCustomers(true);
-        const response = await api("/api/users/get-customers", "GET");
-        const data = response.data.data.customers
-        setCustomers(data)
-      } 
-      catch (error) {
-        showAlert("Failed to fetch customers", "error");
-        console.error("Error fetching customers:", error);
-      } 
-      finally {
-        setLoadingCustomers(false);
-      }
-   }, [showAlert]);
-
-
+  const fetchCustomers = useCallback(async () => {
+    try {
+      setLoadingCustomers(true);
+      const response = await api("/api/users/get-customers", "GET");
+      const data = response.data.data.customers
+      setCustomers(data)
+    } 
+    catch (error) {
+      showAlert("Failed to fetch customers", "error");
+      console.error("Error fetching customers:", error);
+    } 
+    finally {
+      setLoadingCustomers(false);
+    }
+  }, [showAlert]);
 
   useEffect(() => {
     fetchUsers();
     fetchCustomers();
-  }, [fetchUsers ,fetchCustomers]);
+  }, [fetchUsers, fetchCustomers]);
 
   const handleOperatorSelect = useCallback((userId) => {
     const selectedOperator = operators.find(op => op.user_id === userId);
@@ -196,8 +193,6 @@ export default function CreateProjectPage() {
       setOperatorUserId(userId);
       setOperatorName(selectedOperator.name);
       setOperatorEmail(selectedOperator.email);
-      // Set certification if available in user data
-      setOperatorCertification(selectedOperator.certification || "");
     }
   }, [operators]);
 
@@ -207,13 +202,22 @@ export default function CreateProjectPage() {
       setQcUserId(userId);
       setQcName(selectedQc.name);
       setQcEmail(selectedQc.email);
-      // Set certification if available in user data
-      setQcCertification(selectedQc.certification || "");
     }
   }, [qcTechnicians]);
 
+  // Clear operator selection
+  const clearOperatorSelection = useCallback(() => {
+    setOperatorUserId("");
+    setOperatorName("");
+    setOperatorEmail("");
+  }, []);
 
-
+  // Clear QC selection
+  const clearQcSelection = useCallback(() => {
+    setQcUserId("");
+    setQcName("");
+    setQcEmail("");
+  }, []);
 
   const fieldSetters = {
     name: setName,
@@ -228,11 +232,9 @@ export default function CreateProjectPage() {
     "assignedOperator.userId": setOperatorUserId,
     "assignedOperator.name": setOperatorName,
     "assignedOperator.email": setOperatorEmail,
-    "assignedOperator.certification": setOperatorCertification,
     "qcTechnician.userId": setQcUserId,
     "qcTechnician.name": setQcName,
     "qcTechnician.email": setQcEmail,
-    "qcTechnician.certification": setQcCertification,
     "metadata.recordingDate": setRecordingDate,
     "metadata.upstreamMH": setUpstreamMH,
     "metadata.downstreamMH": setDownstreamMH,
@@ -255,11 +257,9 @@ export default function CreateProjectPage() {
     "assignedOperator.userId": operatorUserId,
     "assignedOperator.name": operatorName,
     "assignedOperator.email": operatorEmail,
-    "assignedOperator.certification": operatorCertification,
     "qcTechnician.userId": qcUserId,
     "qcTechnician.name": qcName,
     "qcTechnician.email": qcEmail,
-    "qcTechnician.certification": qcCertification,
     "metadata.recordingDate": recordingDate,
     "metadata.upstreamMH": upstreamMH,
     "metadata.downstreamMH": downstreamMH,
@@ -296,14 +296,12 @@ export default function CreateProjectPage() {
     assignedOperator: {
       userId: operatorUserId,
       name: operatorName,
-      email: operatorEmail,
-      certification: operatorCertification
+      email: operatorEmail
     },
     qcTechnician: {
       userId: qcUserId,
       name: qcName,
-      email: qcEmail,
-      certification: qcCertification
+      email: qcEmail
     },
     metadata: {
       recordingDate,
@@ -313,10 +311,10 @@ export default function CreateProjectPage() {
       material: metadataMaterial,
       remarks,
     },
-  }), [name, location, client,customerId, totalLength, pipelineMaterial, pipelineShape, workOrder, priority,
-    operatorUserId, operatorName, operatorEmail, operatorCertification,
-    qcUserId, qcName, qcEmail, qcCertification,
-    recordingDate, upstreamMH, downstreamMH, metadataShape, metadataMaterial, remarks]);
+  }), [name, location, client, customerId, totalLength, pipelineMaterial, pipelineShape, workOrder, priority,
+    operatorUserId, operatorName, operatorEmail,
+    qcUserId, qcName, qcEmail,
+    recordingDate, upstreamMH, downstreamMH, metadataShape, metadataMaterial, remarks, userId]);
 
   const validateStep = useCallback((step) => {
     const newErrors = {};
@@ -350,7 +348,7 @@ export default function CreateProjectPage() {
     setErrors(newErrors);
     return Object.keys(newErrors).length === 0;
   }, [name, client, location, workOrder, totalLength, pipelineMaterial, pipelineShape,
-    operatorUserId, qcUserId, recordingDate, upstreamMH, downstreamMH, metadataMaterial, metadataShape,customerId]);
+    operatorUserId, qcUserId, recordingDate, upstreamMH, downstreamMH, metadataMaterial, metadataShape, customerId]);
 
   const nextStep = useCallback(() => {
     if (validateStep(currentStep)) {
@@ -366,6 +364,7 @@ export default function CreateProjectPage() {
     if (!validateStep(currentStep)) return;
 
     try {
+      setLoading(true);
       const formData = getFormData();
 
       const { userId, ...projectFields } = formData;
@@ -373,8 +372,6 @@ export default function CreateProjectPage() {
       const form = new FormData();
       form.append("userId", userId);
       form.append("projectData", JSON.stringify(projectFields));
-
-
 
       if (videoFile) {
         form.append("video", videoFile);
@@ -393,6 +390,8 @@ export default function CreateProjectPage() {
 
     } catch (error) {
       showAlert(error.message || "Failed to create project", "error");
+    } finally {
+      setLoading(false);
     }
   }, [currentStep, getFormData, showAlert, validateStep, videoFile, router]);
 
@@ -400,119 +399,119 @@ export default function CreateProjectPage() {
   const renderStepContent = () => {
     switch (currentStep) {
       case 1:
-  return (
-    <div className="space-y-8">
-      <div className="text-center pb-4">
-        <div className="inline-flex p-3 bg-blue-100 rounded-xl mb-4">
-          <Building2 className="h-8 w-8 text-blue-500" />
-        </div>
-        <h3 className="text-xl font-bold text-gray-900 mb-2">Project Details</h3>
-        <p className="text-gray-600">Lets start with the basic project information</p>
-      </div>
-      
-      <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-        <InputField
-          label="Project Name"
-          name="name"
-          value={fieldValues.name}
-          onChange={handleFieldChange}
-          required
-          error={errors.name}
-          placeholder="Enter project name"
-        />
-        
-        {/* Customer Selection Dropdown */}
-        <div className="space-y-2">
-          <Label className="text-sm font-medium text-gray-700">
-            Customer
-            <span className="text-red-500 ml-1">*</span>
-          </Label>
-          <Select 
-            value={customerId} 
-            onValueChange={(value) => handleFieldChange("customerId", value)}
-          >
-            <SelectTrigger className={`h-10 ${errors.customerId ? 'border-red-500 focus:border-red-500 focus:ring-red-100' : 'border-gray-200 focus:border-blue-500 focus:ring-blue-100'}`}>
-              <SelectValue placeholder="Select a customer..." />
-            </SelectTrigger>
-            <SelectContent>
-              {loadingCustomers ? (
-                <SelectItem value="loading" disabled>
-                  Loading customers...
-                </SelectItem>
-              ) : customers.length === 0 ? (
-                <SelectItem value="no-customers" disabled>
-                  No customers available
-                </SelectItem>
-              ) : (
-                customers.map((customer) => (
-                  <SelectItem key={customer._id} value={customer._id}>
-                    <div className="flex items-center gap-2">
-                      <span className="font-medium">
-                        {customer.first_name} {customer.last_name}
-                      </span>
-                      <span className="text-xs text-gray-500">
-                        ({customer.email})
-                      </span>
-                    </div>
-                  </SelectItem>
-                ))
-              )}
-            </SelectContent>
-          </Select>
-          {errors.customerId && (
-            <span className="text-red-500 text-sm flex items-center gap-1">
-              <AlertTriangle className="h-3 w-3" />
-              {errors.customerId}
-            </span>
-          )}
-        </div>
+        return (
+          <div className="space-y-8">
+            <div className="text-center pb-4">
+              <div className="inline-flex p-3 bg-blue-100 rounded-xl mb-4">
+                <Building2 className="h-8 w-8 text-blue-500" />
+              </div>
+              <h3 className="text-xl font-bold text-gray-900 mb-2">Project Details</h3>
+              <p className="text-gray-600">Let's start with the basic project information</p>
+            </div>
+            
+            <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+              <InputField
+                label="Project Name"
+                name="name"
+                value={fieldValues.name}
+                onChange={handleFieldChange}
+                required
+                error={errors.name}
+                placeholder="Enter project name"
+              />
+              
+              {/* Customer Selection Dropdown */}
+              <div className="space-y-2">
+                <Label className="text-sm font-medium text-gray-700">
+                  Customer
+                  <span className="text-red-500 ml-1">*</span>
+                </Label>
+                <Select 
+                  value={customerId} 
+                  onValueChange={(value) => handleFieldChange("customerId", value)}
+                >
+                  <SelectTrigger className={`h-10 ${errors.customerId ? 'border-red-500 focus:border-red-500 focus:ring-red-100' : 'border-gray-200 focus:border-blue-500 focus:ring-blue-100'}`}>
+                    <SelectValue placeholder="Select a customer..." />
+                  </SelectTrigger>
+                  <SelectContent>
+                    {loadingCustomers ? (
+                      <SelectItem value="loading" disabled>
+                        Loading customers...
+                      </SelectItem>
+                    ) : customers.length === 0 ? (
+                      <SelectItem value="no-customers" disabled>
+                        No customers available
+                      </SelectItem>
+                    ) : (
+                      customers.map((customer) => (
+                        <SelectItem key={customer._id} value={customer._id}>
+                          <div className="flex items-center gap-2">
+                            <span className="font-medium">
+                              {customer.first_name} {customer.last_name}
+                            </span>
+                            <span className="text-xs text-gray-500">
+                              ({customer.email})
+                            </span>
+                          </div>
+                        </SelectItem>
+                      ))
+                    )}
+                  </SelectContent>
+                </Select>
+                {errors.customerId && (
+                  <span className="text-red-500 text-sm flex items-center gap-1">
+                    <AlertTriangle className="h-3 w-3" />
+                    {errors.customerId}
+                  </span>
+                )}
+              </div>
 
-        <InputField
-          label="Client (Organization Name)"
-          name="client"
-          value={fieldValues.client}
-          onChange={handleFieldChange}
-          required
-          error={errors.client}
-          placeholder="Enter client organization name"
-        />
-        
-        <InputField
-          label="Location"
-          name="location"
-          value={fieldValues.location}
-          onChange={handleFieldChange}
-          required
-          error={errors.location}
-          placeholder="Enter project location"
-        />
-        
-        <InputField
-          label="Work Order"
-          name="workOrder"
-          value={fieldValues.workOrder}
-          onChange={handleFieldChange}
-          required
-          error={errors.workOrder}
-          placeholder="Enter work order number"
-        />
-        
-        <div className="space-y-2">
-          <Label className="text-sm font-medium text-gray-700">Priority</Label>
-          <Select value={priority} onValueChange={(value) => handleFieldChange("priority", value)}>
-            <SelectTrigger className="h-10">
-              <SelectValue placeholder="Select priority" />
-            </SelectTrigger>
-            <SelectContent>
-              <SelectItem value="low">Low Priority</SelectItem>
-              <SelectItem value="medium">Medium Priority</SelectItem>
-              <SelectItem value="high">High Priority</SelectItem>
-            </SelectContent>
-          </Select>
-        </div>
-      </div>
-    </div>
-  );
+              <InputField
+                label="Client (Organization Name)"
+                name="client"
+                value={fieldValues.client}
+                onChange={handleFieldChange}
+                required
+                error={errors.client}
+                placeholder="Enter client organization name"
+              />
+              
+              <InputField
+                label="Location"
+                name="location"
+                value={fieldValues.location}
+                onChange={handleFieldChange}
+                required
+                error={errors.location}
+                placeholder="Enter project location"
+              />
+              
+              <InputField
+                label="Work Order"
+                name="workOrder"
+                value={fieldValues.workOrder}
+                onChange={handleFieldChange}
+                required
+                error={errors.workOrder}
+                placeholder="Enter work order number"
+              />
+              
+              <div className="space-y-2">
+                <Label className="text-sm font-medium text-gray-700">Priority</Label>
+                <Select value={priority} onValueChange={(value) => handleFieldChange("priority", value)}>
+                  <SelectTrigger className="h-10">
+                    <SelectValue placeholder="Select priority" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="low">Low Priority</SelectItem>
+                    <SelectItem value="medium">Medium Priority</SelectItem>
+                    <SelectItem value="high">High Priority</SelectItem>
+                  </SelectContent>
+                </Select>
+              </div>
+            </div>
+          </div>
+        );
 
       case 2:
         return (
@@ -565,181 +564,217 @@ export default function CreateProjectPage() {
                 <Users className="h-8 w-8 text-purple-500" />
               </div>
               <h3 className="text-xl font-bold text-gray-900 mb-2">Team Assignment</h3>
-              <p className="text-gray-600">Assign operators and quality control technicians</p>
+              <p className="text-gray-600">Assign operators and quality control technicians to this project</p>
             </div>
 
-            {loadingUsers && (
-              <div className="text-center py-8">
-                <Loader2 className="h-8 w-8 animate-spin mx-auto mb-4 text-blue-500" />
-                <p className="text-gray-600">Loading available users...</p>
+            {loadingUsers ? (
+              <div className="flex flex-col items-center justify-center py-12">
+                <Loader2 className="h-10 w-10 animate-spin text-purple-500 mb-4" />
+                <p className="text-gray-600 font-medium">Loading team members...</p>
+              </div>
+            ) : (
+              <div className="grid grid-cols-1 lg:grid-cols-2 gap-8 max-w-5xl mx-auto">
+                {/* Operator Selection Card */}
+                <div className="bg-white rounded-2xl border-2 border-blue-100 shadow-sm overflow-hidden">
+                  <div className="bg-gradient-to-r from-blue-500 to-blue-600 px-6 py-4">
+                    <div className="flex items-center gap-3">
+                      <div className="p-2 bg-white/20 rounded-lg">
+                        <UserCheck className="h-5 w-5 text-white" />
+                      </div>
+                      <div>
+                        <h4 className="font-semibold text-white">Assigned Operator</h4>
+                        <p className="text-blue-100 text-sm">Select a field operator</p>
+                      </div>
+                    </div>
+                  </div>
+
+                  <div className="p-6 space-y-4">
+                    <div className="space-y-2">
+                      <Label className="text-sm font-medium text-gray-700">
+                        Select Operator <span className="text-red-500">*</span>
+                      </Label>
+                      <Select
+                        value={operatorUserId}
+                        onValueChange={handleOperatorSelect}
+                      >
+                        <SelectTrigger className={`h-12 ${errors["assignedOperator.userId"] ? 'border-red-500 ring-1 ring-red-500' : 'border-gray-200'}`}>
+                          <SelectValue placeholder="Choose an operator..." />
+                        </SelectTrigger>
+                        <SelectContent>
+                          {operators.length === 0 ? (
+                            <div className="px-4 py-6 text-center">
+                              <Users className="h-8 w-8 text-gray-300 mx-auto mb-2" />
+                              <p className="text-gray-500 text-sm">No operators available</p>
+                            </div>
+                          ) : (
+                            operators.map((operator) => (
+                              <SelectItem key={operator.user_id} value={operator.user_id}>
+                                <div className="flex items-center gap-3 py-1">
+                                  <div className="w-8 h-8 bg-blue-100 rounded-full flex items-center justify-center flex-shrink-0">
+                                    <User className="h-4 w-4 text-blue-600" />
+                                  </div>
+                                  <div className="text-left">
+                                    <p className="font-medium text-gray-900">{operator.name}</p>
+                                    <p className="text-xs text-gray-500">{operator.email}</p>
+                                  </div>
+                                </div>
+                              </SelectItem>
+                            ))
+                          )}
+                        </SelectContent>
+                      </Select>
+                      {errors["assignedOperator.userId"] && (
+                        <p className="text-red-500 text-sm flex items-center gap-1">
+                          <AlertTriangle className="h-3 w-3" />
+                          {errors["assignedOperator.userId"]}
+                        </p>
+                      )}
+                    </div>
+
+                    {operatorUserId ? (
+                      <div className="bg-blue-50 rounded-xl p-4 space-y-3">
+                        <div className="flex items-center justify-between">
+                          <span className="text-sm font-medium text-blue-900">Selected Operator</span>
+                          <Button
+                            variant="ghost"
+                            size="sm"
+                            onClick={clearOperatorSelection}
+                            className="text-blue-600 hover:text-blue-700 hover:bg-blue-100 h-8 px-2"
+                          >
+                            Change
+                          </Button>
+                        </div>
+                        <div className="flex items-center gap-3">
+                          <div className="w-12 h-12 bg-blue-500 rounded-full flex items-center justify-center">
+                            <User className="h-6 w-6 text-white" />
+                          </div>
+                          <div>
+                            <p className="font-semibold text-gray-900">{operatorName}</p>
+                            <div className="flex items-center gap-1 text-gray-600 text-sm">
+                              <Mail className="h-3 w-3" />
+                              {operatorEmail}
+                            </div>
+                          </div>
+                        </div>
+                      </div>
+                    ) : (
+                      <div className="bg-gray-50 rounded-xl p-6 text-center">
+                        <div className="w-12 h-12 bg-gray-200 rounded-full flex items-center justify-center mx-auto mb-3">
+                          <User className="h-6 w-6 text-gray-400" />
+                        </div>
+                        <p className="text-gray-500 text-sm">No operator selected</p>
+                      </div>
+                    )}
+                  </div>
+                </div>
+
+                {/* QC Technician Selection Card */}
+                <div className="bg-white rounded-2xl border-2 border-green-100 shadow-sm overflow-hidden">
+                  <div className="bg-gradient-to-r from-green-500 to-green-600 px-6 py-4">
+                    <div className="flex items-center gap-3">
+                      <div className="p-2 bg-white/20 rounded-lg">
+                        <CheckCircle className="h-5 w-5 text-white" />
+                      </div>
+                      <div>
+                        <h4 className="font-semibold text-white">QC Technician</h4>
+                        <p className="text-green-100 text-sm">Select a QC reviewer</p>
+                      </div>
+                    </div>
+                  </div>
+
+                  <div className="p-6 space-y-4">
+                    <div className="space-y-2">
+                      <Label className="text-sm font-medium text-gray-700">
+                        Select QC Technician <span className="text-red-500">*</span>
+                      </Label>
+                      <Select
+                        value={qcUserId}
+                        onValueChange={handleQcSelect}
+                      >
+                        <SelectTrigger className={`h-12 ${errors["qcTechnician.userId"] ? 'border-red-500 ring-1 ring-red-500' : 'border-gray-200'}`}>
+                          <SelectValue placeholder="Choose a QC technician..." />
+                        </SelectTrigger>
+                        <SelectContent>
+                          {qcTechnicians.length === 0 ? (
+                            <div className="px-4 py-6 text-center">
+                              <Users className="h-8 w-8 text-gray-300 mx-auto mb-2" />
+                              <p className="text-gray-500 text-sm">No QC technicians available</p>
+                            </div>
+                          ) : (
+                            qcTechnicians.map((qc) => (
+                              <SelectItem key={qc.user_id} value={qc.user_id}>
+                                <div className="flex items-center gap-3 py-1">
+                                  <div className="w-8 h-8 bg-green-100 rounded-full flex items-center justify-center flex-shrink-0">
+                                    <User className="h-4 w-4 text-green-600" />
+                                  </div>
+                                  <div className="text-left">
+                                    <p className="font-medium text-gray-900">{qc.name}</p>
+                                    <p className="text-xs text-gray-500">{qc.email}</p>
+                                  </div>
+                                </div>
+                              </SelectItem>
+                            ))
+                          )}
+                        </SelectContent>
+                      </Select>
+                      {errors["qcTechnician.userId"] && (
+                        <p className="text-red-500 text-sm flex items-center gap-1">
+                          <AlertTriangle className="h-3 w-3" />
+                          {errors["qcTechnician.userId"]}
+                        </p>
+                      )}
+                    </div>
+
+                    {qcUserId ? (
+                      <div className="bg-green-50 rounded-xl p-4 space-y-3">
+                        <div className="flex items-center justify-between">
+                          <span className="text-sm font-medium text-green-900">Selected QC Technician</span>
+                          <Button
+                            variant="ghost"
+                            size="sm"
+                            onClick={clearQcSelection}
+                            className="text-green-600 hover:text-green-700 hover:bg-green-100 h-8 px-2"
+                          >
+                            Change
+                          </Button>
+                        </div>
+                        <div className="flex items-center gap-3">
+                          <div className="w-12 h-12 bg-green-500 rounded-full flex items-center justify-center">
+                            <User className="h-6 w-6 text-white" />
+                          </div>
+                          <div>
+                            <p className="font-semibold text-gray-900">{qcName}</p>
+                            <div className="flex items-center gap-1 text-gray-600 text-sm">
+                              <Mail className="h-3 w-3" />
+                              {qcEmail}
+                            </div>
+                          </div>
+                        </div>
+                      </div>
+                    ) : (
+                      <div className="bg-gray-50 rounded-xl p-6 text-center">
+                        <div className="w-12 h-12 bg-gray-200 rounded-full flex items-center justify-center mx-auto mb-3">
+                          <User className="h-6 w-6 text-gray-400" />
+                        </div>
+                        <p className="text-gray-500 text-sm">No QC technician selected</p>
+                      </div>
+                    )}
+                  </div>
+                </div>
               </div>
             )}
 
-            <div className="space-y-8 max-w-5xl mx-auto">
-              {/* Operator Selection */}
-              <div className="bg-gradient-to-r from-blue-50 to-indigo-50 p-6 rounded-xl border border-blue-200">
-                <h4 className="font-bold text-lg text-gray-900 mb-4 flex items-center gap-3">
-                  <div className="p-2 bg-blue-500 rounded-lg">
-                    <Users className="h-5 w-5 text-white" />
-                  </div>
-                  Assigned Operator
-                </h4>
-
-                <div className="space-y-4">
-                  <div className="space-y-2">
-                    <Label className="text-sm font-medium text-gray-700">
-                      Select Operator *
-                    </Label>
-                    <Select
-                      value={operatorUserId}
-                      onValueChange={handleOperatorSelect}
-                    >
-                      <SelectTrigger className={`h-10 ${errors["assignedOperator.userId"] ? 'border-red-500' : ''}`}>
-                        <SelectValue placeholder="Choose an operator..." />
-                      </SelectTrigger>
-                      <SelectContent>
-                        {operators.length === 0 ? (
-                          <SelectItem value="no-operators" disabled>
-                            No operators available
-                          </SelectItem>
-                        ) : (
-                          operators.map((operator) => (
-                            <SelectItem key={operator.user_id} value={operator.user_id}>
-                              <div className="flex items-center gap-3">
-                                <div className="w-8 h-8 bg-blue-100 rounded-full flex items-center justify-center">
-                                  <UserCheck className="h-4 w-4 text-blue-600" />
-                                </div>
-                                <div>
-                                  <div className="font-medium">{operator.name}</div>
-                                  <div className="text-xs text-gray-500">{operator.email}</div>
-                                </div>
-                              </div>
-                            </SelectItem>
-                          ))
-                        )}
-                      </SelectContent>
-                    </Select>
-                    {errors["assignedOperator.userId"] && (
-                      <span className="text-red-500 text-sm flex items-center gap-1">
-                        <AlertTriangle className="h-3 w-3" />
-                        {errors["assignedOperator.userId"]}
-                      </span>
-                    )}
-                  </div>
-
-                  {operatorUserId && (
-                    <div className="grid grid-cols-1 lg:grid-cols-2 gap-4 mt-4 p-4 bg-white rounded-lg border">
-                      <div className="space-y-2">
-                        <Label className="text-sm font-medium text-gray-700">Name</Label>
-                        <Input value={operatorName} disabled className="bg-gray-50" />
-                      </div>
-                      <div className="space-y-2">
-                        <Label className="text-sm font-medium text-gray-700">Email</Label>
-                        <Input value={operatorEmail} disabled className="bg-gray-50" />
-                      </div>
-                      <div className="lg:col-span-2 space-y-2">
-                        <Label className="text-sm font-medium text-gray-700">Certification</Label>
-                        <Input
-                          value={operatorCertification}
-                          onChange={(e) => handleFieldChange("assignedOperator.certification", e.target.value)}
-                          placeholder="Enter or update certification details"
-                        />
-                      </div>
-                    </div>
-                  )}
-                </div>
-              </div>
-
-              {/* QC Technician Selection */}
-              <div className="bg-gradient-to-r from-green-50 to-emerald-50 p-6 rounded-xl border border-green-200">
-                <h4 className="font-bold text-lg text-gray-900 mb-4 flex items-center gap-3">
-                  <div className="p-2 bg-green-500 rounded-lg">
-                    <CheckCircle className="h-5 w-5 text-white" />
-                  </div>
-                  QC Technician
-                </h4>
-
-                <div className="space-y-4">
-                  <div className="space-y-2">
-                    <Label className="text-sm font-medium text-gray-700">
-                      Select QC Technician *
-                    </Label>
-                    <Select
-                      value={qcUserId}
-                      onValueChange={handleQcSelect}
-                    >
-                      <SelectTrigger className={`h-10 ${errors["qcTechnician.userId"] ? 'border-red-500' : ''}`}>
-                        <SelectValue placeholder="Choose a QC technician..." />
-                      </SelectTrigger>
-                      <SelectContent>
-                        {qcTechnicians.length === 0 ? (
-                          <SelectItem value="no-qc" disabled>
-                            No QC technicians available
-                          </SelectItem>
-                        ) : (
-                          qcTechnicians.map((qc) => (
-                            <SelectItem key={qc.user_id} value={qc.user_id}>
-                              <div className="flex items-center gap-3">
-                                <div className="w-8 h-8 bg-green-100 rounded-full flex items-center justify-center">
-                                  <CheckCircle className="h-4 w-4 text-green-600" />
-                                </div>
-                                <div>
-                                  <div className="font-medium">{qc.name}</div>
-                                  <div className="text-xs text-gray-500">{qc.email}</div>
-                                </div>
-                              </div>
-                            </SelectItem>
-                          ))
-                        )}
-                      </SelectContent>
-                    </Select>
-                    {errors["qcTechnician.userId"] && (
-                      <span className="text-red-500 text-sm flex items-center gap-1">
-                        <AlertTriangle className="h-3 w-3" />
-                        {errors["qcTechnician.userId"]}
-                      </span>
-                    )}
-                  </div>
-
-                  {qcUserId && (
-                    <div className="grid grid-cols-1 lg:grid-cols-2 gap-4 mt-4 p-4 bg-white rounded-lg border">
-                      <div className="space-y-2">
-                        <Label className="text-sm font-medium text-gray-700">Name</Label>
-                        <Input value={qcName} disabled className="bg-gray-50" />
-                      </div>
-                      <div className="space-y-2">
-                        <Label className="text-sm font-medium text-gray-700">Email</Label>
-                        <Input value={qcEmail} disabled className="bg-gray-50" />
-                      </div>
-                      <div className="lg:col-span-2 space-y-2">
-                        <Label className="text-sm font-medium text-gray-700">Certification</Label>
-                        <Input
-                          value={qcCertification}
-                          onChange={(e) => handleFieldChange("qcTechnician.certification", e.target.value)}
-                          placeholder="Enter or update certification details"
-                        />
-                      </div>
-                    </div>
-                  )}
-                </div>
-              </div>
-
-              {/* Refresh button */}
-              <div className="text-center">
-                <Button
-                  variant="outline"
-                  onClick={fetchUsers}
-                  disabled={loadingUsers}
-                  className="flex items-center gap-2"
-                >
-                  {loadingUsers ? (
-                    <Loader2 className="h-4 w-4 animate-spin" />
-                  ) : (
-                    <Search className="h-4 w-4" />
-                  )}
-                  Refresh User List
-                </Button>
-              </div>
+            {/* Refresh button */}
+            <div className="flex justify-center pt-4">
+              <Button
+                variant="outline"
+                onClick={fetchUsers}
+                disabled={loadingUsers}
+                className="flex items-center gap-2 h-10 px-6"
+              >
+                <RefreshCw className={`h-4 w-4 ${loadingUsers ? 'animate-spin' : ''}`} />
+                Refresh Team List
+              </Button>
             </div>
           </div>
         );

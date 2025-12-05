@@ -5,6 +5,7 @@ import { AlertProvider } from "./AlertProvider";
 import { DialogProvider } from "./DialogProvider";
 import { UserProvider } from "./UserContext";
 import { useRouter } from "next/navigation";
+import NotificationProvider from "./NotificationProvider";
 
 
 
@@ -19,12 +20,16 @@ export function AppProviders({ children }) {
   }, [router])
   
   return (
-    <AlertProvider>
-      <DialogProvider>
-        <UserProvider>
-          {children}
-        </UserProvider>
-      </DialogProvider>
-    </AlertProvider>
+     <UserProvider>
+      <NotificationProvider>
+        <AlertProvider>
+          <DialogProvider>
+          
+              {children}
+          
+          </DialogProvider>
+        </AlertProvider>
+      </NotificationProvider>
+    </UserProvider>
   );
 }

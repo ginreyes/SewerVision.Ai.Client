@@ -2,7 +2,7 @@
 
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
-import { Eye, Share2, FileVideo, Target, User, PencilIcon, DeleteIcon, Trash2Icon } from "lucide-react";
+import { Eye, FileVideo, Target, PencilIcon, Trash2Icon, Building2 } from "lucide-react";
 import { useRouter } from "next/navigation";
 import { useAlert } from "@/components/providers/AlertProvider";
 import { useDialog } from "@/components/providers/DialogProvider";
@@ -15,12 +15,13 @@ const ProjectCard = (props) => {
     getStatusColor,
     getPriorityColor,
     loadData,
-  } = props
+  } = props;
   const router = useRouter();
-  const{showAlert} = useAlert();
-  const {showDelete} = useDialog();
+  const { showAlert } = useAlert();
+  const { showDelete } = useDialog();
 
   const getInitials = (name) => {
+    if (!name) return "??";
     return name
       .split(" ")
       .map((word) => word.charAt(0))
@@ -29,8 +30,20 @@ const ProjectCard = (props) => {
       .slice(0, 2);
   };
 
+  // Get customer full name
+  const getCustomerName = () => {
+    if (!project.customerId) return null;
+    if (typeof project.customerId === 'string') return null; // Not populated
+    const { first_name, last_name } = project.customerId;
+    if (first_name || last_name) {
+      return `${first_name || ''} ${last_name || ''}`.trim();
+    }
+    return null;
+  };
+
   // Generate a consistent color based on name
   const getAvatarColor = (name) => {
+    if (!name) return "bg-gray-500";
     const colors = [
       "bg-red-500",
       "bg-blue-500",
@@ -52,16 +65,14 @@ const ProjectCard = (props) => {
         "Are you sure it will be deleted to our system but you can create another one ?",
       onConfirm: async () => {
         try {
-          const {ok,data} = await api(`/api/projects/delete-project/${project_id}`, "DELETE")
-          if(!ok){
-            showAlert('Project Deletion Failed','error')
-          } 
-          else {
-           showAlert("Project deleted", "success");
-           loadData();
+          const { ok, data } = await api(`/api/projects/delete-project/${project_id}`, "DELETE");
+          if (!ok) {
+            showAlert('Project Deletion Failed', 'error');
+          } else {
+            showAlert("Project deleted", "success");
+            loadData();
           }
-        } 
-        catch (error) {
+        } catch (error) {
           showAlert("Failed to delete project", "error");
         }
       },
@@ -69,25 +80,25 @@ const ProjectCard = (props) => {
     });
   };
 
-
+  const customerName = getCustomerName();
 
   return (
     <Card className="flex flex-col h-full overflow-hidden transition-shadow hover:shadow-xl p-0">
-     <CardHeader className="bg-gradient-to-r from-purple-500 to-purple-700 text-white p-6 h-full">
-
+      {/* Header with Pink/Purple Gradient */}
+      <CardHeader className="bg-gradient-to-r from-pink-500 via-purple-500 to-fuchsia-500 text-white p-6 h-full">
         <div className="flex justify-between items-start">
           <div className="flex-1">
             <CardTitle className="text-white text-xl mb-2">
               {project.name}
             </CardTitle>
-            <p className="text-blue-100 text-sm mb-1">{project.client}</p>
-            <p className="text-blue-100 text-sm">{project.location}</p>
+            <p className="text-pink-100 text-sm mb-1">{project.client}</p>
+            <p className="text-pink-100 text-sm">{project.location}</p>
           </div>
           <div className="flex gap-2">
             <Button
               variant="ghost"
               size="icon"
-              className="text-white hover:bg-white hover:bg-opacity-20"
+              className="text-white hover:bg-white/20"
               onClick={() => setSelectedProject(project)}
             >
               <Eye size={18} />
@@ -96,7 +107,7 @@ const ProjectCard = (props) => {
             <Button
               variant="ghost"
               size="icon"
-              className="text-white hover:bg-white hover:bg-opacity-20"
+              className="text-white hover:bg-white/20"
               onClick={() => router.push(`/admin/project/editProject/${project._id}`)}
             >
               <PencilIcon size={18} />
@@ -105,12 +116,11 @@ const ProjectCard = (props) => {
             <Button
               variant="ghost"
               size="icon"
-              className="text-white hover:bg-white hover:bg-opacity-20"
+              className="text-white hover:bg-white/20"
               onClick={() => handleDelete(project._id)}
             >
               <Trash2Icon size={18} />
             </Button>
-
           </div>
         </div>
       </CardHeader>
@@ -134,6 +144,27 @@ const ProjectCard = (props) => {
             </span>
           </div>
 
+          {/* Customer Info Section */}
+          {customerName && (
+            <div className="bg-gradient-to-r from-fuchsia-50 to-purple-50 p-3 rounded-lg mb-4 border border-purple-100">
+              <div className="flex items-center gap-3">
+                <div className={`w-9 h-9 rounded-full flex items-center justify-center text-white text-sm font-medium ${getAvatarColor(customerName)}`}>
+                  {getInitials(customerName)}
+                </div>
+                <div className="flex-1 min-w-0">
+                  <div className="flex items-center gap-1.5">
+                    <Building2 className="h-3.5 w-3.5 text-purple-500" />
+                    <span className="text-xs text-purple-600 font-medium">Customer</span>
+                  </div>
+                  <p className="text-sm font-semibold text-gray-900 truncate">{customerName}</p>
+                  {project.customerId?.email && (
+                    <p className="text-xs text-gray-500 truncate">{project.customerId.email}</p>
+                  )}
+                </div>
+              </div>
+            </div>
+          )}
+
           <div className="space-y-2 mb-4">
             <div className="flex justify-between items-center text-sm">
               <span className="text-gray-600">Progress</span>
@@ -143,27 +174,27 @@ const ProjectCard = (props) => {
             </div>
             <div className="w-full bg-gray-200 rounded-full h-2">
               <div
-                className="bg-gradient-to-r from-blue-500 to-purple-600 h-2 rounded-full transition-all duration-300"
+                className="bg-gradient-to-r from-pink-500 to-purple-600 h-2 rounded-full transition-all duration-300"
                 style={{ width: `${project.progress}%` }}
               />
             </div>
           </div>
 
           <div className="grid grid-cols-2 gap-4 mb-4">
-            <div className="bg-blue-50 p-3 rounded-lg flex items-center gap-2">
-              <FileVideo className="text-blue-600" size={20} />
+            <div className="bg-pink-50 p-3 rounded-lg flex items-center gap-2">
+              <FileVideo className="text-pink-600" size={20} />
               <div>
-                <div className="font-semibold text-blue-900">
-                  {project.videoCount}
+                <div className="font-semibold text-pink-900">
+                  {project.videoCount > 0 ? project.videoCount : (project.videoUrl ? 1 : 0)}
                 </div>
-                <div className="text-xs text-blue-700">Videos</div>
+                <div className="text-xs text-pink-700">Videos</div>
               </div>
             </div>
             <div className="bg-purple-50 p-3 rounded-lg flex items-center gap-2">
               <Target className="text-purple-600" size={20} />
               <div>
                 <div className="font-semibold text-purple-900">
-                  {project.aiDetections.total}
+                  {project.aiDetections?.total || 0}
                 </div>
                 <div className="text-xs text-purple-700">AI Detections</div>
               </div>
@@ -186,25 +217,32 @@ const ProjectCard = (props) => {
           </div>
         </div>
 
-        {/* ✅ Fixed footer section at bottom */}
+        {/* Footer section - Operator */}
         <div className="pt-4 border-t border-gray-200 text-sm flex justify-between items-center mt-auto">
           <div className="flex items-center gap-3 text-gray-600">
             <div
               className={`w-8 h-8 rounded-full flex items-center justify-center text-white text-sm font-medium ${getAvatarColor(
-                project.assignedOperator.name
+                project.assignedOperator?.name || "Unknown"
               )}`}
             >
-              {getInitials(project.assignedOperator.name)}
+              {getInitials(project.assignedOperator?.name || "UN")}
             </div>
-            <span className="font-medium text-gray-700">
-              {project.assignedOperator.name}
-            </span>
+            <div>
+              <p className="text-xs text-gray-500">Operator</p>
+              <span className="font-medium text-gray-700">
+                {project.assignedOperator?.name || "Unassigned"}
+              </span>
+            </div>
           </div>
-          <div className="text-gray-500">
-            Due:{" "}
-            {new Date(
-              project.estimatedCompletion || project.estimated_completion
-            ).toLocaleDateString()}
+          <div className="text-right">
+            <p className="text-xs text-gray-500">Due Date</p>
+            <p className="font-medium text-gray-700">
+              {project.estimatedCompletion || project.estimated_completion
+                ? new Date(
+                    project.estimatedCompletion || project.estimated_completion
+                  ).toLocaleDateString()
+                : "N/A"}
+            </p>
           </div>
         </div>
       </CardContent>
