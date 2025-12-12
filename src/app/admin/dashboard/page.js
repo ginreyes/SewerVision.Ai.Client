@@ -1,38 +1,38 @@
 'use client'
-import React, { useState, useEffect, useRef } from 'react'
+import React, { useState, useEffect, useRef, useMemo, useCallback } from 'react'
+import { useRouter } from 'next/navigation'
 import { 
   Upload, 
-  Play, 
-  Pause, 
   Edit3, 
   Share2, 
   Eye, 
   CheckCircle, 
   Clock, 
   AlertTriangle, 
-  Users, 
   FileText, 
-  Cloud, 
   Activity,
-  Settings,
-  Bell,
-  Search,
-  Filter,
-  Download,
   BarChart3,
   Zap,
   Database,
   Camera,
   Brain,
-  Shield
+  Shield,
+  Loader2,
+  RefreshCw,
+  Search,
+  Filter
 } from 'lucide-react'
+import dashboardApi from '@/data/dashboardApi'
 
-// ✅ Import Chart.js with auto-registration
-import Chart from 'chart.js/auto';
+// Lazy load Chart.js for better performance
+const loadChart = async () => {
+  const chartModule = await import('chart.js/auto');
+  return chartModule.default || chartModule;
+};
 
 const AdminDashboard = () => {
+  const router = useRouter()
   const [activeTab, setActiveTab] = useState('overview')
-  const [selectedProject, setSelectedProject] = useState(null)
   
   // Chart refs
   const pieChartRef = useRef(null)
@@ -50,66 +50,79 @@ const AdminDashboard = () => {
   const defectTrendChartInstance = useRef(null)
   const aiPerformanceChartInstance = useRef(null)
 
-  // Mock data
-  const projectStats = {
-    totalProjects: 1247,
-    activeInspections: 23,
-    aiProcessing: 8,
-    pendingQC: 15,
-    completed: 1201,
-    aiAccuracy: 94.2
-  }
-
-  const recentProjects = [
-    { id: 1, name: "Downtown Main Street", status: "ai-processing", progress: 65, date: "2024-08-14", inspector: "John Davis", defects: 12 },
-    { id: 2, name: "Industrial District Pipe A", status: "qc-review", progress: 90, date: "2024-08-13", inspector: "Sarah Wilson", defects: 8 },
-    { id: 3, name: "Residential Area B-2", status: "completed", progress: 100, date: "2024-08-12", inspector: "Mike Johnson", defects: 3 },
-    { id: 4, name: "Highway Underpass", status: "uploading", progress: 25, date: "2024-08-14", inspector: "Lisa Chen", defects: 0 },
-  ]
-
-  const aiDetections = [
-    { type: "Fractures", count: 45, confidence: 92.3, trend: "+12%" },
-    { type: "Cracks", count: 78, confidence: 89.7, trend: "+8%" },
-    { type: "Broken Pipes", count: 23, confidence: 95.1, trend: "-3%" },
-    { type: "Root Intrusion", count: 34, confidence: 87.9, trend: "+15%" },
-  ]
-
-  // Chart data
-  const productivityData = [
-    { month: 'Jan', manual: 45, ai: 78, accuracy: 89 },
-    { month: 'Feb', manual: 52, ai: 89, accuracy: 91 },
-    { month: 'Mar', manual: 48, ai: 95, accuracy: 92 },
-    { month: 'Apr', manual: 61, ai: 112, accuracy: 93 },
-    { month: 'May', manual: 55, ai: 125, accuracy: 94 },
-    { month: 'Jun', manual: 67, ai: 142, accuracy: 94.2 },
-  ]
-
-  const workflowData = [
-    { name: 'Upload & Store', value: 23, color: '#3B82F6' },
-    { name: 'AI Processing', value: 8, color: '#8B5CF6' },
-    { name: 'QC Review', value: 15, color: '#F59E0B' },
-    { name: 'Completed', value: 54, color: '#10B981' },
-  ]
-
-  const defectTrendData = [
-    { week: 'W1', fractures: 12, cracks: 18, broken: 5, roots: 8 },
-    { week: 'W2', fractures: 15, cracks: 22, broken: 7, roots: 10 },
-    { week: 'W3', fractures: 18, cracks: 25, broken: 6, roots: 12 },
-    { week: 'W4', fractures: 14, cracks: 20, broken: 8, roots: 15 },
-  ]
-
-  const aiPerformanceData = [
-    { metric: 'Overall Accuracy', value: 94.2 },
-    { metric: 'Fracture Detection', value: 92.3 },
-    { metric: 'Crack Detection', value: 89.7 },
-    { metric: 'Broken Pipe Detection', value: 95.1 },
-    { metric: 'Root Detection', value: 87.9 },
-  ]
-
   const COLORS = ['#3B82F6', '#8B5CF6', '#F59E0B', '#10B981']
+  const [ChartLoaded, setChartLoaded] = useState(false);
+  
+  // Data state
+  const [projectStats, setProjectStats] = useState({
+    totalProjects: 0,
+    activeInspections: 0,
+    aiProcessing: 0,
+    pendingQC: 0,
+    completed: 0,
+    aiAccuracy: 0
+  });
+  const [recentProjects, setRecentProjects] = useState([]);
+  const [aiDetections, setAiDetections] = useState([]);
+  const [productivityData, setProductivityData] = useState([]);
+  const [workflowData, setWorkflowData] = useState([]);
+  const [defectTrendData, setDefectTrendData] = useState([]);
+  const [aiPerformanceData, setAiPerformanceData] = useState([]);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState(null);
+
+  // Fetch dashboard data
+  const fetchDashboardData = useCallback(async () => {
+    try {
+      setLoading(true);
+      setError(null);
+      
+      const data = await dashboardApi.getDashboardStats();
+      
+      setProjectStats(data.projectStats);
+      setRecentProjects(data.recentProjects || []);
+      setAiDetections(data.aiDetections || []);
+      setProductivityData(data.productivityData || []);
+      setWorkflowData(data.workflowData || []);
+      setDefectTrendData(data.defectTrendData || []);
+      setAiPerformanceData(data.aiPerformanceData || []);
+    } catch (err) {
+      console.error('Error fetching dashboard data:', err);
+      setError(err.message || 'Failed to load dashboard data');
+    } finally {
+      setLoading(false);
+    }
+  }, []);
+
+  // Initial data fetch
+  useEffect(() => {
+    fetchDashboardData();
+  }, [fetchDashboardData]);
+
+  // Lazy load Chart.js
+  useEffect(() => {
+    loadChart().then((Chart) => {
+      window.Chart = Chart;
+      setChartLoaded(true);
+    });
+  }, []);
+
+  // Memoize chart data
+  const memoizedChartData = useMemo(() => ({
+    aiDetections,
+    workflowData,
+    productivityData,
+    defectTrendData,
+    aiPerformanceData,
+    COLORS
+  }), [aiDetections, workflowData, productivityData, defectTrendData, aiPerformanceData]);
 
   // Create charts
   useEffect(() => {
+    if (!ChartLoaded || !window.Chart) return;
+
+    const Chart = window.Chart;
+    
     if (pieChartInstance.current) pieChartInstance.current.destroy()
     if (workflowChartInstance.current) workflowChartInstance.current.destroy()
     if (productivityChartInstance.current) productivityChartInstance.current.destroy()
@@ -123,10 +136,10 @@ const AdminDashboard = () => {
         pieChartInstance.current = new Chart(pieChartRef.current, {
           type: 'pie',
           data: {
-            labels: aiDetections.map(d => d.type),
+            labels: memoizedChartData.aiDetections.map(d => d.type),
             datasets: [{
-              data: aiDetections.map(d => d.count),
-              backgroundColor: COLORS,
+              data: memoizedChartData.aiDetections.map(d => d.count),
+              backgroundColor: memoizedChartData.COLORS,
               borderWidth: 2,
               borderColor: '#fff'
             }]
@@ -159,10 +172,10 @@ const AdminDashboard = () => {
         workflowChartInstance.current = new Chart(workflowChartRef.current, {
           type: 'doughnut',
           data: {
-            labels: workflowData.map(d => d.name),
+            labels: memoizedChartData.workflowData.map(d => d.name),
             datasets: [{
-              data: workflowData.map(d => d.value),
-              backgroundColor: workflowData.map(d => d.color),
+              data: memoizedChartData.workflowData.map(d => d.value),
+              backgroundColor: memoizedChartData.workflowData.map(d => d.color),
               borderWidth: 2,
               borderColor: '#fff'
             }]
@@ -189,17 +202,17 @@ const AdminDashboard = () => {
         productivityChartInstance.current = new Chart(productivityChartRef.current, {
           type: 'bar',
           data: {
-            labels: productivityData.map(d => d.month),
+            labels: memoizedChartData.productivityData.map(d => d.month),
             datasets: [
               {
                 label: 'Manual Processing',
-                data: productivityData.map(d => d.manual),
+                data: memoizedChartData.productivityData.map(d => d.manual),
                 backgroundColor: '#EF4444',
                 borderRadius: 4
               },
               {
                 label: 'AI Processing',
-                data: productivityData.map(d => d.ai),
+                data: memoizedChartData.productivityData.map(d => d.ai),
                 backgroundColor: '#3B82F6',
                 borderRadius: 4
               }
@@ -239,10 +252,10 @@ const AdminDashboard = () => {
         accuracyChartInstance.current = new Chart(accuracyChartRef.current, {
           type: 'line',
           data: {
-            labels: productivityData.map(d => d.month),
+            labels: memoizedChartData.productivityData.map(d => d.month),
             datasets: [{
               label: 'AI Accuracy %',
-              data: productivityData.map(d => d.accuracy),
+              data: memoizedChartData.productivityData.map(d => d.accuracy),
               borderColor: '#10B981',
               backgroundColor: '#10B981',
               borderWidth: 3,
@@ -283,11 +296,11 @@ const AdminDashboard = () => {
         defectTrendChartInstance.current = new Chart(defectTrendChartRef.current, {
           type: 'line',
           data: {
-            labels: defectTrendData.map(d => d.week),
+            labels: memoizedChartData.defectTrendData.map(d => d.week),
             datasets: [
               {
                 label: 'Fractures',
-                data: defectTrendData.map(d => d.fractures),
+                data: memoizedChartData.defectTrendData.map(d => d.fractures),
                 borderColor: '#EF4444',
                 backgroundColor: 'rgba(239, 68, 68, 0.3)',
                 fill: true,
@@ -295,7 +308,7 @@ const AdminDashboard = () => {
               },
               {
                 label: 'Cracks',
-                data: defectTrendData.map(d => d.cracks),
+                data: memoizedChartData.defectTrendData.map(d => d.cracks),
                 borderColor: '#F59E0B',
                 backgroundColor: 'rgba(245, 158, 11, 0.3)',
                 fill: true,
@@ -303,7 +316,7 @@ const AdminDashboard = () => {
               },
               {
                 label: 'Broken Pipes',
-                data: defectTrendData.map(d => d.broken),
+                data: memoizedChartData.defectTrendData.map(d => d.broken),
                 borderColor: '#8B5CF6',
                 backgroundColor: 'rgba(139, 92, 246, 0.3)',
                 fill: true,
@@ -311,7 +324,7 @@ const AdminDashboard = () => {
               },
               {
                 label: 'Root Intrusion',
-                data: defectTrendData.map(d => d.roots),
+                data: memoizedChartData.defectTrendData.map(d => d.roots),
                 borderColor: '#10B981',
                 backgroundColor: 'rgba(16, 185, 129, 0.3)',
                 fill: true,
@@ -359,10 +372,10 @@ const AdminDashboard = () => {
         aiPerformanceChartInstance.current = new Chart(aiPerformanceChartRef.current, {
           type: 'bar',
           data: {
-            labels: aiPerformanceData.map(d => d.metric),
+            labels: memoizedChartData.aiPerformanceData.map(d => d.metric),
             datasets: [{
               label: 'Accuracy %',
-              data: aiPerformanceData.map(d => d.value),
+              data: memoizedChartData.aiPerformanceData.map(d => d.value),
               backgroundColor: '#8B5CF6',
               borderRadius: 4
             }]
@@ -394,7 +407,7 @@ const AdminDashboard = () => {
         })
       }
     }
-  }, [activeTab])
+  }, [activeTab, ChartLoaded, memoizedChartData])
 
   // Cleanup on unmount
   useEffect(() => {
@@ -408,7 +421,7 @@ const AdminDashboard = () => {
     }
   }, [])
 
-  const getStatusColor = (status) => {
+  const getStatusColor = useCallback((status) => {
     switch(status) {
       case 'completed': return 'bg-green-100 text-green-800'
       case 'ai-processing': return 'bg-blue-100 text-blue-800'
@@ -416,9 +429,9 @@ const AdminDashboard = () => {
       case 'uploading': return 'bg-purple-100 text-purple-800'
       default: return 'bg-gray-100 text-gray-800'
     }
-  }
+  }, []);
 
-  const getStatusIcon = (status) => {
+  const getStatusIcon = useCallback((status) => {
     switch(status) {
       case 'completed': return <CheckCircle className="w-4 h-4" />
       case 'ai-processing': return <Brain className="w-4 h-4" />
@@ -426,7 +439,7 @@ const AdminDashboard = () => {
       case 'uploading': return <Upload className="w-4 h-4" />
       default: return <Clock className="w-4 h-4" />
     }
-  }
+  }, []);
 
   return (
     <div className="max-w-7xl mx-auto bg-gray-50">
@@ -441,6 +454,13 @@ const AdminDashboard = () => {
               </div>
               <span className="px-3 py-1 bg-blue-100 text-blue-800 text-sm rounded-full font-medium">Dashboard</span>
             </div>
+            <button
+              onClick={() => router.push('/admin/uploads')}
+              className="flex items-center space-x-2 bg-blue-600 text-white px-4 py-2 rounded-lg hover:bg-blue-700 transition-colors"
+            >
+              <Upload className="w-4 h-4" />
+              <span>Upload Files</span>
+            </button>
           </div>
         </div>
       </header>
@@ -451,7 +471,6 @@ const AdminDashboard = () => {
           <div className="flex space-x-8">
             {[
               { id: 'overview', label: 'Overview', icon: BarChart3 },
-              { id: 'projects', label: 'Projects', icon: Database },
               { id: 'ai-models', label: 'AI Models', icon: Brain },
               { id: 'qc-review', label: 'QC Review', icon: Shield },
               { id: 'reports', label: 'Reports', icon: FileText },
@@ -475,7 +494,13 @@ const AdminDashboard = () => {
 
       {/* Main Content */}
       <main className="px-6 py-6">
-        {activeTab === 'overview' && (
+        {loading && (
+          <div className="flex items-center justify-center py-12">
+            <Loader2 className="w-8 h-8 animate-spin text-blue-600 mr-3" />
+            <span className="text-gray-600">Loading dashboard data...</span>
+          </div>
+        )}
+        {!loading && activeTab === 'overview' && (
           <div className="space-y-6">
             {/* Stats Grid */}
             <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
@@ -603,10 +628,12 @@ const AdminDashboard = () => {
               <div className="p-6 border-b border-gray-200">
                 <div className="flex items-center justify-between">
                   <h3 className="text-lg font-semibold text-gray-900">Recent Projects</h3>
-                  <div className="flex items-center space-x-2">
-                    <Filter className="w-4 h-4 text-gray-400" />
-                    <button className="text-sm text-blue-600 hover:text-blue-800 font-medium">View All</button>
-                  </div>
+                  <button 
+                    onClick={() => window.location.href = '/admin/project'}
+                    className="text-sm text-blue-600 hover:text-blue-800 font-medium"
+                  >
+                    View All
+                  </button>
                 </div>
               </div>
               <div className="p-6">
@@ -624,81 +651,66 @@ const AdminDashboard = () => {
                       </tr>
                     </thead>
                     <tbody className="space-y-3">
-                      {recentProjects.map((project) => (
-                        <tr key={project.id} className="border-b border-gray-100">
-                          <td className="py-4">
-                            <p className="font-medium text-gray-900">{project.name}</p>
-                          </td>
-                          <td className="py-4">
-                            <span className={`inline-flex items-center space-x-1 px-3 py-1 rounded-full text-xs font-medium ${getStatusColor(project.status)}`}>
-                              {getStatusIcon(project.status)}
-                              <span className="capitalize">{project.status.replace('-', ' ')}</span>
-                            </span>
-                          </td>
-                          <td className="py-4">
-                            <div className="w-24 bg-gray-200 rounded-full h-2">
-                              <div 
-                                className="bg-blue-600 h-2 rounded-full" 
-                                style={{ width: `${project.progress}%` }}
-                              ></div>
-                            </div>
-                            <span className="text-xs text-gray-600 mt-1">{project.progress}%</span>
-                          </td>
-                          <td className="py-4 text-gray-700">{project.inspector}</td>
-                          <td className="py-4">
-                            <span className="inline-flex items-center px-2 py-1 rounded-full text-xs font-medium bg-red-100 text-red-800">
-                              {project.defects}
-                            </span>
-                          </td>
-                          <td className="py-4 text-gray-600 text-sm">{project.date}</td>
-                          <td className="py-4">
-                            <div className="flex items-center space-x-2">
-                              <button className="p-1 text-gray-400 hover:text-gray-600">
-                                <Eye className="w-4 h-4" />
-                              </button>
-                              <button className="p-1 text-gray-400 hover:text-gray-600">
-                                <Edit3 className="w-4 h-4" />
-                              </button>
-                              <button className="p-1 text-gray-400 hover:text-gray-600">
-                                <Share2 className="w-4 h-4" />
-                              </button>
-                            </div>
+                      {recentProjects.length === 0 ? (
+                        <tr>
+                          <td colSpan={7} className="py-8 text-center text-gray-500">
+                            No projects found
                           </td>
                         </tr>
-                      ))}
+                      ) : (
+                        recentProjects.map((project) => (
+                          <tr key={project.id} className="border-b border-gray-100">
+                            <td className="py-4">
+                              <p className="font-medium text-gray-900">{project.name}</p>
+                            </td>
+                            <td className="py-4">
+                              <span className={`inline-flex items-center space-x-1 px-3 py-1 rounded-full text-xs font-medium ${getStatusColor(project.status)}`}>
+                                {getStatusIcon(project.status)}
+                                <span className="capitalize">{project.status?.replace(/-/g, ' ') || 'Unknown'}</span>
+                              </span>
+                            </td>
+                            <td className="py-4">
+                              <div className="w-24 bg-gray-200 rounded-full h-2">
+                                <div 
+                                  className="bg-blue-600 h-2 rounded-full" 
+                                  style={{ width: `${project.progress || 0}%` }}
+                                ></div>
+                              </div>
+                              <span className="text-xs text-gray-600 mt-1">{project.progress || 0}%</span>
+                            </td>
+                            <td className="py-4 text-gray-700">{project.inspector || 'N/A'}</td>
+                            <td className="py-4">
+                              <span className="inline-flex items-center px-2 py-1 rounded-full text-xs font-medium bg-red-100 text-red-800">
+                                {project.defects || 0}
+                              </span>
+                            </td>
+                            <td className="py-4 text-gray-600 text-sm">{project.date || 'N/A'}</td>
+                            <td className="py-4">
+                              <div className="flex items-center space-x-2">
+                                <button 
+                                  onClick={() => window.location.href = `/admin/project/${project.id}`}
+                                  className="p-1 text-gray-400 hover:text-gray-600"
+                                  title="View Project"
+                                >
+                                  <Eye className="w-4 h-4" />
+                                </button>
+                                <button 
+                                  onClick={() => window.location.href = `/admin/project/${project.id}?edit=true`}
+                                  className="p-1 text-gray-400 hover:text-gray-600"
+                                  title="Edit Project"
+                                >
+                                  <Edit3 className="w-4 h-4" />
+                                </button>
+                                <button className="p-1 text-gray-400 hover:text-gray-600" title="Share Project">
+                                  <Share2 className="w-4 h-4" />
+                                </button>
+                              </div>
+                            </td>
+                          </tr>
+                        ))
+                      )}
                     </tbody>
                   </table>
-                </div>
-              </div>
-            </div>
-          </div>
-        )}
-
-        {activeTab === 'projects' && (
-          <div className="space-y-6">
-            <div className="flex items-center justify-between">
-              <h2 className="text-2xl font-bold text-gray-900">Project Management</h2>
-              <button className="flex items-center space-x-2 bg-blue-600 text-white px-4 py-2 rounded-lg hover:bg-blue-700">
-                <Upload className="w-4 h-4" />
-                <span>Upload New Inspection</span>
-              </button>
-            </div>
-            
-            {/* Project filters and tools */}
-            <div className="bg-white rounded-xl shadow-sm p-6 border border-gray-100">
-              <div className="flex items-center justify-between mb-4">
-                <div className="flex items-center space-x-4">
-                  <button className="flex items-center space-x-2 px-4 py-2 border border-gray-300 rounded-lg hover:bg-gray-50">
-                    <Filter className="w-4 h-4" />
-                    <span>Filter</span>
-                  </button>
-                  <button className="flex items-center space-x-2 px-4 py-2 border border-gray-300 rounded-lg hover:bg-gray-50">
-                    <Download className="w-4 h-4" />
-                    <span>Export</span>
-                  </button>
-                </div>
-                <div className="text-sm text-gray-600">
-                  Showing {recentProjects.length} of {projectStats.totalProjects} projects
                 </div>
               </div>
             </div>
@@ -767,6 +779,244 @@ const AdminDashboard = () => {
                     </div>
                   ))}
                 </div>
+              </div>
+            </div>
+          </div>
+        )}
+
+        {activeTab === 'qc-review' && (
+          <div className="space-y-6">
+            <div className="flex items-center justify-between">
+              <h2 className="text-2xl font-bold text-gray-900">QC Review Queue</h2>
+              <button 
+                onClick={() => router.push('/admin/task')}
+                className="flex items-center space-x-2 bg-amber-600 text-white px-4 py-2 rounded-lg hover:bg-amber-700 transition-colors"
+              >
+                <Shield className="w-4 h-4" />
+                <span>View All QC Tasks</span>
+              </button>
+            </div>
+
+            <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
+              <div className="bg-white rounded-xl shadow-sm p-6 border border-gray-100">
+                <div className="flex items-center justify-between">
+                  <div>
+                    <p className="text-sm font-medium text-gray-600">Pending Reviews</p>
+                    <p className="text-3xl font-bold text-gray-900">{projectStats.pendingQC}</p>
+                  </div>
+                  <div className="w-12 h-12 bg-amber-100 rounded-lg flex items-center justify-center">
+                    <Clock className="w-6 h-6 text-amber-600" />
+                  </div>
+                </div>
+                <div className="mt-4">
+                  <span className="text-sm text-amber-600 font-medium">Awaiting QC review</span>
+                </div>
+              </div>
+
+              <div className="bg-white rounded-xl shadow-sm p-6 border border-gray-100">
+                <div className="flex items-center justify-between">
+                  <div>
+                    <p className="text-sm font-medium text-gray-600">In Review</p>
+                    <p className="text-3xl font-bold text-gray-900">
+                      {recentProjects.filter(p => p.status === 'qc-review').length}
+                    </p>
+                  </div>
+                  <div className="w-12 h-12 bg-blue-100 rounded-lg flex items-center justify-center">
+                    <Eye className="w-6 h-6 text-blue-600" />
+                  </div>
+                </div>
+                <div className="mt-4">
+                  <span className="text-sm text-blue-600 font-medium">Currently being reviewed</span>
+                </div>
+              </div>
+
+              <div className="bg-white rounded-xl shadow-sm p-6 border border-gray-100">
+                <div className="flex items-center justify-between">
+                  <div>
+                    <p className="text-sm font-medium text-gray-600">Completed Reviews</p>
+                    <p className="text-3xl font-bold text-gray-900">{projectStats.completed}</p>
+                  </div>
+                  <div className="w-12 h-12 bg-green-100 rounded-lg flex items-center justify-center">
+                    <CheckCircle className="w-6 h-6 text-green-600" />
+                  </div>
+                </div>
+                <div className="mt-4">
+                  <span className="text-sm text-green-600 font-medium">QC approved</span>
+                </div>
+              </div>
+            </div>
+
+            <div className="bg-white rounded-xl shadow-sm border border-gray-100">
+              <div className="p-6 border-b border-gray-200">
+                <div className="flex items-center justify-between">
+                  <h3 className="text-lg font-semibold text-gray-900">Projects Pending QC Review</h3>
+                </div>
+              </div>
+              <div className="p-6">
+                {recentProjects.filter(p => p.status === 'qc-review' || p.status === 'ai-processing').length === 0 ? (
+                  <div className="text-center py-8 text-gray-500">
+                    <Shield className="w-12 h-12 mx-auto mb-3 text-gray-400" />
+                    <p>No projects pending QC review</p>
+                  </div>
+                ) : (
+                  <div className="space-y-4">
+                    {recentProjects
+                      .filter(p => p.status === 'qc-review' || p.status === 'ai-processing')
+                      .slice(0, 5)
+                      .map((project) => (
+                        <div
+                          key={project.id}
+                          className="flex items-center justify-between p-4 border border-gray-200 rounded-lg hover:bg-gray-50 cursor-pointer"
+                          onClick={() => router.push(`/admin/project/${project.id}`)}
+                        >
+                          <div className="flex-1">
+                            <h4 className="font-medium text-gray-900">{project.name}</h4>
+                            <p className="text-sm text-gray-500 mt-1">
+                              {project.inspector} • {project.date}
+                            </p>
+                            <div className="flex items-center space-x-2 mt-2">
+                              <span className="text-xs px-2 py-1 bg-amber-100 text-amber-800 rounded">
+                                {project.defects || 0} defects found
+                              </span>
+                            </div>
+                          </div>
+                          <button
+                            onClick={(e) => {
+                              e.stopPropagation()
+                              router.push(`/admin/project/${project.id}`)
+                            }}
+                            className="ml-4 px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 text-sm"
+                          >
+                            Review
+                          </button>
+                        </div>
+                      ))}
+                  </div>
+                )}
+              </div>
+            </div>
+          </div>
+        )}
+
+        {activeTab === 'reports' && (
+          <div className="space-y-6">
+            <div className="flex items-center justify-between">
+              <h2 className="text-2xl font-bold text-gray-900">Reports & Analytics</h2>
+              <button 
+                onClick={() => router.push('/admin/report')}
+                className="flex items-center space-x-2 bg-green-600 text-white px-4 py-2 rounded-lg hover:bg-green-700 transition-colors"
+              >
+                <FileText className="w-4 h-4" />
+                <span>View All Reports</span>
+              </button>
+            </div>
+
+            <div className="grid grid-cols-1 md:grid-cols-4 gap-6">
+              <div className="bg-white rounded-xl shadow-sm p-6 border border-gray-100">
+                <div className="flex items-center justify-between">
+                  <div>
+                    <p className="text-sm font-medium text-gray-600">Total Reports</p>
+                    <p className="text-3xl font-bold text-gray-900">{projectStats.completed}</p>
+                  </div>
+                  <div className="w-12 h-12 bg-blue-100 rounded-lg flex items-center justify-center">
+                    <FileText className="w-6 h-6 text-blue-600" />
+                  </div>
+                </div>
+              </div>
+
+              <div className="bg-white rounded-xl shadow-sm p-6 border border-gray-100">
+                <div className="flex items-center justify-between">
+                  <div>
+                    <p className="text-sm font-medium text-gray-600">Completed</p>
+                    <p className="text-3xl font-bold text-gray-900">{projectStats.completed}</p>
+                  </div>
+                  <div className="w-12 h-12 bg-green-100 rounded-lg flex items-center justify-center">
+                    <CheckCircle className="w-6 h-6 text-green-600" />
+                  </div>
+                </div>
+              </div>
+
+              <div className="bg-white rounded-xl shadow-sm p-6 border border-gray-100">
+                <div className="flex items-center justify-between">
+                  <div>
+                    <p className="text-sm font-medium text-gray-600">AI Accuracy</p>
+                    <p className="text-3xl font-bold text-gray-900">{projectStats.aiAccuracy}%</p>
+                  </div>
+                  <div className="w-12 h-12 bg-purple-100 rounded-lg flex items-center justify-center">
+                    <Brain className="w-6 h-6 text-purple-600" />
+                  </div>
+                </div>
+              </div>
+
+              <div className="bg-white rounded-xl shadow-sm p-6 border border-gray-100">
+                <div className="flex items-center justify-between">
+                  <div>
+                    <p className="text-sm font-medium text-gray-600">Total Projects</p>
+                    <p className="text-3xl font-bold text-gray-900">{projectStats.totalProjects}</p>
+                  </div>
+                  <div className="w-12 h-12 bg-indigo-100 rounded-lg flex items-center justify-center">
+                    <Database className="w-6 h-6 text-indigo-600" />
+                  </div>
+                </div>
+              </div>
+            </div>
+
+            <div className="bg-white rounded-xl shadow-sm border border-gray-100">
+              <div className="p-6 border-b border-gray-200">
+                <div className="flex items-center justify-between">
+                  <h3 className="text-lg font-semibold text-gray-900">Recent Completed Projects</h3>
+                  <button
+                    onClick={() => router.push('/admin/report')}
+                    className="text-sm text-blue-600 hover:text-blue-800 font-medium"
+                  >
+                    View All Reports →
+                  </button>
+                </div>
+              </div>
+              <div className="p-6">
+                {recentProjects.filter(p => p.status === 'completed').length === 0 ? (
+                  <div className="text-center py-8 text-gray-500">
+                    <FileText className="w-12 h-12 mx-auto mb-3 text-gray-400" />
+                    <p>No completed projects yet</p>
+                  </div>
+                ) : (
+                  <div className="space-y-4">
+                    {recentProjects
+                      .filter(p => p.status === 'completed')
+                      .slice(0, 5)
+                      .map((project) => (
+                        <div
+                          key={project.id}
+                          className="flex items-center justify-between p-4 border border-gray-200 rounded-lg hover:bg-gray-50 cursor-pointer"
+                          onClick={() => router.push(`/admin/project/${project.id}`)}
+                        >
+                          <div className="flex-1">
+                            <h4 className="font-medium text-gray-900">{project.name}</h4>
+                            <p className="text-sm text-gray-500 mt-1">
+                              Completed by {project.inspector} • {project.date}
+                            </p>
+                            <div className="flex items-center space-x-2 mt-2">
+                              <span className="text-xs px-2 py-1 bg-green-100 text-green-800 rounded">
+                                {project.defects || 0} defects
+                              </span>
+                              <span className="text-xs px-2 py-1 bg-blue-100 text-blue-800 rounded">
+                                Report ready
+                              </span>
+                            </div>
+                          </div>
+                          <button
+                            onClick={(e) => {
+                              e.stopPropagation()
+                              router.push(`/admin/report`)
+                            }}
+                            className="ml-4 px-4 py-2 bg-green-600 text-white rounded-lg hover:bg-green-700 text-sm"
+                          >
+                            View Report
+                          </button>
+                        </div>
+                      ))}
+                  </div>
+                )}
               </div>
             </div>
           </div>

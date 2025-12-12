@@ -1,5 +1,5 @@
 "use client";
-import React, { useState, useRef, useEffect } from "react";
+import React, { useState, useRef, useEffect, useCallback } from "react";
 import {
   Upload,
   Download,
@@ -20,6 +20,7 @@ import {
   TrendingUp,
   AlertCircle,
   Info,
+  Loader2,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -43,11 +44,14 @@ import { Progress } from "@/components/ui/progress";
 import { Alert, AlertDescription } from "@/components/ui/alert";
 import { Checkbox } from "@/components/ui/checkbox";
 import { Label } from "@/components/ui/label";
-import { api } from "@/lib/helper";
+import uploadsApi from "@/data/uploadsApi";
 import { FileCard } from "./components/FileCard";
 import { getFileTypeIcon, getStatusColor } from "@/lib/utils";
+import BulkUploadModal from "./components/BulkUploadModal";
+import { useAlert } from "@/components/providers/AlertProvider";
 
 const AdminUploads = () => {
+  const { showAlert } = useAlert();
   const [searchQuery, setSearchQuery] = useState("");
   const [filterStatus, setFilterStatus] = useState("all");
   const [filterType, setFilterType] = useState("all");
@@ -55,35 +59,108 @@ const AdminUploads = () => {
   const [selectedFiles, setSelectedFiles] = useState([]);
   const [showBulkActions, setShowBulkActions] = useState(false);
   const [uploadProgress, setUploadProgress] = useState({});
+  const [showBulkUploadModal, setShowBulkUploadModal] = useState(false);
   const fileInputRef = useRef(null);
   const [uploads, setUploads] = useState([]);
-  const [systemStats, setSystemStats] = useState([]);
+  const [systemStats, setSystemStats] = useState({
+    totalStorage: "0 GB",
+    usedStorage: "0 GB",
+    storageUsage: 0,
+    totalFiles: 0,
+    monthlyUploads: 0,
+    activeUploads: 0,
+    failedUploads: 0,
+    videoFiles: 0,
+    documentFiles: 0,
+    archiveFiles: 0,
+    otherFiles: 0,
+  });
+  const [loading, setLoading] = useState(true);
+  const [monitoringData, setMonitoringData] = useState({
+    activeUploads: [],
+    processingQueue: [],
+    errors: [],
+  });
 
-  const handleFetchUploads = async () => {
+  const handleFetchUploads = useCallback(async () => {
     try {
-      const { data, ok } = await api("/api/uploads/get-all-uploads");
-      const uploadsArray = data.data.uploads;
-      setUploads(uploadsArray);
+      setLoading(true);
+      const data = await uploadsApi.getAllUploads({
+        status: filterStatus !== "all" ? filterStatus : undefined,
+        type: filterType !== "all" ? filterType : undefined,
+        search: searchQuery || undefined,
+      });
+      setUploads(data.uploads || []);
     } catch (error) {
       console.error(`Fetching Upload Error: ${error.message}`);
+      showAlert('Failed to fetch uploads', 'error');
+    } finally {
+      setLoading(false);
     }
-  };
+  }, [filterStatus, filterType, searchQuery, showAlert]);
 
-  const fetchSystemStats = async () => {
+  const fetchSystemStats = useCallback(async () => {
     try {
-      const { ok, data } = await api("/api/uploads/get-stats");
-
-      const result = data.data;
-      setSystemStats(result);
+      const result = await uploadsApi.getSystemStats();
+      setSystemStats(result || {
+        totalStorage: "0 GB",
+        usedStorage: "0 GB",
+        storageUsage: 0,
+        totalFiles: 0,
+        monthlyUploads: 0,
+        activeUploads: 0,
+        failedUploads: 0,
+        videoFiles: 0,
+        documentFiles: 0,
+        archiveFiles: 0,
+        otherFiles: 0,
+      });
     } catch (error) {
       console.error(`Fetching stats Error: ${error.message}`);
+      showAlert('Failed to fetch system stats', 'error');
     }
-  };
+  }, [showAlert]);
+
+  const fetchMonitoringData = useCallback(async () => {
+    try {
+      const data = await uploadsApi.getAllUploads({
+        status: 'uploading',
+        limit: 10,
+      });
+      
+      const processingData = await uploadsApi.getAllUploads({
+        status: 'processing',
+        limit: 10,
+      });
+
+      const failedData = await uploadsApi.getAllUploads({
+        status: 'failed',
+        limit: 5,
+      });
+
+      setMonitoringData({
+        activeUploads: data.uploads || [],
+        processingQueue: processingData.uploads || [],
+        errors: failedData.uploads || [],
+      });
+    } catch (error) {
+      console.error('Error fetching monitoring data:', error);
+    }
+  }, []);
 
   useEffect(() => {
     fetchSystemStats();
     handleFetchUploads();
-  }, []);
+    if (activeTab === 'monitoring') {
+      fetchMonitoringData();
+      const interval = setInterval(fetchMonitoringData, 5000); // Refresh every 5 seconds
+      return () => clearInterval(interval);
+    }
+  }, [fetchSystemStats, handleFetchUploads, activeTab, fetchMonitoringData]);
+
+  useEffect(() => {
+    handleFetchUploads();
+  }, [handleFetchUploads]);
 
   const formatFileSize = (bytes) => {
     if (bytes === 0) return "0 Bytes";
@@ -116,15 +193,31 @@ const AdminUploads = () => {
     if (selectedFiles.length === filteredUploads.length) {
       setSelectedFiles([]);
     } else {
-      setSelectedFiles(filteredUploads.map((upload) => upload.id));
+      setSelectedFiles(filteredUploads.map((upload) => upload._id || upload.id));
     }
   };
 
-  const handleBulkAction = (action) => {
-    console.log(`Performing ${action} on files:`, selectedFiles);
-    // Here you would implement the actual bulk action
-    setSelectedFiles([]);
-    setShowBulkActions(false);
+  const handleBulkAction = async (action) => {
+    if (selectedFiles.length === 0) {
+      showAlert('Please select files to perform action', 'error');
+      return;
+    }
+
+    try {
+      await uploadsApi.bulkAction(action, selectedFiles);
+      showAlert(`Successfully ${action}ed ${selectedFiles.length} file(s)`, 'success');
+      setSelectedFiles([]);
+      setShowBulkActions(false);
+      handleFetchUploads();
+    } catch (error) {
+      console.error('Bulk action error:', error);
+      showAlert(`Failed to ${action} files: ${error.message}`, 'error');
+    }
+  };
+
+  const handleUploadComplete = () => {
+    handleFetchUploads();
+    fetchSystemStats();
   };
 
   const StatCard = ({ title, value, subtitle, icon: Icon, color, trend }) => (
@@ -165,11 +258,11 @@ const AdminUploads = () => {
               </Badge>
             </div>
             <div className="flex items-center space-x-4">
-              <Button variant="outline">
+              <Button variant="outline" onClick={() => { handleFetchUploads(); fetchSystemStats(); }}>
                 <RefreshCw className="w-4 h-4 mr-2" />
                 Refresh
               </Button>
-              <Button variant="gradient">
+              <Button variant="gradient" onClick={() => setShowBulkUploadModal(true)}>
                 <CloudUpload className="w-4 h-4 mr-2" />
                 Bulk Upload
               </Button>
@@ -215,7 +308,7 @@ const AdminUploads = () => {
               />
               <StatCard
                 title="AI Processing"
-                value="12"
+                value={monitoringData.processingQueue.length}
                 subtitle="Videos in queue"
                 icon={Brain}
                 color="bg-gradient-to-br from-purple-500 to-pink-600"
@@ -424,35 +517,41 @@ const AdminUploads = () => {
                   <CardTitle>Storage Analytics</CardTitle>
                 </CardHeader>
                 <CardContent>
-                  <div className="space-y-4">
-                    <div className="flex justify-between items-center">
-                      <span className="text-sm font-medium">Video Files</span>
-                      <span className="text-sm text-gray-600">
-                        1.2 TB (67%)
-                      </span>
+                  {loading ? (
+                    <div className="flex items-center justify-center py-8">
+                      <Loader2 className="w-6 h-6 animate-spin text-gray-400" />
                     </div>
-                    <Progress value={67} className="h-2" />
+                  ) : (
+                    <div className="space-y-4">
+                      <div className="flex justify-between items-center">
+                        <span className="text-sm font-medium">Video Files</span>
+                        <span className="text-sm text-gray-600">
+                          {systemStats.videoFiles} files
+                        </span>
+                      </div>
+                      <Progress value={systemStats.videoFiles > 0 ? (systemStats.videoFiles / systemStats.totalFiles) * 100 : 0} className="h-2" />
 
-                    <div className="flex justify-between items-center">
-                      <span className="text-sm font-medium">Documents</span>
-                      <span className="text-sm text-gray-600">
-                        245 GB (14%)
-                      </span>
-                    </div>
-                    <Progress value={14} className="h-2" />
+                      <div className="flex justify-between items-center">
+                        <span className="text-sm font-medium">Documents</span>
+                        <span className="text-sm text-gray-600">
+                          {systemStats.documentFiles} files
+                        </span>
+                      </div>
+                      <Progress value={systemStats.documentFiles > 0 ? (systemStats.documentFiles / systemStats.totalFiles) * 100 : 0} className="h-2" />
 
-                    <div className="flex justify-between items-center">
-                      <span className="text-sm font-medium">Archives</span>
-                      <span className="text-sm text-gray-600">156 GB (9%)</span>
-                    </div>
-                    <Progress value={9} className="h-2" />
+                      <div className="flex justify-between items-center">
+                        <span className="text-sm font-medium">Archives</span>
+                        <span className="text-sm text-gray-600">{systemStats.archiveFiles} files</span>
+                      </div>
+                      <Progress value={systemStats.archiveFiles > 0 ? (systemStats.archiveFiles / systemStats.totalFiles) * 100 : 0} className="h-2" />
 
-                    <div className="flex justify-between items-center">
-                      <span className="text-sm font-medium">Other</span>
-                      <span className="text-sm text-gray-600">89 GB (5%)</span>
+                      <div className="flex justify-between items-center">
+                        <span className="text-sm font-medium">Other</span>
+                        <span className="text-sm text-gray-600">{systemStats.otherFiles} files</span>
+                      </div>
+                      <Progress value={systemStats.otherFiles > 0 ? (systemStats.otherFiles / systemStats.totalFiles) * 100 : 0} className="h-2" />
                     </div>
-                    <Progress value={5} className="h-2" />
-                  </div>
+                  )}
                 </CardContent>
               </Card>
 
@@ -462,13 +561,15 @@ const AdminUploads = () => {
                   <CardTitle>Storage Management</CardTitle>
                 </CardHeader>
                 <CardContent className="space-y-4">
-                  <Alert>
-                    <AlertTriangle className="h-4 w-4" />
-                    <AlertDescription>
-                      Storage is 68% full. Consider archiving old files or
-                      expanding storage.
-                    </AlertDescription>
-                  </Alert>
+                  {systemStats.storageUsage > 70 && (
+                    <Alert>
+                      <AlertTriangle className="h-4 w-4" />
+                      <AlertDescription>
+                        Storage is {systemStats.storageUsage}% full. Consider archiving old files or
+                        expanding storage.
+                      </AlertDescription>
+                    </Alert>
+                  )}
 
                   <div className="space-y-2">
                     <Button variant="outline" className="w-full justify-start">
@@ -659,70 +760,74 @@ const AdminUploads = () => {
                 </CardDescription>
               </CardHeader>
               <CardContent>
-                <div className="space-y-4">
-                  <div className="flex items-center justify-between p-4 border border-gray-200 rounded-lg">
-                    <div className="flex items-center space-x-4">
-                      <FileVideo className="w-5 h-5 text-blue-600" />
-                      <div>
-                        <h4 className="font-medium">
-                          downtown_inspection_final.mp4
-                        </h4>
-                        <p className="text-sm text-gray-500">
-                          Mike Davis • 1.8 GB
-                        </p>
-                      </div>
-                    </div>
-                    <div className="flex items-center space-x-4">
-                      <div className="text-right">
-                        <div className="text-sm font-medium">Uploading</div>
-                        <div className="text-xs text-gray-500">
-                          73% complete
-                        </div>
-                      </div>
-                      <Progress value={73} className="w-24 h-2" />
-                    </div>
+                {loading ? (
+                  <div className="flex items-center justify-center py-8">
+                    <Loader2 className="w-6 h-6 animate-spin text-gray-400" />
                   </div>
+                ) : (
+                  <div className="space-y-4">
+                    {monitoringData.activeUploads.length === 0 && monitoringData.processingQueue.length === 0 ? (
+                      <div className="text-center py-8 text-gray-500">
+                        <Activity className="w-12 h-12 mx-auto mb-3 text-gray-400" />
+                        <p>No active uploads or processing</p>
+                      </div>
+                    ) : (
+                      <>
+                        {monitoringData.activeUploads.map((upload) => (
+                          <div key={upload._id} className="flex items-center justify-between p-4 border border-gray-200 rounded-lg">
+                            <div className="flex items-center space-x-4">
+                              {getFileTypeIcon(upload.type)}
+                              <div>
+                                <h4 className="font-medium">{upload.originalName}</h4>
+                                <p className="text-sm text-gray-500">
+                                  {upload.uploadedBy} • {upload.size}
+                                </p>
+                              </div>
+                            </div>
+                            <div className="flex items-center space-x-4">
+                              <div className="text-right">
+                                <div className="text-sm font-medium capitalize">{upload.status}</div>
+                                <div className="text-xs text-gray-500">
+                                  {upload.location}
+                                </div>
+                              </div>
+                              <Badge className={getStatusColor(upload.status)}>
+                                {upload.status}
+                              </Badge>
+                            </div>
+                          </div>
+                        ))}
 
-                  <div className="flex items-center justify-between p-4 border border-gray-200 rounded-lg">
-                    <div className="flex items-center space-x-4">
-                      <Brain className="w-5 h-5 text-purple-600" />
-                      <div>
-                        <h4 className="font-medium">
-                          AI Processing: oak_avenue_inspection.mp4
-                        </h4>
-                        <p className="text-sm text-gray-500">
-                          Defect detection in progress
-                        </p>
-                      </div>
-                    </div>
-                    <div className="flex items-center space-x-4">
-                      <div className="text-right">
-                        <div className="text-sm font-medium">Processing</div>
-                        <div className="text-xs text-gray-500">
-                          45% complete
-                        </div>
-                      </div>
-                      <Progress value={45} className="w-24 h-2" />
-                    </div>
+                        {monitoringData.processingQueue.map((upload) => (
+                          <div key={upload._id} className="flex items-center justify-between p-4 border border-gray-200 rounded-lg">
+                            <div className="flex items-center space-x-4">
+                              <Brain className="w-5 h-5 text-purple-600" />
+                              <div>
+                                <h4 className="font-medium">
+                                  AI Processing: {upload.originalName}
+                                </h4>
+                                <p className="text-sm text-gray-500">
+                                  Defect detection in progress
+                                </p>
+                              </div>
+                            </div>
+                            <div className="flex items-center space-x-4">
+                              <div className="text-right">
+                                <div className="text-sm font-medium">Processing</div>
+                                <div className="text-xs text-gray-500">
+                                  {upload.processingStatus || 'pending'}
+                                </div>
+                              </div>
+                              <Badge className="bg-purple-100 text-purple-800">
+                                Processing
+                              </Badge>
+                            </div>
+                          </div>
+                        ))}
+                      </>
+                    )}
                   </div>
-
-                  <div className="flex items-center justify-between p-4 border border-gray-200 rounded-lg">
-                    <div className="flex items-center space-x-4">
-                      <CheckCircle className="w-5 h-5 text-green-600" />
-                      <div>
-                        <h4 className="font-medium">
-                          system_backup_20240718.zip
-                        </h4>
-                        <p className="text-sm text-gray-500">
-                          Backup completed successfully
-                        </p>
-                      </div>
-                    </div>
-                    <Badge className="bg-green-100 text-green-800">
-                      Completed
-                    </Badge>
-                  </div>
-                </div>
+                )}
               </CardContent>
             </Card>
 
@@ -732,33 +837,35 @@ const AdminUploads = () => {
                 <CardTitle>Recent Errors & Issues</CardTitle>
               </CardHeader>
               <CardContent>
-                <div className="space-y-3">
-                  <div className="flex items-start space-x-3 p-3 bg-red-50 border border-red-200 rounded-lg">
-                    <AlertCircle className="w-5 h-5 text-red-600 mt-0.5" />
-                    <div>
-                      <h4 className="font-medium text-red-900">
-                        Upload Failed
-                      </h4>
-                      <p className="text-sm text-red-700">
-                        pipeline_video_large.mp4 - Connection timeout
-                      </p>
-                      <p className="text-xs text-red-600">2 hours ago</p>
-                    </div>
+                {loading ? (
+                  <div className="flex items-center justify-center py-8">
+                    <Loader2 className="w-6 h-6 animate-spin text-gray-400" />
                   </div>
-
-                  <div className="flex items-start space-x-3 p-3 bg-amber-50 border border-amber-200 rounded-lg">
-                    <AlertTriangle className="w-5 h-5 text-amber-600 mt-0.5" />
-                    <div>
-                      <h4 className="font-medium text-amber-900">
-                        Processing Delayed
-                      </h4>
-                      <p className="text-sm text-amber-700">
-                        AI queue backlog - 15 files pending
-                      </p>
-                      <p className="text-xs text-amber-600">4 hours ago</p>
-                    </div>
+                ) : monitoringData.errors.length === 0 ? (
+                  <div className="text-center py-8 text-gray-500">
+                    <CheckCircle className="w-12 h-12 mx-auto mb-3 text-green-400" />
+                    <p>No recent errors</p>
                   </div>
-                </div>
+                ) : (
+                  <div className="space-y-3">
+                    {monitoringData.errors.map((upload) => (
+                      <div key={upload._id} className="flex items-start space-x-3 p-3 bg-red-50 border border-red-200 rounded-lg">
+                        <AlertCircle className="w-5 h-5 text-red-600 mt-0.5" />
+                        <div>
+                          <h4 className="font-medium text-red-900">
+                            Upload Failed
+                          </h4>
+                          <p className="text-sm text-red-700">
+                            {upload.originalName} - {upload.processingError || 'Upload failed'}
+                          </p>
+                          <p className="text-xs text-red-600">
+                            {new Date(upload.uploadedAt).toLocaleString()}
+                          </p>
+                        </div>
+                      </div>
+                    ))}
+                  </div>
+                )}
               </CardContent>
             </Card>
           </TabsContent>
@@ -979,6 +1086,13 @@ const AdminUploads = () => {
           </TabsContent>
         </Tabs>
       </div>
+
+      {/* Bulk Upload Modal */}
+      <BulkUploadModal
+        open={showBulkUploadModal}
+        onClose={() => setShowBulkUploadModal(false)}
+        onUploadComplete={handleUploadComplete}
+      />
     </div>
   );
 };

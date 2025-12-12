@@ -12,7 +12,7 @@ import { FiSearch, FiClock, FiTrendingUp, FiFile, FiUsers, FiSettings } from 're
 import Link from 'next/link';
 import Image from 'next/image';
 import { api } from '@/lib/helper';
-import NotificationPanel from '../NotoficationPanel';
+import { NotificationBell } from '../NotoficationPanel';
 
 // Search categories for icons and styling
 const searchCategories = {
@@ -29,7 +29,6 @@ const searchCategories = {
 const Navbar = (props) => {
   const {openSideBar , role}  = props
   const [open, setOpen] = useState(false);
-  const [notificationOpen, setNotificationOpen] = useState(false);
   const [searchQuery, setSearchQuery] = useState('');
   const [searchOpen, setSearchOpen] = useState(false);
   const [searchResults, setSearchResults] = useState([]);
@@ -309,19 +308,7 @@ const Navbar = (props) => {
             <Image src="/setting.png" alt="Settings" width={22} height={22} />
           </button>
 
-          <Popover open={notificationOpen} onOpenChange={setNotificationOpen}>
-            <PopoverTrigger asChild>
-              <button className="relative focus:outline-none">
-                <Image src="/Notification.png" alt="Notifications" width={22} height={22} />
-                <span className="absolute -top-1 -right-1 w-3 h-3 bg-red-500 rounded-full text-xs text-white flex items-center justify-center">
-                  3
-                </span>
-              </button>
-            </PopoverTrigger>
-            <PopoverContent className="w-80 p-0">
-             <NotificationPanel/>
-            </PopoverContent>
-          </Popover>
+          <NotificationBell className="focus:outline-none" />
 
           <span className="text-gray-300">|</span>
 

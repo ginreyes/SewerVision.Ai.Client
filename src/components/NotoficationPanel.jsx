@@ -1,7 +1,7 @@
 "use client";
 
 import React, { useState, useRef } from 'react';
-import { useRouter } from 'next/navigation';
+import { useRouter, usePathname } from 'next/navigation';
 import { useNotifications } from '@/components/providers/NotificationProvider';
 import { Button } from '@/components/ui/button';
 import { ScrollArea } from '@/components/ui/scroll-area';
@@ -215,6 +215,7 @@ export const NotificationBell = ({ className }) => {
 
 const NotificationPanel = ({ onClose }) => {
   const router = useRouter();
+  const pathname = usePathname();
   const {
     notifications,
     unreadCount,
@@ -310,7 +311,10 @@ const NotificationPanel = ({ onClose }) => {
             <Button
               variant="ghost"
               size="icon"
-              onClick={() => router.push('/admin/settings/notifications')}
+              onClick={() => {
+                const basePath = pathname.split('/').slice(0, 2).join('/');
+                router.push(`${basePath}/settings`);
+              }}
               className="h-8 w-8 text-gray-500 hover:text-gray-700"
             >
               <Settings className="h-4 w-4" />
@@ -414,7 +418,8 @@ const NotificationPanel = ({ onClose }) => {
             className="w-full text-sm font-medium text-gray-600 hover:text-gray-900 hover:bg-white"
             onClick={() => {
               onClose?.();
-              router.push('/admin/notifications');
+              const basePath = pathname.split('/').slice(0, 2).join('/');
+              router.push(`${basePath}/notifications`);
             }}
           >
             View all notifications

@@ -40,6 +40,7 @@ const AdminSidebar = ({ isOpen }) => {
     { label: "Task", icon: "task.svg", path: "/admin/task" },
     { label: "Report", icon: "reports.svg", path: "/admin/report" },
     { label: "Notes", icon: "notes.svg", path: "/admin/notes" },
+    { label: "Notifications", icon: "notes.svg", path: "/admin/notifications" },
     { label: "Users", icon: "users.svg", path: "/admin/users" },   
     { label: "Settings", icon: "settings.svg", path: "/admin/settings" },
   ];

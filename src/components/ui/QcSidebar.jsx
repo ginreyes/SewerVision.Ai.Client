@@ -9,7 +9,8 @@ import {
     SearchCheck, 
     FileText, 
     BadgeCheck, 
-    Settings 
+    Settings,
+    Bell
   } from "lucide-react";
 
 const QcSidebar = ({ isOpen, role }) => {
@@ -27,6 +28,7 @@ const QcSidebar = ({ isOpen, role }) => {
     { label: "Quality Control", icon: ClipboardCheck, path: "/qc-technician/quality-control" },
     { label: "Reports", icon: FileText, path: "/qc-technician/reports" },
     { label: "Certifications", icon: BadgeCheck, path: "/qc-technician/certifications" },
+    { label: "Notifications", icon: Bell, path: "/qc-technician/notifications" },
     { label: "Settings", icon: Settings, path: "/qc-technician/settings" },
   ];
   const sidebarItems = role === 'qc-technician' ? qcTechnician : qcTechnician;

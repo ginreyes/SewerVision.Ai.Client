@@ -12,6 +12,7 @@ import {
   BarChart2,
   Settings,
   SearchX,
+  Bell,
 } from 'lucide-react';
 
 const OperatorSidebar = ({ isOpen, role }) => {
@@ -31,6 +32,7 @@ const OperatorSidebar = ({ isOpen, role }) => {
     { label: "Maintenance", icon: Wrench, path: "/operator/maintenance" },
     { label: "Logs", icon: BookOpen, path: "/operator/logs" },
     { label: "Reports", icon: BarChart2, path: "/operator/reports" },
+    { label: "Notifications", icon: Bell, path: "/operator/notifications" },
     { label: "Settings", icon: Settings, path: "/operator/settings" },
   ];
 
