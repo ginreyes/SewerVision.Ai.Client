@@ -159,7 +159,7 @@ const QualityControlPage = () => {
         return;
       }
       
-      if (activeSession) {S
+      if (activeSession) {
         await api(`/api/qc/sessions/${activeSession._id}/end`, {
           method: 'PATCH'
         });
@@ -176,7 +176,7 @@ const QualityControlPage = () => {
     switch (status) {
       case 'assigned': 
       case 'pending': return 'bg-yellow-100 text-yellow-700 border-yellow-200';
-      case 'in-progress': return 'bg-blue-100 text-blue-700 border-blue-200';
+      case 'in-progress': return 'bg-rose-100 text-rose-700 border-rose-200';
       case 'completed': return 'bg-green-100 text-green-700 border-green-200';
       default: return 'bg-gray-100 text-gray-700 border-gray-200';
     }
@@ -203,7 +203,7 @@ const QualityControlPage = () => {
       <div className="bg-white border-b border-gray-200 p-6">
         <div className="flex items-center justify-between">
           <div className="flex items-center gap-4">
-            <div className="w-10 h-10 bg-gradient-to-br from-blue-500 to-purple-500 rounded-2xl flex items-center justify-center">
+            <div className="w-10 h-10 bg-gradient-to-br from-[#D76A84] to-rose-500 rounded-2xl flex items-center justify-center">
               <Target className="h-5 w-5 text-white" />
             </div>
             <div>
@@ -218,7 +218,7 @@ const QualityControlPage = () => {
               </p>
               <p className="text-xs text-gray-600">{currentUser?.certification || 'QC Technician'}</p>
             </div>
-            <div className="w-10 h-10 bg-blue-500 rounded-full flex items-center justify-center">
+            <div className="w-10 h-10 bg-gradient-to-br from-[#D76A84] to-rose-500 rounded-full flex items-center justify-center">
               <span className="text-white font-bold text-sm">
                 {currentUser?.first_name?.[0]}{currentUser?.last_name?.[0]}
               </span>
@@ -246,7 +246,7 @@ const QualityControlPage = () => {
               <select 
                 value={filterStatus}
                 onChange={(e) => setFilterStatus(e.target.value)}
-                className="w-full p-3 border border-gray-200 rounded-xl bg-white text-sm focus:border-blue-500 outline-none"
+                className="w-full p-3 border border-gray-200 rounded-xl bg-white text-sm focus:border-rose-500 focus:ring-2 focus:ring-rose-500/20 outline-none"
               >
                 <option value="all">All Projects</option>
                 <option value="assigned">Pending Review</option>
@@ -256,11 +256,11 @@ const QualityControlPage = () => {
             </div>
 
             {/* Today's Progress */}
-            <div className="bg-gradient-to-r from-purple-100 to-blue-100 rounded-2xl p-4 mb-6">
+            <div className="bg-gradient-to-r from-rose-100 to-pink-100 rounded-2xl p-4 mb-6 border border-rose-200/50">
               <h3 className="font-bold text-gray-900 mb-3">Today Progress</h3>
               <div className="grid grid-cols-2 gap-4 text-center">
                 <div>
-                  <div className="text-2xl font-bold text-blue-600">
+                  <div className="text-2xl font-bold bg-gradient-to-r from-[#D76A84] to-rose-600 bg-clip-text text-transparent">
                     {assignedProjects.length}
                   </div>
                   <div className="text-xs text-gray-600">Projects Assigned</div>
@@ -277,7 +277,7 @@ const QualityControlPage = () => {
             {/* Project List */}
             {loading ? (
               <div className="flex justify-center py-8">
-                <Loader2 className="h-8 w-8 animate-spin text-blue-500" />
+                <Loader2 className="h-8 w-8 animate-spin text-rose-500" />
               </div>
             ) : (
               <div className="space-y-4">
@@ -286,7 +286,7 @@ const QualityControlPage = () => {
                     key={project._id}
                     className={`p-4 rounded-2xl cursor-pointer transition-all border ${
                       activeProject?._id === project._id 
-                        ? 'border-blue-500 bg-gradient-to-r from-purple-50 to-blue-50' 
+                        ? 'border-rose-500 bg-gradient-to-r from-rose-50 to-pink-50 shadow-sm shadow-rose-500/10' 
                         : 'border-gray-200 hover:border-gray-300'
                     }`}
                     onClick={() => handleProjectSelect(project)}
@@ -319,9 +319,9 @@ const QualityControlPage = () => {
                     </div>
 
                     {/* Progress Bar */}
-                    <div className="w-full bg-gray-200 rounded-full h-2 mb-2">
+                    <div className="w-full bg-gray-200 rounded-full h-2 mb-2 overflow-hidden">
                       <div 
-                        className="bg-gradient-to-r from-blue-500 to-purple-500 h-2 rounded-full"
+                        className="bg-gradient-to-r from-[#D76A84] via-rose-500 to-pink-600 h-2 rounded-full transition-all duration-300"
                         style={{ width: `${(project.reviewedDetections / project.totalDetections) * 100}%` }}
                       ></div>
                     </div>
@@ -375,7 +375,7 @@ const QualityControlPage = () => {
 
                     {detectionLoading ? (
                       <div className="flex justify-center py-8">
-                        <Loader2 className="h-8 w-8 animate-spin text-blue-500" />
+                        <Loader2 className="h-8 w-8 animate-spin text-rose-500" />
                       </div>
                     ) : (
                       <div className="space-y-4">
@@ -384,7 +384,7 @@ const QualityControlPage = () => {
                             key={detection._id}
                             className={`p-5 border rounded-2xl cursor-pointer transition-all ${
                               selectedDetection?._id === detection._id 
-                                ? 'border-blue-500 bg-gradient-to-r from-purple-50 to-blue-50' 
+                                ? 'border-rose-500 bg-gradient-to-r from-rose-50 to-pink-50 shadow-sm shadow-rose-500/10' 
                                 : 'border-gray-200 hover:border-gray-300'
                             } ${detection.qcStatus === 'pending' ? 'ring-2 ring-yellow-200' : ''}`}
                             onClick={() => setSelectedDetection(detection)}

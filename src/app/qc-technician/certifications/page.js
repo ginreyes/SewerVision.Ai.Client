@@ -188,7 +188,7 @@ Verification URL: ${cert.verificationUrl}
         {/* Header */}
         <div className="mb-8 flex flex-col sm:flex-row sm:items-center sm:justify-between">
           <div className="flex items-center gap-3 mb-4 sm:mb-0">
-            <Award className="w-8 h-8 text-blue-600" />
+            <Award className="w-8 h-8 text-rose-600" />
             <h1 className="text-3xl font-bold text-gray-900">My Certifications</h1>
           </div>
           <Button onClick={() => setIsAddModalOpen(true)} className="flex items-center gap-2">
@@ -208,7 +208,7 @@ Verification URL: ${cert.verificationUrl}
                   <CardDescription>Total</CardDescription>
                   <CardTitle className="text-2xl">{stats.total}</CardTitle>
                 </div>
-                <FileCheck className="w-8 h-8 text-blue-500" />
+                <FileCheck className="w-8 h-8 text-rose-500" />
               </div>
             </CardHeader>
           </Card>
@@ -269,8 +269,8 @@ Verification URL: ${cert.verificationUrl}
                 <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">
                   <div className="flex-1">
                     <div className="flex items-start gap-3 mb-3">
-                      <div className="p-2 bg-blue-50 rounded-lg">
-                        <Award className="w-6 h-6 text-blue-600" />
+                      <div className="p-2 bg-rose-50 rounded-lg">
+                        <Award className="w-6 h-6 text-rose-600" />
                       </div>
                       <div className="flex-1">
                         <h3 className="text-lg font-semibold text-gray-900 mb-1">{cert.name}</h3>
@@ -345,8 +345,8 @@ Verification URL: ${cert.verificationUrl}
 
           {selectedCert && (
             <div className="space-y-6">
-              <div className="text-center p-8 bg-gradient-to-br from-blue-50 to-indigo-50 rounded-lg border-2 border-blue-200">
-                <Award className="w-20 h-20 text-blue-600 mx-auto mb-4" />
+              <div className="text-center p-8 bg-gradient-to-br from-rose-50 to-pink-50 rounded-lg border-2 border-rose-200">
+                <Award className="w-20 h-20 text-rose-600 mx-auto mb-4" />
                 <h3 className="text-2xl font-bold text-gray-900 mb-2">{selectedCert.name}</h3>
                 <p className="text-lg text-gray-700 mb-3">{selectedCert.issuer}</p>
                 <Badge variant={getStatusVariant(selectedCert.status)} className="flex items-center gap-2 w-fit mx-auto">
@@ -399,7 +399,7 @@ Verification URL: ${cert.verificationUrl}
                     href={selectedCert.verificationUrl}
                     target="_blank"
                     rel="noopener noreferrer"
-                    className="text-blue-600 hover:text-blue-800 underline break-all flex items-center gap-1"
+                    className="text-rose-600 hover:text-rose-800 underline break-all flex items-center gap-1"
                   >
                     {selectedCert.verificationUrl}
                     <ExternalLink className="w-3 h-3" />

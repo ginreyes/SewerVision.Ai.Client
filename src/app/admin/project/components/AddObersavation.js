@@ -50,6 +50,7 @@ const AddObservation = (props) => {
     project_id, 
     user_id ,
     pacpCodes,
+    snapshots = [],
   } = props
   
   //statess
@@ -665,6 +666,46 @@ const AddObservation = (props) => {
                             </div>
                           </div>
                         </div>
+
+                        {/* Existing Snapshots List */}
+                        {Array.isArray(snapshots) && snapshots.length > 0 && (
+                          <div className="space-y-3 mt-6">
+                            <Label className="text-sm font-semibold text-gray-700">
+                              Existing Snapshots ({snapshots.length})
+                            </Label>
+                            <div className="max-h-48 overflow-y-auto space-y-2 border border-gray-200 rounded-lg p-3 bg-white">
+                              {snapshots.map((snapshot, index) => (
+                                <div 
+                                  key={snapshot.id || snapshot._id || index}
+                                  className="flex items-center justify-between p-2 bg-gray-50 rounded hover:bg-gray-100 transition-colors"
+                                >
+                                  <div className="flex items-center gap-3 flex-1 min-w-0">
+                                    <div className={`w-3 h-3 rounded-full ${snapshot.color || 'bg-gray-400'} flex-shrink-0`}></div>
+                                    <div className="flex-1 min-w-0">
+                                      <div className="text-sm font-medium text-gray-900 truncate">
+                                        {snapshot.label || 'Unlabeled'}
+                                      </div>
+                                      <div className="text-xs text-gray-500">
+                                        {snapshot.distance || 'N/A'} • {snapshot.timestamp ? new Date(snapshot.timestamp).toLocaleString() : 'N/A'}
+                                      </div>
+                                    </div>
+                                  </div>
+                                  {snapshot.imageUrl && (
+                                    <Button
+                                      type="button"
+                                      variant="ghost"
+                                      size="sm"
+                                      onClick={() => window.open(snapshot.imageUrl, '_blank')}
+                                      className="flex-shrink-0"
+                                    >
+                                      <ImageIcon className="h-4 w-4" />
+                                    </Button>
+                                  )}
+                                </div>
+                              ))}
+                            </div>
+                          </div>
+                        )}
                       </div>
                     </div>
                   </div>

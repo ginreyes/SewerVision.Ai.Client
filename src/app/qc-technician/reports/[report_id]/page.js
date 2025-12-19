@@ -254,11 +254,11 @@ const ReportDetailView = () => {
                 <p className="text-sm text-gray-600">Minor Defects</p>
               </div>
 
-              <div className="text-center p-4 bg-blue-50 rounded-lg border border-blue-200">
-                <div className="w-12 h-12 bg-blue-100 rounded-full flex items-center justify-center mx-auto mb-3">
-                  <Activity className="h-6 w-6 text-blue-600" />
+              <div className="text-center p-4 bg-rose-50 rounded-lg border border-rose-200">
+                <div className="w-12 h-12 bg-rose-100 rounded-full flex items-center justify-center mx-auto mb-3">
+                  <Activity className="h-6 w-6 text-rose-600" />
                 </div>
-                <h4 className="text-2xl font-bold text-blue-600 mb-1">{report.totalDefects}</h4>
+                <h4 className="text-2xl font-bold text-rose-600 mb-1">{report.totalDefects}</h4>
                 <p className="text-sm text-gray-600">Total Defects</p>
               </div>
             </div>
@@ -493,14 +493,14 @@ const ReportDetailView = () => {
                 </div>
               </div>
 
-              <div className="p-4 bg-blue-50 border border-blue-200 rounded-lg">
+              <div className="p-4 bg-rose-50 border border-rose-200 rounded-lg">
                 <div className="flex items-start gap-3">
-                  <div className="w-8 h-8 bg-blue-100 rounded-full flex items-center justify-center flex-shrink-0">
-                    <span className="text-blue-600 font-bold text-sm">4</span>
+                  <div className="w-8 h-8 bg-rose-100 rounded-full flex items-center justify-center flex-shrink-0">
+                    <span className="text-rose-600 font-bold text-sm">4</span>
                   </div>
                   <div className="flex-1">
-                    <h4 className="font-semibold text-blue-900 mb-1">Routine Cleaning</h4>
-                    <p className="text-sm text-blue-800">Schedule cleaning to remove sediment deposits throughout the pipe. Estimated cost: $800 - $1,200</p>
+                    <h4 className="font-semibold text-rose-900 mb-1">Routine Cleaning</h4>
+                    <p className="text-sm text-rose-800">Schedule cleaning to remove sediment deposits throughout the pipe. Estimated cost: $800 - $1,200</p>
                     <div className="mt-2 flex items-center gap-2">
                       <Badge variant="outline">Priority: Low</Badge>
                       <Badge variant="outline" className="bg-white">Timeline: 6-12 months</Badge>

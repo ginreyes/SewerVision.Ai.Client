@@ -199,12 +199,12 @@ const ModuleLoading = ({ isVisible = true, moduleName = "Module", onOpenChange }
               <span>Loading {moduleName}...</span>
               <span>{Math.round(((currentStep + 1) / workflowSteps.length) * 100)}%</span>
             </div>
-            <div className="w-full bg-gray-200 rounded-full h-2">
+            <div className="w-full bg-gray-200 rounded-full h-2 overflow-hidden">
               <div 
-                className="bg-gradient-to-r from-blue-500 to-purple-500 h-2 rounded-full transition-all duration-500 ease-out"
+                className="bg-gradient-to-r from-[#D76A84] via-rose-500 to-pink-600 h-2 rounded-full transition-all duration-500 ease-out relative"
                 style={{ width: `${((currentStep + 1) / workflowSteps.length) * 100}%` }}
               >
-                <div className="h-full bg-white opacity-30 rounded-full animate-pulse"></div>
+                <div className="absolute inset-0 bg-gradient-to-r from-transparent via-white/30 to-transparent animate-shimmer rounded-full"></div>
               </div>
             </div>
           </div>
@@ -221,12 +221,21 @@ const ModuleLoading = ({ isVisible = true, moduleName = "Module", onOpenChange }
             to { opacity: 1; transform: translateY(0); }
           }
           
+          @keyframes shimmer {
+            0% { transform: translateX(-100%); }
+            100% { transform: translateX(100%); }
+          }
+          
           .animate-bounce-x {
             animation: bounce-x 1s infinite;
           }
           
           .animate-fade-in {
             animation: fade-in 0.3s ease-out;
+          }
+          
+          .animate-shimmer {
+            animation: shimmer 2s infinite;
           }
         `}</style>
       </DialogContent>

@@ -1,8 +1,24 @@
 'use client'
+import { useEffect } from "react";
+import { useRouter } from "next/navigation";
 import Login from "./login/page";
 import { FaCamera, FaBrain, FaChartLine, FaShieldAlt, FaClock, FaUsers } from "react-icons/fa";
 
 export default function Home() {
+  const router = useRouter();
+
+  useEffect(() => {
+    // Check if user is already logged in and redirect them
+    const token = localStorage.getItem("authToken");
+    const role = localStorage.getItem("role");
+    
+    if (token && role) {
+      const knownRoles = ["admin", "user", "operator", "qc-technician", "customer"];
+      if (knownRoles.includes(role.toLowerCase())) {
+        router.push(`/${role}/dashboard`);
+      }
+    }
+  }, [router]);
   const features = [
     {
       icon: <FaCamera className="h-8 w-8" />,

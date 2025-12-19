@@ -1,5 +1,5 @@
 'use client'
-import React, { useState } from 'react'
+import React, { useState, useEffect } from 'react'
 import { 
   FileText, 
   Download, 
@@ -18,7 +18,8 @@ import {
   FileCheck,
   Award,
   TrendingUp,
-  X
+  X,
+  Loader2
 } from 'lucide-react'
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card'
 import { Button } from '@/components/ui/button'
@@ -27,106 +28,47 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs'
 import { Badge } from '@/components/ui/badge'
 import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from '@/components/ui/dialog'
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select'
+import { Label } from '@/components/ui/label'
+import { Textarea } from '@/components/ui/textarea'
 import { useRouter } from 'next/navigation'
+import { useUser } from '@/components/providers/UserContext'
+import { useAlert } from '@/components/providers/AlertProvider'
+import reportsApi from '@/data/reportsApi'
 
 const QualityReportPage = () => {
   const router = useRouter()
+  const { userId, userData } = useUser()
+  const { showAlert } = useAlert()
   const [selectedReport, setSelectedReport] = useState(null)
   const [filterStatus, setFilterStatus] = useState('all')
+  const [searchTerm, setSearchTerm] = useState('')
+  const [dateRange, setDateRange] = useState('30days')
   const [isModalOpen, setIsModalOpen] = useState(false)
+  const [isNewReportModalOpen, setIsNewReportModalOpen] = useState(false)
+  const [isTemplateModalOpen, setIsTemplateModalOpen] = useState(false)
+  const [reports, setReports] = useState([])
+  const [reportTemplates, setReportTemplates] = useState([])
+  const [projects, setProjects] = useState([])
+  const [loading, setLoading] = useState(true)
+  const [stats, setStats] = useState({
+    total: 0,
+    completed: 0,
+    draft: 0,
+    inReview: 0
+  })
 
-  // Mock data for reports
-  const reports = [
-    {
-      id: 1,
-      projectName: "Main St Pipeline - Section A",
-      reportType: "PACP Condition Assessment",
-      operator: "John Smith",
-      qcTechnician: "Maria Rodriguez",
-      createdDate: "2025-09-18",
-      status: "completed",
-      totalDefects: 23,
-      criticalDefects: 1,
-      pipeLength: "1,250 ft",
-      overallGrade: "Grade 3",
-      confidence: 94,
-      downloadCount: 3,
-      lastModified: "2025-09-18 14:30"
-    },
-    {
-      id: 2,
-      projectName: "Oak Ave Lateral Inspection",
-      reportType: "PACP Condition Assessment",
-      operator: "Sarah Johnson",
-      qcTechnician: "Maria Rodriguez",
-      createdDate: "2025-09-18",
-      status: "draft",
-      totalDefects: 8,
-      criticalDefects: 0,
-      pipeLength: "450 ft",
-      overallGrade: "Grade 2",
-      confidence: 91,
-      downloadCount: 0,
-      lastModified: "2025-09-18 11:15"
-    },
-    {
-      id: 3,
-      projectName: "Industrial District - Line 3",
-      reportType: "PACP Condition Assessment",
-      operator: "Mike Torres",
-      qcTechnician: "John Smith",
-      createdDate: "2025-09-17",
-      status: "pending_review",
-      totalDefects: 31,
-      criticalDefects: 2,
-      pipeLength: "2,100 ft",
-      overallGrade: "Grade 4",
-      confidence: 89,
-      downloadCount: 1,
-      lastModified: "2025-09-17 16:45"
-    },
-    {
-      id: 4,
-      projectName: "Downtown Trunk Line Inspection",
-      reportType: "PACP Condition Assessment",
-      operator: "Lisa Chen",
-      qcTechnician: "Maria Rodriguez",
-      createdDate: "2025-09-16",
-      status: "completed",
-      totalDefects: 45,
-      criticalDefects: 3,
-      pipeLength: "3,200 ft",
-      overallGrade: "Grade 4",
-      confidence: 96,
-      downloadCount: 8,
-      lastModified: "2025-09-16 13:20"
-    }
-  ]
+  // New report form state
+  const [newReportForm, setNewReportForm] = useState({
+    projectId: '',
+    templateId: ''
+  })
 
-  // Mock data for report templates
-  const reportTemplates = [
-    {
-      id: 1,
-      name: "Standard PACP Report",
-      description: "Complete PACP condition assessment with defect analysis",
-      fields: ["Project Info", "Defect Summary", "Detailed Findings", "Recommendations"],
-      lastUsed: "2025-09-18"
-    },
-    {
-      id: 2,
-      name: "Executive Summary Report",
-      description: "High-level overview for management and stakeholders",
-      fields: ["Executive Summary", "Key Findings", "Critical Issues", "Next Steps"],
-      lastUsed: "2025-09-15"
-    },
-    {
-      id: 3,
-      name: "Maintenance Priority Report",
-      description: "Prioritized maintenance recommendations based on severity",
-      fields: ["Priority Matrix", "Cost Estimates", "Timeline", "Risk Assessment"],
-      lastUsed: "2025-09-12"
-    }
-  ]
+  // New template form state
+  const [newTemplateForm, setNewTemplateForm] = useState({
+    name: '',
+    description: '',
+    fields: []
+  })
 
   const getStatusVariant = (status) => {
     switch (status) {
@@ -147,13 +89,107 @@ const QualityReportPage = () => {
     }
   }
 
+  // Fetch data
+  useEffect(() => {
+    if (userId) {
+      fetchReports()
+      fetchTemplates()
+      fetchProjects()
+    }
+  }, [userId, filterStatus, searchTerm, dateRange])
+
+  const fetchReports = async () => {
+    if (!userId) return
+    try {
+      setLoading(true)
+      const response = await reportsApi.getReports(userId, {
+        status: filterStatus,
+        searchTerm,
+        dateRange
+      })
+      setReports(response.data || [])
+      setStats(response.stats || stats)
+    } catch (error) {
+      console.error('Error fetching reports:', error)
+      showAlert(error.message || 'Failed to fetch reports', 'error')
+    } finally {
+      setLoading(false)
+    }
+  }
+
+  const fetchTemplates = async () => {
+    if (!userId) return
+    try {
+      const templates = await reportsApi.getTemplates(userId)
+      setReportTemplates(templates || [])
+    } catch (error) {
+      console.error('Error fetching templates:', error)
+      showAlert(error.message || 'Failed to fetch templates', 'error')
+    }
+  }
+
+  const fetchProjects = async () => {
+    if (!userId) return
+    try {
+      const projectsData = await reportsApi.getProjectsForReport(userId)
+      setProjects(projectsData || [])
+    } catch (error) {
+      console.error('Error fetching projects:', error)
+    }
+  }
+
+  const handleCreateReport = async () => {
+    if (!newReportForm.projectId) {
+      showAlert('Please select a project', 'error')
+      return
+    }
+
+    try {
+      await reportsApi.createReport({
+        projectId: newReportForm.projectId,
+        templateId: newReportForm.templateId || undefined,
+        qcTechnicianId: userId
+      })
+      showAlert('Report created successfully', 'success')
+      setIsNewReportModalOpen(false)
+      setNewReportForm({ projectId: '', templateId: '' })
+      fetchReports()
+    } catch (error) {
+      console.error('Error creating report:', error)
+      showAlert(error.message || 'Failed to create report', 'error')
+    }
+  }
+
+  const handleCreateTemplate = async () => {
+    if (!newTemplateForm.name) {
+      showAlert('Please enter a template name', 'error')
+      return
+    }
+
+    try {
+      await reportsApi.createTemplate({
+        name: newTemplateForm.name,
+        description: newTemplateForm.description,
+        fields: newTemplateForm.fields,
+        sections: [],
+        createdBy: userId
+      })
+      showAlert('Template created successfully', 'success')
+      setIsTemplateModalOpen(false)
+      setNewTemplateForm({ name: '', description: '', fields: [] })
+      fetchTemplates()
+    } catch (error) {
+      console.error('Error creating template:', error)
+      showAlert(error.message || 'Failed to create template', 'error')
+    }
+  }
+
   const handleViewReport = (report) => {
-    // Navigate to full report view page
-    router.push(`/qc-technician/reports/${report.id}`)
+    router.push(`/qc-technician/reports/${report._id || report.id}`)
   }
 
   const handleDownloadReport = (report) => {
-    alert(`Downloading report: ${report.projectName}`)
+    alert(`Downloading report: ${report.projectId?.name || report.projectName}`)
   }
 
   const handleShareReport = (report) => {
@@ -161,47 +197,58 @@ const QualityReportPage = () => {
     setIsModalOpen(true)
   }
 
-  const ReportCard = ({ report }) => (
+  const ReportCard = ({ report }) => {
+    const projectName = report.projectId?.name || report.projectName || 'Unknown Project'
+    const operatorName = report.operator?.first_name && report.operator?.last_name
+      ? `${report.operator.first_name} ${report.operator.last_name}`
+      : report.operator || 'N/A'
+    const qcTechName = report.qcTechnician?.first_name && report.qcTechnician?.last_name
+      ? `${report.qcTechnician.first_name} ${report.qcTechnician.last_name}`
+      : report.qcTechnician || 'N/A'
+
+    return (
     <Card className="hover:shadow-md transition-all cursor-pointer">
       <CardContent className="pt-6">
         <div className="flex items-start justify-between mb-4">
           <div className="flex-1">
-            <h3 className="font-bold text-gray-900 mb-1">{report.projectName}</h3>
-            <p className="text-sm text-gray-600">{report.reportType}</p>
+            <h3 className="font-bold text-gray-900 mb-1">{projectName}</h3>
+            <p className="text-sm text-gray-600">{report.reportType || 'PACP Condition Assessment'}</p>
           </div>
           <div className="flex flex-col gap-2 items-end">
             <Badge variant={getStatusVariant(report.status)}>
-              {report.status.replace('_', ' ')}
+              {report.status?.replace('_', ' ') || report.status}
             </Badge>
-            <Badge className={getGradeColor(report.overallGrade)}>
-              {report.overallGrade}
-            </Badge>
+            {report.overallGrade && (
+              <Badge className={getGradeColor(report.overallGrade)}>
+                {report.overallGrade}
+              </Badge>
+            )}
           </div>
         </div>
 
         <div className="grid grid-cols-2 gap-4 text-sm mb-4">
           <div>
             <span className="text-gray-600">Operator:</span>
-            <p className="font-medium text-gray-900">{report.operator}</p>
+            <p className="font-medium text-gray-900">{operatorName}</p>
           </div>
           <div>
             <span className="text-gray-600">QC Tech:</span>
-            <p className="font-medium text-gray-900">{report.qcTechnician}</p>
+            <p className="font-medium text-gray-900">{qcTechName}</p>
           </div>
           <div>
             <span className="text-gray-600">Length:</span>
-            <p className="font-medium text-gray-900">{report.pipeLength}</p>
+            <p className="font-medium text-gray-900">{report.footage || report.pipeLength || 'N/A'}</p>
           </div>
           <div>
             <span className="text-gray-600">Defects:</span>
-            <p className="font-medium text-gray-900">{report.totalDefects} total</p>
+            <p className="font-medium text-gray-900">{report.totalDefects || report.aiDetections || 0} total</p>
           </div>
         </div>
 
         <div className="flex items-center justify-between pt-4 border-t">
           <div className="flex items-center gap-4 text-xs text-gray-600">
-            <span>Created: {report.createdDate}</span>
-            <span>Downloads: {report.downloadCount}</span>
+            <span>Created: {new Date(report.createdAt || report.createdDate || Date.now()).toLocaleDateString()}</span>
+            <span>Confidence: {report.confidence || 0}%</span>
           </div>
           <div className="flex gap-2">
             <Button 
@@ -229,7 +276,8 @@ const QualityReportPage = () => {
         </div>
       </CardContent>
     </Card>
-  )
+    )
+  }
 
   return (
     <div className="min-h-screen">
@@ -237,7 +285,7 @@ const QualityReportPage = () => {
       <div className="bg-white border-b p-6">
         <div className="flex items-center justify-between">
           <div className="flex items-center gap-4">
-            <div className="w-10 h-10 bg-gradient-to-br from-blue-500 to-purple-600 rounded-lg flex items-center justify-center">
+            <div className="w-10 h-10 bg-gradient-to-br from-[#D76A84] to-rose-500 rounded-lg flex items-center justify-center">
               <FileText className="h-5 w-5 text-white" />
             </div>
             <div>
@@ -245,7 +293,10 @@ const QualityReportPage = () => {
               <p className="text-sm text-gray-600">Generate and manage PACP inspection reports</p>
             </div>
           </div>
-          <Button className="bg-gradient-to-r from-blue-500 to-purple-600">
+          <Button 
+            className="bg-gradient-to-r from-[#D76A84] to-rose-500"
+            onClick={() => setIsNewReportModalOpen(true)}
+          >
             <Plus className="h-4 w-4 mr-2" />
             New Report
           </Button>
@@ -256,15 +307,15 @@ const QualityReportPage = () => {
       <div className="bg-white border-b px-6">
         <Tabs defaultValue="reports" className="w-full">
           <TabsList className="bg-transparent border-b-0">
-            <TabsTrigger value="reports" className="data-[state=active]:border-b-2 data-[state=active]:border-blue-500">
+            <TabsTrigger value="reports" className="data-[state=active]:border-b-2 data-[state=active]:border-rose-500">
               <FileText className="h-4 w-4 mr-2" />
               My Reports
             </TabsTrigger>
-            <TabsTrigger value="templates" className="data-[state=active]:border-b-2 data-[state=active]:border-blue-500">
+            <TabsTrigger value="templates" className="data-[state=active]:border-b-2 data-[state=active]:border-rose-500">
               <FileCheck className="h-4 w-4 mr-2" />
               Templates
             </TabsTrigger>
-            <TabsTrigger value="analytics" className="data-[state=active]:border-b-2 data-[state=active]:border-blue-500">
+            <TabsTrigger value="analytics" className="data-[state=active]:border-b-2 data-[state=active]:border-rose-500">
               <BarChart3 className="h-4 w-4 mr-2" />
               Analytics
             </TabsTrigger>
@@ -283,6 +334,8 @@ const QualityReportPage = () => {
                         type="text" 
                         placeholder="Search reports..." 
                         className="pl-10"
+                        value={searchTerm}
+                        onChange={(e) => setSearchTerm(e.target.value)}
                       />
                     </div>
                     <Select value={filterStatus} onValueChange={setFilterStatus}>
@@ -296,7 +349,7 @@ const QualityReportPage = () => {
                         <SelectItem value="pending_review">Pending Review</SelectItem>
                       </SelectContent>
                     </Select>
-                    <Select defaultValue="30days">
+                    <Select value={dateRange} onValueChange={setDateRange}>
                       <SelectTrigger className="w-[180px]">
                         <SelectValue placeholder="Time range" />
                       </SelectTrigger>
@@ -309,11 +362,8 @@ const QualityReportPage = () => {
                     </Select>
                   </div>
                   <div className="flex gap-2">
-                    <Button variant="outline" size="icon">
+                    <Button variant="outline" size="icon" onClick={fetchReports}>
                       <RefreshCw className="h-4 w-4" />
-                    </Button>
-                    <Button variant="outline" size="icon">
-                      <Filter className="h-4 w-4" />
                     </Button>
                   </div>
                 </div>
@@ -332,7 +382,7 @@ const QualityReportPage = () => {
                   </div>
                 </CardHeader>
                 <CardContent>
-                  <CardTitle className="text-2xl mb-1">12</CardTitle>
+                  <CardTitle className="text-2xl mb-1">{stats.completed}</CardTitle>
                   <CardDescription>Completed Reports</CardDescription>
                 </CardContent>
               </Card>
@@ -347,7 +397,7 @@ const QualityReportPage = () => {
                   </div>
                 </CardHeader>
                 <CardContent>
-                  <CardTitle className="text-2xl mb-1">3</CardTitle>
+                  <CardTitle className="text-2xl mb-1">{stats.draft}</CardTitle>
                   <CardDescription>Draft Reports</CardDescription>
                 </CardContent>
               </Card>
@@ -355,14 +405,14 @@ const QualityReportPage = () => {
               <Card>
                 <CardHeader className="pb-3">
                   <div className="flex items-center justify-between">
-                    <div className="w-12 h-12 bg-blue-100 rounded-lg flex items-center justify-center">
-                      <Target className="h-6 w-6 text-blue-600" />
+                    <div className="w-12 h-12 bg-rose-100 rounded-lg flex items-center justify-center">
+                      <Target className="h-6 w-6 text-rose-600" />
                     </div>
-                    <Badge className="bg-blue-100 text-blue-600">94%</Badge>
+                    <Badge className="bg-rose-100 text-rose-600">94%</Badge>
                   </div>
                 </CardHeader>
                 <CardContent>
-                  <CardTitle className="text-2xl mb-1">92%</CardTitle>
+                  <CardTitle className="text-2xl mb-1">{stats.avgAccuracy || 0}%</CardTitle>
                   <CardDescription>Avg Accuracy</CardDescription>
                 </CardContent>
               </Card>
@@ -370,27 +420,40 @@ const QualityReportPage = () => {
               <Card>
                 <CardHeader className="pb-3">
                   <div className="flex items-center justify-between">
-                    <div className="w-12 h-12 bg-purple-100 rounded-lg flex items-center justify-center">
-                      <Download className="h-6 w-6 text-purple-600" />
+                    <div className="w-12 h-12 bg-pink-100 rounded-lg flex items-center justify-center">
+                      <Download className="h-6 w-6 text-pink-600" />
                     </div>
-                    <Badge className="bg-purple-100 text-purple-600">+5</Badge>
+                    <Badge className="bg-pink-100 text-pink-600">+5</Badge>
                   </div>
                 </CardHeader>
                 <CardContent>
-                  <CardTitle className="text-2xl mb-1">47</CardTitle>
-                  <CardDescription>Total Downloads</CardDescription>
+                  <CardTitle className="text-2xl mb-1">{stats.total}</CardTitle>
+                  <CardDescription>Total Reports</CardDescription>
                 </CardContent>
               </Card>
             </div>
 
             {/* Reports Grid */}
-            <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-              {reports
-                .filter(report => filterStatus === 'all' || report.status === filterStatus)
-                .map((report) => (
-                  <ReportCard key={report.id} report={report} />
-                ))}
-            </div>
+            {loading ? (
+              <div className="flex justify-center py-12">
+                <Loader2 className="h-8 w-8 animate-spin text-rose-500" />
+              </div>
+            ) : reports.length === 0 ? (
+              <Card>
+                <CardContent className="py-12 text-center">
+                  <FileText className="h-12 w-12 text-gray-400 mx-auto mb-4" />
+                  <p className="text-gray-500">No reports found</p>
+                </CardContent>
+              </Card>
+            ) : (
+              <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+                {reports
+                  .filter(report => filterStatus === 'all' || report.status === filterStatus)
+                  .map((report) => (
+                    <ReportCard key={report._id || report.id} report={report} />
+                  ))}
+              </div>
+            )}
           </TabsContent>
 
           {/* Templates Tab Content */}
@@ -402,7 +465,10 @@ const QualityReportPage = () => {
                     <CardTitle>Report Templates</CardTitle>
                     <CardDescription>Pre-configured templates for consistent reporting</CardDescription>
                   </div>
-                  <Button className="bg-gradient-to-r from-blue-500 to-purple-600">
+                  <Button 
+                    className="bg-gradient-to-r from-[#D76A84] to-rose-500"
+                    onClick={() => setIsTemplateModalOpen(true)}
+                  >
                     <Plus className="h-4 w-4 mr-2" />
                     Create Template
                   </Button>
@@ -410,41 +476,59 @@ const QualityReportPage = () => {
               </CardHeader>
             </Card>
 
-            <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
-              {reportTemplates.map((template) => (
-                <Card key={template.id} className="hover:shadow-md transition-all">
-                  <CardHeader>
-                    <div className="flex items-start justify-between mb-4">
-                      <div className="w-12 h-12 bg-gradient-to-br from-blue-500 to-purple-600 rounded-lg flex items-center justify-center">
-                        <FileCheck className="h-6 w-6 text-white" />
+            {loading ? (
+              <div className="flex justify-center py-12">
+                <Loader2 className="h-8 w-8 animate-spin text-rose-500" />
+              </div>
+            ) : reportTemplates.length === 0 ? (
+              <Card>
+                <CardContent className="py-12 text-center">
+                  <FileCheck className="h-12 w-12 text-gray-400 mx-auto mb-4" />
+                  <p className="text-gray-500">No templates found</p>
+                </CardContent>
+              </Card>
+            ) : (
+              <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
+                {reportTemplates.map((template) => (
+                  <Card key={template._id || template.id} className="hover:shadow-md transition-all">
+                    <CardHeader>
+                      <div className="flex items-start justify-between mb-4">
+                        <div className="w-12 h-12 bg-gradient-to-br from-[#D76A84] to-rose-500 rounded-lg flex items-center justify-center">
+                          <FileCheck className="h-6 w-6 text-white" />
+                        </div>
+                        <Button variant="ghost" size="icon">
+                          <Edit3 className="h-4 w-4" />
+                        </Button>
                       </div>
-                      <Button variant="ghost" size="icon">
-                        <Edit3 className="h-4 w-4" />
-                      </Button>
-                    </div>
-                    <CardTitle className="text-base">{template.name}</CardTitle>
-                    <CardDescription>{template.description}</CardDescription>
-                  </CardHeader>
-                  <CardContent>
-                    <div className="mb-4">
-                      <p className="text-xs font-semibold text-gray-700 mb-2">Included Sections:</p>
-                      <div className="flex flex-wrap gap-1">
-                        {template.fields.map((field, index) => (
-                          <Badge key={index} variant="secondary" className="text-xs">
-                            {field}
-                          </Badge>
-                        ))}
+                      <CardTitle className="text-base">{template.name}</CardTitle>
+                      <CardDescription>{template.description || 'No description'}</CardDescription>
+                    </CardHeader>
+                    <CardContent>
+                      <div className="mb-4">
+                        <p className="text-xs font-semibold text-gray-700 mb-2">Included Sections:</p>
+                        <div className="flex flex-wrap gap-1">
+                          {(template.fields || []).map((field, index) => (
+                            <Badge key={index} variant="secondary" className="text-xs">
+                              {field}
+                            </Badge>
+                          ))}
+                        </div>
                       </div>
-                    </div>
-                    
-                    <div className="flex items-center justify-between pt-4 border-t">
-                      <span className="text-xs text-gray-500">Last used: {template.lastUsed}</span>
-                      <Button size="sm">Use Template</Button>
-                    </div>
-                  </CardContent>
-                </Card>
-              ))}
-            </div>
+                      
+                      <div className="flex items-center justify-between pt-4 border-t">
+                        <span className="text-xs text-gray-500">
+                          Last used: {template.lastUsed ? new Date(template.lastUsed).toLocaleDateString() : 'Never'}
+                        </span>
+                        <Button size="sm" onClick={() => {
+                          setNewReportForm({ ...newReportForm, templateId: template._id || template.id })
+                          setIsNewReportModalOpen(true)
+                        }}>Use Template</Button>
+                      </div>
+                    </CardContent>
+                  </Card>
+                ))}
+              </div>
+            )}
           </TabsContent>
 
           {/* Analytics Tab Content */}
@@ -515,19 +599,19 @@ const QualityReportPage = () => {
                     <p className="text-sm text-gray-600">Average Report Accuracy</p>
                   </div>
 
-                  <div className="text-center p-4 bg-blue-50 rounded-lg">
-                    <div className="w-16 h-16 bg-blue-100 rounded-full flex items-center justify-center mx-auto mb-3">
-                      <Clock className="h-8 w-8 text-blue-600" />
+                  <div className="text-center p-4 bg-rose-50 rounded-lg">
+                    <div className="w-16 h-16 bg-rose-100 rounded-full flex items-center justify-center mx-auto mb-3">
+                      <Clock className="h-8 w-8 text-rose-600" />
                     </div>
-                    <h4 className="text-2xl font-bold text-blue-600 mb-1">2.3h</h4>
+                    <h4 className="text-2xl font-bold text-rose-600 mb-1">2.3h</h4>
                     <p className="text-sm text-gray-600">Avg Time to Complete</p>
                   </div>
 
-                  <div className="text-center p-4 bg-purple-50 rounded-lg">
-                    <div className="w-16 h-16 bg-purple-100 rounded-full flex items-center justify-center mx-auto mb-3">
-                      <Target className="h-8 w-8 text-purple-600" />
+                  <div className="text-center p-4 bg-pink-50 rounded-lg">
+                    <div className="w-16 h-16 bg-pink-100 rounded-full flex items-center justify-center mx-auto mb-3">
+                      <Target className="h-8 w-8 text-pink-600" />
                     </div>
-                    <h4 className="text-2xl font-bold text-purple-600 mb-1">98.1%</h4>
+                    <h4 className="text-2xl font-bold text-pink-600 mb-1">98.1%</h4>
                     <p className="text-sm text-gray-600">Client Approval Rate</p>
                   </div>
                 </div>
@@ -543,7 +627,7 @@ const QualityReportPage = () => {
           <DialogHeader>
             <DialogTitle>Share Report</DialogTitle>
             <DialogDescription>
-              Share &quot;{selectedReport?.projectName}&quot; with team members
+              Share &quot;{selectedReport?.projectId?.name || selectedReport?.projectName}&quot; with team members
             </DialogDescription>
           </DialogHeader>
           <div className="space-y-4">
@@ -562,10 +646,144 @@ const QualityReportPage = () => {
             </Button>
             <Button onClick={() => {
               setIsModalOpen(false)
-              alert('Report shared successfully!')
+              showAlert('Report shared successfully!', 'success')
             }}>
               <Share2 className="h-4 w-4 mr-2" />
               Share Report
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+
+      {/* New Report Dialog */}
+      <Dialog open={isNewReportModalOpen} onOpenChange={setIsNewReportModalOpen}>
+        <DialogContent className="max-w-2xl">
+          <DialogHeader>
+            <DialogTitle>Create New Report</DialogTitle>
+            <DialogDescription>
+              Select a project and optionally a template to create a new report
+            </DialogDescription>
+          </DialogHeader>
+          <div className="space-y-4 py-4">
+            <div className="space-y-2">
+              <Label htmlFor="project">Project *</Label>
+              <Select 
+                value={newReportForm.projectId} 
+                onValueChange={(value) => setNewReportForm({ ...newReportForm, projectId: value })}
+              >
+                <SelectTrigger id="project">
+                  <SelectValue placeholder="Select a project" />
+                </SelectTrigger>
+                <SelectContent>
+                  {projects.map((project) => (
+                    <SelectItem key={project._id} value={project._id}>
+                      {project.name} - {project.location}
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+              {projects.length === 0 && !loading && (
+                <p className="text-sm text-gray-500">No projects available</p>
+              )}
+            </div>
+
+            <div className="space-y-2">
+              <Label htmlFor="template">Template (Optional)</Label>
+              <Select 
+                value={newReportForm.templateId} 
+                onValueChange={(value) => setNewReportForm({ ...newReportForm, templateId: value })}
+              >
+                <SelectTrigger id="template">
+                  <SelectValue placeholder="Select a template (optional)" />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="">None</SelectItem>
+                  {reportTemplates.map((template) => (
+                    <SelectItem key={template._id || template.id} value={template._id || template.id}>
+                      {template.name}
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+            </div>
+          </div>
+          <DialogFooter>
+            <Button variant="outline" onClick={() => {
+              setIsNewReportModalOpen(false)
+              setNewReportForm({ projectId: '', templateId: '' })
+            }}>
+              Cancel
+            </Button>
+            <Button 
+              className="bg-gradient-to-r from-[#D76A84] to-rose-500"
+              onClick={handleCreateReport}
+              disabled={!newReportForm.projectId}
+            >
+              <Plus className="h-4 w-4 mr-2" />
+              Create Report
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+
+      {/* Create Template Dialog */}
+      <Dialog open={isTemplateModalOpen} onOpenChange={setIsTemplateModalOpen}>
+        <DialogContent className="max-w-2xl">
+          <DialogHeader>
+            <DialogTitle>Create Report Template</DialogTitle>
+            <DialogDescription>
+              Create a new template for consistent reporting
+            </DialogDescription>
+          </DialogHeader>
+          <div className="space-y-4 py-4">
+            <div className="space-y-2">
+              <Label htmlFor="templateName">Template Name *</Label>
+              <Input
+                id="templateName"
+                placeholder="e.g., Standard PACP Report"
+                value={newTemplateForm.name}
+                onChange={(e) => setNewTemplateForm({ ...newTemplateForm, name: e.target.value })}
+              />
+            </div>
+
+            <div className="space-y-2">
+              <Label htmlFor="templateDescription">Description</Label>
+              <Textarea
+                id="templateDescription"
+                placeholder="Describe what this template includes..."
+                value={newTemplateForm.description}
+                onChange={(e) => setNewTemplateForm({ ...newTemplateForm, description: e.target.value })}
+                rows={3}
+              />
+            </div>
+
+            <div className="space-y-2">
+              <Label>Fields (comma-separated)</Label>
+              <Input
+                placeholder="e.g., Project Info, Defect Summary, Detailed Findings, Recommendations"
+                value={newTemplateForm.fields.join(', ')}
+                onChange={(e) => {
+                  const fields = e.target.value.split(',').map(f => f.trim()).filter(f => f)
+                  setNewTemplateForm({ ...newTemplateForm, fields })
+                }}
+              />
+              <p className="text-xs text-gray-500">Enter field names separated by commas</p>
+            </div>
+          </div>
+          <DialogFooter>
+            <Button variant="outline" onClick={() => {
+              setIsTemplateModalOpen(false)
+              setNewTemplateForm({ name: '', description: '', fields: [] })
+            }}>
+              Cancel
+            </Button>
+            <Button 
+              className="bg-gradient-to-r from-[#D76A84] to-rose-500"
+              onClick={handleCreateTemplate}
+              disabled={!newTemplateForm.name}
+            >
+              <Plus className="h-4 w-4 mr-2" />
+              Create Template
             </Button>
           </DialogFooter>
         </DialogContent>

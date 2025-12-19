@@ -138,7 +138,7 @@ const QCTechnicianDashboard = () => {
   const getStatusColor = (status) => {
     switch (status) {
       case 'pending_qc': return 'bg-yellow-100 text-yellow-700'
-      case 'in_review': return 'bg-blue-100 text-blue-700'
+      case 'in_review': return 'bg-rose-100 text-rose-700'
       case 'processing': return 'bg-gray-100 text-gray-700'
       case 'completed': return 'bg-green-100 text-green-700'
       default: return 'bg-gray-100 text-gray-700'
@@ -156,7 +156,7 @@ const QCTechnicianDashboard = () => {
       case 'Critical': return 'bg-red-100 text-red-700'
       case 'Major': return 'bg-orange-100 text-orange-700'
       case 'Moderate': return 'bg-yellow-100 text-yellow-700'
-      case 'Minor': return 'bg-blue-100 text-blue-700'
+      case 'Minor': return 'bg-rose-100 text-rose-700'
       default: return 'bg-gray-100 text-gray-700'
     }
   }
@@ -315,7 +315,7 @@ const QCTechnicianDashboard = () => {
           <h1 className="text-2xl font-bold text-gray-900">QC Technician Dashboard</h1>
           <p className="text-gray-600 mt-1">Review, annotate, and approve sewer inspection findings</p>
         </div>
-        <button className="flex items-center space-x-2 bg-blue-600 text-white px-4 py-2 rounded-lg hover:bg-blue-700 transition-colors">
+        <button className="flex items-center space-x-2 bg-gradient-to-r from-[#D76A84] to-rose-500 text-white px-4 py-2 rounded-lg hover:from-[#D76A84]/90 hover:to-rose-500/90 transition-colors shadow-sm">
           <RefreshCw className="w-4 h-4" />
           <span>Refresh Data</span>
         </button>
@@ -324,8 +324,8 @@ const QCTechnicianDashboard = () => {
       {/* Stats Grid */}
       <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-5 gap-6">
         <div className="bg-white rounded-xl shadow-sm p-6 border border-gray-100 text-center">
-          <div className="w-12 h-12 bg-blue-100 rounded-lg flex items-center justify-center mx-auto mb-3">
-            <Eye className="w-6 h-6 text-blue-600" />
+          <div className="w-12 h-12 bg-rose-100 rounded-lg flex items-center justify-center mx-auto mb-3">
+            <Eye className="w-6 h-6 text-rose-600" />
           </div>
           <p className="text-2xl font-bold text-gray-900">{pendingProjects.filter(p => p.status === 'pending_qc').length}</p>
           <p className="text-sm text-gray-600">Pending QC</p>
@@ -356,8 +356,8 @@ const QCTechnicianDashboard = () => {
         </div>
 
         <div className="bg-white rounded-xl shadow-sm p-6 border border-gray-100 text-center">
-          <div className="w-12 h-12 bg-purple-100 rounded-lg flex items-center justify-center mx-auto mb-3">
-            <Clock className="w-6 h-6 text-purple-600" />
+          <div className="w-12 h-12 bg-pink-100 rounded-lg flex items-center justify-center mx-auto mb-3">
+            <Clock className="w-6 h-6 text-pink-600" />
           </div>
           <p className="text-2xl font-bold text-gray-900">18m</p>
           <p className="text-sm text-gray-600">Avg Review Time</p>
@@ -398,7 +398,7 @@ const QCTechnicianDashboard = () => {
                 key={project.id}
                 className={`p-4 rounded-lg cursor-pointer transition-all border ${
                   selectedProject?.id === project.id
-                    ? 'border-blue-500 bg-blue-50 shadow-sm'
+                    ? 'border-rose-500 bg-rose-50 shadow-sm'
                     : 'border-gray-200 hover:border-gray-300'
                 }`}
                 onClick={() => setSelectedProject(project)}
@@ -449,13 +449,13 @@ const QCTechnicianDashboard = () => {
                 <input
                   type="text"
                   placeholder="Search detections..."
-                  className="pl-10 pr-4 py-2 border border-gray-300 rounded-lg text-sm focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                  className="pl-10 pr-4 py-2 border border-gray-300 rounded-lg text-sm focus:ring-2 focus:ring-rose-500 focus:border-transparent"
                 />
               </div>
               <select
                 value={filterStatus}
                 onChange={(e) => setFilterStatus(e.target.value)}
-                className="px-3 py-2 border border-gray-300 rounded-lg text-sm focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                className="px-3 py-2 border border-gray-300 rounded-lg text-sm focus:ring-2 focus:ring-rose-500 focus:border-transparent"
               >
                 <option value="all">All Detections</option>
                 <option value="pending">Needs Review</option>
@@ -472,7 +472,7 @@ const QCTechnicianDashboard = () => {
             <div className="p-6">
               <div className="flex items-center justify-between mb-4">
                 <h4 className="font-medium text-gray-900">Detections ({aiDetections.length})</h4>
-                <span className="text-xs bg-blue-100 text-blue-700 px-2 py-1 rounded-full">
+                <span className="text-xs bg-rose-100 text-rose-700 px-2 py-1 rounded-full">
                   {aiDetections.filter(d => d.needsReview).length} Pending
                 </span>
               </div>
@@ -483,7 +483,7 @@ const QCTechnicianDashboard = () => {
                     key={detection.id}
                     className={`p-4 rounded-lg cursor-pointer transition-all border ${
                       expandedDetection === detection.id || selectedDetection?.id === detection.id
-                        ? 'border-blue-500 bg-blue-50 shadow-sm'
+                        ? 'border-rose-500 bg-rose-50 shadow-sm'
                         : 'border-gray-200 hover:border-gray-300'
                     }`}
                     onClick={() => {
@@ -529,7 +529,7 @@ const QCTechnicianDashboard = () => {
                             <XCircle className="h-3 w-3" /> Reject
                           </button>
                         </div>
-                        <button className="w-full text-xs text-blue-600 hover:text-blue-800 font-medium flex items-center justify-center gap-1">
+                        <button className="w-full text-xs text-rose-600 hover:text-rose-800 font-medium flex items-center justify-center gap-1">
                           <Video className="h-3 w-3" /> Jump to Frame
                         </button>
                       </div>
@@ -551,7 +551,7 @@ const QCTechnicianDashboard = () => {
                     <div className="absolute bottom-4 left-4 bg-black bg-opacity-70 text-white px-3 py-1 rounded-full text-xs">
                       Frame: {selectedDetection.frameTime}
                     </div>
-                    <div className="absolute top-4 right-4 bg-blue-600 text-white px-2 py-1 rounded-full text-xs">
+                    <div className="absolute top-4 right-4 bg-gradient-to-r from-[#D76A84] to-rose-500 text-white px-2 py-1 rounded-full text-xs">
                       {selectedDetection.type}
                     </div>
                   </div>

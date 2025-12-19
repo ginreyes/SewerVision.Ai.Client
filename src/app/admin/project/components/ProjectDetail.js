@@ -15,8 +15,12 @@ import {
   Plus,
   Edit3,
   PlayCircle,
+  X,
 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
+import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from '@/components/ui/dialog';
+import { Input } from '@/components/ui/input';
+import { Label } from '@/components/ui/label';
 import AddObservation from './AddObersavation';
 import ObservationsPanel from './ObservationsPanel';
 import { useUser } from '@/components/providers/UserContext';
@@ -33,6 +37,13 @@ const ProjectDetail = ({ project, setSelectedProject }) => {
   const [duration, setDuration] = useState(0);
   const [isObservationOpen, setIsObservationOpen] = useState(false);
   const [pacpCodes, setPacpCodes] = useState([]);
+  const [snapshots, setSnapshots] = useState([]);
+  const [projectMetadata, setProjectMetadata] = useState(null);
+  const [isAddMetadataOpen, setIsAddMetadataOpen] = useState(false);
+  const [isEditMetadataOpen, setIsEditMetadataOpen] = useState(false);
+  const [newMetadataKey, setNewMetadataKey] = useState('');
+  const [newMetadataValue, setNewMetadataValue] = useState('');
+  const [editingMetadata, setEditingMetadata] = useState({});
   const videoRef = useRef(null);
   const videoContainerRef = useRef(null);
 
@@ -44,7 +55,13 @@ const ProjectDetail = ({ project, setSelectedProject }) => {
 
   const handleBackToProjects = () => {
     setSelectedProject(null);
-    router.replace(`/admin/project`);
+    // Check if we're in QC technician context
+    const currentPath = window.location.pathname;
+    if (currentPath.includes('/qc-technician')) {
+      router.replace(`/qc-technician/project`);
+    } else {
+      router.replace(`/admin/project`);
+    }
   };
 
   const fetchpacpCodes = useCallback(async () => {
@@ -64,6 +81,206 @@ const ProjectDetail = ({ project, setSelectedProject }) => {
   useEffect(() => {
     fetchpacpCodes();
   }, [fetchpacpCodes]);
+
+  const getSnapshotColor = useCallback((label) => {
+    if (!label) return 'bg-gray-400';
+    const colorMap = {
+      MWL: 'bg-purple-500',
+      TFA: 'bg-orange-500',
+      CM: 'bg-yellow-500',
+      SAM: 'bg-purple-400',
+      CRK: 'bg-red-500',
+      RIN: 'bg-green-500',
+      DEF: 'bg-blue-500',
+      OBS: 'bg-gray-500',
+    };
+    // Check if label contains any of the keys
+    const labelUpper = label.toUpperCase();
+    for (const [key, color] of Object.entries(colorMap)) {
+      if (labelUpper.includes(key)) {
+        return color;
+      }
+    }
+    return 'bg-gray-400';
+  }, []);
+
+  const fetchSnapshots = useCallback(async () => {
+    if (!project?._id) return;
+    try {
+      const { ok, data } = await api(`/api/snapshots/get-all-snapshots?projectId=${project._id}`, 'GET');
+      if (ok && data) {
+        const formattedSnapshots = Array.isArray(data) ? data.map((snapshot) => ({
+          id: snapshot._id || snapshot.id,
+          distance: snapshot.distance || 'N/A',
+          label: snapshot.label || 'Unlabeled',
+          timestamp: snapshot.timestamp || snapshot.created_at || snapshot.createdAt,
+          color: snapshot.color || getSnapshotColor(snapshot.label),
+          imageUrl: snapshot.imageUrl,
+        })) : [];
+        setSnapshots(formattedSnapshots);
+      } else if (project?.snapshots && Array.isArray(project.snapshots)) {
+        // Fallback to project snapshots if API fails
+        const formattedSnapshots = project.snapshots.map((snapshot) => ({
+          id: snapshot._id || snapshot.id,
+          distance: snapshot.distance || 'N/A',
+          label: snapshot.label || 'Unlabeled',
+          timestamp: snapshot.timestamp || snapshot.created_at || snapshot.createdAt,
+          color: snapshot.color || getSnapshotColor(snapshot.label),
+          imageUrl: snapshot.imageUrl,
+        }));
+        setSnapshots(formattedSnapshots);
+      }
+    } catch (error) {
+      console.error('Error fetching snapshots:', error);
+      // Fallback to project snapshots if available
+      if (project?.snapshots && Array.isArray(project.snapshots)) {
+        const formattedSnapshots = project.snapshots.map((snapshot) => ({
+          id: snapshot._id || snapshot.id,
+          distance: snapshot.distance || 'N/A',
+          label: snapshot.label || 'Unlabeled',
+          timestamp: snapshot.timestamp || snapshot.created_at || snapshot.createdAt,
+          color: snapshot.color || getSnapshotColor(snapshot.label),
+          imageUrl: snapshot.imageUrl,
+        }));
+        setSnapshots(formattedSnapshots);
+      }
+    }
+  }, [project?._id, project?.snapshots, getSnapshotColor]);
+
+  const fetchProjectMetadata = useCallback(async () => {
+    // First, initialize from project prop if available
+    if (project?.metadata && typeof project.metadata === 'object') {
+      setProjectMetadata(project.metadata);
+    }
+    
+    if (!project?._id) {
+      return;
+    }
+    
+    try {
+      const { ok, data } = await api(`/api/projects/get-project/${project._id}`, 'GET');
+      if (ok && data?.data) {
+        const metadata = data.data.metadata || {};
+        setProjectMetadata(metadata);
+      } else if (project?.metadata && typeof project.metadata === 'object') {
+        // Fallback to project metadata if API fails
+        setProjectMetadata(project.metadata);
+      }
+    } catch (error) {
+      console.error('Error fetching project metadata:', error);
+      // Fallback to project metadata if available
+      if (project?.metadata && typeof project.metadata === 'object') {
+        setProjectMetadata(project.metadata);
+      }
+    }
+  }, [project?._id, project?.metadata]);
+
+  useEffect(() => {
+    if (project?._id) {
+      fetchSnapshots();
+      fetchProjectMetadata();
+    }
+  }, [project?._id, fetchSnapshots, fetchProjectMetadata]);
+
+  const handleAddMetadata = async () => {
+    if (!newMetadataKey.trim() || !newMetadataValue.trim()) {
+      showAlert('Please enter both key and value', 'error');
+      return;
+    }
+
+    if (!project?._id || !user_id) {
+      showAlert('Project ID or User ID is missing', 'error');
+      return;
+    }
+
+    try {
+      const updatedMetadata = {
+        ...(projectMetadata || project?.metadata || {}),
+        [newMetadataKey.trim()]: newMetadataValue.trim()
+      };
+
+      const response = await api(
+        `/api/projects/update-project/${project._id}/${user_id}`,
+        'PUT',
+        { metadata: updatedMetadata }
+      );
+
+      console.log('Metadata update response:', response);
+
+      if (response.ok) {
+        showAlert('Custom metadata added successfully', 'success');
+        setProjectMetadata(updatedMetadata);
+        setNewMetadataKey('');
+        setNewMetadataValue('');
+        setIsAddMetadataOpen(false);
+        // Refresh project data
+        if (setSelectedProject) {
+          const { data } = await api(`/api/projects/get-project/${project._id}`, 'GET');
+          if (data?.data) {
+            setSelectedProject(data.data);
+          }
+        }
+        // Also refresh local metadata
+        fetchProjectMetadata();
+      } else {
+        const errorMessage = response.data?.message || response.data?.error || 'Failed to add metadata';
+        showAlert(errorMessage, 'error');
+        console.error('Metadata update failed:', response);
+      }
+    } catch (error) {
+      console.error('Error adding metadata:', error);
+      showAlert('Failed to add metadata: ' + (error.message || 'Unknown error'), 'error');
+    }
+  };
+
+  const handleEditMetadata = async () => {
+    if (!project?._id || !user_id) {
+      showAlert('Project ID or User ID is missing', 'error');
+      return;
+    }
+
+    try {
+      const response = await api(
+        `/api/projects/update-project/${project._id}/${user_id}`,
+        'PUT',
+        { metadata: editingMetadata }
+      );
+
+      console.log('Metadata edit response:', response);
+
+      if (response.ok) {
+        showAlert('Metadata updated successfully', 'success');
+        setProjectMetadata(editingMetadata);
+        setIsEditMetadataOpen(false);
+        // Refresh project data
+        if (setSelectedProject) {
+          const { data } = await api(`/api/projects/get-project/${project._id}`, 'GET');
+          if (data?.data) {
+            setSelectedProject(data.data);
+          }
+        }
+        // Also refresh local metadata
+        fetchProjectMetadata();
+      } else {
+        const errorMessage = response.data?.message || response.data?.error || 'Failed to update metadata';
+        showAlert(errorMessage, 'error');
+        console.error('Metadata update failed:', response);
+      }
+    } catch (error) {
+      console.error('Error updating metadata:', error);
+      showAlert('Failed to update metadata: ' + (error.message || 'Unknown error'), 'error');
+    }
+  };
+
+  const openEditMetadata = () => {
+    const currentMetadata = projectMetadata || project?.metadata || {};
+    // Ensure we have a proper object
+    const metadataObj = typeof currentMetadata === 'object' && currentMetadata !== null 
+      ? currentMetadata 
+      : {};
+    setEditingMetadata({ ...metadataObj });
+    setIsEditMetadataOpen(true);
+  };
 
   // Play/pause toggle
   const togglePlay = () => {
@@ -129,45 +346,17 @@ const ProjectDetail = ({ project, setSelectedProject }) => {
     setCurrentTime(newTime);
   };
 
-  // Enhanced snapshots with proper fallback
-  const snapshots = project?.snapshots?.length > 0
-    ? project.snapshots.map((snapshot) => ({
-        ...snapshot,
-        color: snapshot.color || getSnapshotColor(snapshot.label), // Ensure color exists
-      }))
-    : [
-        { id: 1, distance: '0.00ft', label: 'MWL', color: 'bg-purple-500' },
-        { id: 2, distance: '0.98ft', label: 'TFA', color: 'bg-orange-500' },
-        { id: 3, distance: '38.77ft', label: 'CM', color: 'bg-yellow-500' },
-        { id: 4, distance: '', label: 'SAM', color: 'bg-purple-400' },
-      ];
+  // Use fetched snapshots or fallback to empty array
+  const displaySnapshots = snapshots.length > 0 ? snapshots : [];
 
-  // Helper function to get color based on PACP code
-  const getSnapshotColor = (label) => {
-    const colorMap = {
-      MWL: 'bg-purple-500',
-      TFA: 'bg-orange-500',
-      CM: 'bg-yellow-500',
-      SAM: 'bg-purple-400',
-      CRK: 'bg-red-500',
-      RIN: 'bg-green-500',
-      DEF: 'bg-blue-500',
-      OBS: 'bg-gray-500',
-    };
-    return colorMap[label] || 'bg-gray-400';
-  };
 
-  const recordingInfo = project?.metadata || {
-    recordingDate: '07/26/2022',
-    workOrder: '5859483',
-    project: 'Riveria Beach',
-    totalLength: '129.05ft',
-    confidenceScore: '96%',
-    upstreamMH: 'MH20',
-    downstreamMH: 'MH21',
-    shape: 'Circular',
-    material: 'PVC',
-    remarks: '',
+  const recordingInfo = projectMetadata || project?.metadata || {
+    recordingDate: project?.metadata?.recordingDate || '',
+    upstreamMH: project?.metadata?.upstreamMH || '',
+    downstreamMH: project?.metadata?.downstreamMH || '',
+    shape: project?.metadata?.shape || project?.pipelineShape || '',
+    material: project?.metadata?.material || project?.pipelineMaterial || '',
+    remarks: project?.metadata?.remarks || '',
   };
 
   const isObservationClose = () => {
@@ -224,7 +413,7 @@ const ProjectDetail = ({ project, setSelectedProject }) => {
         <div className="flex-1 p-6">
           {/* Project Info Banner */}
           {project && (
-            <div className="bg-gradient-to-r from-blue-50 to-indigo-50 border border-blue-200 rounded-lg p-4 mb-6">
+            <div className="bg-gradient-to-r from-rose-50 to-pink-50 border border-rose-200 rounded-lg p-4 mb-6">
               <div className="flex items-center justify-between">
                 <div>
                   <h2 className="text-lg font-semibold text-gray-900">{project.name}</h2>
@@ -236,7 +425,7 @@ const ProjectDetail = ({ project, setSelectedProject }) => {
                 </div>
                 <div className="text-right">
                   <div className="text-sm text-gray-500">Progress</div>
-                  <div className="text-2xl font-bold text-blue-600">{project.progress}%</div>
+                  <div className="text-2xl font-bold bg-gradient-to-r from-[#D76A84] to-rose-600 bg-clip-text text-transparent">{project.progress}%</div>
                 </div>
               </div>
             </div>
@@ -359,7 +548,7 @@ const ProjectDetail = ({ project, setSelectedProject }) => {
 
             {isSnapshotsExpanded && (
               <div className="space-y-2">
-                {snapshots.length === 0 ? (
+                {displaySnapshots.length === 0 ? (
                   <div className="text-center py-8 text-gray-500">
                     <div className="text-sm">No snapshots available</div>
                   </div>
@@ -367,7 +556,7 @@ const ProjectDetail = ({ project, setSelectedProject }) => {
                   <div className="relative">
                     {/* Vertical timeline line */}
                     <div className="absolute left-4 top-0 bottom-0 w-0.5 bg-gray-200"></div>
-                    {snapshots.map((snapshot, index) => (
+                    {displaySnapshots.map((snapshot, index) => (
                       <div key={`snapshot-${snapshot.id}-${index}`} className="relative flex items-center space-x-3 py-3">
                         {/* Snapshot dot with color */}
                         <div className={`w-3 h-3 rounded-full ${snapshot.color} relative z-10 border-2 border-white shadow-sm`}></div>
@@ -379,7 +568,9 @@ const ProjectDetail = ({ project, setSelectedProject }) => {
                               <div className="text-sm font-medium text-gray-900">{snapshot.distance || 'N/A'}</div>
                               <div className="text-xs text-gray-500">{snapshot.label}</div>
                               {snapshot.timestamp && (
-                                <div className="text-xs text-gray-400 mt-1">{snapshot.timestamp}</div>
+                                <div className="text-xs text-gray-400 mt-1">
+                                  {new Date(snapshot.timestamp).toLocaleString()}
+                                </div>
                               )}
                             </div>
                             <button className="p-1 hover:bg-white rounded-full transition-colors">
@@ -389,7 +580,7 @@ const ProjectDetail = ({ project, setSelectedProject }) => {
                         </div>
 
                         {/* Arrow pointing down to next item */}
-                        {index < snapshots.length - 1 && (
+                        {index < displaySnapshots.length - 1 && (
                           <div
                             key={`arrow-${index}`}
                             className="absolute left-4 top-8 w-0 h-0 border-l-2 border-r-2 border-t-4 border-transparent border-t-gray-300"
@@ -436,16 +627,20 @@ const ProjectDetail = ({ project, setSelectedProject }) => {
                   <Button
                     className="flex-1 text-blue-600 border border-blue-600 px-3 py-1.5 rounded-md text-sm hover:bg-blue-50 flex items-center justify-center space-x-1"
                     variant="outline"
+                    onClick={() => setIsAddMetadataOpen(true)}
                   >
                     <Plus className="h-4 w-4" />
                     <span>ADD CUSTOM METADATA</span>
                   </Button>
                 </div>
 
-                <button className="w-full bg-blue-600 text-white px-3 py-1.5 rounded-md text-sm hover:bg-blue-700 flex items-center justify-center space-x-1">
+                <Button 
+                  className="w-full bg-blue-600 text-white px-3 py-1.5 rounded-md text-sm hover:bg-blue-700 flex items-center justify-center space-x-1"
+                  onClick={openEditMetadata}
+                >
                   <Edit3 className="h-4 w-4" />
                   <span>Edit Metadata</span>
-                </button>
+                </Button>
               </div>
             )}
           </div>
@@ -456,7 +651,91 @@ const ProjectDetail = ({ project, setSelectedProject }) => {
             project_id={project._id}
             user_id={user_id}
             pacpCodes={pacpCodes}
+            snapshots={displaySnapshots}
           />
+
+          {/* Add Custom Metadata Dialog */}
+          <Dialog open={isAddMetadataOpen} onOpenChange={setIsAddMetadataOpen}>
+            <DialogContent>
+              <DialogHeader>
+                <DialogTitle>Add Custom Metadata</DialogTitle>
+                <DialogDescription>
+                  Add a custom key-value pair to the project metadata
+                </DialogDescription>
+              </DialogHeader>
+              <div className="space-y-4 py-4">
+                <div className="space-y-2">
+                  <Label htmlFor="metadataKey">Key</Label>
+                  <Input
+                    id="metadataKey"
+                    placeholder="e.g., Inspection Type"
+                    value={newMetadataKey}
+                    onChange={(e) => setNewMetadataKey(e.target.value)}
+                  />
+                </div>
+                <div className="space-y-2">
+                  <Label htmlFor="metadataValue">Value</Label>
+                  <Input
+                    id="metadataValue"
+                    placeholder="e.g., Routine Inspection"
+                    value={newMetadataValue}
+                    onChange={(e) => setNewMetadataValue(e.target.value)}
+                  />
+                </div>
+              </div>
+              <DialogFooter>
+                <Button variant="outline" onClick={() => setIsAddMetadataOpen(false)}>
+                  Cancel
+                </Button>
+                <Button onClick={handleAddMetadata}>
+                  Add Metadata
+                </Button>
+              </DialogFooter>
+            </DialogContent>
+          </Dialog>
+
+          {/* Edit Metadata Dialog */}
+          <Dialog open={isEditMetadataOpen} onOpenChange={setIsEditMetadataOpen}>
+            <DialogContent className="max-w-2xl max-h-[80vh] overflow-y-auto">
+              <DialogHeader>
+                <DialogTitle>Edit Metadata</DialogTitle>
+                <DialogDescription>
+                  Edit the project metadata fields
+                </DialogDescription>
+              </DialogHeader>
+              <div className="space-y-4 py-4">
+                {Object.keys(editingMetadata).length === 0 ? (
+                  <p className="text-sm text-gray-500 text-center py-4">No metadata to edit</p>
+                ) : (
+                  Object.entries(editingMetadata).map(([key, value]) => (
+                    <div key={key} className="space-y-2">
+                      <Label htmlFor={`metadata-${key}`} className="capitalize">
+                        {key.replace(/([A-Z])/g, ' $1').trim()}
+                      </Label>
+                      <Input
+                        id={`metadata-${key}`}
+                        value={value || ''}
+                        onChange={(e) => {
+                          setEditingMetadata({
+                            ...editingMetadata,
+                            [key]: e.target.value
+                          });
+                        }}
+                      />
+                    </div>
+                  ))
+                )}
+              </div>
+              <DialogFooter>
+                <Button variant="outline" onClick={() => setIsEditMetadataOpen(false)}>
+                  Cancel
+                </Button>
+                <Button onClick={handleEditMetadata}>
+                  Save Changes
+                </Button>
+              </DialogFooter>
+            </DialogContent>
+          </Dialog>
         </div>
       </div>
     </div>

@@ -15,6 +15,7 @@ const ProjectCard = (props) => {
     getStatusColor,
     getPriorityColor,
     loadData,
+    hideActions = false, // Hide edit/delete buttons for QC technicians
   } = props;
   const router = useRouter();
   const { showAlert } = useAlert();
@@ -83,44 +84,61 @@ const ProjectCard = (props) => {
   const customerName = getCustomerName();
 
   return (
-    <Card className="flex flex-col h-full overflow-hidden transition-shadow hover:shadow-xl p-0">
-      {/* Header with Pink/Purple Gradient */}
-      <CardHeader className="bg-gradient-to-r from-pink-500 via-purple-500 to-fuchsia-500 text-white p-6 h-full">
+    <Card 
+      className="flex flex-col h-full overflow-hidden transition-shadow hover:shadow-xl p-0 cursor-pointer"
+      onClick={() => setSelectedProject(project)}
+    >
+      {/* Header with Pink/Rose Gradient */}
+      <CardHeader className="bg-gradient-to-r from-[#D76A84] via-rose-500 to-pink-600 text-white p-6 h-full">
         <div className="flex justify-between items-start">
           <div className="flex-1">
             <CardTitle className="text-white text-xl mb-2">
               {project.name}
             </CardTitle>
-            <p className="text-pink-100 text-sm mb-1">{project.client}</p>
-            <p className="text-pink-100 text-sm">{project.location}</p>
+            <p className="text-white/90 text-sm mb-1">{project.client}</p>
+            <p className="text-white/90 text-sm">{project.location}</p>
           </div>
-          <div className="flex gap-2">
-            <Button
-              variant="ghost"
-              size="icon"
-              className="text-white hover:bg-white/20"
-              onClick={() => setSelectedProject(project)}
-            >
-              <Eye size={18} />
-            </Button>
+          <div className="flex gap-2" onClick={(e) => e.stopPropagation()}>
+            {!hideActions && (
+              <>
+                <Button
+                  variant="ghost"
+                  size="icon"
+                  className="text-white hover:bg-white/20"
+                  onClick={(e) => {
+                    e.stopPropagation();
+                    router.push(`/admin/project/editProject/${project._id}`);
+                  }}
+                >
+                  <PencilIcon size={18} />
+                </Button>
 
-            <Button
-              variant="ghost"
-              size="icon"
-              className="text-white hover:bg-white/20"
-              onClick={() => router.push(`/admin/project/editProject/${project._id}`)}
-            >
-              <PencilIcon size={18} />
-            </Button>
-
-            <Button
-              variant="ghost"
-              size="icon"
-              className="text-white hover:bg-white/20"
-              onClick={() => handleDelete(project._id)}
-            >
-              <Trash2Icon size={18} />
-            </Button>
+                <Button
+                  variant="ghost"
+                  size="icon"
+                  className="text-white hover:bg-white/20"
+                  onClick={(e) => {
+                    e.stopPropagation();
+                    handleDelete(project._id);
+                  }}
+                >
+                  <Trash2Icon size={18} />
+                </Button>
+              </>
+            )}
+            {hideActions && (
+              <Button
+                variant="ghost"
+                size="icon"
+                className="text-white hover:bg-white/20"
+                onClick={(e) => {
+                  e.stopPropagation();
+                  setSelectedProject(project);
+                }}
+              >
+                <Eye size={18} />
+              </Button>
+            )}
           </div>
         </div>
       </CardHeader>
@@ -146,15 +164,15 @@ const ProjectCard = (props) => {
 
           {/* Customer Info Section */}
           {customerName && (
-            <div className="bg-gradient-to-r from-fuchsia-50 to-purple-50 p-3 rounded-lg mb-4 border border-purple-100">
+            <div className="bg-gradient-to-r from-rose-50 to-pink-50 p-3 rounded-lg mb-4 border border-rose-100">
               <div className="flex items-center gap-3">
                 <div className={`w-9 h-9 rounded-full flex items-center justify-center text-white text-sm font-medium ${getAvatarColor(customerName)}`}>
                   {getInitials(customerName)}
                 </div>
                 <div className="flex-1 min-w-0">
                   <div className="flex items-center gap-1.5">
-                    <Building2 className="h-3.5 w-3.5 text-purple-500" />
-                    <span className="text-xs text-purple-600 font-medium">Customer</span>
+                    <Building2 className="h-3.5 w-3.5 text-rose-500" />
+                    <span className="text-xs text-rose-600 font-medium">Customer</span>
                   </div>
                   <p className="text-sm font-semibold text-gray-900 truncate">{customerName}</p>
                   {project.customerId?.email && (
@@ -174,29 +192,29 @@ const ProjectCard = (props) => {
             </div>
             <div className="w-full bg-gray-200 rounded-full h-2">
               <div
-                className="bg-gradient-to-r from-pink-500 to-purple-600 h-2 rounded-full transition-all duration-300"
+                className="bg-gradient-to-r from-[#D76A84] via-rose-500 to-pink-600 h-2 rounded-full transition-all duration-300"
                 style={{ width: `${project.progress}%` }}
               />
             </div>
           </div>
 
           <div className="grid grid-cols-2 gap-4 mb-4">
-            <div className="bg-pink-50 p-3 rounded-lg flex items-center gap-2">
-              <FileVideo className="text-pink-600" size={20} />
+            <div className="bg-rose-50 p-3 rounded-lg flex items-center gap-2">
+              <FileVideo className="text-rose-600" size={20} />
               <div>
-                <div className="font-semibold text-pink-900">
+                <div className="font-semibold text-rose-900">
                   {project.videoCount > 0 ? project.videoCount : (project.videoUrl ? 1 : 0)}
                 </div>
-                <div className="text-xs text-pink-700">Videos</div>
+                <div className="text-xs text-rose-700">Videos</div>
               </div>
             </div>
-            <div className="bg-purple-50 p-3 rounded-lg flex items-center gap-2">
-              <Target className="text-purple-600" size={20} />
+            <div className="bg-pink-50 p-3 rounded-lg flex items-center gap-2">
+              <Target className="text-pink-600" size={20} />
               <div>
-                <div className="font-semibold text-purple-900">
+                <div className="font-semibold text-pink-900">
                   {project.aiDetections?.total || 0}
                 </div>
-                <div className="text-xs text-purple-700">AI Detections</div>
+                <div className="text-xs text-pink-700">AI Detections</div>
               </div>
             </div>
           </div>
