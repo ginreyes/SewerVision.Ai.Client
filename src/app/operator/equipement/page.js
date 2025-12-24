@@ -1,6 +1,6 @@
 'use client'
 
-import React, { useState } from 'react'
+import React, { useState, useEffect } from 'react'
 
 import { 
   Video,           
@@ -13,8 +13,55 @@ import {
   CheckCircle,  
   AlertCircle      
 } from 'lucide-react'
+import { api } from '@/lib/helper'
 
 const EquipmentPage = () => {
+  const [devices, setDevices] = useState([])
+  const [loading, setLoading] = useState(true)
+  
+  useEffect(() => {
+    const fetchDevices = async () => {
+      try {
+        const username = localStorage.getItem('username')
+        if (!username) return
+
+        // Get user ID
+        const userResponse = await api(`/api/users/role/${username}`, 'GET')
+        if (!userResponse.ok || !userResponse.data?._id) return
+
+        const userId = userResponse.data._id
+
+        // Fetch devices assigned to operator
+        const devicesResponse = await api('/api/devices/get-all-devices', 'GET')
+        if (devicesResponse.ok && devicesResponse.data?.data) {
+          const allDevices = devicesResponse.data.data
+          const operatorDevices = allDevices.filter(d => 
+            d.operator && (d.operator._id === userId || d.operator.toString() === userId)
+          )
+          
+          const formattedDevices = operatorDevices.map(device => ({
+            id: device._id,
+            name: device.name || 'Unknown Device',
+            type: device.type?.toLowerCase() || 'camera',
+            status: device.status || 'offline',
+            battery: device.specifications?.battery ? parseInt(device.specifications.battery.replace('%', '')) : 0,
+            location: device.location || 'Unknown',
+            signal: device.status === 'online' || device.status === 'recording' ? 'strong' : 
+                   device.status === 'offline' ? 'none' : 'medium'
+          }))
+          
+          setDevices(formattedDevices)
+        }
+      } catch (error) {
+        console.error('Error fetching devices:', error)
+      } finally {
+        setLoading(false)
+      }
+    }
+
+    fetchDevices()
+  }, [])
+
   const mockDevices = [
     {
       id: 'dev-101',
@@ -57,7 +104,7 @@ const EquipmentPage = () => {
   const [searchQuery, setSearchQuery] = useState('')
 
   // Filter devices
-  const filteredDevices = mockDevices.filter((device) =>
+  const filteredDevices = devices.filter((device) =>
     device.name.toLowerCase().includes(searchQuery.toLowerCase()) ||
     device.type.toLowerCase().includes(searchQuery.toLowerCase()) ||
     device.location.toLowerCase().includes(searchQuery.toLowerCase())
@@ -108,6 +155,14 @@ const EquipmentPage = () => {
       return <Signal className="w-4 h-4 text-yellow-500" />
     }
     return <Signal className="w-4 h-4 text-gray-400" />
+  }
+
+  if (loading) {
+    return (
+      <div className="flex items-center justify-center h-64">
+        <div className="text-gray-600">Loading equipment data...</div>
+      </div>
+    )
   }
 
   return (

@@ -1,11 +1,156 @@
 'use client'
-import React, { useState } from 'react'
+import React, { useState, useEffect } from 'react'
 import { Upload, Video, Play, Pause, CheckCircle, Clock, MapPin, Camera, Wifi, Battery, Monitor, Truck, AlertTriangle } from 'lucide-react'
+import { api } from '@/lib/helper'
 
 const OperationsPage = () => {
-  const [selectedDevice, setSelectedDevice] = useState('device1')
+  const [selectedDevice, setSelectedDevice] = useState(null)
+  const [devices, setDevices] = useState([])
+  const [uploads, setUploads] = useState([])
+  const [loading, setLoading] = useState(true)
   
-  const devices = [
+  useEffect(() => {
+    const fetchData = async () => {
+      try {
+        const username = localStorage.getItem('username')
+        if (!username) return
+
+        // Get user ID
+        const userResponse = await api(`/api/users/role/${username}`, 'GET')
+        if (!userResponse.ok || !userResponse.data?._id) return
+
+        const userId = userResponse.data._id
+
+        // Fetch devices assigned to operator
+        const devicesResponse = await api('/api/devices/get-all-devices', 'GET')
+        if (devicesResponse.ok && devicesResponse.data?.data) {
+          const allDevices = devicesResponse.data.data
+          const operatorDevices = allDevices.filter(d => 
+            d.operator && (d.operator._id === userId || d.operator.toString() === userId)
+          )
+          
+          const formattedDevices = operatorDevices.map((device, index) => ({
+            id: device._id,
+            name: device.name || `Device ${index + 1}`,
+            status: device.status || 'offline',
+            location: device.location || 'Unknown',
+            recordingTime: '00:00:00',
+            footage: '0 ft',
+            aiDetections: 0,
+            battery: device.specifications?.battery ? parseInt(device.specifications.battery) : 0,
+            signal: device.status === 'online' ? 'strong' : device.status === 'offline' ? 'none' : 'weak',
+            operator: device.operator?.first_name && device.operator?.last_name 
+              ? `${device.operator.first_name} ${device.operator.last_name}`
+              : username
+          }))
+          
+          setDevices(formattedDevices)
+          if (formattedDevices.length > 0) {
+            setSelectedDevice(formattedDevices[0].id)
+          }
+        }
+
+        // Fetch uploads
+        const uploadsResponse = await api('/api/uploads/get-all-uploads?limit=10', 'GET')
+        if (uploadsResponse.ok && uploadsResponse.data?.data?.uploads) {
+          const allUploads = uploadsResponse.data.data.uploads
+          const formattedUploads = allUploads.slice(0, 4).map((upload, index) => ({
+            id: upload._id,
+            device: upload.device || `Device ${index + 1}`,
+            name: upload.originalName || upload.filename || `Upload ${index + 1}`,
+            size: upload.size || '0 MB',
+            status: upload.status || 'pending',
+            progress: upload.status === 'completed' ? 100 : upload.status === 'uploading' ? 67 : upload.status === 'failed' ? 23 : 0
+          }))
+          setUploads(formattedUploads)
+        }
+      } catch (error) {
+        console.error('Error fetching operations data:', error)
+      } finally {
+        setLoading(false)
+      }
+    }
+
+    fetchData()
+  }, [])
+
+  const handleStartRecording = async (deviceId) => {
+    try {
+      const response = await api(`/api/operations/devices/${deviceId}/start-recording`, 'POST')
+      if (response.ok) {
+        // Refresh devices
+        const devicesResponse = await api('/api/devices/get-all-devices', 'GET')
+        if (devicesResponse.ok && devicesResponse.data?.data) {
+          const allDevices = devicesResponse.data.data
+          const username = localStorage.getItem('username')
+          const userResponse = await api(`/api/users/role/${username}`, 'GET')
+          if (userResponse.ok && userResponse.data?._id) {
+            const userId = userResponse.data._id
+            const operatorDevices = allDevices.filter(d => 
+              d.operator && (d.operator._id === userId || d.operator.toString() === userId)
+            )
+            const formattedDevices = operatorDevices.map((device, index) => ({
+              id: device._id,
+              name: device.name || `Device ${index + 1}`,
+              status: device.status || 'offline',
+              location: device.location || 'Unknown',
+              recordingTime: '00:00:00',
+              footage: '0 ft',
+              aiDetections: 0,
+              battery: device.specifications?.battery ? parseInt(device.specifications.battery) : 0,
+              signal: device.status === 'online' ? 'strong' : device.status === 'offline' ? 'none' : 'weak',
+              operator: device.operator?.first_name && device.operator?.last_name 
+                ? `${device.operator.first_name} ${device.operator.last_name}`
+                : username
+            }))
+            setDevices(formattedDevices)
+          }
+        }
+      }
+    } catch (error) {
+      console.error('Error starting recording:', error)
+    }
+  }
+
+  const handleStopRecording = async (deviceId) => {
+    try {
+      const response = await api(`/api/operations/devices/${deviceId}/stop-recording`, 'POST')
+      if (response.ok) {
+        // Refresh devices
+        const devicesResponse = await api('/api/devices/get-all-devices', 'GET')
+        if (devicesResponse.ok && devicesResponse.data?.data) {
+          const allDevices = devicesResponse.data.data
+          const username = localStorage.getItem('username')
+          const userResponse = await api(`/api/users/role/${username}`, 'GET')
+          if (userResponse.ok && userResponse.data?._id) {
+            const userId = userResponse.data._id
+            const operatorDevices = allDevices.filter(d => 
+              d.operator && (d.operator._id === userId || d.operator.toString() === userId)
+            )
+            const formattedDevices = operatorDevices.map((device, index) => ({
+              id: device._id,
+              name: device.name || `Device ${index + 1}`,
+              status: device.status || 'offline',
+              location: device.location || 'Unknown',
+              recordingTime: '00:00:00',
+              footage: '0 ft',
+              aiDetections: 0,
+              battery: device.specifications?.battery ? parseInt(device.specifications.battery) : 0,
+              signal: device.status === 'online' ? 'strong' : device.status === 'offline' ? 'none' : 'weak',
+              operator: device.operator?.first_name && device.operator?.last_name 
+                ? `${device.operator.first_name} ${device.operator.last_name}`
+                : username
+            }))
+            setDevices(formattedDevices)
+          }
+        }
+      }
+    } catch (error) {
+      console.error('Error stopping recording:', error)
+    }
+  }
+
+  const mockDevices = [
     { 
       id: 'device1', 
       name: 'Truck A - Camera 1', 
@@ -82,6 +227,14 @@ const OperationsPage = () => {
     }
   }
 
+  if (loading) {
+    return (
+      <div className="flex items-center justify-center h-64">
+        <div className="text-gray-600">Loading operations data...</div>
+      </div>
+    )
+  }
+
   const selectedDeviceData = devices.find(d => d.id === selectedDevice)
 
   return (
@@ -113,7 +266,7 @@ const OperationsPage = () => {
 
         {/* Device Grid Overview */}
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4 mb-6">
-          {devices.map((device) => (
+          {devices.length > 0 ? devices.map((device) => (
             <div 
               key={device.id}
               onClick={() => setSelectedDevice(device.id)}
@@ -153,7 +306,11 @@ const OperationsPage = () => {
                 </div>
               </div>
             </div>
-          ))}
+          )) : (
+            <div className="col-span-full text-center py-8 text-gray-500">
+              No devices assigned. Please contact an administrator.
+            </div>
+          )}
         </div>
 
         <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
@@ -190,7 +347,10 @@ const OperationsPage = () => {
                 </div>
 
                 <div className="flex space-x-4">
-                  <button className="bg-red-600 hover:bg-red-700 text-white px-6 py-3 rounded-lg font-medium flex items-center space-x-2">
+                  <button 
+                    onClick={() => handleStopRecording(selectedDeviceData.id)}
+                    className="bg-red-600 hover:bg-red-700 text-white px-6 py-3 rounded-lg font-medium flex items-center space-x-2"
+                  >
                     <Pause className="w-5 h-5" />
                     <span>Stop Recording</span>
                   </button>
@@ -204,7 +364,10 @@ const OperationsPage = () => {
                 <Camera className="w-16 h-16 text-gray-400 mx-auto mb-4" />
                 <h3 className="text-lg font-medium text-gray-900 mb-2">Device Ready</h3>
                 <p className="text-gray-600 mb-6">Location: {selectedDeviceData.location}</p>
-                <button className="bg-blue-600 hover:bg-blue-700 text-white px-6 py-3 rounded-lg font-medium flex items-center space-x-2 mx-auto">
+                <button 
+                  onClick={() => handleStartRecording(selectedDeviceData.id)}
+                  className="bg-blue-600 hover:bg-blue-700 text-white px-6 py-3 rounded-lg font-medium flex items-center space-x-2 mx-auto"
+                >
                   <Play className="w-5 h-5" />
                   <span>Start Recording</span>
                 </button>
@@ -231,7 +394,7 @@ const OperationsPage = () => {
           <div className="bg-white rounded-lg shadow-sm p-6">
             <h2 className="text-xl font-semibold text-gray-900 mb-4">Upload Queue - All Devices</h2>
             <div className="space-y-4">
-              {uploads.map((file) => (
+              {uploads.length > 0 ? uploads.map((file) => (
                 <div key={file.id} className="border border-gray-200 rounded-lg p-4">
                   <div className="flex items-center justify-between mb-2">
                     <div>
@@ -261,7 +424,11 @@ const OperationsPage = () => {
                     ></div>
                   </div>
                 </div>
-              ))}
+              )) : (
+                <div className="text-center py-8 text-gray-500">
+                  No uploads in queue
+                </div>
+              )}
             </div>
           </div>
         </div>

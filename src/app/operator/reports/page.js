@@ -1,14 +1,73 @@
 'use client'
-import React, { useState } from 'react'
+import React, { useState, useEffect } from 'react'
 import { FileText, Download, Eye, Filter, Calendar, MapPin, CheckCircle, Clock, AlertTriangle, Search, Printer, Share2, BarChart3 } from 'lucide-react'
+import { api } from '@/lib/helper'
 
 const ReportsPage = () => {
   const [selectedFilter, setSelectedFilter] = useState('all')
   const [dateRange, setDateRange] = useState('week')
   const [searchTerm, setSearchTerm] = useState('')
   const [selectedReports, setSelectedReports] = useState([])
+  const [reports, setReports] = useState([])
+  const [loading, setLoading] = useState(true)
+  const [stats, setStats] = useState({
+    total: 0,
+    completed: 0,
+    inReview: 0,
+    totalFootage: 0
+  })
 
-  const reports = [
+  useEffect(() => {
+    const fetchReports = async () => {
+      try {
+        const username = localStorage.getItem('username')
+        if (!username) return
+
+        // Get user ID
+        const userResponse = await api(`/api/users/role/${username}`, 'GET')
+        if (!userResponse.ok || !userResponse.data?._id) return
+
+        const userId = userResponse.data._id
+
+        // Fetch operator reports
+        const reportsResponse = await api(`/api/reports/get-operator-reports/${userId}`, 'GET')
+        if (reportsResponse.ok && reportsResponse.data?.data) {
+          const reportsData = reportsResponse.data.data
+          
+          const formattedReports = reportsData.map(report => ({
+            id: report._id,
+            inspectionId: report.inspectionId || `INS-${report._id.slice(-6)}`,
+            location: report.location || 'Unknown',
+            date: report.date || new Date().toISOString().split('T')[0],
+            status: report.status || 'pending',
+            operator: report.operator?.first_name && report.operator?.last_name
+              ? `${report.operator.first_name} ${report.operator.last_name}`
+              : username,
+            footage: report.footage || '0 ft',
+            aiDetections: report.aiDetections || 0,
+            issues: report.issues || [],
+            confidence: report.confidence || 0,
+            reportType: report.reportType || 'PACP',
+            truck: report.truck || 'N/A'
+          }))
+          
+          setReports(formattedReports)
+          
+          if (reportsResponse.data.stats) {
+            setStats(reportsResponse.data.stats)
+          }
+        }
+      } catch (error) {
+        console.error('Error fetching reports:', error)
+      } finally {
+        setLoading(false)
+      }
+    }
+
+    fetchReports()
+  }, [])
+
+  const mockReports = [
     {
       id: 1,
       inspectionId: 'INS-2024-001',
@@ -122,6 +181,14 @@ const ReportsPage = () => {
     }
   }
 
+  if (loading) {
+    return (
+      <div className="flex items-center justify-center h-64">
+        <div className="text-gray-600">Loading reports data...</div>
+      </div>
+    )
+  }
+
   return (
     <div className="min-h-screen p-4">
       <div className="max-w-7xl mx-auto">
@@ -147,7 +214,7 @@ const ReportsPage = () => {
             <div className="flex items-center justify-between">
               <div>
                 <p className="text-sm font-medium text-gray-600">Total Reports</p>
-                <p className="text-2xl font-bold text-gray-900">{reports.length}</p>
+                <p className="text-2xl font-bold text-gray-900">{stats.total}</p>
               </div>
               <FileText className="w-8 h-8 text-blue-600" />
             </div>
@@ -156,7 +223,7 @@ const ReportsPage = () => {
             <div className="flex items-center justify-between">
               <div>
                 <p className="text-sm font-medium text-gray-600">Completed</p>
-                <p className="text-2xl font-bold text-green-600">{reports.filter(r => r.status === 'completed').length}</p>
+                <p className="text-2xl font-bold text-green-600">{stats.completed}</p>
               </div>
               <CheckCircle className="w-8 h-8 text-green-600" />
             </div>
@@ -165,7 +232,7 @@ const ReportsPage = () => {
             <div className="flex items-center justify-between">
               <div>
                 <p className="text-sm font-medium text-gray-600">In Review</p>
-                <p className="text-2xl font-bold text-yellow-600">{reports.filter(r => r.status === 'in-review').length}</p>
+                <p className="text-2xl font-bold text-yellow-600">{stats.inReview}</p>
               </div>
               <Clock className="w-8 h-8 text-yellow-600" />
             </div>
@@ -174,7 +241,7 @@ const ReportsPage = () => {
             <div className="flex items-center justify-between">
               <div>
                 <p className="text-sm font-medium text-gray-600">Total Footage</p>
-                <p className="text-2xl font-bold text-purple-600">{reports.reduce((sum, r) => sum + parseInt(r.footage), 0)} ft</p>
+                <p className="text-2xl font-bold text-purple-600">{stats.totalFootage} ft</p>
               </div>
               <BarChart3 className="w-8 h-8 text-purple-600" />
             </div>

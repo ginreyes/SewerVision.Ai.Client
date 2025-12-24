@@ -1,6 +1,7 @@
 'use client'
-import React, { useState } from 'react'
+import React, { useState, useEffect } from 'react'
 import { Settings, MapPin, Wifi, Bell, Save, RefreshCw, Check, Upload, Camera, Shield, Globe, Ruler, Volume2 } from 'lucide-react'
+import { api } from '@/lib/helper'
 
 const OperatorSettingsModule = () => {
   const [settings, setSettings] = useState({
@@ -18,19 +19,63 @@ const OperatorSettingsModule = () => {
 
   const [isSaving, setIsSaving] = useState(false)
   const [saved, setSaved] = useState(false)
+  const [loading, setLoading] = useState(true)
+
+  useEffect(() => {
+    const fetchSettings = async () => {
+      try {
+        const username = localStorage.getItem('username')
+        if (!username) return
+
+        // Fetch user settings
+        const response = await api('/api/settings?section=operator', 'GET')
+        if (response.ok && response.data?.data) {
+          const data = response.data.data
+          if (data.operator) {
+            setSettings(prev => ({
+              ...prev,
+              ...data.operator
+            }))
+          }
+        }
+      } catch (error) {
+        console.error('Error fetching settings:', error)
+      } finally {
+        setLoading(false)
+      }
+    }
+
+    fetchSettings()
+  }, [])
 
   const handleChange = (key, value) => {
     setSettings((prev) => ({ ...prev, [key]: value }))
     setSaved(false)
   }
 
-  const handleSave = () => {
+  const handleSave = async () => {
     setIsSaving(true)
-    setTimeout(() => {
+    try {
+      const username = localStorage.getItem('username')
+      if (!username) return
+
+      // Save settings
+      const response = await api('/api/settings/section/operator', 'PATCH', {
+        operator: settings
+      })
+      
+      if (response.ok) {
+        setSaved(true)
+        setTimeout(() => setSaved(false), 3000)
+      } else {
+        throw new Error('Failed to save settings')
+      }
+    } catch (error) {
+      console.error('Error saving settings:', error)
+      alert('Failed to save settings. Please try again.')
+    } finally {
       setIsSaving(false)
-      setSaved(true)
-      setTimeout(() => setSaved(false), 3000)
-    }, 800)
+    }
   }
 
   const ToggleSwitch = ({ checked, onChange, label, description, icon: Icon }) => (
@@ -57,6 +102,14 @@ const OperatorSettingsModule = () => {
       </div>
     </div>
   )
+
+  if (loading) {
+    return (
+      <div className="flex items-center justify-center h-64">
+        <div className="text-gray-600">Loading settings...</div>
+      </div>
+    )
+  }
 
   return (
     <div className="min-h-screen bg-gradient-to-br from-gray-50 to-blue-50">

@@ -1,13 +1,71 @@
 'use client'
-import React, { useState } from 'react'
+import React, { useState, useEffect } from 'react'
 import { Search, Filter, Upload, Play, Eye, CheckCircle, Clock, AlertCircle, Download, Share2 } from 'lucide-react'
+import { api } from '@/lib/helper'
 
 const LogsPage = () => {
   const [selectedFilter, setSelectedFilter] = useState('all')
   const [searchTerm, setSearchTerm] = useState('')
+  const [inspectionLogs, setInspectionLogs] = useState([])
+  const [loading, setLoading] = useState(true)
+  const [stats, setStats] = useState({
+    total: 0,
+    processing: 0,
+    qcReview: 0,
+    completed: 0
+  })
+
+  useEffect(() => {
+    const fetchLogs = async () => {
+      try {
+        const username = localStorage.getItem('username')
+        if (!username) return
+
+        // Fetch uploads for this operator
+        const uploadsResponse = await api(`/api/uploads/get-all-uploads?uploadedBy=${username}&limit=100`, 'GET')
+        if (uploadsResponse.ok && uploadsResponse.data?.data?.uploads) {
+          const uploads = uploadsResponse.data.data.uploads
+          
+          const formattedLogs = uploads.map((upload, index) => ({
+            id: upload._id,
+            pipelineId: upload.location || `PL-${upload._id.slice(-6)}`,
+            location: upload.location || 'Unknown',
+            date: new Date(upload.uploadedAt).toISOString().split('T')[0],
+            time: new Date(upload.uploadedAt).toLocaleTimeString('en-US', { hour: '2-digit', minute: '2-digit' }),
+            operator: username,
+            status: upload.status || 'uploaded',
+            aiProcessingStatus: upload.aiStatus === 'processed' ? 'completed' : upload.aiStatus === 'pending' ? 'in-progress' : 'pending',
+            qcReviewStatus: upload.qcStatus === 'approved' ? 'completed' : upload.qcStatus === 'pending' ? 'pending' : 'pending',
+            videoSize: upload.size || '0 MB',
+            duration: upload.duration || 'N/A',
+            issuesDetected: upload.defectsFound || 0,
+            confidenceScore: upload.confidence || 0,
+            deliveryStatus: upload.status === 'completed' ? 'delivered' : 'pending',
+            customerNotified: upload.qcStatus === 'approved'
+          }))
+          
+          setInspectionLogs(formattedLogs)
+          
+          // Calculate stats
+          setStats({
+            total: formattedLogs.length,
+            processing: formattedLogs.filter(l => l.aiProcessingStatus === 'in-progress').length,
+            qcReview: formattedLogs.filter(l => l.qcReviewStatus === 'pending').length,
+            completed: formattedLogs.filter(l => l.status === 'completed').length
+          })
+        }
+      } catch (error) {
+        console.error('Error fetching logs:', error)
+      } finally {
+        setLoading(false)
+      }
+    }
+
+    fetchLogs()
+  }, [])
 
   // Mock data for inspection logs
-  const inspectionLogs = [
+  const mockInspectionLogs = [
     {
       id: 'INS-2024-001',
       pipelineId: 'PL-Main-Street-001',
@@ -88,6 +146,14 @@ const LogsPage = () => {
     return matchesFilter && matchesSearch
   })
 
+  if (loading) {
+    return (
+      <div className="flex items-center justify-center h-64">
+        <div className="text-gray-600">Loading logs data...</div>
+      </div>
+    )
+  }
+
   return (
     <div className="min-h-screen p-6">
       <div className="max-w-7xl mx-auto">
@@ -103,7 +169,7 @@ const LogsPage = () => {
             <div className="flex items-center justify-between">
               <div>
                 <p className="text-sm font-medium text-gray-600">Total Inspections</p>
-                <p className="text-2xl font-bold text-gray-900">247</p>
+                <p className="text-2xl font-bold text-gray-900">{stats.total}</p>
               </div>
               <Upload className="h-8 w-8 text-blue-600" />
             </div>
@@ -113,7 +179,7 @@ const LogsPage = () => {
             <div className="flex items-center justify-between">
               <div>
                 <p className="text-sm font-medium text-gray-600">AI Processing</p>
-                <p className="text-2xl font-bold text-yellow-600">18</p>
+                <p className="text-2xl font-bold text-yellow-600">{stats.processing}</p>
               </div>
               <Clock className="h-8 w-8 text-yellow-600" />
             </div>
@@ -123,7 +189,7 @@ const LogsPage = () => {
             <div className="flex items-center justify-between">
               <div>
                 <p className="text-sm font-medium text-gray-600">QC Review</p>
-                <p className="text-2xl font-bold text-blue-600">32</p>
+                <p className="text-2xl font-bold text-blue-600">{stats.qcReview}</p>
               </div>
               <Eye className="h-8 w-8 text-blue-600" />
             </div>
@@ -133,7 +199,7 @@ const LogsPage = () => {
             <div className="flex items-center justify-between">
               <div>
                 <p className="text-sm font-medium text-gray-600">Completed</p>
-                <p className="text-2xl font-bold text-green-600">197</p>
+                <p className="text-2xl font-bold text-green-600">{stats.completed}</p>
               </div>
               <CheckCircle className="h-8 w-8 text-green-600" />
             </div>

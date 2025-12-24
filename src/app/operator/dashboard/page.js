@@ -13,9 +13,28 @@ import {
 } from 'lucide-react'
 
 import Chart from 'chart.js/auto'
+import { api } from '@/lib/helper'
 
 export default function OperatorDashboardContent() {
   const [activeModule, setActiveModule] = useState('Dashboard')
+  const [loading, setLoading] = useState(true)
+  const [operationalStats, setOperationalStats] = useState({
+    activeOperations: 0,
+    equipmentOnline: 0,
+    maintenanceDue: 0,
+    systemUptime: 0,
+    criticalAlerts: 0
+  })
+  const [recentOperations, setRecentOperations] = useState([])
+  const [weeklyPerformance, setWeeklyPerformance] = useState([
+    { day: 'Mon', efficiency: 0, output: 0 },
+    { day: 'Tue', efficiency: 0, output: 0 },
+    { day: 'Wed', efficiency: 0, output: 0 },
+    { day: 'Thu', efficiency: 0, output: 0 },
+    { day: 'Fri', efficiency: 0, output: 0 },
+    { day: 'Sat', efficiency: 0, output: 0 },
+    { day: 'Sun', efficiency: 0, output: 0 },
+  ])
 
   // Chart refs
   const statusChartRef = useRef(null)
@@ -29,32 +48,37 @@ export default function OperatorDashboardContent() {
   const downtimeChartInstance = useRef(null)
   const alertsChartInstance = useRef(null)
 
-  // Mock Stats
-  const operationalStats = {
-    activeOperations: 14,
-    equipmentOnline: 23,
-    maintenanceDue: 5,
-    systemUptime: 99.4,
-    criticalAlerts: 3
-  }
+  useEffect(() => {
+    const fetchDashboardData = async () => {
+      try {
+        const username = localStorage.getItem('username')
+        if (!username) return
 
-  // Mock Data
-  const recentOperations = [
-    { id: 1, name: "Pump Station A", status: "running", uptime: "98.7%", lastCheck: "2024-08-14", priority: "high" },
-    { id: 2, name: "Sump B", status: "paused", uptime: "95.2%", lastCheck: "2024-08-13", priority: "medium" },
-    { id: 3, name: "Main Line Valve 4", status: "maintenance", uptime: "N/A", lastCheck: "2024-08-10", priority: "low" },
-    { id: 4, name: "Transfer Pump C", status: "running", uptime: "99.1%", lastCheck: "2024-08-14", priority: "high" },
-  ]
+        // Get user ID first
+        const userResponse = await api(`/api/users/role/${username}`, 'GET')
+        if (!userResponse.ok || !userResponse.data?._id) return
 
-  const weeklyPerformance = [
-    { day: 'Mon', efficiency: 94, output: 88 },
-    { day: 'Tue', efficiency: 96, output: 91 },
-    { day: 'Wed', efficiency: 93, output: 87 },
-    { day: 'Thu', efficiency: 97, output: 93 },
-    { day: 'Fri', efficiency: 95, output: 90 },
-    { day: 'Sat', efficiency: 92, output: 85 },
-    { day: 'Sun', efficiency: 94, output: 89 },
-  ]
+        const userId = userResponse.data._id
+
+        // Fetch operator dashboard stats
+        const response = await api(`/api/dashboard/operator/${userId}`, 'GET')
+        if (response.ok && response.data?.data) {
+          const data = response.data.data
+          setOperationalStats(data.operationalStats || operationalStats)
+          setRecentOperations(data.recentOperations || [])
+          if (data.weeklyPerformance) {
+            setWeeklyPerformance(data.weeklyPerformance)
+          }
+        }
+      } catch (error) {
+        console.error('Error fetching dashboard data:', error)
+      } finally {
+        setLoading(false)
+      }
+    }
+
+    fetchDashboardData()
+  }, [])
 
   const downtimeReasons = [
     { reason: 'Scheduled Maintenance', hours: 12 },
@@ -222,7 +246,15 @@ export default function OperatorDashboardContent() {
     }
 
     return destroyCharts
-  }, [])
+  }, [weeklyPerformance, recentOperations])
+
+  if (loading) {
+    return (
+      <div className="flex items-center justify-center h-64">
+        <div className="text-gray-600">Loading dashboard data...</div>
+      </div>
+    )
+  }
 
   return (
     <div className="space-y-6">
@@ -333,7 +365,7 @@ export default function OperatorDashboardContent() {
                 </tr>
               </thead>
               <tbody className="space-y-2">
-                {recentOperations.map((op) => (
+                {recentOperations.length > 0 ? recentOperations.map((op) => (
                   <tr key={op.id} className="border-b border-gray-100">
                     <td className="py-4 font-medium text-gray-900">{op.name}</td>
                     <td className="py-4">
@@ -357,7 +389,13 @@ export default function OperatorDashboardContent() {
                       <button className="text-blue-600 hover:text-blue-800 text-sm font-medium">View Details</button>
                     </td>
                   </tr>
-                ))}
+                )) : (
+                  <tr>
+                    <td colSpan="6" className="py-8 text-center text-gray-500">
+                      No active operations found
+                    </td>
+                  </tr>
+                )}
               </tbody>
             </table>
           </div>
