@@ -42,12 +42,6 @@ const FileViewPage = () => {
 
   const fileId = params.id;
 
-  useEffect(() => {
-    if (fileId) {
-      fetchUpload();
-    }
-  }, [fileId]);
-
   const fetchUpload = async () => {
     try {
       setLoading(true);
@@ -88,6 +82,30 @@ const FileViewPage = () => {
       setLoading(false);
     }
   };
+
+  useEffect(() => {
+    if (fileId) {
+      fetchUpload();
+    }
+  }, [fileId]);
+
+  // Auto-refresh if video is processing
+  useEffect(() => {
+    if (!upload || upload.type !== 'video') return;
+    
+    const isProcessing = upload.aiStatus === 'pending' || 
+                        upload.processingStatus === 'in_progress' || 
+                        upload.status === 'processing';
+    
+    if (!isProcessing) return; // Don't poll if not processing
+    
+    const interval = setInterval(() => {
+      fetchUpload();
+    }, 10000); // Refresh every 10 seconds
+
+    return () => clearInterval(interval);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [upload?.aiStatus, upload?.processingStatus, upload?.status, fileId]);
 
   const handleDownload = async () => {
     if (!upload) return;
@@ -348,20 +366,42 @@ const FileViewPage = () => {
                     </Badge>
                   </div>
                 )}
-                {upload.type === 'video' && upload.aiStatus && (
-                  <div className="flex items-center space-x-2">
-                    <Brain className="w-4 h-4 text-purple-600" />
-                    <span className="text-sm text-gray-600">AI Status:</span>
-                    <Badge
-                      variant="outline"
-                      className={
-                        upload.aiStatus === 'processed'
-                          ? 'bg-purple-100 text-purple-800 border-purple-200'
-                          : 'bg-amber-100 text-amber-800 border-amber-200'
-                      }
-                    >
-                      {upload.aiStatus}
-                    </Badge>
+                {upload.type === 'video' && (upload.aiStatus || upload.processingStatus) && (
+                  <div className="space-y-2">
+                    <div className="flex items-center space-x-2">
+                      <Brain className="w-4 h-4 text-purple-600" />
+                      <span className="text-sm text-gray-600">AI Status:</span>
+                      <Badge
+                        variant="outline"
+                        className={
+                          upload.aiStatus === 'processed'
+                            ? 'bg-purple-100 text-purple-800 border-purple-200 font-semibold'
+                            : upload.processingStatus === 'in_progress' || upload.status === 'processing'
+                            ? 'bg-amber-100 text-amber-800 border-amber-200 font-semibold animate-pulse'
+                            : upload.aiStatus === 'pending'
+                            ? 'bg-amber-100 text-amber-800 border-amber-200'
+                            : 'bg-gray-100 text-gray-800 border-gray-200'
+                        }
+                      >
+                        {upload.processingStatus === 'in_progress' ? (
+                          <>🔄 Processing...</>
+                        ) : upload.aiStatus === 'processed' ? (
+                          <>✓ Processed</>
+                        ) : (
+                          <>{upload.aiStatus || 'Pending'}</>
+                        )}
+                      </Badge>
+                    </div>
+                    {upload.processingStatus === 'in_progress' && upload.processingStartedAt && (
+                      <div className="text-xs text-gray-500 ml-6">
+                        Started: {new Date(upload.processingStartedAt).toLocaleString()}
+                      </div>
+                    )}
+                    {upload.processingError && (
+                      <div className="text-xs text-red-600 ml-6">
+                        Error: {upload.processingError}
+                      </div>
+                    )}
                   </div>
                 )}
                 {upload.qcStatus && upload.qcStatus !== 'not_applicable' && (

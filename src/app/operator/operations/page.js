@@ -1,5 +1,5 @@
 'use client'
-import React, { useState, useEffect } from 'react'
+import React, { useState, useEffect, useCallback, useMemo } from 'react'
 import { Upload, Video, Play, Pause, CheckCircle, Clock, MapPin, Camera, Wifi, Battery, Monitor, Truck, AlertTriangle } from 'lucide-react'
 import { api } from '@/lib/helper'
 
@@ -9,8 +9,7 @@ const OperationsPage = () => {
   const [uploads, setUploads] = useState([])
   const [loading, setLoading] = useState(true)
   
-  useEffect(() => {
-    const fetchData = async () => {
+  const fetchData = useCallback(async () => {
       try {
         const username = localStorage.getItem('username')
         if (!username) return
@@ -29,20 +28,7 @@ const OperationsPage = () => {
             d.operator && (d.operator._id === userId || d.operator.toString() === userId)
           )
           
-          const formattedDevices = operatorDevices.map((device, index) => ({
-            id: device._id,
-            name: device.name || `Device ${index + 1}`,
-            status: device.status || 'offline',
-            location: device.location || 'Unknown',
-            recordingTime: '00:00:00',
-            footage: '0 ft',
-            aiDetections: 0,
-            battery: device.specifications?.battery ? parseInt(device.specifications.battery) : 0,
-            signal: device.status === 'online' ? 'strong' : device.status === 'offline' ? 'none' : 'weak',
-            operator: device.operator?.first_name && device.operator?.last_name 
-              ? `${device.operator.first_name} ${device.operator.last_name}`
-              : username
-          }))
+          const formattedDevices = operatorDevices.map((device, index) => formatDevice(device, index, username))
           
           setDevices(formattedDevices)
           if (formattedDevices.length > 0) {
@@ -72,9 +58,9 @@ const OperationsPage = () => {
     }
 
     fetchData()
-  }, [])
+  }, [fetchData])
 
-  const handleStartRecording = async (deviceId) => {
+  const handleStartRecording = useCallback(async (deviceId) => {
     try {
       const response = await api(`/api/operations/devices/${deviceId}/start-recording`, 'POST')
       if (response.ok) {
@@ -89,20 +75,7 @@ const OperationsPage = () => {
             const operatorDevices = allDevices.filter(d => 
               d.operator && (d.operator._id === userId || d.operator.toString() === userId)
             )
-            const formattedDevices = operatorDevices.map((device, index) => ({
-              id: device._id,
-              name: device.name || `Device ${index + 1}`,
-              status: device.status || 'offline',
-              location: device.location || 'Unknown',
-              recordingTime: '00:00:00',
-              footage: '0 ft',
-              aiDetections: 0,
-              battery: device.specifications?.battery ? parseInt(device.specifications.battery) : 0,
-              signal: device.status === 'online' ? 'strong' : device.status === 'offline' ? 'none' : 'weak',
-              operator: device.operator?.first_name && device.operator?.last_name 
-                ? `${device.operator.first_name} ${device.operator.last_name}`
-                : username
-            }))
+            const formattedDevices = operatorDevices.map((device, index) => formatDevice(device, index, username))
             setDevices(formattedDevices)
           }
         }
@@ -110,9 +83,9 @@ const OperationsPage = () => {
     } catch (error) {
       console.error('Error starting recording:', error)
     }
-  }
+  }, [])
 
-  const handleStopRecording = async (deviceId) => {
+  const handleStopRecording = useCallback(async (deviceId) => {
     try {
       const response = await api(`/api/operations/devices/${deviceId}/stop-recording`, 'POST')
       if (response.ok) {
@@ -127,20 +100,7 @@ const OperationsPage = () => {
             const operatorDevices = allDevices.filter(d => 
               d.operator && (d.operator._id === userId || d.operator.toString() === userId)
             )
-            const formattedDevices = operatorDevices.map((device, index) => ({
-              id: device._id,
-              name: device.name || `Device ${index + 1}`,
-              status: device.status || 'offline',
-              location: device.location || 'Unknown',
-              recordingTime: '00:00:00',
-              footage: '0 ft',
-              aiDetections: 0,
-              battery: device.specifications?.battery ? parseInt(device.specifications.battery) : 0,
-              signal: device.status === 'online' ? 'strong' : device.status === 'offline' ? 'none' : 'weak',
-              operator: device.operator?.first_name && device.operator?.last_name 
-                ? `${device.operator.first_name} ${device.operator.last_name}`
-                : username
-            }))
+            const formattedDevices = operatorDevices.map((device, index) => formatDevice(device, index, username))
             setDevices(formattedDevices)
           }
         }
@@ -148,67 +108,25 @@ const OperationsPage = () => {
     } catch (error) {
       console.error('Error stopping recording:', error)
     }
-  }
+  }, [])
 
-  const mockDevices = [
-    { 
-      id: 'device1', 
-      name: 'Truck A - Camera 1', 
-      status: 'recording', 
-      location: 'Main St & 1st Ave',
-      recordingTime: '00:12:34',
-      footage: '180 ft',
-      aiDetections: 12,
-      battery: 85,
-      signal: 'strong',
-      operator: 'John Smith'
-    },
-    { 
-      id: 'device2', 
-      name: 'Truck A - Camera 2', 
-      status: 'ready', 
-      location: 'Standby',
-      recordingTime: '00:00:00',
-      footage: '0 ft',
-      aiDetections: 0,
-      battery: 92,
-      signal: 'strong',
-      operator: 'John Smith'
-    },
-    { 
-      id: 'device3', 
-      name: 'Truck B - Camera 1', 
-      status: 'uploading', 
-      location: 'Oak Ave Pipeline',
-      recordingTime: '00:00:00',
-      footage: '245 ft',
-      aiDetections: 8,
-      battery: 67,
-      signal: 'weak',
-      operator: 'Sarah Johnson'
-    },
-    { 
-      id: 'device4', 
-      name: 'Truck C - Camera 1', 
-      status: 'offline', 
-      location: 'Broadway Segment',
-      recordingTime: '00:00:00',
-      footage: '0 ft',
-      aiDetections: 0,
-      battery: 23,
-      signal: 'none',
-      operator: 'Mike Davis'
-    }
-  ]
+  // Helper function to format devices (reusable)
+  const formatDevice = (device, index, username) => ({
+    id: device._id,
+    name: device.name || `Device ${index + 1}`,
+    status: device.status || 'offline',
+    location: device.location || 'Unknown',
+    recordingTime: '00:00:00',
+    footage: '0 ft',
+    aiDetections: 0,
+    battery: device.specifications?.battery ? parseInt(device.specifications.battery) : 0,
+    signal: device.status === 'online' ? 'strong' : device.status === 'offline' ? 'none' : 'weak',
+    operator: device.operator?.first_name && device.operator?.last_name 
+      ? `${device.operator.first_name} ${device.operator.last_name}`
+      : username
+  })
 
-  const uploads = [
-    { id: 1, device: 'Truck A - Camera 1', name: "Main St Pipeline - Section A", size: "245 MB", status: "uploading", progress: 67 },
-    { id: 2, device: 'Truck B - Camera 1', name: "Oak Ave Inspection", size: "189 MB", status: "complete", progress: 100 },
-    { id: 3, device: 'Truck A - Camera 2', name: "Broadway Segment 1-3", size: "312 MB", status: "pending", progress: 0 },
-    { id: 4, device: 'Truck C - Camera 1', name: "Pine St Lateral", size: "156 MB", status: "failed", progress: 23 }
-  ]
-
-  const getDeviceStatusColor = (status) => {
+  const getDeviceStatusColor = useCallback((status) => {
     switch (status) {
       case 'recording': return 'bg-red-100 text-red-800 border-red-200'
       case 'ready': return 'bg-green-100 text-green-800 border-green-200'
@@ -216,16 +134,16 @@ const OperationsPage = () => {
       case 'offline': return 'bg-gray-100 text-gray-600 border-gray-200'
       default: return 'bg-gray-100 text-gray-600 border-gray-200'
     }
-  }
+  }, [])
 
-  const getSignalIcon = (signal) => {
+  const getSignalIcon = useCallback((signal) => {
     switch (signal) {
       case 'strong': return <Wifi className="w-4 h-4 text-green-600" />
       case 'weak': return <Wifi className="w-4 h-4 text-yellow-600" />
       case 'none': return <Wifi className="w-4 h-4 text-red-600" />
       default: return <Wifi className="w-4 h-4 text-gray-400" />
     }
-  }
+  }, [])
 
   if (loading) {
     return (

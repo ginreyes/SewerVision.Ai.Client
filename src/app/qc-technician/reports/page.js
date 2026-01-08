@@ -62,6 +62,9 @@ const QualityReportPage = () => {
     projectId: '',
     templateId: ''
   })
+  
+  // Analytics date range state
+  const [analyticsDateRange, setAnalyticsDateRange] = useState('30days')
 
   // New template form state
   const [newTemplateForm, setNewTemplateForm] = useState({
@@ -139,7 +142,7 @@ const QualityReportPage = () => {
   }
 
   const handleCreateReport = async () => {
-    if (!newReportForm.projectId) {
+    if (!newReportForm.projectId || newReportForm.projectId === '') {
       showAlert('Please select a project', 'error')
       return
     }
@@ -147,7 +150,7 @@ const QualityReportPage = () => {
     try {
       await reportsApi.createReport({
         projectId: newReportForm.projectId,
-        templateId: newReportForm.templateId || undefined,
+        templateId: (newReportForm.templateId && newReportForm.templateId !== '') ? newReportForm.templateId : undefined,
         qcTechnicianId: userId
       })
       showAlert('Report created successfully', 'success')
@@ -293,13 +296,22 @@ const QualityReportPage = () => {
               <p className="text-sm text-gray-600">Generate and manage PACP inspection reports</p>
             </div>
           </div>
-          <Button 
-            className="bg-gradient-to-r from-[#D76A84] to-rose-500"
-            onClick={() => setIsNewReportModalOpen(true)}
-          >
-            <Plus className="h-4 w-4 mr-2" />
-            New Report
-          </Button>
+          <div className="flex gap-2">
+            <Button 
+              variant="outline"
+              onClick={() => router.push('/qc-technician/reports/detailed')}
+            >
+              <FileText className="h-4 w-4 mr-2" />
+              Detailed 2-Day Report
+            </Button>
+            <Button 
+              className="bg-gradient-to-r from-[#D76A84] to-rose-500"
+              onClick={() => setIsNewReportModalOpen(true)}
+            >
+              <Plus className="h-4 w-4 mr-2" />
+              New Report
+            </Button>
+          </div>
         </div>
       </div>
 
@@ -520,7 +532,8 @@ const QualityReportPage = () => {
                           Last used: {template.lastUsed ? new Date(template.lastUsed).toLocaleDateString() : 'Never'}
                         </span>
                         <Button size="sm" onClick={() => {
-                          setNewReportForm({ ...newReportForm, templateId: template._id || template.id })
+                          const templateId = String(template._id?.toString() || template.id?.toString() || template._id || template.id || '');
+                          setNewReportForm({ ...newReportForm, templateId })
                           setIsNewReportModalOpen(true)
                         }}>Use Template</Button>
                       </div>
@@ -540,7 +553,7 @@ const QualityReportPage = () => {
                     <CardTitle>Report Analytics</CardTitle>
                     <CardDescription>Insights into your reporting performance and trends</CardDescription>
                   </div>
-                  <Select defaultValue="30days">
+                  <Select value={analyticsDateRange} onValueChange={setAnalyticsDateRange}>
                     <SelectTrigger className="w-[180px]">
                       <SelectValue placeholder="Time range" />
                     </SelectTrigger>
@@ -668,18 +681,24 @@ const QualityReportPage = () => {
             <div className="space-y-2">
               <Label htmlFor="project">Project *</Label>
               <Select 
-                value={newReportForm.projectId} 
-                onValueChange={(value) => setNewReportForm({ ...newReportForm, projectId: value })}
+                value={newReportForm.projectId || ''} 
+                onValueChange={(value) => setNewReportForm({ ...newReportForm, projectId: value || '' })}
               >
                 <SelectTrigger id="project">
                   <SelectValue placeholder="Select a project" />
                 </SelectTrigger>
                 <SelectContent>
-                  {projects.map((project) => (
-                    <SelectItem key={project._id} value={project._id}>
-                      {project.name} - {project.location}
-                    </SelectItem>
-                  ))}
+                  {projects.filter(project => project && (project._id || project.id)).map((project) => {
+                    const projectId = String(project._id?.toString() || project.id?.toString() || project._id || project.id || '');
+                    if (!projectId || projectId === 'undefined' || projectId === 'null') {
+                      return null;
+                    }
+                    return (
+                      <SelectItem key={projectId} value={projectId}>
+                        {project.name || 'Unnamed'} - {project.location || 'N/A'}
+                      </SelectItem>
+                    );
+                  })}
                 </SelectContent>
               </Select>
               {projects.length === 0 && !loading && (
@@ -690,19 +709,25 @@ const QualityReportPage = () => {
             <div className="space-y-2">
               <Label htmlFor="template">Template (Optional)</Label>
               <Select 
-                value={newReportForm.templateId} 
-                onValueChange={(value) => setNewReportForm({ ...newReportForm, templateId: value })}
+                value={newReportForm.templateId || ''} 
+                onValueChange={(value) => setNewReportForm({ ...newReportForm, templateId: value || '' })}
               >
                 <SelectTrigger id="template">
                   <SelectValue placeholder="Select a template (optional)" />
                 </SelectTrigger>
                 <SelectContent>
                   <SelectItem value="">None</SelectItem>
-                  {reportTemplates.map((template) => (
-                    <SelectItem key={template._id || template.id} value={template._id || template.id}>
-                      {template.name}
-                    </SelectItem>
-                  ))}
+                  {reportTemplates.filter(template => template && (template._id || template.id)).map((template) => {
+                    const templateId = String(template._id?.toString() || template.id?.toString() || template._id || template.id || '');
+                    if (!templateId || templateId === 'undefined' || templateId === 'null') {
+                      return null;
+                    }
+                    return (
+                      <SelectItem key={templateId} value={templateId}>
+                        {template.name || 'Unnamed Template'}
+                      </SelectItem>
+                    );
+                  })}
                 </SelectContent>
               </Select>
             </div>

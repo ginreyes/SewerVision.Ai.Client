@@ -16,6 +16,8 @@ import {
   Edit3,
   PlayCircle,
   X,
+  RefreshCw,
+  Loader2,
 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from '@/components/ui/dialog';
@@ -44,6 +46,7 @@ const ProjectDetail = ({ project, setSelectedProject }) => {
   const [newMetadataKey, setNewMetadataKey] = useState('');
   const [newMetadataValue, setNewMetadataValue] = useState('');
   const [editingMetadata, setEditingMetadata] = useState({});
+  const [isReprocessing, setIsReprocessing] = useState(false);
   const videoRef = useRef(null);
   const videoContainerRef = useRef(null);
 
@@ -282,6 +285,121 @@ const ProjectDetail = ({ project, setSelectedProject }) => {
     setIsEditMetadataOpen(true);
   };
 
+  const handleReprocess = async () => {
+    if (!project?._id) {
+      showAlert('Project ID is missing', 'error');
+      return;
+    }
+
+    if (isReprocessing) {
+      return;
+    }
+
+    setIsReprocessing(true);
+    try {
+      console.log('🔄 Starting reprocess for project:', project._id);
+      
+      let response;
+      try {
+        response = await api(
+          `/api/ai/reprocess/project/${project._id}`,
+          'POST'
+        );
+      } catch (apiError) {
+        // Handle API call failures (network errors, etc.)
+        const apiErrorMessage = apiError?.message || apiError?.toString() || 'Network or API error';
+        throw new Error(`Failed to call reprocess API: ${apiErrorMessage}`);
+      }
+      
+      if (!response) {
+        throw new Error('No response received from reprocess API');
+      }
+
+      // Safely log response
+      try {
+        console.log('📥 Reprocess response status:', response?.status, 'ok:', response?.ok);
+        if (response?.data) {
+          // Use a replacer function to handle circular references
+          const seen = new WeakSet();
+          const safeStringify = (obj) => {
+            try {
+              return JSON.stringify(obj, (key, value) => {
+                if (typeof value === 'object' && value !== null) {
+                  if (seen.has(value)) {
+                    return '[Circular]';
+                  }
+                  seen.add(value);
+                }
+                return value;
+              }, 2);
+            } catch (e) {
+              return String(obj);
+            }
+          };
+          console.log('📥 Reprocess response data:', safeStringify(response.data));
+        }
+      } catch (logError) {
+        console.log('📥 Reprocess response received (could not log details)');
+      }
+
+      if (response.ok && response.data?.success !== false) {
+        showAlert(response.data?.message || 'Video reprocessing started successfully', 'success');
+        // Refresh project data after a short delay
+        setTimeout(async () => {
+          if (setSelectedProject) {
+            try {
+              const { data } = await api(`/api/projects/get-project/${project._id}`, 'GET');
+              if (data?.data) {
+                setSelectedProject(data.data);
+              }
+            } catch (refreshError) {
+              try {
+                const refreshErrorMsg = refreshError?.message || refreshError?.toString() || 'Unknown error';
+                // Use console.log instead of console.error to avoid Next.js error handler interception
+                console.log('Failed to refresh project data:', refreshErrorMsg);
+              } catch (e) {
+                // Silently fail if we can't log the error
+              }
+            }
+          }
+        }, 2000);
+      } else {
+        const errorMessage = response?.data?.error || response?.data?.message || response?.data?.details || `Failed to start reprocessing (Status: ${response?.status || 'unknown'})`;
+        // Use console.log instead of console.error to avoid Next.js error handler interception
+        try {
+          console.log('❌ Reprocess error:', errorMessage);
+        } catch (e) {
+          // Silently fail if we can't log
+        }
+        showAlert(errorMessage, 'error');
+      }
+    } catch (error) {
+      // Safely extract error message
+      let errorMessage = 'Unknown error';
+      try {
+        if (error?.message) {
+          errorMessage = error.message;
+        } else if (typeof error === 'string') {
+          errorMessage = error;
+        } else if (error?.toString) {
+          errorMessage = error.toString();
+        }
+      } catch (e) {
+        errorMessage = 'Failed to reprocess video';
+      }
+      
+      // Use console.log instead of console.error to avoid Next.js error handler interception
+      try {
+        console.log('❌ Error reprocessing video:', errorMessage);
+      } catch (logError) {
+        // Silently fail if we can't log
+      }
+      showAlert('Failed to reprocess video: ' + errorMessage, 'error');
+    } finally {
+      setIsReprocessing(false);
+    }
+  };
+
   // Play/pause toggle
   const togglePlay = () => {
     const video = videoRef.current;
@@ -375,42 +493,43 @@ const ProjectDetail = ({ project, setSelectedProject }) => {
   };
 
   return (
-    <div className="w-full h-auto bg-gray-50">
-      {/* Header with Back Button */}
-      <div className="bg-white border-b border-gray-200 px-6 py-4">
-        <div className="flex items-center justify-between">
-          <div className="flex items-center space-x-4">
-            {/* Back Button */}
-            <button
-              onClick={handleBackToProjects}
-              className="flex items-center space-x-2 text-gray-600 hover:text-gray-900 transition-colors duration-200 group"
-            >
-              <ArrowLeft className="h-5 w-5 group-hover:-translate-x-1 transition-transform duration-200" />
-              <span className="text-sm font-medium">Back to Projects</span>
-            </button>
+    <div className="min-h-screen">
+      <div className="max-w-7xl mx-auto p-6">
+        {/* Header with Back Button */}
+        <div className="bg-white border-b border-gray-200 px-6 py-4 mb-6 rounded-lg">
+          <div className="flex items-center justify-between">
+            <div className="flex items-center space-x-4">
+              {/* Back Button */}
+              <button
+                onClick={handleBackToProjects}
+                className="flex items-center space-x-2 text-gray-600 hover:text-gray-900 transition-colors duration-200 group"
+              >
+                <ArrowLeft className="h-5 w-5 group-hover:-translate-x-1 transition-transform duration-200" />
+                <span className="text-sm font-medium">Back to Projects</span>
+              </button>
 
-            <span className="text-gray-300">|</span>
+              <span className="text-gray-300">|</span>
 
-            <h1 className="text-xl font-semibold text-gray-900">Project Console</h1>
-            <span className="text-gray-400">→</span>
-            <span className="text-gray-700">{project?.name || 'Riveria Beach'}</span>
-            <span className="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-blue-100 text-blue-800">
-              {project?.status === 'ai-processing' ? 'AI Processing' : 'In Progress'}
-            </span>
-          </div>
+              <h1 className="text-xl font-semibold text-gray-900">Project Console</h1>
+              <span className="text-gray-400">→</span>
+              <span className="text-gray-700">{project?.name || 'Riveria Beach'}</span>
+              <span className="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-blue-100 text-blue-800">
+                {project?.status === 'ai-processing' ? 'AI Processing' : 'In Progress'}
+              </span>
+            </div>
 
-          {/* Optional: Add more action buttons */}
-          <div className="flex items-center space-x-2">
-            <button className="p-2 text-gray-400 hover:text-gray-600 transition-colors">
-              <Settings className="h-5 w-5" />
-            </button>
+            {/* Optional: Add more action buttons */}
+            <div className="flex items-center space-x-2">
+              <button className="p-2 text-gray-400 hover:text-gray-600 transition-colors">
+                <Settings className="h-5 w-5" />
+              </button>
+            </div>
           </div>
         </div>
-      </div>
 
-      <div className="flex">
-        {/* Main Content */}
-        <div className="flex-1 p-6">
+        <div className="flex">
+          {/* Main Content */}
+          <div className="flex-1">
           {/* Project Info Banner */}
           {project && (
             <div className="bg-gradient-to-r from-rose-50 to-pink-50 border border-rose-200 rounded-lg p-4 mb-6">
@@ -423,9 +542,32 @@ const ProjectDetail = ({ project, setSelectedProject }) => {
                     <span>📏 {project.totalLength}</span>
                   </div>
                 </div>
-                <div className="text-right">
-                  <div className="text-sm text-gray-500">Progress</div>
-                  <div className="text-2xl font-bold bg-gradient-to-r from-[#D76A84] to-rose-600 bg-clip-text text-transparent">{project.progress}%</div>
+                <div className="flex items-center space-x-4">
+                  {/* Show reprocess button for all statuses except 'planning' and 'in-progress' */}
+                  {project.status !== 'planning' && project.status !== 'in-progress' && (
+                    <Button
+                      onClick={handleReprocess}
+                      disabled={isReprocessing}
+                      className="flex items-center space-x-2 bg-blue-600 hover:bg-blue-700 text-white disabled:opacity-50"
+                      title={`Reprocess AI (Current status: ${project.status})`}
+                    >
+                      {isReprocessing ? (
+                        <>
+                          <Loader2 className="h-4 w-4 animate-spin" />
+                          <span>Reprocessing...</span>
+                        </>
+                      ) : (
+                        <>
+                          <RefreshCw className="h-4 w-4" />
+                          <span>Reprocess AI</span>
+                        </>
+                      )}
+                    </Button>
+                  )}
+                  <div className="text-right">
+                    <div className="text-sm text-gray-500">Progress</div>
+                    <div className="text-2xl font-bold bg-gradient-to-r from-[#D76A84] to-rose-600 bg-clip-text text-transparent">{project.progress}%</div>
+                  </div>
                 </div>
               </div>
             </div>
@@ -525,10 +667,10 @@ const ProjectDetail = ({ project, setSelectedProject }) => {
             pacpCodes={pacpCodes}
             projectId={project._id}
           />
-        </div>
+          </div>
 
-        {/* Right Sidebar */}
-        <div className="w-80 bg-white border-l border-gray-200 p-4 space-y-4">
+          {/* Right Sidebar */}
+          <div className="w-80 bg-white border-l border-gray-200 p-6 space-y-4">
           {/* Snapshots */}
           <div className="bg-white">
             <div className="flex items-center justify-between mb-4">
@@ -644,14 +786,19 @@ const ProjectDetail = ({ project, setSelectedProject }) => {
               </div>
             )}
           </div>
+        </div>
 
-          <AddObservation
+        {/* Dialogs - Outside flex container */}
+        <AddObservation
             isOpen={isObservationOpen}
             onClose={isObservationClose}
             project_id={project._id}
             user_id={user_id}
             pacpCodes={pacpCodes}
             snapshots={displaySnapshots}
+            videoRef={videoRef}
+            currentTime={currentTime}
+            currentDistance={project?.distance || "0.00"}
           />
 
           {/* Add Custom Metadata Dialog */}

@@ -162,6 +162,23 @@ const AdminUploads = () => {
     handleFetchUploads();
   }, [handleFetchUploads]);
 
+  // Auto-refresh when there are videos in AI processing
+  useEffect(() => {
+    const hasProcessingVideos = uploads.some(
+      upload => upload.type === 'video' && 
+      (upload.aiStatus === 'pending' || upload.processingStatus === 'in_progress' || upload.status === 'processing')
+    );
+    
+    if (!hasProcessingVideos) return; // Don't poll if nothing is processing
+    
+    const interval = setInterval(() => {
+      handleFetchUploads();
+      fetchSystemStats();
+    }, 10000); // Refresh every 10 seconds
+
+    return () => clearInterval(interval);
+  }, [uploads, handleFetchUploads, fetchSystemStats]);
+
   const formatFileSize = (bytes) => {
     if (bytes === 0) return "0 Bytes";
     const k = 1024;
@@ -283,6 +300,189 @@ const AdminUploads = () => {
 
           {/* Overview Tab */}
           <TabsContent value="overview" className="space-y-8">
+            {/* AI Processing Status - Prominent Section */}
+            {(() => {
+              const processingVideos = uploads.filter(
+                upload => upload.type === 'video' && 
+                (upload.aiStatus === 'pending' || upload.processingStatus === 'in_progress' || upload.status === 'processing') &&
+                upload.status !== 'failed' && 
+                upload.processingStatus !== 'failed'
+              );
+              const processedVideos = uploads.filter(
+                upload => upload.type === 'video' && upload.aiStatus === 'processed'
+              );
+              const failedVideos = uploads.filter(
+                upload => upload.type === 'video' && 
+                (upload.status === 'failed' || upload.processingStatus === 'failed' || upload.processingError)
+              );
+              
+              if (processingVideos.length > 0 || processedVideos.length > 0 || failedVideos.length > 0) {
+                return (
+                  <Card className="border-2 border-purple-200 bg-gradient-to-r from-purple-50 to-blue-50">
+                    <CardHeader>
+                      <div className="flex items-center justify-between">
+                        <div className="flex items-center space-x-3">
+                          <Brain className="w-6 h-6 text-purple-600" />
+                          <CardTitle className="text-xl">AI Processing Status</CardTitle>
+                        </div>
+                        <Button
+                          variant="outline"
+                          size="sm"
+                          onClick={() => {
+                            handleFetchUploads();
+                            fetchSystemStats();
+                          }}
+                          disabled={loading}
+                        >
+                          <RefreshCw className={`w-4 h-4 mr-2 ${loading ? 'animate-spin' : ''}`} />
+                          Refresh
+                        </Button>
+                      </div>
+                    </CardHeader>
+                    <CardContent>
+                      <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
+                        {/* Processing Videos */}
+                        <div>
+                          <div className="flex items-center justify-between mb-4">
+                            <h3 className="font-semibold text-gray-900 flex items-center">
+                              <Loader2 className="w-4 h-4 mr-2 animate-spin text-purple-600" />
+                              Currently Processing ({processingVideos.length})
+                            </h3>
+                          </div>
+                          {processingVideos.length === 0 ? (
+                            <p className="text-sm text-gray-500">No videos currently processing</p>
+                          ) : (
+                            <div className="space-y-3">
+                              {processingVideos.slice(0, 5).map((upload) => (
+                                <div key={upload._id} className="bg-white rounded-lg p-4 border border-purple-200">
+                                  <div className="flex items-center justify-between">
+                                    <div className="flex-1 min-w-0">
+                                      <p className="font-medium text-sm text-gray-900 truncate">
+                                        {upload.originalName || upload.filename}
+                                      </p>
+                                      <div className="flex items-center space-x-3 mt-1">
+                                        <Badge className="bg-amber-100 text-amber-800 border-amber-200">
+                                          {upload.processingStatus === 'in_progress' ? 'Processing' : 
+                                           upload.aiStatus === 'pending' ? 'Pending' : 'Queued'}
+                                        </Badge>
+                                        {upload.processingStartedAt && (
+                                          <span className="text-xs text-gray-500">
+                                            Started: {new Date(upload.processingStartedAt).toLocaleTimeString()}
+                                          </span>
+                                        )}
+                                      </div>
+                                    </div>
+                                    <Brain className="w-5 h-5 text-purple-600 animate-pulse ml-2" />
+                                  </div>
+                                </div>
+                              ))}
+                              {processingVideos.length > 5 && (
+                                <p className="text-xs text-gray-500 text-center">
+                                  +{processingVideos.length - 5} more processing...
+                                </p>
+                              )}
+                            </div>
+                          )}
+                        </div>
+
+                        {/* Processed Videos */}
+                        <div>
+                          <div className="flex items-center justify-between mb-4">
+                            <h3 className="font-semibold text-gray-900 flex items-center">
+                              <CheckCircle className="w-4 h-4 mr-2 text-green-600" />
+                              Recently Processed ({processedVideos.length})
+                            </h3>
+                          </div>
+                          {processedVideos.length === 0 ? (
+                            <p className="text-sm text-gray-500">No videos processed yet</p>
+                          ) : (
+                            <div className="space-y-3">
+                              {processedVideos.slice(0, 5).map((upload) => (
+                                <div key={upload._id} className="bg-white rounded-lg p-4 border border-green-200">
+                                  <div className="flex items-center justify-between">
+                                    <div className="flex-1 min-w-0">
+                                      <p className="font-medium text-sm text-gray-900 truncate">
+                                        {upload.originalName || upload.filename}
+                                      </p>
+                                      <div className="flex items-center space-x-3 mt-1">
+                                        <Badge className="bg-green-100 text-green-800 border-green-200">
+                                          Processed
+                                        </Badge>
+                                        {upload.defectsFound !== undefined && (
+                                          <span className="text-xs text-gray-600">
+                                            {upload.defectsFound} defects found
+                                          </span>
+                                        )}
+                                        {upload.confidence !== undefined && (
+                                          <span className="text-xs text-gray-600">
+                                            {upload.confidence.toFixed(1)}% confidence
+                                          </span>
+                                        )}
+                                      </div>
+                                    </div>
+                                    <CheckCircle className="w-5 h-5 text-green-600 ml-2" />
+                                  </div>
+                                </div>
+                              ))}
+                              {processedVideos.length > 5 && (
+                                <p className="text-xs text-gray-500 text-center">
+                                  +{processedVideos.length - 5} more processed
+                                </p>
+                              )}
+                            </div>
+                          )}
+                        </div>
+
+                        {/* Failed Videos */}
+                        <div>
+                          <div className="flex items-center justify-between mb-4">
+                            <h3 className="font-semibold text-gray-900 flex items-center">
+                              <AlertTriangle className="w-4 h-4 mr-2 text-red-600" />
+                              Failed ({failedVideos.length})
+                            </h3>
+                          </div>
+                          {failedVideos.length === 0 ? (
+                            <p className="text-sm text-gray-500">No failed videos</p>
+                          ) : (
+                            <div className="space-y-3">
+                              {failedVideos.slice(0, 5).map((upload) => (
+                                <div key={upload._id} className="bg-white rounded-lg p-4 border border-red-200">
+                                  <div className="flex items-center justify-between">
+                                    <div className="flex-1 min-w-0">
+                                      <p className="font-medium text-sm text-gray-900 truncate">
+                                        {upload.originalName || upload.filename}
+                                      </p>
+                                      <div className="flex items-center space-x-3 mt-1">
+                                        <Badge className="bg-red-100 text-red-800 border-red-200">
+                                          Failed
+                                        </Badge>
+                                        {upload.processingError && (
+                                          <span className="text-xs text-red-600 truncate" title={upload.processingError}>
+                                            {upload.processingError.substring(0, 50)}...
+                                          </span>
+                                        )}
+                                      </div>
+                                    </div>
+                                    <AlertTriangle className="w-5 h-5 text-red-600 ml-2" />
+                                  </div>
+                                </div>
+                              ))}
+                              {failedVideos.length > 5 && (
+                                <p className="text-xs text-gray-500 text-center">
+                                  +{failedVideos.length - 5} more failed
+                                </p>
+                              )}
+                            </div>
+                          )}
+                        </div>
+                      </div>
+                    </CardContent>
+                  </Card>
+                );
+              }
+              return null;
+            })()}
+
             {/* System Stats */}
             <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
               <StatCard

@@ -121,13 +121,6 @@ const SettingsPage = () => {
     showSecret: false,
   })
 
-  // User Management State
-  const [users, setUsers] = useState([
-    { id: 1, name: 'Alice Chen', email: 'alice@sewervision.ai', role: 'Admin', status: 'Active' },
-    { id: 2, name: 'Bob Rivera', email: 'bob@sewervision.ai', role: 'QC Technician', status: 'Active' },
-    { id: 3, name: 'Carol Kim', email: 'carol@sewervision.ai', role: 'customer', status: 'Disabled' },
-  ])
-
   // Logs State
   const [logs, setLogs] = useState([
     { id: 1, timestamp: '2025-04-04 10:22:01', level: 'INFO', message: 'AI model v2.1.4 loaded successfully' },
@@ -341,13 +334,12 @@ const SettingsPage = () => {
       <Card>
         <CardContent className="pt-6">
           <Tabs defaultValue="ai-models" className="w-full">
-            <TabsList className="grid w-full grid-cols-1 md:grid-cols-5 lg:grid-cols-7 gap-1 mb-8">
+            <TabsList className="grid w-full grid-cols-1 md:grid-cols-5 lg:grid-cols-6 gap-1 mb-8">
               <TabsTrigger value="ai-models">AI Models</TabsTrigger>
               <TabsTrigger value="cloud-streaming">Cloud & Streaming</TabsTrigger>
               <TabsTrigger value="qc-workflow">QC Workflow</TabsTrigger>
               <TabsTrigger value="notifications">Notifications</TabsTrigger>
               <TabsTrigger value="feedback-loop">AI Learning</TabsTrigger>
-              <TabsTrigger value="manage-users">Manage Users</TabsTrigger>
               <TabsTrigger value="system-admin">System Admin</TabsTrigger>
             </TabsList>
 
@@ -702,58 +694,6 @@ const SettingsPage = () => {
                     Save Feedback Settings
                   </Button>
                 </CardFooter>
-              </Card>
-            </TabsContent>
-
-            {/* ===== Manage Users Tab ===== */}
-            <TabsContent value="manage-users">
-              <Card>
-                <CardHeader>
-                  <CardTitle>Manage Users</CardTitle>
-                  <CardDescription>
-                    Add, edit, or disable user accounts and permissions.
-                  </CardDescription>
-                </CardHeader>
-                <CardContent>
-                  <div className="flex justify-between items-center mb-4">
-                    <Button variant="outline" size="sm">+ Invite User</Button>
-                    <Button variant="outline" size="sm">Export CSV</Button>
-                  </div>
-
-                  <Table>
-                    <TableHeader>
-                      <TableRow>
-                        <TableHead>Name</TableHead>
-                        <TableHead>Email</TableHead>
-                        <TableHead>Role</TableHead>
-                        <TableHead>Status</TableHead>
-                        <TableHead>Actions</TableHead>
-                      </TableRow>
-                    </TableHeader>
-                    <TableBody>
-                      {users.map((user) => (
-                        <TableRow key={user.id}>
-                          <TableCell>{user.name}</TableCell>
-                          <TableCell>{user.email}</TableCell>
-                          <TableCell>{user.role}</TableCell>
-                          <TableCell>
-                            <span className={`px-2 py-1 rounded-full text-xs ${
-                              user.status === 'Active'
-                                ? 'bg-green-100 text-green-800'
-                                : 'bg-red-100 text-red-800'
-                            }`}>
-                              {user.status}
-                            </span>
-                          </TableCell>
-                          <TableCell>
-                            <Button variant="ghost" size="sm">Edit</Button>
-                            <Button variant="ghost" size="sm" className="text-red-600">Remove</Button>
-                          </TableCell>
-                        </TableRow>
-                      ))}
-                    </TableBody>
-                  </Table>
-                </CardContent>
               </Card>
             </TabsContent>
 

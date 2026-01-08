@@ -1,5 +1,6 @@
 "use client";
 
+import { memo, useCallback } from "react";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Eye, FileVideo, Target, PencilIcon, Trash2Icon, Building2 } from "lucide-react";
@@ -8,7 +9,7 @@ import { useAlert } from "@/components/providers/AlertProvider";
 import { useDialog } from "@/components/providers/DialogProvider";
 import { api } from "@/lib/helper";
 
-const ProjectCard = (props) => {
+const ProjectCard = memo((props) => {
   const {
     project,
     setSelectedProject,
@@ -21,7 +22,8 @@ const ProjectCard = (props) => {
   const { showAlert } = useAlert();
   const { showDelete } = useDialog();
 
-  const getInitials = (name) => {
+  // Memoize helper functions
+  const getInitials = useCallback((name) => {
     if (!name) return "??";
     return name
       .split(" ")
@@ -29,10 +31,10 @@ const ProjectCard = (props) => {
       .join("")
       .toUpperCase()
       .slice(0, 2);
-  };
+  }, []);
 
   // Get customer full name
-  const getCustomerName = () => {
+  const getCustomerName = useCallback(() => {
     if (!project.customerId) return null;
     if (typeof project.customerId === 'string') return null; // Not populated
     const { first_name, last_name } = project.customerId;
@@ -40,10 +42,10 @@ const ProjectCard = (props) => {
       return `${first_name || ''} ${last_name || ''}`.trim();
     }
     return null;
-  };
+  }, [project.customerId]);
 
   // Generate a consistent color based on name
-  const getAvatarColor = (name) => {
+  const getAvatarColor = useCallback((name) => {
     if (!name) return "bg-gray-500";
     const colors = [
       "bg-red-500",
@@ -57,7 +59,7 @@ const ProjectCard = (props) => {
     ];
     const index = name.length % colors.length;
     return colors[index];
-  };
+  }, []);
 
   const handleDelete = async (project_id) => {
     showDelete({
@@ -266,6 +268,8 @@ const ProjectCard = (props) => {
       </CardContent>
     </Card>
   );
-};
+});
+
+ProjectCard.displayName = 'ProjectCard';
 
 export default ProjectCard;

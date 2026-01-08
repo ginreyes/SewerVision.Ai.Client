@@ -17,20 +17,37 @@ const UserPage = () => {
   const { showDelete } = useDialog();
   const router = useRouter();
 
+  const [page, setPage] = useState(1);
+  const [limit] = useState(50);
+  const [totalPages, setTotalPages] = useState(1);
+  const [totalUsers, setTotalUsers] = useState(0);
+
   useEffect(() => {
     fetchUsers();
-  }, []);
+  }, [page, search, filters]);
 
   const fetchUsers = async () => {
     try {
-      const { ok, data } = await api("/api/users/get-all-user", "GET");
+      setLoading(true);
+      const queryParams = new URLSearchParams({
+        page: page.toString(),
+        limit: limit.toString(),
+        ...(search && { search }),
+        ...(filters.role && filters.role !== 'all' && { role: filters.role }),
+        ...(filters.status && filters.status !== 'all' && { status: filters.status }),
+        ...(filters.plan && filters.plan !== 'all' && { plan: filters.plan }),
+      });
+
+      const { ok, data } = await api(`/api/users/get-all-user?${queryParams}`, "GET");
       
       if (ok && Array.isArray(data.users)) {
         setUsers(data.users);
+        setTotalPages(data.pagination?.totalPages || 1);
+        setTotalUsers(data.pagination?.total || 0);
       } 
       else {
         console.error("Failed to fetch users or users is not an array");
-        setUsers([]); // fail-safe
+        setUsers([]);
       }
     } catch (error) {
       console.error("Fetch users error:", error);
@@ -61,31 +78,9 @@ const UserPage = () => {
 
 
 
-  const filteredUsers = users.filter((u) => {
-    // Search filter - check multiple fields for better search experience
-    const matchesSearch = search ? (
-      u.name?.toLowerCase().includes(search.toLowerCase()) ||
-      u.username?.toLowerCase().includes(search.toLowerCase()) ||
-      u.email?.toLowerCase().includes(search.toLowerCase()) ||
-      `${u.first_name} ${u.last_name}`.toLowerCase().includes(search.toLowerCase())
-    ) : true;
-  
-    // Role filter - "all" means show all roles
-    const matchesRole = filters.role && filters.role !== "all" ? u.role === filters.role : true;
-  
-    // Plan filter - "all" means show all plans
-    const matchesPlan = filters.plan && filters.plan !== "all" ? u.plan === filters.plan : true;
-  
-    // Status filter - "all" means show all statuses
-    const matchesStatus = filters.status && filters.status !== "all" ? (
-      filters.status === "Active" ? u.active === true :
-      filters.status === "Inactive" ? u.active === false :
-      filters.status === "Pending" ? u.active === null || u.active === undefined :
-      true
-    ) : true;
-  
-    return matchesSearch && matchesRole && matchesPlan && matchesStatus;
-  });
+  // Server-side filtering now, so no client-side filtering needed
+  // But keep for any remaining client-side operations
+  const filteredUsers = users;
   
 
   const columns = [

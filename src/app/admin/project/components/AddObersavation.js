@@ -1,5 +1,5 @@
 'use client'
-import React, { useCallback, useState ,useEffect } from 'react'
+import React, { useCallback, useState ,useEffect, useRef } from 'react'
 import { 
   Save, 
   Clock, 
@@ -51,11 +51,15 @@ const AddObservation = (props) => {
     user_id ,
     pacpCodes,
     snapshots = [],
+    videoRef,
   } = props
   
   //statess
   
   const [errors, setErrors] = useState({});
+  const [capturedFrame, setCapturedFrame] = useState(null);
+  const canvasRef = useRef(null);
+  const previewCanvasRef = useRef(null);
   const [formData, setFormData] = useState({
     distance: currentDistance,
     pacpCode: '',
@@ -78,7 +82,14 @@ const AddObservation = (props) => {
 
   
 
-  const selectedPacpCode = Object.values(pacpCodes).find(
+  // Handle pacpCodes - can be array or object
+  const pacpCodesArray = Array.isArray(pacpCodes) 
+    ? pacpCodes 
+    : pacpCodes && typeof pacpCodes === 'object' 
+      ? Object.values(pacpCodes) 
+      : [];
+
+  const selectedPacpCode = pacpCodesArray.find(
     (code) => code.code === formData.pacpCode
   );
   
@@ -105,6 +116,100 @@ const AddObservation = (props) => {
     return now.toISOString().slice(0, 19).replace('T', ' ');
   };
 
+  // Format time (seconds) to hh:mm:ss
+  const formatTime = (timeSec) => {
+    if (!timeSec && timeSec !== 0) return '00:00:00';
+    if (typeof timeSec === 'string') return timeSec;
+    const hours = Math.floor(timeSec / 3600);
+    const minutes = Math.floor((timeSec % 3600) / 60);
+    const seconds = Math.floor(timeSec % 60);
+    return `${String(hours).padStart(2, '0')}:${String(minutes).padStart(2, '0')}:${String(seconds).padStart(2, '0')}`;
+  };
+
+  // Capture frame from video
+  const captureFrame = () => {
+    if (!videoRef?.current) {
+      console.warn('Video reference not available');
+      return;
+    }
+
+    const video = videoRef.current;
+    if (!video || video.readyState < 2) {
+      console.warn('Video not ready for capture');
+      return;
+    }
+
+    // Use canvas ref or create new one
+    let canvas = canvasRef.current;
+    if (!canvas) {
+      canvas = document.createElement('canvas');
+      canvasRef.current = canvas;
+    }
+
+    // Set canvas dimensions to match video
+    canvas.width = video.videoWidth || video.clientWidth || 640;
+    canvas.height = video.videoHeight || video.clientHeight || 360;
+
+    const ctx = canvas.getContext('2d');
+    ctx.drawImage(video, 0, 0, canvas.width, canvas.height);
+    
+    // Convert to data URL
+    const dataUrl = canvas.toDataURL('image/jpeg', 0.9);
+    setCapturedFrame(dataUrl);
+    
+    // Auto-enable snapshot if not already enabled
+    if (!formData.snapshot) {
+      handleInputChange('snapshot', true);
+    }
+  };
+
+  // Update preview canvas with video frame
+  useEffect(() => {
+    if (!isOpen || !videoRef?.current || !previewCanvasRef.current) return;
+
+    const video = videoRef.current;
+    const canvas = previewCanvasRef.current;
+    
+    if (!canvas) return;
+    
+    const ctx = canvas.getContext('2d');
+    if (!ctx) return;
+
+    let animationFrameId;
+    const updatePreview = () => {
+      if (video && video.readyState >= 2 && !capturedFrame && canvas && ctx) {
+        try {
+          canvas.width = video.videoWidth || video.clientWidth || 640;
+          canvas.height = video.videoHeight || video.clientHeight || 360;
+          ctx.drawImage(video, 0, 0, canvas.width, canvas.height);
+        } catch (error) {
+          console.warn('Error updating preview:', error);
+        }
+      }
+      animationFrameId = requestAnimationFrame(updatePreview);
+    };
+
+    updatePreview();
+
+    return () => {
+      if (animationFrameId) {
+        cancelAnimationFrame(animationFrameId);
+      }
+    };
+  }, [isOpen, videoRef, capturedFrame]);
+
+  // Update form data when props change
+  useEffect(() => {
+    if (isOpen) {
+      const formattedTime = typeof currentTime === 'number' ? formatTime(currentTime) : currentTime;
+      setFormData(prev => ({
+        ...prev,
+        time: formattedTime,
+        distance: currentDistance,
+      }));
+    }
+  }, [isOpen, currentTime, currentDistance]);
+
   const handleInputChange = (field, value) => {
     setFormData(prev => {
       const newData = { ...prev, [field]: value };
@@ -113,8 +218,8 @@ const AddObservation = (props) => {
       if (field === 'snapshot' && value === true) {
         newData.snapshotTimestamp = generateSnapshotTimestamp();
         // Auto-set label based on PACP code if available
-        if (prev.pacpCode) {
-          const selectedCode = pacpCodes.find(code => code.code === prev.pacpCode);
+        if (prev.pacpCode && pacpCodesArray.length > 0) {
+          const selectedCode = pacpCodesArray.find(code => code.code === prev.pacpCode);
           newData.snapshotLabel = selectedCode ? `${selectedCode.code} - ${selectedCode.name}` : '';
         }
       }
@@ -126,8 +231,8 @@ const AddObservation = (props) => {
       }
       
       // Update snapshot label when PACP code changes and snapshot is enabled
-      if (field === 'pacpCode' && prev.snapshot) {
-        const selectedCode = pacpCodes.find(code => code.code === value);
+      if (field === 'pacpCode' && prev.snapshot && pacpCodesArray.length > 0) {
+        const selectedCode = pacpCodesArray.find(code => code.code === value);
         newData.snapshotLabel = selectedCode ? `${selectedCode.code} - ${selectedCode.name}` : '';
       }
       
@@ -159,13 +264,58 @@ const AddObservation = (props) => {
     try {
       if (!validateForm()) return;
 
+      // Prepare observation data with captured frame
+      const observationData = {
+        ...formData,
+        capturedFrame: capturedFrame, // Include captured frame if available
+      };
+
+      // If snapshot is enabled and we have a captured frame, save it as snapshot
+      if (formData.snapshot && capturedFrame && project_id) {
+        try {
+          const snapshotData = {
+            projectId: project_id,
+            distance: formData.distance,
+            label: formData.snapshotLabel || `${formData.pacpCode || 'Observation'} - ${formData.time}`,
+            timestamp: formData.snapshotTimestamp || generateSnapshotTimestamp(),
+            imageData: capturedFrame, // Base64 image data
+          };
+
+          const snapshotResponse = await api(
+            `/api/snapshots/create-snapshot/${project_id}/${user_id}`,
+            'POST',
+            snapshotData
+          );
+
+          if (snapshotResponse.ok) {
+            console.log('Snapshot saved:', snapshotResponse.data);
+          }
+        } catch (snapshotError) {
+          console.error('Error saving snapshot:', snapshotError);
+          // Don't block observation save if snapshot fails
+        }
+      }
+
+      // Send observation to backend
+      const { ok, data } = await api(
+        `/api/observations/create-observations/${project_id}/${user_id}`,
+        'POST',
+        observationData
+      );
+  
+      if (!ok) {
+        console.error('Failed to save observation:', data);
+      } else {
+        console.log('Observation saved:', data);
+      }
+
       onClose();
       // Reset form after save
       setFormData({
         distance: currentDistance,
         pacpCode: '',
         observation: '',
-        time: currentTime,
+        time: typeof currentTime === 'number' ? formatTime(currentTime) : currentTime,
         remarks: '',
         severity: 'low',
         clockPosition: '',
@@ -178,19 +328,7 @@ const AddObservation = (props) => {
         snapshotLabel: '',
         snapshotTimestamp: '',
       });
-  
-      // Send observation to backend
-      const { ok, data } = await api(
-        `/api/observations/create-observations/${project_id}/${user_id}`,
-        'POST',
-        formData
-      );
-  
-      if (!ok) {
-        console.error('Failed to save observation:', data);
-      } else {
-        console.log('Observation saved:', data);
-      }
+      setCapturedFrame(null);
     } catch (error) {
       console.error('Error saving observation:', error);
     }
@@ -203,7 +341,7 @@ const AddObservation = (props) => {
 
   return (
     <Dialog open={isOpen} onOpenChange={onClose}>
-      <DialogContent className="max-w-5xl max-h-[95vh] overflow-y-auto">
+      <DialogContent className="max-w-3xl max-h-[90vh] overflow-y-auto">
         <DialogHeader>
           <DialogTitle className="flex items-center gap-2">
             <Plus className="h-5 w-5 text-blue-600" />
@@ -283,14 +421,18 @@ const AddObservation = (props) => {
                     <SelectValue placeholder="Select PACP Code" />
                   </SelectTrigger>
                   <SelectContent>
-                    {pacpCodes.map(code => (
-                      <SelectItem key={code.code} value={code.code}>
-                        <div className="flex items-center gap-2">
-                          <Badge variant="outline">{code.code}</Badge>
-                          <span>{code.name}</span>
-                        </div>
-                      </SelectItem>
-                    ))}
+                    {pacpCodesArray.length > 0 ? (
+                      pacpCodesArray.map(code => (
+                        <SelectItem key={code.code || code._id} value={code.code}>
+                          <div className="flex items-center gap-2">
+                            <Badge variant="outline">{code.code}</Badge>
+                            <span>{code.name}</span>
+                          </div>
+                        </SelectItem>
+                      ))
+                    ) : (
+                      <SelectItem value="" disabled>No PACP codes available</SelectItem>
+                    )}
                   </SelectContent>
                 </Select>
                 {errors.pacpCode && (
@@ -422,15 +564,15 @@ const AddObservation = (props) => {
             {/* Snapshot Toggle Card */}
             <Card className={`border-2 transition-all duration-200 ${
               formData.snapshot 
-                ? 'border-blue-500 bg-gradient-to-r from-blue-50 to-indigo-50 shadow-lg' 
-                : 'border-gray-200 hover:border-gray-300'
+                ? 'border-pink-400 bg-gradient-to-r from-pink-50 via-rose-50 to-fuchsia-50 shadow-lg' 
+                : 'border-gray-200 hover:border-pink-300'
             }`}>
               <CardContent className="pt-6">
                 <div className="flex items-center justify-between mb-4">
                   <div className="flex items-center gap-4">
                     <div className={`p-3 rounded-full transition-all duration-200 ${
                       formData.snapshot 
-                        ? 'bg-blue-100 text-blue-600' 
+                        ? 'bg-gradient-to-br from-pink-100 to-rose-100 text-pink-600' 
                         : 'bg-gray-100 text-gray-400'
                     }`}>
                       {formData.snapshot ? (
@@ -459,8 +601,8 @@ const AddObservation = (props) => {
                     onClick={() => handleInputChange('snapshot', !formData.snapshot)}
                     className={`px-6 transition-all duration-200 ${
                       formData.snapshot 
-                        ? 'bg-blue-600 hover:bg-blue-700 text-white' 
-                        : 'border-gray-300 hover:border-blue-300 hover:bg-blue-50'
+                        ? 'bg-gradient-to-r from-pink-500 to-rose-600 hover:from-pink-600 hover:to-rose-700 text-white shadow-lg' 
+                        : 'border-pink-300 hover:border-pink-400 hover:bg-pink-50 text-pink-600'
                     }`}
                   >
                     {formData.snapshot ? (
@@ -480,14 +622,14 @@ const AddObservation = (props) => {
                 {/* Status Indicator */}
                 <div className={`flex items-center gap-2 p-3 rounded-lg ${
                   formData.snapshot 
-                    ? 'bg-green-100 border border-green-200' 
+                    ? 'bg-gradient-to-r from-pink-100 to-rose-100 border border-pink-300' 
                     : 'bg-gray-100 border border-gray-200'
                 }`}>
                   <div className={`w-3 h-3 rounded-full ${
-                    formData.snapshot ? 'bg-green-500' : 'bg-gray-400'
+                    formData.snapshot ? 'bg-pink-500 animate-pulse' : 'bg-gray-400'
                   }`}></div>
                   <span className={`text-sm font-medium ${
-                    formData.snapshot ? 'text-green-700' : 'text-gray-600'
+                    formData.snapshot ? 'text-pink-700' : 'text-gray-600'
                   }`}>
                     {formData.snapshot ? 'Snapshot capture is active' : 'Snapshot capture is disabled'}
                   </span>
@@ -497,69 +639,95 @@ const AddObservation = (props) => {
 
             {/* Snapshot Configuration - Only show when enabled */}
             {formData.snapshot && (
-              <Card className="border-2 border-blue-400 bg-gradient-to-br from-blue-50 via-indigo-50 to-purple-50 shadow-xl">
+              <Card className="border-2 border-pink-400 bg-gradient-to-br from-pink-50 via-rose-50 to-fuchsia-50 shadow-xl">
                 <CardContent className="pt-6">
                   <div className="grid grid-cols-1 lg:grid-cols-2 gap-8">
                     {/* Video Preview Section */}
                     <div className="space-y-4">
                       <div className="flex items-center gap-3 mb-4">
-                        <div className="p-2 bg-blue-600 rounded-lg">
+                        <div className="p-2 bg-gradient-to-br from-pink-500 to-rose-600 rounded-lg shadow-md">
                           <Video className="h-6 w-6 text-white" />
                         </div>
                         <div>
-                          <h5 className="font-semibold text-blue-900 text-lg">Live Video Feed</h5>
-                          <p className="text-sm text-blue-700">Current frame will be captured</p>
+                          <h5 className="font-semibold bg-gradient-to-r from-pink-600 to-rose-600 bg-clip-text text-transparent text-lg">Live Video Feed</h5>
+                          <p className="text-sm text-pink-700">Current frame will be captured</p>
                         </div>
                       </div>
                       
-                      <div className="relative bg-gradient-to-br from-amber-400 to-amber-700 rounded-xl p-8 h-56 flex items-center justify-center border-4 border-amber-200 shadow-lg">
-                        {/* Simulated pipe view */}
-                        <div className="w-36 h-36 rounded-full bg-gradient-to-br from-amber-300 to-amber-600 flex items-center justify-center relative border-4 border-amber-200 shadow-xl">
-                          <div className="w-24 h-24 rounded-full bg-black opacity-70"></div>
-                          {formData.pacpCode && (
-                            <div className="absolute -top-10 left-1/2 transform -translate-x-1/2">
-                              <Badge className="bg-red-500 text-white px-4 py-2 text-sm font-semibold shadow-lg">
-                                {formData.pacpCode}
-                              </Badge>
+                      <div className="relative bg-black rounded-xl overflow-hidden border-4 border-pink-300 shadow-lg h-56">
+                        {videoRef?.current ? (
+                          <>
+                            {/* Canvas for video preview */}
+                            <canvas
+                              ref={previewCanvasRef}
+                              className="w-full h-full object-cover"
+                              style={{ display: capturedFrame ? 'none' : 'block' }}
+                            />
+                            
+                            {/* Captured frame display */}
+                            {capturedFrame && (
+                              <div className="absolute inset-0 flex items-center justify-center bg-black/60">
+                                <img 
+                                  src={capturedFrame} 
+                                  alt="Captured frame" 
+                                  className="max-w-full max-h-full object-contain border-4 border-pink-400 rounded-lg shadow-2xl"
+                                />
+                              </div>
+                            )}
+                            
+                            {/* Live indicator */}
+                            <div className="absolute top-4 left-4 flex items-center gap-2 bg-gradient-to-r from-pink-500 to-rose-600 text-white px-3 py-1 rounded-full text-sm font-medium z-10 shadow-lg">
+                              <div className="w-2 h-2 bg-white rounded-full animate-pulse"></div>
+                              {capturedFrame ? 'CAPTURED' : 'LIVE'}
                             </div>
-                          )}
-                          
-                          {/* Crosshair overlay */}
-                          <div className="absolute inset-0 flex items-center justify-center">
-                            <div className="w-8 h-0.5 bg-red-400 absolute"></div>
-                            <div className="w-0.5 h-8 bg-red-400 absolute"></div>
+                            
+                            {/* Frame info overlay */}
+                            <div className="absolute bottom-4 left-4 bg-gradient-to-r from-pink-600/90 to-rose-600/90 backdrop-blur-sm text-white px-4 py-2 rounded-lg text-sm font-medium z-10 shadow-lg">
+                              📍 {formData.distance} | ⏱️ {formData.time}
+                            </div>
+                            
+                            {/* PACP Code badge */}
+                            {formData.pacpCode && (
+                              <div className="absolute top-4 right-4 z-10">
+                                <Badge className="bg-gradient-to-r from-pink-500 to-rose-600 text-white px-4 py-2 text-sm font-semibold shadow-lg border-2 border-pink-300">
+                                  {formData.pacpCode}
+                                </Badge>
+                              </div>
+                            )}
+                          </>
+                        ) : (
+                          <div className="w-full h-full flex items-center justify-center bg-gradient-to-br from-pink-400 via-rose-500 to-fuchsia-600">
+                            <div className="text-center text-white">
+                              <Video className="h-12 w-12 mx-auto mb-2 opacity-70" />
+                              <p className="text-sm font-medium">Video feed not available</p>
+                              <p className="text-xs mt-1 opacity-80">Snapshot can still be added manually</p>
+                            </div>
                           </div>
-                        </div>
-                        
-                        {/* Live indicator */}
-                        <div className="absolute top-4 left-4 flex items-center gap-2 bg-red-600 text-white px-3 py-1 rounded-full text-sm font-medium">
-                          <div className="w-2 h-2 bg-white rounded-full animate-pulse"></div>
-                          LIVE
-                        </div>
-                        
-                        {/* Frame info overlay */}
-                        <div className="absolute bottom-4 left-4 bg-black/80 text-white px-4 py-2 rounded-lg text-sm font-medium">
-                          📍 {formData.distance} | ⏱️ {formData.time}
-                        </div>
+                        )}
                       </div>
                       
                       <div className="grid grid-cols-2 gap-3">
                         <Button 
                           type="button" 
                           size="lg" 
-                          className="bg-blue-600 hover:bg-blue-700 text-white font-semibold"
+                          onClick={captureFrame}
+                          disabled={!videoRef?.current}
+                          className="bg-gradient-to-r from-pink-500 to-rose-600 hover:from-pink-600 hover:to-rose-700 text-white font-semibold disabled:opacity-50 disabled:cursor-not-allowed shadow-lg transition-all duration-200"
+                          title={!videoRef?.current ? 'Video not available for capture' : ''}
                         >
                           <Camera className="h-5 w-5 mr-2" />
-                          Capture Now
+                          {capturedFrame ? 'Recapture' : 'Capture Now'}
                         </Button>
                         <Button 
                           type="button" 
                           size="lg" 
                           variant="outline"
-                          className="border-2 border-blue-300 text-blue-600 hover:bg-blue-50 font-semibold"
+                          onClick={() => setCapturedFrame(null)}
+                          disabled={!capturedFrame}
+                          className="border-2 border-pink-300 text-pink-600 hover:bg-pink-50 hover:border-pink-400 font-semibold disabled:opacity-50 disabled:cursor-not-allowed transition-all duration-200"
                         >
                           <PlayCircle className="h-5 w-5 mr-2" />
-                          Preview
+                          Clear
                         </Button>
                       </div>
                     </div>
@@ -567,12 +735,12 @@ const AddObservation = (props) => {
                     {/* Snapshot Configuration Section */}
                     <div className="space-y-6">
                       <div className="flex items-center gap-3 mb-4">
-                        <div className="p-2 bg-purple-600 rounded-lg">
+                        <div className="p-2 bg-gradient-to-br from-pink-500 to-fuchsia-600 rounded-lg shadow-md">
                           <FileText className="h-6 w-6 text-white" />
                         </div>
                         <div>
-                          <h5 className="font-semibold text-purple-900 text-lg">Snapshot Configuration</h5>
-                          <p className="text-sm text-purple-700">Configure snapshot metadata and settings</p>
+                          <h5 className="font-semibold bg-gradient-to-r from-pink-600 to-fuchsia-600 bg-clip-text text-transparent text-lg">Snapshot Configuration</h5>
+                          <p className="text-sm text-pink-700">Configure snapshot metadata and settings</p>
                         </div>
                       </div>
                       
@@ -586,7 +754,7 @@ const AddObservation = (props) => {
                             value={formData.snapshotLabel}
                             onChange={(e) => handleInputChange('snapshotLabel', e.target.value)}
                             placeholder="e.g., Main crack location"
-                            className="bg-white border-2 border-gray-200 focus:border-purple-400 h-12 text-base"
+                            className="bg-white border-2 border-pink-200 focus:border-pink-400 focus:ring-pink-300 h-12 text-base"
                           />
                         </div>
                         
@@ -599,14 +767,14 @@ const AddObservation = (props) => {
                             value={formData.snapshotTimestamp}
                             placeholder="Auto-generated timestamp"
                             disabled
-                            className="bg-gray-50 border-2 border-gray-200 h-12 text-base"
+                            className="bg-pink-50 border-2 border-pink-200 h-12 text-base"
                           />
                         </div>
 
                         <div className="space-y-3">
                           <Label className="text-sm font-semibold text-gray-700">Snapshot Category</Label>
                           <Select defaultValue="defect">
-                            <SelectTrigger className="bg-white border-2 border-gray-200 focus:border-purple-400 h-12">
+                            <SelectTrigger className="bg-white border-2 border-pink-200 focus:border-pink-400 focus:ring-pink-300 h-12">
                               <SelectValue placeholder="Select category" />
                             </SelectTrigger>
                             <SelectContent>
@@ -650,12 +818,12 @@ const AddObservation = (props) => {
                           </Select>
                         </div>
 
-                        <div className="bg-gradient-to-r from-blue-100 to-purple-100 border-2 border-blue-200 rounded-xl p-4 shadow-sm">
+                        <div className="bg-gradient-to-r from-pink-100 via-rose-100 to-fuchsia-100 border-2 border-pink-300 rounded-xl p-4 shadow-sm">
                           <div className="flex items-start gap-3">
-                            <div className="p-1 bg-blue-600 rounded-full">
+                            <div className="p-1 bg-gradient-to-br from-pink-500 to-rose-600 rounded-full">
                               <Info className="h-4 w-4 text-white" />
                             </div>
-                            <div className="text-sm text-blue-800">
+                            <div className="text-sm text-pink-800">
                               <p className="font-semibold mb-2">Snapshot Benefits:</p>
                               <ul className="space-y-1 text-xs">
                                 <li>• Quick navigation to exact location</li>

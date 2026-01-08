@@ -87,8 +87,16 @@ const AdminDashboard = () => {
       setDefectTrendData(data.defectTrendData || []);
       setAiPerformanceData(data.aiPerformanceData || []);
     } catch (err) {
-      console.error('Error fetching dashboard data:', err);
-      setError(err.message || 'Failed to load dashboard data');
+      // Safely extract and log error
+      try {
+        const errorMsg = err?.message || err?.toString() || 'Failed to load dashboard data';
+        // Use console.log instead of console.error to avoid Next.js error handler interception
+        console.log('Error fetching dashboard data:', errorMsg);
+        setError(errorMsg);
+      } catch (logError) {
+        // If we can't extract error, set a generic message
+        setError('Failed to load dashboard data');
+      }
     } finally {
       setLoading(false);
     }
@@ -98,6 +106,19 @@ const AdminDashboard = () => {
   useEffect(() => {
     fetchDashboardData();
   }, [fetchDashboardData]);
+
+  // Auto-refresh dashboard every 10 seconds when there are projects in AI processing
+  useEffect(() => {
+    const hasProcessingProjects = projectStats.aiProcessing > 0;
+    
+    if (!hasProcessingProjects) return; // Don't poll if nothing is processing
+    
+    const interval = setInterval(() => {
+      fetchDashboardData();
+    }, 10000); // Refresh every 10 seconds
+
+    return () => clearInterval(interval);
+  }, [projectStats.aiProcessing, fetchDashboardData]);
 
   // Lazy load Chart.js
   useEffect(() => {
@@ -454,13 +475,24 @@ const AdminDashboard = () => {
               </div>
               <span className="px-3 py-1 bg-blue-100 text-blue-800 text-sm rounded-full font-medium">Dashboard</span>
             </div>
-            <button
-              onClick={() => router.push('/admin/uploads')}
-              className="flex items-center space-x-2 bg-blue-600 text-white px-4 py-2 rounded-lg hover:bg-blue-700 transition-colors"
-            >
-              <Upload className="w-4 h-4" />
-              <span>Upload Files</span>
-            </button>
+            <div className="flex items-center space-x-3">
+              <button
+                onClick={fetchDashboardData}
+                disabled={loading}
+                className="flex items-center space-x-2 bg-gray-100 text-gray-700 px-4 py-2 rounded-lg hover:bg-gray-200 transition-colors disabled:opacity-50"
+                title="Refresh Dashboard"
+              >
+                <RefreshCw className={`w-4 h-4 ${loading ? 'animate-spin' : ''}`} />
+                <span>Refresh</span>
+              </button>
+              <button
+                onClick={() => router.push('/admin/uploads')}
+                className="flex items-center space-x-2 bg-blue-600 text-white px-4 py-2 rounded-lg hover:bg-blue-700 transition-colors"
+              >
+                <Upload className="w-4 h-4" />
+                <span>Upload Files</span>
+              </button>
+            </div>
           </div>
         </div>
       </header>
@@ -629,7 +661,7 @@ const AdminDashboard = () => {
                 <div className="flex items-center justify-between">
                   <h3 className="text-lg font-semibold text-gray-900">Recent Projects</h3>
                   <button 
-                    onClick={() => window.location.href = '/admin/project'}
+                    onClick={() => router.push('/admin/project')}
                     className="text-sm text-blue-600 hover:text-blue-800 font-medium"
                   >
                     View All
@@ -688,14 +720,14 @@ const AdminDashboard = () => {
                             <td className="py-4">
                               <div className="flex items-center space-x-2">
                                 <button 
-                                  onClick={() => window.location.href = `/admin/project/${project.id}`}
+                                  onClick={() => router.push(`/admin/project?selectedProject=${project.id}`)}
                                   className="p-1 text-gray-400 hover:text-gray-600"
                                   title="View Project"
                                 >
                                   <Eye className="w-4 h-4" />
                                 </button>
                                 <button 
-                                  onClick={() => window.location.href = `/admin/project/${project.id}?edit=true`}
+                                  onClick={() => router.push(`/admin/project/editProject/${project.id}`)}
                                   className="p-1 text-gray-400 hover:text-gray-600"
                                   title="Edit Project"
                                 >

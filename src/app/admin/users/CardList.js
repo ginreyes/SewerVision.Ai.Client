@@ -22,25 +22,33 @@ const CardList = () => {
 
   const fetchUsers = async () => {
     try {
-      const { ok, data } = await api("/api/users/get-all-user", "GET");
+      // Fetch first page with stats included
+      const { ok, data } = await api("/api/users/get-all-user?page=1&limit=1", "GET");
   
-      if (!ok || !Array.isArray(data.users)) {
+      if (!ok) {
         console.error("Invalid response format", data);
         return;
       }
   
-      const users = data.users; 
+      // Use stats from API if available (optimized)
+      if (data.stats) {
+        setUserStats({
+          total: data.stats.total,
+          active: data.stats.active,
+          pending: data.stats.pending,
+        });
+      } else {
+        // Fallback: calculate from users if stats not available
+        const users = Array.isArray(data.users) ? data.users : [];
+        const active = users.filter(user => user.status === "Active").length;
+        const pending = users.filter(user => user.status === "Inactive" || user.status === "Pending").length;
   
-      setUserList(users);
-  
-      const active = users.filter(user => user.status === "Active").length;
-      const pending = users.filter(user => user.status === "Inactive" || user.status === "Pending").length;
-  
-      setUserStats({
-        total: users.length,
-        active,
-        pending,
-      });
+        setUserStats({
+          total: data.pagination?.total || users.length,
+          active,
+          pending,
+        });
+      }
   
     } catch (error) {
       console.error("Error fetching user stats:", error);

@@ -114,18 +114,29 @@ export const FileCard = ({
               </Badge>
             )}
 
-            {upload.type === "video" && upload.aiStatus && (
+            {upload.type === "video" && (upload.aiStatus || upload.processingStatus) && (
               <Badge
                 variant="outline"
                 className={
                   upload.aiStatus === "processed"
-                    ? "bg-purple-100 text-purple-800 border-purple-200"
+                    ? "bg-purple-100 text-purple-800 border-purple-200 font-semibold"
+                    : upload.processingStatus === "in_progress" || upload.status === "processing"
+                    ? "bg-amber-100 text-amber-800 border-amber-200 font-semibold animate-pulse"
                     : upload.aiStatus === "pending"
                     ? "bg-amber-100 text-amber-800 border-amber-200"
                     : "bg-gray-100 text-gray-800 border-gray-200"
                 }
               >
-                AI: {upload.aiStatus}
+                {upload.processingStatus === "in_progress" ? (
+                  <>
+                    <Loader2 className="w-3 h-3 mr-1 animate-spin inline" />
+                    AI Processing...
+                  </>
+                ) : upload.aiStatus === "processed" ? (
+                  <>✓ AI: Processed</>
+                ) : (
+                  <>AI: {upload.aiStatus || "Pending"}</>
+                )}
               </Badge>
             )}
 

@@ -81,6 +81,26 @@ export const reportsApi = {
     }
     
     return response.data.data;
+  },
+
+  /**
+   * Get Detailed 2-Day Report
+   */
+  async getDetailed2DayReport(qcTechnicianId, startDate, endDate) {
+    const params = new URLSearchParams();
+    if (startDate) params.append('startDate', startDate);
+    if (endDate) params.append('endDate', endDate);
+    
+    const response = await api(
+      `/api/qc-technicians/reports/detailed-2day/${qcTechnicianId}?${params.toString()}`,
+      'GET'
+    );
+    
+    if (!response.ok) {
+      throw new Error(response.data?.error || 'Failed to fetch detailed report');
+    }
+    
+    return response.data.data;
   }
 };
 

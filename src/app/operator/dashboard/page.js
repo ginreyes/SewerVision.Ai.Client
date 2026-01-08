@@ -1,5 +1,5 @@
 'use client'
-import React, { useState, useEffect, useRef } from 'react'
+import React, { useState, useEffect, useRef, useCallback, useMemo } from 'react'
 import {
   Activity,
   TrendingUp,
@@ -48,37 +48,37 @@ export default function OperatorDashboardContent() {
   const downtimeChartInstance = useRef(null)
   const alertsChartInstance = useRef(null)
 
-  useEffect(() => {
-    const fetchDashboardData = async () => {
-      try {
-        const username = localStorage.getItem('username')
-        if (!username) return
+  const fetchDashboardData = useCallback(async () => {
+    try {
+      const username = localStorage.getItem('username')
+      if (!username) return
 
-        // Get user ID first
-        const userResponse = await api(`/api/users/role/${username}`, 'GET')
-        if (!userResponse.ok || !userResponse.data?._id) return
+      // Get user ID first
+      const userResponse = await api(`/api/users/role/${username}`, 'GET')
+      if (!userResponse.ok || !userResponse.data?._id) return
 
-        const userId = userResponse.data._id
+      const userId = userResponse.data._id
 
-        // Fetch operator dashboard stats
-        const response = await api(`/api/dashboard/operator/${userId}`, 'GET')
-        if (response.ok && response.data?.data) {
-          const data = response.data.data
-          setOperationalStats(data.operationalStats || operationalStats)
-          setRecentOperations(data.recentOperations || [])
-          if (data.weeklyPerformance) {
-            setWeeklyPerformance(data.weeklyPerformance)
-          }
+      // Fetch operator dashboard stats
+      const response = await api(`/api/dashboard/operator/${userId}`, 'GET')
+      if (response.ok && response.data?.data) {
+        const data = response.data.data
+        setOperationalStats(data.operationalStats || operationalStats)
+        setRecentOperations(data.recentOperations || [])
+        if (data.weeklyPerformance) {
+          setWeeklyPerformance(data.weeklyPerformance)
         }
-      } catch (error) {
-        console.error('Error fetching dashboard data:', error)
-      } finally {
-        setLoading(false)
       }
+    } catch (error) {
+      console.error('Error fetching dashboard data:', error)
+    } finally {
+      setLoading(false)
     }
-
-    fetchDashboardData()
   }, [])
+
+  useEffect(() => {
+    fetchDashboardData()
+  }, [fetchDashboardData])
 
   const downtimeReasons = [
     { reason: 'Scheduled Maintenance', hours: 12 },
@@ -94,24 +94,24 @@ export default function OperatorDashboardContent() {
     { week: 'W4', warning: 7, critical: 1 },
   ]
 
-  // Status helpers
-  const getStatusColor = (status) => {
+  // Status helpers - memoized
+  const getStatusColor = useCallback((status) => {
     switch (status) {
       case 'running': return 'bg-green-100 text-green-800'
       case 'paused': return 'bg-yellow-100 text-yellow-800'
       case 'maintenance': return 'bg-blue-100 text-blue-800'
       default: return 'bg-gray-100 text-gray-800'
     }
-  }
+  }, [])
 
-  const getStatusIcon = (status) => {
+  const getStatusIcon = useCallback((status) => {
     switch (status) {
       case 'running': return <Play className="w-4 h-4" />
       case 'paused': return <Pause className="w-4 h-4" />
       case 'maintenance': return <Cog className="w-4 h-4" />
       default: return <Clock className="w-4 h-4" />
     }
-  }
+  }, [])
 
   // Charts
   useEffect(() => {
