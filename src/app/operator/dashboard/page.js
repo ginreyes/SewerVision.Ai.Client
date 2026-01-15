@@ -1,23 +1,33 @@
 'use client'
-import React, { useState, useEffect, useRef, useCallback, useMemo } from 'react'
+
+import React, { useState, useEffect, useRef, useCallback } from 'react'
 import {
-  Activity,
-  TrendingUp,
   AlertTriangle,
-  CheckCircle,
   Clock,
   Play,
   Pause,
   Cog,
-  Zap
+  Zap,
+  RefreshCw,
+  Monitor,
+  Server
 } from 'lucide-react'
 
 import Chart from 'chart.js/auto'
 import { api } from '@/lib/helper'
 
+// Import new hooks
+import { usePolling } from '@/hooks'
+
+// Import new components
+import { LoadingState, ErrorState, EmptyState, StatsCard } from '@/components/qc'
+
+const POLL_INTERVAL = 30000 // 30 seconds
+
 export default function OperatorDashboardContent() {
-  const [activeModule, setActiveModule] = useState('Dashboard')
+  const [refreshing, setRefreshing] = useState(false)
   const [loading, setLoading] = useState(true)
+  const [error, setError] = useState(null)
   const [operationalStats, setOperationalStats] = useState({
     activeOperations: 0,
     equipmentOnline: 0,
@@ -48,37 +58,67 @@ export default function OperatorDashboardContent() {
   const downtimeChartInstance = useRef(null)
   const alertsChartInstance = useRef(null)
 
+  // Fetch dashboard data function
   const fetchDashboardData = useCallback(async () => {
-    try {
-      const username = localStorage.getItem('username')
-      if (!username) return
+    const username = localStorage.getItem('username')
+    if (!username) return null
 
-      // Get user ID first
-      const userResponse = await api(`/api/users/role/${username}`, 'GET')
-      if (!userResponse.ok || !userResponse.data?._id) return
+    // Get user ID first
+    const userResponse = await api(`/api/users/role/${username}`, 'GET')
+    if (!userResponse.ok || !userResponse.data?._id) return null
 
-      const userId = userResponse.data._id
+    const userId = userResponse.data._id
 
-      // Fetch operator dashboard stats
-      const response = await api(`/api/dashboard/operator/${userId}`, 'GET')
-      if (response.ok && response.data?.data) {
-        const data = response.data.data
-        setOperationalStats(data.operationalStats || operationalStats)
-        setRecentOperations(data.recentOperations || [])
-        if (data.weeklyPerformance) {
-          setWeeklyPerformance(data.weeklyPerformance)
-        }
-      }
-    } catch (error) {
-      console.error('Error fetching dashboard data:', error)
-    } finally {
-      setLoading(false)
+    // Fetch operator dashboard stats
+    const response = await api(`/api/dashboard/operator/${userId}`, 'GET')
+    if (response.ok && response.data?.data) {
+      return response.data.data
+    }
+    throw new Error('Failed to load dashboard data')
+  }, [])
+
+  // Process dashboard data
+  const processDashboardData = useCallback((data) => {
+    if (!data) return
+
+    setOperationalStats(data.operationalStats || operationalStats)
+    setRecentOperations(data.recentOperations || [])
+    if (data.weeklyPerformance) {
+      setWeeklyPerformance(data.weeklyPerformance)
     }
   }, [])
 
-  useEffect(() => {
-    fetchDashboardData()
-  }, [fetchDashboardData])
+  // Use polling hook for real-time updates
+  const { refresh: pollingRefresh, lastUpdated } = usePolling(
+    async () => {
+      const data = await fetchDashboardData()
+      processDashboardData(data)
+      return data
+    },
+    POLL_INTERVAL,
+    {
+      enabled: true,
+      immediate: true,
+      onError: (err) => {
+        console.error('Error fetching dashboard data:', err)
+        setError(err.message || 'Failed to load dashboard data')
+      },
+      onSuccess: () => {
+        setLoading(false)
+        setError(null)
+      }
+    }
+  )
+
+  // Manual refresh handler
+  const handleRefresh = useCallback(async () => {
+    setRefreshing(true)
+    try {
+      await pollingRefresh()
+    } finally {
+      setRefreshing(false)
+    }
+  }, [pollingRefresh])
 
   const downtimeReasons = [
     { reason: 'Scheduled Maintenance', hours: 12 },
@@ -248,12 +288,14 @@ export default function OperatorDashboardContent() {
     return destroyCharts
   }, [weeklyPerformance, recentOperations])
 
+  // Loading state - using new component
   if (loading) {
-    return (
-      <div className="flex items-center justify-center h-64">
-        <div className="text-gray-600">Loading dashboard data...</div>
-      </div>
-    )
+    return <LoadingState message="Loading dashboard data..." spinnerColor="text-blue-600" />
+  }
+
+  // Error state - using new component
+  if (error && !operationalStats.activeOperations && recentOperations.length === 0) {
+    return <ErrorState message={error} onRetry={handleRefresh} />
   }
 
   return (
@@ -263,54 +305,60 @@ export default function OperatorDashboardContent() {
         <div>
           <h1 className="text-2xl font-bold text-gray-900">Operator Dashboard</h1>
           <p className="text-gray-600 mt-1">Monitor field operations and equipment status</p>
+          {lastUpdated && (
+            <p className="text-xs text-gray-400 mt-1">
+              Last updated: {lastUpdated.toLocaleTimeString()}
+            </p>
+          )}
         </div>
-        <button className="flex items-center space-x-2 bg-blue-600 text-white px-4 py-2 rounded-lg hover:bg-blue-700">
-          <Activity className="w-4 h-4" />
-          <span>Live View</span>
+        <button
+          onClick={handleRefresh}
+          disabled={refreshing}
+          className="flex items-center space-x-2 bg-blue-600 text-white px-4 py-2 rounded-lg hover:bg-blue-700 disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
+        >
+          <RefreshCw className={`w-4 h-4 ${refreshing ? 'animate-spin' : ''}`} />
+          <span>{refreshing ? 'Refreshing...' : 'Refresh Data'}</span>
         </button>
       </div>
 
-      {/* Stats Grid */}
+      {/* Stats Grid - Using StatsCard Component */}
       <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-5 gap-6">
-        <div className="bg-white rounded-xl shadow-sm p-6 border border-gray-100 text-center">
-          <div className="w-10 h-10 bg-green-100 rounded-lg flex items-center justify-center mx-auto mb-3">
-            <Play className="w-5 h-5 text-green-600" />
-          </div>
-          <p className="text-2xl font-bold text-gray-900">{operationalStats.activeOperations}</p>
-          <p className="text-sm text-gray-600">Active Operations</p>
-        </div>
-
-        <div className="bg-white rounded-xl shadow-sm p-6 border border-gray-100 text-center">
-          <div className="w-10 h-10 bg-blue-100 rounded-lg flex items-center justify-center mx-auto mb-3">
-            <div className="w-5 h-5 bg-blue-600 rounded-sm"></div>
-          </div>
-          <p className="text-2xl font-bold text-gray-900">{operationalStats.equipmentOnline}</p>
-          <p className="text-sm text-gray-600">Equipment Online</p>
-        </div>
-
-        <div className="bg-white rounded-xl shadow-sm p-6 border border-gray-100 text-center">
-          <div className="w-10 h-10 bg-orange-100 rounded-lg flex items-center justify-center mx-auto mb-3">
-            <AlertTriangle className="w-5 h-5 text-orange-600" />
-          </div>
-          <p className="text-2xl font-bold text-gray-900">{operationalStats.criticalAlerts}</p>
-          <p className="text-sm text-gray-600">Critical Alerts</p>
-        </div>
-
-        <div className="bg-white rounded-xl shadow-sm p-6 border border-gray-100 text-center">
-          <div className="w-10 h-10 bg-yellow-100 rounded-lg flex items-center justify-center mx-auto mb-3">
-            <Clock className="w-5 h-5 text-yellow-600" />
-          </div>
-          <p className="text-2xl font-bold text-gray-900">{operationalStats.maintenanceDue}</p>
-          <p className="text-sm text-gray-600">Maintenance Due</p>
-        </div>
-
-        <div className="bg-white rounded-xl shadow-sm p-6 border border-gray-100 text-center">
-          <div className="w-10 h-10 bg-green-100 rounded-lg flex items-center justify-center mx-auto mb-3">
-            <Zap className="w-5 h-5 text-green-600" />
-          </div>
-          <p className="text-2xl font-bold text-gray-900">{operationalStats.systemUptime}%</p>
-          <p className="text-sm text-gray-600">System Uptime</p>
-        </div>
+        <StatsCard
+          icon={Play}
+          value={operationalStats.activeOperations}
+          label="Active Operations"
+          iconColor="text-green-600"
+          bgColor="bg-green-100"
+        />
+        <StatsCard
+          icon={Monitor}
+          value={operationalStats.equipmentOnline}
+          label="Equipment Online"
+          iconColor="text-blue-600"
+          bgColor="bg-blue-100"
+        />
+        <StatsCard
+          icon={AlertTriangle}
+          value={operationalStats.criticalAlerts}
+          label="Critical Alerts"
+          iconColor="text-orange-600"
+          bgColor="bg-orange-100"
+        />
+        <StatsCard
+          icon={Clock}
+          value={operationalStats.maintenanceDue}
+          label="Maintenance Due"
+          iconColor="text-yellow-600"
+          bgColor="bg-yellow-100"
+        />
+        <StatsCard
+          icon={Zap}
+          value={operationalStats.systemUptime}
+          valueSuffix="%"
+          label="System Uptime"
+          iconColor="text-green-600"
+          bgColor="bg-green-100"
+        />
       </div>
 
       {/* Charts */}
@@ -391,8 +439,13 @@ export default function OperatorDashboardContent() {
                   </tr>
                 )) : (
                   <tr>
-                    <td colSpan="6" className="py-8 text-center text-gray-500">
-                      No active operations found
+                    <td colSpan="6" className="py-8">
+                      <EmptyState
+                        size="sm"
+                        icon={Server}
+                        title="No Active Operations"
+                        message="No active operations found at this time"
+                      />
                     </td>
                   </tr>
                 )}
