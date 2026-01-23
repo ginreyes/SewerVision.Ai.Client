@@ -1,6 +1,6 @@
 'use client'
 
-import React, { useState, useEffect, useRef, useCallback } from 'react'
+import React, { useState, useEffect, useRef, useCallback, useMemo } from 'react'
 import {
   AlertTriangle,
   Clock,
@@ -10,7 +10,15 @@ import {
   Zap,
   RefreshCw,
   Monitor,
-  Server
+  Server,
+  ChevronUp,
+  ChevronDown,
+  X,
+  Battery,
+  MapPin,
+  Wifi,
+  WifiOff,
+  Info
 } from 'lucide-react'
 
 import Chart from 'chart.js/auto'
@@ -36,6 +44,7 @@ export default function OperatorDashboardContent() {
     criticalAlerts: 0
   })
   const [recentOperations, setRecentOperations] = useState([])
+  const [devices, setDevices] = useState([])
   const [weeklyPerformance, setWeeklyPerformance] = useState([
     { day: 'Mon', efficiency: 0, output: 0 },
     { day: 'Tue', efficiency: 0, output: 0 },
@@ -45,6 +54,11 @@ export default function OperatorDashboardContent() {
     { day: 'Sat', efficiency: 0, output: 0 },
     { day: 'Sun', efficiency: 0, output: 0 },
   ])
+  
+  // New state for sorting and modal
+  const [sortConfig, setSortConfig] = useState({ key: 'name', direction: 'asc' })
+  const [selectedEquipment, setSelectedEquipment] = useState(null)
+  const [showEquipmentModal, setShowEquipmentModal] = useState(false)
 
   // Chart refs
   const statusChartRef = useRef(null)
@@ -83,10 +97,55 @@ export default function OperatorDashboardContent() {
 
     setOperationalStats(data.operationalStats || operationalStats)
     setRecentOperations(data.recentOperations || [])
+    setDevices(data.devices || [])
     if (data.weeklyPerformance) {
       setWeeklyPerformance(data.weeklyPerformance)
     }
   }, [])
+
+  // Sorting function for operations table
+  const handleSort = useCallback((key) => {
+    setSortConfig(prev => ({
+      key,
+      direction: prev.key === key && prev.direction === 'asc' ? 'desc' : 'asc'
+    }))
+  }, [])
+
+  // Sorted operations - memoized
+  const sortedOperations = useMemo(() => {
+    const sorted = [...recentOperations]
+    sorted.sort((a, b) => {
+      let aValue = a[sortConfig.key]
+      let bValue = b[sortConfig.key]
+      
+      // Handle string comparison
+      if (typeof aValue === 'string') {
+        aValue = aValue.toLowerCase()
+        bValue = bValue.toLowerCase()
+      }
+      
+      if (aValue < bValue) return sortConfig.direction === 'asc' ? -1 : 1
+      if (aValue > bValue) return sortConfig.direction === 'asc' ? 1 : -1
+      return 0
+    })
+    return sorted
+  }, [recentOperations, sortConfig])
+
+  // Get sort indicator
+  const getSortIndicator = useCallback((key) => {
+    if (sortConfig.key !== key) return null
+    return sortConfig.direction === 'asc' 
+      ? <ChevronUp className="w-4 h-4 inline ml-1" />
+      : <ChevronDown className="w-4 h-4 inline ml-1" />
+  }, [sortConfig])
+
+  // Handle equipment click for modal
+  const handleEquipmentClick = useCallback((equipment) => {
+    // Find full device details
+    const device = devices.find(d => d.id === equipment.id) || equipment
+    setSelectedEquipment(device)
+    setShowEquipmentModal(true)
+  }, [devices])
 
   // Use polling hook for real-time updates
   const { refresh: pollingRefresh, lastUpdated } = usePolling(
@@ -394,28 +453,68 @@ export default function OperatorDashboardContent() {
         </div>
       </div>
 
-      {/* Recent Operations Table */}
+      {/* Recent Operations Table with Sorting */}
       <div className="bg-white rounded-xl shadow-sm border border-gray-100">
         <div className="p-6 border-b border-gray-200">
-          <h3 className="text-lg font-semibold text-gray-900">Active Operations</h3>
+          <div className="flex items-center justify-between">
+            <h3 className="text-lg font-semibold text-gray-900">Active Operations</h3>
+            <span className="text-sm text-gray-500">
+              {sortedOperations.length} equipment{sortedOperations.length !== 1 ? 's' : ''}
+            </span>
+          </div>
         </div>
         <div className="p-6">
           <div className="overflow-x-auto">
             <table className="w-full">
               <thead>
                 <tr className="text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                  <th className="pb-3">Equipment</th>
-                  <th className="pb-3">Status</th>
-                  <th className="pb-3">Uptime</th>
-                  <th className="pb-3">Last Check</th>
-                  <th className="pb-3">Priority</th>
+                  <th 
+                    className="pb-3 cursor-pointer hover:text-gray-700 select-none"
+                    onClick={() => handleSort('name')}
+                  >
+                    Equipment {getSortIndicator('name')}
+                  </th>
+                  <th 
+                    className="pb-3 cursor-pointer hover:text-gray-700 select-none"
+                    onClick={() => handleSort('status')}
+                  >
+                    Status {getSortIndicator('status')}
+                  </th>
+                  <th 
+                    className="pb-3 cursor-pointer hover:text-gray-700 select-none"
+                    onClick={() => handleSort('uptime')}
+                  >
+                    Uptime {getSortIndicator('uptime')}
+                  </th>
+                  <th 
+                    className="pb-3 cursor-pointer hover:text-gray-700 select-none"
+                    onClick={() => handleSort('lastCheck')}
+                  >
+                    Last Check {getSortIndicator('lastCheck')}
+                  </th>
+                  <th 
+                    className="pb-3 cursor-pointer hover:text-gray-700 select-none"
+                    onClick={() => handleSort('priority')}
+                  >
+                    Priority {getSortIndicator('priority')}
+                  </th>
                   <th className="pb-3">Actions</th>
                 </tr>
               </thead>
               <tbody className="space-y-2">
-                {recentOperations.length > 0 ? recentOperations.map((op) => (
-                  <tr key={op.id} className="border-b border-gray-100">
-                    <td className="py-4 font-medium text-gray-900">{op.name}</td>
+                {sortedOperations.length > 0 ? sortedOperations.map((op) => (
+                  <tr key={op.id} className="border-b border-gray-100 hover:bg-gray-50 transition-colors">
+                    <td className="py-4">
+                      <div className="flex items-center gap-2">
+                        <div className={`w-2 h-2 rounded-full ${
+                          op.status === 'recording' ? 'bg-green-500 animate-pulse' :
+                          op.status === 'online' ? 'bg-blue-500' :
+                          op.status === 'maintenance' ? 'bg-yellow-500' :
+                          'bg-gray-400'
+                        }`} />
+                        <span className="font-medium text-gray-900">{op.name}</span>
+                      </div>
+                    </td>
                     <td className="py-4">
                       <span className={`inline-flex items-center space-x-1 px-3 py-1 rounded-full text-xs font-medium ${getStatusColor(op.status)}`}>
                         {getStatusIcon(op.status)}
@@ -434,7 +533,13 @@ export default function OperatorDashboardContent() {
                       </span>
                     </td>
                     <td className="py-4">
-                      <button className="text-blue-600 hover:text-blue-800 text-sm font-medium">View Details</button>
+                      <button 
+                        onClick={() => handleEquipmentClick(op)}
+                        className="text-blue-600 hover:text-blue-800 text-sm font-medium flex items-center gap-1"
+                      >
+                        <Info className="w-4 h-4" />
+                        View Details
+                      </button>
                     </td>
                   </tr>
                 )) : (
@@ -454,6 +559,114 @@ export default function OperatorDashboardContent() {
           </div>
         </div>
       </div>
+
+      {/* Equipment Detail Modal */}
+      {showEquipmentModal && selectedEquipment && (
+        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
+          <div className="bg-white rounded-xl shadow-2xl w-full max-w-lg mx-4 overflow-hidden">
+            {/* Modal Header */}
+            <div className="bg-gradient-to-r from-blue-600 to-blue-700 p-6 text-white">
+              <div className="flex items-center justify-between">
+                <div className="flex items-center gap-3">
+                  <div className={`w-3 h-3 rounded-full ${
+                    selectedEquipment.status === 'recording' ? 'bg-green-400 animate-pulse' :
+                    selectedEquipment.status === 'online' ? 'bg-blue-300' :
+                    'bg-gray-300'
+                  }`} />
+                  <h3 className="text-xl font-semibold">{selectedEquipment.name}</h3>
+                </div>
+                <button 
+                  onClick={() => setShowEquipmentModal(false)}
+                  className="text-white hover:text-gray-200 transition-colors"
+                >
+                  <X className="w-6 h-6" />
+                </button>
+              </div>
+              <p className="text-blue-100 mt-1 text-sm capitalize">{selectedEquipment.type || 'Camera'}</p>
+            </div>
+
+            {/* Modal Content */}
+            <div className="p-6 space-y-4">
+              {/* Status Row */}
+              <div className="grid grid-cols-2 gap-4">
+                <div className="bg-gray-50 rounded-lg p-4">
+                  <div className="flex items-center gap-2 text-gray-500 text-sm mb-1">
+                    {selectedEquipment.status === 'offline' ? <WifiOff className="w-4 h-4" /> : <Wifi className="w-4 h-4" />}
+                    Status
+                  </div>
+                  <span className={`inline-flex items-center space-x-1 px-3 py-1 rounded-full text-xs font-medium ${getStatusColor(selectedEquipment.status)}`}>
+                    {getStatusIcon(selectedEquipment.status)}
+                    <span className="capitalize">{selectedEquipment.status}</span>
+                  </span>
+                </div>
+                <div className="bg-gray-50 rounded-lg p-4">
+                  <div className="flex items-center gap-2 text-gray-500 text-sm mb-1">
+                    <Battery className="w-4 h-4" />
+                    Battery
+                  </div>
+                  <p className="font-semibold text-gray-900">{selectedEquipment.battery || 'N/A'}</p>
+                </div>
+              </div>
+
+              {/* Location */}
+              <div className="bg-gray-50 rounded-lg p-4">
+                <div className="flex items-center gap-2 text-gray-500 text-sm mb-1">
+                  <MapPin className="w-4 h-4" />
+                  Location
+                </div>
+                <p className="font-semibold text-gray-900">{selectedEquipment.location || 'Not specified'}</p>
+              </div>
+
+              {/* Additional Info */}
+              <div className="grid grid-cols-2 gap-4">
+                <div className="bg-gray-50 rounded-lg p-4">
+                  <div className="flex items-center gap-2 text-gray-500 text-sm mb-1">
+                    <Clock className="w-4 h-4" />
+                    Last Seen
+                  </div>
+                  <p className="font-semibold text-gray-900">
+                    {selectedEquipment.lastSeen 
+                      ? new Date(selectedEquipment.lastSeen).toLocaleString() 
+                      : selectedEquipment.lastCheck || 'N/A'}
+                  </p>
+                </div>
+                <div className="bg-gray-50 rounded-lg p-4">
+                  <div className="flex items-center gap-2 text-gray-500 text-sm mb-1">
+                    <Zap className="w-4 h-4" />
+                    Uptime
+                  </div>
+                  <p className="font-semibold text-gray-900">{selectedEquipment.uptime || 'N/A'}</p>
+                </div>
+              </div>
+
+              {/* Priority Badge */}
+              <div className="flex items-center justify-between pt-4 border-t border-gray-200">
+                <span className="text-gray-500 text-sm">Priority Level</span>
+                <span className={`px-3 py-1 rounded-full text-sm font-medium ${
+                  selectedEquipment.priority === 'high' ? 'bg-red-100 text-red-800' :
+                  selectedEquipment.priority === 'medium' ? 'bg-yellow-100 text-yellow-800' :
+                  'bg-gray-100 text-gray-800'
+                }`}>
+                  {selectedEquipment.priority || 'Normal'}
+                </span>
+              </div>
+            </div>
+
+            {/* Modal Footer */}
+            <div className="bg-gray-50 px-6 py-4 flex justify-end gap-3">
+              <button 
+                onClick={() => setShowEquipmentModal(false)}
+                className="px-4 py-2 text-gray-700 hover:text-gray-900 font-medium transition-colors"
+              >
+                Close
+              </button>
+              <button className="px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 font-medium transition-colors">
+                View Full Details
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   )
 }

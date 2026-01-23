@@ -10,7 +10,11 @@ import {
   Clock,
   Search,
   RefreshCw,
-  Image
+  Image,
+  Filter,
+  CheckSquare,
+  Square,
+  Loader2
 } from 'lucide-react'
 
 import Chart from 'chart.js/auto'
@@ -29,10 +33,15 @@ const QCTechnicianDashboard = () => {
   const { userId, userData } = useUser()
   const [selectedProject, setSelectedProject] = useState(null)
   const [filterStatus, setFilterStatus] = useState('all')
+  const [filterSeverity, setFilterSeverity] = useState('all') // New severity filter
   const [searchTerm, setSearchTerm] = useState('')
   const [expandedDetection, setExpandedDetection] = useState(null)
   const [selectedDetection, setSelectedDetection] = useState(null)
   const [refreshing, setRefreshing] = useState(false)
+  
+  // Bulk action state
+  const [selectedDetections, setSelectedDetections] = useState(new Set())
+  const [bulkActionLoading, setBulkActionLoading] = useState(false)
 
   // Real data state
   const [dashboardStats, setDashboardStats] = useState(null)
@@ -191,17 +200,135 @@ const QCTechnicianDashboard = () => {
     }
   }, [pollingRefresh])
 
-  // Filter detections based on search term
+  // Filter detections based on search term and severity
   const filteredDetections = useMemo(() => {
-    if (!debouncedSearchTerm) return aiDetections
+    let filtered = aiDetections
     
-    const searchLower = debouncedSearchTerm.toLowerCase()
-    return aiDetections.filter(d => 
-      d.type.toLowerCase().includes(searchLower) ||
-      d.description.toLowerCase().includes(searchLower) ||
-      d.location.toLowerCase().includes(searchLower)
-    )
-  }, [aiDetections, debouncedSearchTerm])
+    // Apply severity filter
+    if (filterSeverity !== 'all') {
+      filtered = filtered.filter(d => d.severity.toLowerCase() === filterSeverity.toLowerCase())
+    }
+    
+    // Apply search filter
+    if (debouncedSearchTerm) {
+      const searchLower = debouncedSearchTerm.toLowerCase()
+      filtered = filtered.filter(d => 
+        d.type.toLowerCase().includes(searchLower) ||
+        d.description.toLowerCase().includes(searchLower) ||
+        d.location.toLowerCase().includes(searchLower)
+      )
+    }
+    
+    return filtered
+  }, [aiDetections, debouncedSearchTerm, filterSeverity])
+
+  // Toggle detection selection for bulk actions
+  const toggleDetectionSelection = useCallback((detectionId) => {
+    setSelectedDetections(prev => {
+      const newSet = new Set(prev)
+      if (newSet.has(detectionId)) {
+        newSet.delete(detectionId)
+      } else {
+        newSet.add(detectionId)
+      }
+      return newSet
+    })
+  }, [])
+
+  // Select/deselect all visible detections
+  const toggleSelectAll = useCallback(() => {
+    if (selectedDetections.size === filteredDetections.length) {
+      setSelectedDetections(new Set())
+    } else {
+      setSelectedDetections(new Set(filteredDetections.map(d => d.id)))
+    }
+  }, [filteredDetections, selectedDetections.size])
+
+  // Bulk approve handler
+  const handleBulkApprove = useCallback(async () => {
+    if (selectedDetections.size === 0) return
+    
+    setBulkActionLoading(true)
+    try {
+      const promises = Array.from(selectedDetections).map(id => 
+        qcApi.reviewDetection(id, { action: 'approved' })
+      )
+      await Promise.all(promises)
+      await fetchProjectDetections(selectedProject.id)
+      setSelectedDetections(new Set())
+    } catch (err) {
+      alert('Failed to approve some detections. Please try again.')
+    } finally {
+      setBulkActionLoading(false)
+    }
+  }, [selectedDetections, fetchProjectDetections, selectedProject])
+
+  // Bulk reject handler
+  const handleBulkReject = useCallback(async () => {
+    if (selectedDetections.size === 0) return
+    
+    setBulkActionLoading(true)
+    try {
+      const promises = Array.from(selectedDetections).map(id => 
+        qcApi.reviewDetection(id, { action: 'rejected' })
+      )
+      await Promise.all(promises)
+      await fetchProjectDetections(selectedProject.id)
+      setSelectedDetections(new Set())
+    } catch (err) {
+      alert('Failed to reject some detections. Please try again.')
+    } finally {
+      setBulkActionLoading(false)
+    }
+  }, [selectedDetections, fetchProjectDetections, selectedProject])
+
+  // Keyboard shortcuts
+  useEffect(() => {
+    const handleKeyDown = (e) => {
+      // Only handle shortcuts when a detection is selected
+      if (!selectedDetection) return
+      
+      // Skip if user is typing in an input
+      if (e.target.tagName === 'INPUT' || e.target.tagName === 'TEXTAREA' || e.target.tagName === 'SELECT') return
+
+      // A key = Approve
+      if (e.key === 'a' || e.key === 'A') {
+        e.preventDefault()
+        handleApproveDetection(selectedDetection)
+      }
+      
+      // R key = Reject
+      if (e.key === 'r' || e.key === 'R') {
+        e.preventDefault()
+        handleRejectDetection(selectedDetection)
+      }
+      
+      // Escape = Deselect
+      if (e.key === 'Escape') {
+        setSelectedDetection(null)
+        setExpandedDetection(null)
+      }
+      
+      // Arrow keys for navigation
+      if (e.key === 'ArrowUp' || e.key === 'ArrowDown') {
+        e.preventDefault()
+        const currentIndex = filteredDetections.findIndex(d => d.id === selectedDetection.id)
+        if (currentIndex === -1) return
+        
+        let newIndex
+        if (e.key === 'ArrowUp') {
+          newIndex = currentIndex > 0 ? currentIndex - 1 : filteredDetections.length - 1
+        } else {
+          newIndex = currentIndex < filteredDetections.length - 1 ? currentIndex + 1 : 0
+        }
+        
+        setSelectedDetection(filteredDetections[newIndex])
+      }
+    }
+
+    window.addEventListener('keydown', handleKeyDown)
+    return () => window.removeEventListener('keydown', handleKeyDown)
+  }, [selectedDetection, filteredDetections, handleApproveDetection, handleRejectDetection])
 
   // Status helpers
   const getStatusColor = useCallback((status) => {
@@ -547,8 +674,16 @@ const QCTechnicianDashboard = () => {
       <div className="bg-white rounded-xl shadow-sm border border-gray-100">
         <div className="p-6 border-b border-gray-200">
           <div className="flex items-center justify-between">
-            <h3 className="text-lg font-semibold text-gray-900">Quality Control Review</h3>
-            <div className="flex items-center gap-4">
+            <div>
+              <h3 className="text-lg font-semibold text-gray-900">Quality Control Review</h3>
+              <p className="text-xs text-gray-500 mt-1">
+                Keyboard shortcuts: <kbd className="px-1 py-0.5 bg-gray-100 rounded text-xs">A</kbd> Approve, 
+                <kbd className="px-1 py-0.5 bg-gray-100 rounded text-xs ml-1">R</kbd> Reject, 
+                <kbd className="px-1 py-0.5 bg-gray-100 rounded text-xs ml-1">↑↓</kbd> Navigate
+              </p>
+            </div>
+            <div className="flex items-center gap-3">
+              {/* Search */}
               <div className="relative">
                 <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 w-4 h-4 text-gray-400" />
                 <input
@@ -556,21 +691,72 @@ const QCTechnicianDashboard = () => {
                   placeholder="Search detections..."
                   value={searchTerm}
                   onChange={(e) => setSearchTerm(e.target.value)}
-                  className="pl-10 pr-4 py-2 border border-gray-300 rounded-lg text-sm focus:ring-2 focus:ring-rose-500 focus:border-transparent"
+                  className="pl-10 pr-4 py-2 border border-gray-300 rounded-lg text-sm focus:ring-2 focus:ring-rose-500 focus:border-transparent w-48"
                 />
               </div>
+              
+              {/* Severity Filter */}
+              <div className="relative">
+                <Filter className="absolute left-3 top-1/2 transform -translate-y-1/2 w-4 h-4 text-gray-400" />
+                <select
+                  value={filterSeverity}
+                  onChange={(e) => setFilterSeverity(e.target.value)}
+                  className="pl-10 pr-8 py-2 border border-gray-300 rounded-lg text-sm focus:ring-2 focus:ring-rose-500 focus:border-transparent appearance-none bg-white"
+                >
+                  <option value="all">All Severity</option>
+                  <option value="critical">Critical</option>
+                  <option value="major">Major</option>
+                  <option value="moderate">Moderate</option>
+                  <option value="minor">Minor</option>
+                </select>
+              </div>
+              
+              {/* Status Filter */}
               <select
                 value={filterStatus}
                 onChange={(e) => setFilterStatus(e.target.value)}
                 className="px-3 py-2 border border-gray-300 rounded-lg text-sm focus:ring-2 focus:ring-rose-500 focus:border-transparent"
               >
-                <option value="all">All Detections</option>
+                <option value="all">All Status</option>
                 <option value="pending">Needs Review</option>
                 <option value="approved">Approved</option>
                 <option value="rejected">Rejected</option>
               </select>
             </div>
           </div>
+          
+          {/* Bulk Actions Bar */}
+          {selectedDetections.size > 0 && (
+            <div className="mt-4 flex items-center justify-between bg-rose-50 rounded-lg p-3">
+              <span className="text-sm text-rose-700 font-medium">
+                {selectedDetections.size} detection{selectedDetections.size !== 1 ? 's' : ''} selected
+              </span>
+              <div className="flex items-center gap-2">
+                <button
+                  onClick={handleBulkApprove}
+                  disabled={bulkActionLoading}
+                  className="flex items-center gap-1 px-3 py-1.5 bg-green-600 text-white rounded-lg text-sm font-medium hover:bg-green-700 disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
+                >
+                  {bulkActionLoading ? <Loader2 className="w-4 h-4 animate-spin" /> : <CheckCircle className="w-4 h-4" />}
+                  Approve All
+                </button>
+                <button
+                  onClick={handleBulkReject}
+                  disabled={bulkActionLoading}
+                  className="flex items-center gap-1 px-3 py-1.5 bg-red-600 text-white rounded-lg text-sm font-medium hover:bg-red-700 disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
+                >
+                  {bulkActionLoading ? <Loader2 className="w-4 h-4 animate-spin" /> : <XCircle className="w-4 h-4" />}
+                  Reject All
+                </button>
+                <button
+                  onClick={() => setSelectedDetections(new Set())}
+                  className="px-3 py-1.5 text-gray-600 hover:text-gray-800 text-sm font-medium transition-colors"
+                >
+                  Clear Selection
+                </button>
+              </div>
+            </div>
+          )}
         </div>
 
         <div className="flex">
@@ -578,7 +764,23 @@ const QCTechnicianDashboard = () => {
           <div className="w-1/3 border-r border-gray-200 overflow-y-auto max-h-[600px]">
             <div className="p-6">
               <div className="flex items-center justify-between mb-4">
-                <h4 className="font-medium text-gray-900">Detections ({filteredDetections.length})</h4>
+                <div className="flex items-center gap-2">
+                  {/* Select All Checkbox */}
+                  {filteredDetections.length > 0 && (
+                    <button
+                      onClick={toggleSelectAll}
+                      className="text-gray-400 hover:text-gray-600 transition-colors"
+                      title={selectedDetections.size === filteredDetections.length ? "Deselect all" : "Select all"}
+                    >
+                      {selectedDetections.size === filteredDetections.length && filteredDetections.length > 0 ? (
+                        <CheckSquare className="w-5 h-5 text-rose-600" />
+                      ) : (
+                        <Square className="w-5 h-5" />
+                      )}
+                    </button>
+                  )}
+                  <h4 className="font-medium text-gray-900">Detections ({filteredDetections.length})</h4>
+                </div>
                 <span className="text-xs bg-rose-100 text-rose-700 px-2 py-1 rounded-full">
                   {filteredDetections.filter(d => d.needsReview).length} Pending
                 </span>
@@ -588,11 +790,11 @@ const QCTechnicianDashboard = () => {
                 {filteredDetections.length === 0 ? (
                   <EmptyState
                     size="sm"
-                    variant={debouncedSearchTerm ? 'search' : 'default'}
+                    variant={debouncedSearchTerm || filterSeverity !== 'all' ? 'search' : 'default'}
                     title={selectedProject ? 'No Detections' : 'Select a Project'}
                     message={
-                      debouncedSearchTerm 
-                        ? 'No detections match your search' 
+                      debouncedSearchTerm || filterSeverity !== 'all'
+                        ? 'No detections match your filters' 
                         : selectedProject 
                           ? 'No detections found for this project' 
                           : 'Select a project to view detections'
@@ -600,18 +802,36 @@ const QCTechnicianDashboard = () => {
                   />
                 ) : (
                   filteredDetections.map((detection) => (
-                    <DetectionCard
-                      key={detection.id}
-                      detection={detection}
-                      isExpanded={expandedDetection === detection.id}
-                      isSelected={selectedDetection?.id === detection.id}
-                      onSelect={setSelectedDetection}
-                      onToggleExpand={(id) => setExpandedDetection(expandedDetection === id ? null : id)}
-                      onApprove={handleApproveDetection}
-                      onReject={handleRejectDetection}
-                      getSeverityColor={getSeverityColor}
-                      getConfidenceColor={getConfidenceColor}
-                    />
+                    <div key={detection.id} className="flex items-start gap-2">
+                      {/* Checkbox for bulk selection */}
+                      <button
+                        onClick={(e) => {
+                          e.stopPropagation()
+                          toggleDetectionSelection(detection.id)
+                        }}
+                        className="mt-3 text-gray-400 hover:text-gray-600 transition-colors flex-shrink-0"
+                      >
+                        {selectedDetections.has(detection.id) ? (
+                          <CheckSquare className="w-5 h-5 text-rose-600" />
+                        ) : (
+                          <Square className="w-5 h-5" />
+                        )}
+                      </button>
+                      
+                      <div className="flex-1">
+                        <DetectionCard
+                          detection={detection}
+                          isExpanded={expandedDetection === detection.id}
+                          isSelected={selectedDetection?.id === detection.id}
+                          onSelect={setSelectedDetection}
+                          onToggleExpand={(id) => setExpandedDetection(expandedDetection === id ? null : id)}
+                          onApprove={handleApproveDetection}
+                          onReject={handleRejectDetection}
+                          getSeverityColor={getSeverityColor}
+                          getConfidenceColor={getConfidenceColor}
+                        />
+                      </div>
+                    </div>
                   ))
                 )}
               </div>
