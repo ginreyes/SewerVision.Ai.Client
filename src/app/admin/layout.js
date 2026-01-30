@@ -18,53 +18,68 @@ export default function AdminLayout({ children }) {
   };
 
   useEffect(() => {
+    // If we already have a role, don't re-fetch unnecessarily
+    if (role) return;
+
     const fetchUserRole = async () => {
       try {
         const storedUsername = localStorage.getItem("username");
         if (!storedUsername) {
+          // Only redirect if we definitely don't have a user
           router.push("/login");
           return;
         }
 
         const { data, error } = await api(`/api/users/role/${storedUsername}`, "GET");
-        if (!error && data.role) {
+
+        if (!error && data?.role) {
           setRole(data.role);
 
+          // Redirect based on role if needed, but only if strictly necessary
           if (data.role === "customer" && pathname.startsWith("/admin")) {
             router.push("/viewer/dashboard");
-          }
-
-          if (data.role === "admin" && pathname.startsWith("/viewer")) {
+          } else if (data.role === "admin" && pathname.startsWith("/viewer")) {
             router.push("/admin/dashboard");
           }
         } else {
-          router.push("/login");
+          console.error("Role check failed:", error || "No role returned");
+          // Don't aggressively redirect on temporary API glitches, only if strictly unauthorized
+          // router.push("/login"); 
         }
       } catch (error) {
         console.error("Failed to fetch role", error);
-        router.push("/login");
+        // router.push("/login");
       }
     };
 
     fetchUserRole();
-  }, [pathname, router]);
+    // Removed pathname and router from dependencies to prevent infinite loops
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []); // Run ONCE on mount
+
+  // Secondary effect to handle route protection AFTER role is loaded
+  useEffect(() => {
+    if (!role) return;
+
+    if (role === "customer" && pathname.startsWith("/admin")) {
+      router.push("/viewer/dashboard");
+    }
+  }, [role, pathname, router]);
 
   if (!role) return null;
 
   return (
     <div className="flex">
       <div
-        className={`fixed top-0 left-0 h-full transition-all duration-300 border-2 bg-gray-100 ${
-          openSidebar ? "w-[270px]" : "w-[90px]"
-        }`}
+        className={`fixed top-0 left-0 h-full transition-all duration-300 border-2 bg-gray-100 ${openSidebar ? "w-[270px]" : "w-[90px]"
+          }`}
       >
         <AdminSidebar isOpen={openSidebar} role={role} />
       </div>
 
       <div
-        className={`flex-1 transition-all duration-300 ${
-          openSidebar ? "ml-[270px]" : "ml-[90px]"
-        }`}
+        className={`flex-1 transition-all duration-300 ${openSidebar ? "ml-[270px]" : "ml-[90px]"
+          }`}
       >
         <Navbar openSideBar={handleToggleSidebar} />
         <main className="p-4">{children}</main>
