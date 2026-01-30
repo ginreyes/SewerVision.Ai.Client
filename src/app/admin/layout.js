@@ -43,12 +43,18 @@ export default function AdminLayout({ children }) {
           }
         } else {
           console.error("Role check failed:", error || "No role returned");
-          // Don't aggressively redirect on temporary API glitches, only if strictly unauthorized
-          // router.push("/login"); 
+          // Auth failed: Clear session and redirect to login to prevent loops and allow retry
+          localStorage.removeItem("authToken");
+          localStorage.removeItem("username");
+          localStorage.removeItem("role");
+          router.push("/login");
         }
       } catch (error) {
         console.error("Failed to fetch role", error);
-        // router.push("/login");
+        // Auth failed: Clear session and redirect
+        localStorage.removeItem("authToken");
+        localStorage.removeItem("username");
+        router.push("/login");
       }
     };
 
