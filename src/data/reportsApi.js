@@ -3,106 +3,169 @@
 import { api } from "@/lib/helper";
 
 /**
- * Reports API functions for QC Technician
+ * Reports API functions for admin
  */
 export const reportsApi = {
   /**
-   * Get QC Technician Reports
+   * Get all reports with optional filters
    */
-  async getReports(qcTechnicianId, filters = {}) {
-    const params = new URLSearchParams();
-    if (filters.status && filters.status !== 'all') {
-      params.append('status', filters.status);
-    }
-    if (filters.searchTerm) {
-      params.append('searchTerm', filters.searchTerm);
-    }
-    if (filters.dateRange) {
-      params.append('dateRange', filters.dateRange);
-    }
+  async getReports(filters = {}) {
+    try {
+      const queryParams = new URLSearchParams();
 
-    const response = await api(`/api/qc-technicians/reports-list/${qcTechnicianId}?${params.toString()}`, 'GET');
-    
-    if (!response.ok) {
-      throw new Error(response.data?.error || 'Failed to fetch reports');
+      if (filters.status && filters.status !== 'all') {
+        queryParams.append('status', filters.status);
+      }
+
+      if (filters.searchTerm) {
+        queryParams.append('searchTerm', filters.searchTerm);
+      }
+
+      if (filters.dateRange) {
+        queryParams.append('dateRange', filters.dateRange);
+      }
+
+      const queryString = queryParams.toString();
+      const url = `/api/reports/get-all-report${queryString ? `?${queryString}` : ''}`;
+
+      const response = await api(url, 'GET');
+
+      if (!response.ok) {
+        throw new Error(response.data?.message || 'Failed to fetch reports');
+      }
+
+      return response.data;
+    } catch (error) {
+      console.error('Reports API Error:', error);
+      throw error;
     }
-    
-    return response.data;
   },
 
   /**
-   * Create Report
+   * Get report by ID
+   */
+  async getReportById(reportId) {
+    try {
+      const response = await api(`/api/reports/get-report/${reportId}`, 'GET');
+
+      if (!response.ok) {
+        throw new Error(response.data?.message || 'Failed to fetch report');
+      }
+
+      return response.data;
+    } catch (error) {
+      console.error('Report API Error:', error);
+      throw error;
+    }
+  },
+
+  /**
+   * Create a new report
    */
   async createReport(reportData) {
-    const response = await api('/api/qc-technicians/reports', 'POST', reportData);
-    
-    if (!response.ok) {
-      throw new Error(response.data?.error || 'Failed to create report');
+    try {
+      const response = await api('/api/reports/create-report', 'POST', reportData);
+
+      if (!response.ok) {
+        throw new Error(response.data?.message || 'Failed to create report');
+      }
+
+      return response.data;
+    } catch (error) {
+      console.error('Create Report API Error:', error);
+      throw error;
     }
-    
-    return response.data.data;
   },
 
   /**
-   * Get Report Templates
+   * Get reports analytics/statistics
    */
-  async getTemplates(userId) {
-    const params = userId ? `?userId=${userId}` : '';
-    const response = await api(`/api/qc-technicians/templates${params}`, 'GET');
-    
-    if (!response.ok) {
-      throw new Error(response.data?.error || 'Failed to fetch templates');
+  async getReportsAnalytics(period = 'month') {
+    try {
+      const response = await api(`/api/reports/analytics?period=${period}`, 'GET');
+
+      if (!response.ok) {
+        throw new Error(response.data?.message || 'Failed to fetch analytics');
+      }
+
+      return response.data;
+    } catch (error) {
+      console.error('Analytics API Error:', error);
+      throw error;
     }
-    
-    return response.data.data;
   },
 
   /**
-   * Create Report Template
+   * Get operator's reports
+   */
+  async getOperatorReports(operatorId) {
+    try {
+      const response = await api(`/api/reports/get-operator-reports/${operatorId}`, 'GET');
+
+      if (!response.ok) {
+        throw new Error(response.data?.message || 'Failed to fetch operator reports');
+      }
+
+      return response.data;
+    } catch (error) {
+      console.error('Operator Reports API Error:', error);
+      throw error;
+    }
+  },
+
+  /**
+   * Get all report templates
+   */
+  async getTemplates() {
+    try {
+      const response = await api('/api/reports/templates', 'GET');
+
+      if (!response.ok) {
+        throw new Error(response.data?.message || 'Failed to fetch templates');
+      }
+
+      return response.data;
+    } catch (error) {
+      console.error('Get Templates API Error:', error);
+      throw error;
+    }
+  },
+
+  /**
+   * Create a new report template
    */
   async createTemplate(templateData) {
-    const response = await api('/api/qc-technicians/templates', 'POST', templateData);
-    
-    if (!response.ok) {
-      throw new Error(response.data?.error || 'Failed to create template');
+    try {
+      const response = await api('/api/reports/templates/create', 'POST', templateData);
+
+      if (!response.ok) {
+        throw new Error(response.data?.message || 'Failed to create template');
+      }
+
+      return response.data;
+    } catch (error) {
+      console.error('Create Template API Error:', error);
+      throw error;
     }
-    
-    return response.data.data;
   },
 
   /**
-   * Get Projects for Report Creation
+   * Download report as PDF
    */
-  async getProjectsForReport(qcTechnicianId) {
-    const response = await api(`/api/qc-technicians/reports/projects/${qcTechnicianId}`, 'GET');
-    
-    if (!response.ok) {
-      throw new Error(response.data?.error || 'Failed to fetch projects');
-    }
-    
-    return response.data.data;
-  },
+  async downloadReport(reportId) {
+    try {
+      const response = await api(`/api/reports/download/${reportId}`, 'GET');
 
-  /**
-   * Get Detailed 2-Day Report
-   */
-  async getDetailed2DayReport(qcTechnicianId, startDate, endDate) {
-    const params = new URLSearchParams();
-    if (startDate) params.append('startDate', startDate);
-    if (endDate) params.append('endDate', endDate);
-    
-    const response = await api(
-      `/api/qc-technicians/reports/detailed-2day/${qcTechnicianId}?${params.toString()}`,
-      'GET'
-    );
-    
-    if (!response.ok) {
-      throw new Error(response.data?.error || 'Failed to fetch detailed report');
+      if (!response.ok) {
+        throw new Error(response.data?.message || 'Failed to download report');
+      }
+
+      return response.data;
+    } catch (error) {
+      console.error('Download Report API Error:', error);
+      throw error;
     }
-    
-    return response.data.data;
   }
 };
 
 export default reportsApi;
-

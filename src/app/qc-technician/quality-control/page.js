@@ -1,10 +1,10 @@
 'use client'
 import React, { useState, useEffect, useCallback } from 'react';
-import { 
-  CheckCircle, 
-  XCircle, 
-  AlertTriangle, 
-  Eye, 
+import {
+  CheckCircle,
+  XCircle,
+  AlertTriangle,
+  Eye,
   RefreshCw,
   Target,
   Loader2,
@@ -12,7 +12,8 @@ import {
   Pause,
   Clock,
   MapPin,
-  Building2
+  Building2,
+  Keyboard
 } from 'lucide-react';
 import { api } from '@/lib/helper';
 import { useUser } from '@/components/providers/UserContext';
@@ -54,7 +55,7 @@ const QualityControlPage = () => {
       if (response.ok && response.data?.success) {
         const projects = response.data.data || [];
         setAssignedProjects(projects);
-        
+
         // Calculate today's stats
         const assigned = projects.length;
         const completed = projects.filter(p => p.status === 'completed').length;
@@ -102,7 +103,7 @@ const QualityControlPage = () => {
   const handleProjectSelect = useCallback(async (project) => {
     setActiveProject(project);
     setSelectedDetection(null);
-    
+
     const projectId = project.projectId?._id || project.projectId || project._id;
     if (projectId) {
       await fetchProjectDetections(projectId);
@@ -130,10 +131,10 @@ const QualityControlPage = () => {
         if (projectId) {
           await fetchProjectDetections(projectId);
         }
-        
+
         // Refresh assignments to update progress
         await fetchAssignments();
-        
+
         // Clear selected detection
         setSelectedDetection(null);
       } else {
@@ -172,7 +173,7 @@ const QualityControlPage = () => {
 
   const getStatusColor = (status) => {
     switch (status) {
-      case 'assigned': 
+      case 'assigned':
       case 'pending': return 'bg-yellow-100 text-yellow-700 border-yellow-200';
       case 'in-progress': return 'bg-rose-100 text-rose-700 border-rose-200';
       case 'completed': return 'bg-green-100 text-green-700 border-green-200';
@@ -203,6 +204,73 @@ const QualityControlPage = () => {
     return Math.round((reviewed / total) * 100);
   };
 
+  // Keyboard shortcuts for faster QC workflow
+  useEffect(() => {
+    const handleKeyDown = (e) => {
+      // Skip if user is typing in an input
+      if (e.target.tagName === 'INPUT' || e.target.tagName === 'TEXTAREA' || e.target.tagName === 'SELECT') return;
+
+      // Only handle shortcuts when a detection is selected
+      if (!selectedDetection) {
+        // Allow navigation to first detection with ArrowDown when nothing is selected
+        if (e.key === 'ArrowDown' && projectDetections.length > 0) {
+          e.preventDefault();
+          setSelectedDetection(projectDetections[0]);
+        }
+        return;
+      }
+
+      // A key = Approve
+      if (e.key === 'a' || e.key === 'A') {
+        e.preventDefault();
+        if (selectedDetection.qcStatus === 'pending') {
+          handleReviewDetection(selectedDetection._id, 'approved');
+        }
+      }
+
+      // R key = Reject
+      if (e.key === 'r' || e.key === 'R') {
+        e.preventDefault();
+        if (selectedDetection.qcStatus === 'pending') {
+          handleReviewDetection(selectedDetection._id, 'rejected');
+        }
+      }
+
+      // Escape = Deselect
+      if (e.key === 'Escape') {
+        e.preventDefault();
+        setSelectedDetection(null);
+      }
+
+      // Arrow keys for navigation
+      if (e.key === 'ArrowUp' || e.key === 'ArrowDown') {
+        e.preventDefault();
+        const currentIndex = projectDetections.findIndex(d => d._id === selectedDetection._id);
+        if (currentIndex === -1) return;
+
+        let newIndex;
+        if (e.key === 'ArrowUp') {
+          newIndex = currentIndex > 0 ? currentIndex - 1 : projectDetections.length - 1;
+        } else {
+          newIndex = currentIndex < projectDetections.length - 1 ? currentIndex + 1 : 0;
+        }
+
+        setSelectedDetection(projectDetections[newIndex]);
+      }
+
+      // Space = Quick approve (alternative to A)
+      if (e.key === ' ') {
+        e.preventDefault();
+        if (selectedDetection.qcStatus === 'pending') {
+          handleReviewDetection(selectedDetection._id, 'approved');
+        }
+      }
+    };
+
+    window.addEventListener('keydown', handleKeyDown);
+    return () => window.removeEventListener('keydown', handleKeyDown);
+  }, [selectedDetection, projectDetections, handleReviewDetection]);
+
   return (
     <div className="min-h-screen bg-gray-50">
       {/* Header */}
@@ -218,6 +286,17 @@ const QualityControlPage = () => {
             </div>
           </div>
           <div className="flex items-center gap-3">
+            {/* Keyboard shortcuts helper */}
+            <div className="hidden md:flex items-center gap-2 px-3 py-1.5 bg-amber-50 border border-amber-200 rounded-lg" title="Keyboard shortcuts available">
+              <Keyboard className="w-4 h-4 text-amber-600" />
+              <span className="text-xs text-amber-700 font-medium">
+                <kbd className="px-1.5 py-0.5 bg-white border border-amber-200 rounded text-[10px] font-bold">A</kbd> Approve
+                <span className="mx-1 text-amber-400">•</span>
+                <kbd className="px-1.5 py-0.5 bg-white border border-amber-200 rounded text-[10px] font-bold">R</kbd> Reject
+                <span className="mx-1 text-amber-400">•</span>
+                <kbd className="px-1.5 py-0.5 bg-white border border-amber-200 rounded text-[10px] font-bold">↑↓</kbd> Navigate
+              </span>
+            </div>
             <div className="text-right">
               <p className="text-sm font-semibold text-gray-900">
                 {currentUser?.first_name} {currentUser?.last_name}
@@ -239,7 +318,7 @@ const QualityControlPage = () => {
           <div className="p-6">
             <div className="flex items-center justify-between mb-6">
               <h2 className="text-lg font-bold text-gray-900">Assigned Projects</h2>
-              <button 
+              <button
                 onClick={fetchAssignments}
                 className="p-2 hover:bg-gray-100 rounded-xl transition-colors"
                 disabled={loading}
@@ -250,7 +329,7 @@ const QualityControlPage = () => {
 
             {/* Filter */}
             <div className="mb-4">
-              <select 
+              <select
                 value={filterStatus}
                 onChange={(e) => setFilterStatus(e.target.value)}
                 className="w-full p-3 border border-gray-200 rounded-xl bg-white text-sm focus:border-rose-500 focus:ring-2 focus:ring-rose-500/20 outline-none"
@@ -296,15 +375,14 @@ const QualityControlPage = () => {
                 {assignedProjects.map((project) => {
                   const progress = calculateProgress(project);
                   const projectData = project.projectId || project;
-                  
+
                   return (
                     <div
                       key={project._id}
-                      className={`p-4 rounded-2xl cursor-pointer transition-all border ${
-                        activeProject?._id === project._id 
-                          ? 'border-rose-500 bg-gradient-to-r from-rose-50 to-pink-50 shadow-sm shadow-rose-500/10' 
-                          : 'border-gray-200 hover:border-gray-300 bg-white'
-                      }`}
+                      className={`p-4 rounded-2xl cursor-pointer transition-all border ${activeProject?._id === project._id
+                        ? 'border-rose-500 bg-gradient-to-r from-rose-50 to-pink-50 shadow-sm shadow-rose-500/10'
+                        : 'border-gray-200 hover:border-gray-300 bg-white'
+                        }`}
                       onClick={() => handleProjectSelect(project)}
                     >
                       <div className="flex items-start justify-between mb-3">
@@ -320,7 +398,7 @@ const QualityControlPage = () => {
                           </span>
                         </div>
                       </div>
-                      
+
                       <div className="space-y-2 text-sm text-gray-600 mb-3">
                         <div className="flex justify-between">
                           <span>Location:</span>
@@ -336,7 +414,7 @@ const QualityControlPage = () => {
 
                       {/* Progress Bar */}
                       <div className="w-full bg-gray-200 rounded-full h-2 mb-2 overflow-hidden">
-                        <div 
+                        <div
                           className="bg-gradient-to-r from-[#D76A84] via-rose-500 to-pink-600 h-2 rounded-full transition-all duration-300"
                           style={{ width: `${progress}%` }}
                         ></div>
@@ -374,7 +452,7 @@ const QualityControlPage = () => {
                       </span>
                     </div>
                   </div>
-                  <button 
+                  <button
                     onClick={handleMarkComplete}
                     className="px-4 py-2 bg-gradient-to-r from-green-500 to-green-600 text-white rounded-xl font-semibold hover:shadow-lg transition-all flex items-center gap-2"
                   >
@@ -407,18 +485,17 @@ const QualityControlPage = () => {
                     ) : (
                       <div className="space-y-4">
                         {projectDetections.map((detection) => {
-                          const confidence = typeof detection.confidence === 'number' 
-                            ? detection.confidence * 100 
+                          const confidence = typeof detection.confidence === 'number'
+                            ? detection.confidence * 100
                             : (detection.confidence || 0) * 100;
-                          
+
                           return (
                             <div
                               key={detection._id}
-                              className={`p-5 border rounded-2xl cursor-pointer transition-all ${
-                                selectedDetection?._id === detection._id 
-                                  ? 'border-rose-500 bg-gradient-to-r from-rose-50 to-pink-50 shadow-sm shadow-rose-500/10' 
-                                  : 'border-gray-200 hover:border-gray-300 bg-white'
-                              } ${detection.qcStatus === 'pending' ? 'ring-2 ring-yellow-200' : ''}`}
+                              className={`p-5 border rounded-2xl cursor-pointer transition-all ${selectedDetection?._id === detection._id
+                                ? 'border-rose-500 bg-gradient-to-r from-rose-50 to-pink-50 shadow-sm shadow-rose-500/10'
+                                : 'border-gray-200 hover:border-gray-300 bg-white'
+                                } ${detection.qcStatus === 'pending' ? 'ring-2 ring-yellow-200' : ''}`}
                               onClick={() => setSelectedDetection(detection)}
                             >
                               <div className="flex items-start justify-between mb-3">
@@ -438,11 +515,10 @@ const QualityControlPage = () => {
                                     </span>
                                   </div>
                                 </div>
-                                <div className={`px-3 py-1 rounded-full text-xs font-semibold ${
-                                  detection.qcStatus === 'approved' ? 'bg-green-100 text-green-700' :
+                                <div className={`px-3 py-1 rounded-full text-xs font-semibold ${detection.qcStatus === 'approved' ? 'bg-green-100 text-green-700' :
                                   detection.qcStatus === 'rejected' ? 'bg-red-100 text-red-700' :
-                                  'bg-yellow-100 text-yellow-700'
-                                }`}>
+                                    'bg-yellow-100 text-yellow-700'
+                                  }`}>
                                   {detection.qcStatus || 'pending'}
                                 </div>
                               </div>
@@ -450,7 +526,7 @@ const QualityControlPage = () => {
                               {detection.qcStatus === 'pending' && selectedDetection?._id === detection._id && (
                                 <div className="mt-4 pt-3 border-t border-gray-200">
                                   <div className="flex gap-2">
-                                    <button 
+                                    <button
                                       onClick={(e) => {
                                         e.stopPropagation();
                                         handleReviewDetection(detection._id, 'approved');
@@ -459,7 +535,7 @@ const QualityControlPage = () => {
                                     >
                                       ✓ Approve
                                     </button>
-                                    <button 
+                                    <button
                                       onClick={(e) => {
                                         e.stopPropagation();
                                         handleReviewDetection(detection._id, 'rejected');

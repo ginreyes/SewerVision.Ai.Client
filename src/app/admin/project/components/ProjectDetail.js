@@ -155,11 +155,11 @@ const ProjectDetail = ({ project, setSelectedProject }) => {
     if (project?.metadata && typeof project.metadata === 'object') {
       setProjectMetadata(project.metadata);
     }
-    
+
     if (!project?._id) {
       return;
     }
-    
+
     try {
       const { ok, data } = await api(`/api/projects/get-project/${project._id}`, 'GET');
       if (ok && data?.data) {
@@ -278,8 +278,8 @@ const ProjectDetail = ({ project, setSelectedProject }) => {
   const openEditMetadata = () => {
     const currentMetadata = projectMetadata || project?.metadata || {};
     // Ensure we have a proper object
-    const metadataObj = typeof currentMetadata === 'object' && currentMetadata !== null 
-      ? currentMetadata 
+    const metadataObj = typeof currentMetadata === 'object' && currentMetadata !== null
+      ? currentMetadata
       : {};
     setEditingMetadata({ ...metadataObj });
     setIsEditMetadataOpen(true);
@@ -298,7 +298,7 @@ const ProjectDetail = ({ project, setSelectedProject }) => {
     setIsReprocessing(true);
     try {
       console.log('🔄 Starting reprocess for project:', project._id);
-      
+
       let response;
       try {
         response = await api(
@@ -310,7 +310,7 @@ const ProjectDetail = ({ project, setSelectedProject }) => {
         const apiErrorMessage = apiError?.message || apiError?.toString() || 'Network or API error';
         throw new Error(`Failed to call reprocess API: ${apiErrorMessage}`);
       }
-      
+
       if (!response) {
         throw new Error('No response received from reprocess API');
       }
@@ -387,7 +387,7 @@ const ProjectDetail = ({ project, setSelectedProject }) => {
       } catch (e) {
         errorMessage = 'Failed to reprocess video';
       }
-      
+
       // Use console.log instead of console.error to avoid Next.js error handler interception
       try {
         console.log('❌ Error reprocessing video:', errorMessage);
@@ -530,266 +530,313 @@ const ProjectDetail = ({ project, setSelectedProject }) => {
         <div className="flex">
           {/* Main Content */}
           <div className="flex-1">
-          {/* Project Info Banner */}
-          {project && (
-            <div className="bg-gradient-to-r from-rose-50 to-pink-50 border border-rose-200 rounded-lg p-4 mb-6">
-              <div className="flex items-center justify-between">
-                <div>
-                  <h2 className="text-lg font-semibold text-gray-900">{project.name}</h2>
-                  <div className="flex items-center space-x-4 mt-1 text-sm text-gray-600">
-                    <span>📍 {project.location}</span>
-                    <span>👤 {project.client}</span>
-                    <span>📏 {project.totalLength}</span>
+            {/* Project Info Banner */}
+            {project && (
+              <div className={`border rounded-xl p-5 mb-6 transition-all duration-300 ${isReprocessing
+                  ? 'bg-gradient-to-r from-blue-50 via-indigo-50 to-purple-50 border-blue-200 shadow-lg shadow-blue-100/50'
+                  : 'bg-gradient-to-r from-rose-50 via-pink-50 to-rose-50 border-rose-200'
+                }`}>
+                <div className="flex items-center justify-between">
+                  <div>
+                    <h2 className="text-xl font-bold text-gray-900">{project.name}</h2>
+                    <div className="flex items-center space-x-4 mt-2 text-sm text-gray-600">
+                      <span className="flex items-center gap-1.5">
+                        <span className="w-2 h-2 rounded-full bg-rose-400"></span>
+                        {project.location}
+                      </span>
+                      <span className="flex items-center gap-1.5">
+                        <span className="w-2 h-2 rounded-full bg-blue-400"></span>
+                        {project.client}
+                      </span>
+                      <span className="flex items-center gap-1.5">
+                        <span className="w-2 h-2 rounded-full bg-green-400"></span>
+                        {project.totalLength}
+                      </span>
+                    </div>
                   </div>
-                </div>
-                <div className="flex items-center space-x-4">
-                  {/* Show reprocess button for all statuses except 'planning' and 'in-progress' */}
-                  {project.status !== 'planning' && project.status !== 'in-progress' && (
-                    <Button
-                      onClick={handleReprocess}
-                      disabled={isReprocessing}
-                      className="flex items-center space-x-2 bg-blue-600 hover:bg-blue-700 text-white disabled:opacity-50"
-                      title={`Reprocess AI (Current status: ${project.status})`}
-                    >
-                      {isReprocessing ? (
-                        <>
-                          <Loader2 className="h-4 w-4 animate-spin" />
-                          <span>Reprocessing...</span>
-                        </>
-                      ) : (
-                        <>
-                          <RefreshCw className="h-4 w-4" />
-                          <span>Reprocess AI</span>
-                        </>
-                      )}
-                    </Button>
-                  )}
-                  <div className="text-right">
-                    <div className="text-sm text-gray-500">Progress</div>
-                    <div className="text-2xl font-bold bg-gradient-to-r from-[#D76A84] to-rose-600 bg-clip-text text-transparent">{project.progress}%</div>
-                  </div>
-                </div>
-              </div>
-            </div>
-          )}
-
-          <div
-            ref={videoContainerRef} // Attach ref to container div
-            className="relative aspect-video bg-black rounded-t-lg overflow-hidden flex flex-col"
-          >
-            {project?.videoUrl ? (
-              <>
-                <video
-                  ref={videoRef}
-                  className="w-full h-full object-cover"
-                  src={getVideoUrl(project.videoUrl)}
-                  onTimeUpdate={onTimeUpdate}
-                  onLoadedMetadata={onLoadedMetadata}
-                  controls={false}
-                />
-
-                {/* Custom Controls */}
-                <div className="absolute bottom-2 left-0 right-0 px-4 flex items-center space-x-4 bg-black bg-opacity-50 py-2 rounded">
-                  <button onClick={togglePlay} className="text-white">
-                    {isPlaying ? <Pause className="w-6 h-6" /> : <Play className="w-6 h-6" />}
-                  </button>
-
-                  {/* Progress bar */}
-                  <div
-                    className="flex-1 h-1 bg-gray-600 rounded cursor-pointer"
-                    onClick={onSeek}
-                    style={{ position: 'relative' }}
-                  >
-                    <div
-                      className="h-1 bg-blue-600 rounded"
-                      style={{ width: `${(currentTime / duration) * 100}%` }}
-                    />
-                  </div>
-
-                  {/* Time display */}
-                  <div className="text-white text-sm font-mono tabular-nums">
-                    {formatTime(currentTime)} / {formatTime(duration)}
-                  </div>
-
-                  {/* Fullscreen button */}
-                  <button onClick={toggleFullScreen} className="text-white">
-                    <Maximize className="w-6 h-6" />
-                  </button>
-                </div>
-              </>
-            ) : (
-              <div className="text-white text-lg font-semibold flex items-center justify-center h-full">
-                No video available
-              </div>
-            )}
-          </div>
-
-          {/* Progress bar (project progress) */}
-          <div className="bg-white border-t border-gray-200 p-4">
-            <div className="flex items-center justify-between mb-3">
-              <div className="text-sm font-medium text-gray-700">{formatTime(currentTime)}</div>
-              <div className="flex items-center space-x-2">
-                <button className="p-1 hover:bg-gray-100 rounded">
-                  <Rewind className="h-4 w-4" />
-                </button>
-                <button className="p-1 hover:bg-gray-100 rounded">
-                  <SkipBack className="h-4 w-4" />
-                </button>
-                <button onClick={togglePlay} className="p-1 hover:bg-gray-100 rounded">
-                  {isPlaying ? <Pause className="h-4 w-4" /> : <Play className="h-4 w-4" />}
-                </button>
-                <button className="p-1 hover:bg-gray-100 rounded">
-                  <SkipForward className="h-4 w-4" />
-                </button>
-                <button className="p-1 hover:bg-gray-100 rounded">
-                  <FastForward className="h-4 w-4" />
-                </button>
-                <span className="text-sm text-gray-500 mx-2">2X</span>
-                <button className="p-1 hover:bg-gray-100 rounded">
-                  <Maximize className="h-4 w-4" />
-                </button>
-              </div>
-            </div>
-
-            {/* Progress bar (project progress) */}
-            <div className="w-full bg-gray-200 rounded-full h-2">
-              <div
-                className="bg-blue-600 h-2 rounded-full"
-                style={{ width: `${project?.progress || 0}%` }}
-              />
-            </div>
-          </div>
-
-          {/* Observations Section */}
-          <ObservationsPanel
-            observations={project.observations}
-            onAddObservation={observationOpen}
-            pacpCodes={pacpCodes}
-            projectId={project._id}
-          />
-          </div>
-
-          {/* Right Sidebar */}
-          <div className="w-80 bg-white border-l border-gray-200 p-6 space-y-4">
-          {/* Snapshots */}
-          <div className="bg-white">
-            <div className="flex items-center justify-between mb-4">
-              <div className="flex items-center space-x-2">
-                <button
-                  onClick={() => setIsSnapshotsExpanded(!isSnapshotsExpanded)}
-                  className="flex items-center space-x-2 text-gray-700 hover:text-gray-900"
-                >
-                  {isSnapshotsExpanded ? <ChevronUp className="h-4 w-4" /> : <ChevronDown className="h-4 w-4" />}
-                  <span className="font-medium">SNAPSHOTS</span>
-                </button>
-              </div>
-              <button className="p-1 hover:bg-gray-100 rounded">
-                <MoreHorizontal className="h-4 w-4" />
-              </button>
-            </div>
-
-            {isSnapshotsExpanded && (
-              <div className="space-y-2">
-                {displaySnapshots.length === 0 ? (
-                  <div className="text-center py-8 text-gray-500">
-                    <div className="text-sm">No snapshots available</div>
-                  </div>
-                ) : (
-                  <div className="relative">
-                    {/* Vertical timeline line */}
-                    <div className="absolute left-4 top-0 bottom-0 w-0.5 bg-gray-200"></div>
-                    {displaySnapshots.map((snapshot, index) => (
-                      <div key={`snapshot-${snapshot.id}-${index}`} className="relative flex items-center space-x-3 py-3">
-                        {/* Snapshot dot with color */}
-                        <div className={`w-3 h-3 rounded-full ${snapshot.color} relative z-10 border-2 border-white shadow-sm`}></div>
-
-                        {/* Snapshot content */}
-                        <div className="flex-1 min-w-0 bg-gray-50 rounded-lg p-3 hover:bg-gray-100 transition-colors">
-                          <div className="flex items-center justify-between">
-                            <div>
-                              <div className="text-sm font-medium text-gray-900">{snapshot.distance || 'N/A'}</div>
-                              <div className="text-xs text-gray-500">{snapshot.label}</div>
-                              {snapshot.timestamp && (
-                                <div className="text-xs text-gray-400 mt-1">
-                                  {new Date(snapshot.timestamp).toLocaleString()}
-                                </div>
-                              )}
-                            </div>
-                            <button className="p-1 hover:bg-white rounded-full transition-colors">
-                              <PlayCircle className="h-4 w-4 text-blue-600" />
-                            </button>
-                          </div>
-                        </div>
-
-                        {/* Arrow pointing down to next item */}
-                        {index < displaySnapshots.length - 1 && (
-                          <div
-                            key={`arrow-${index}`}
-                            className="absolute left-4 top-8 w-0 h-0 border-l-2 border-r-2 border-t-4 border-transparent border-t-gray-300"
-                          ></div>
+                  <div className="flex items-center space-x-4">
+                    {/* Show reprocess button for all statuses except 'planning' and 'in-progress' */}
+                    {project.status !== 'planning' && project.status !== 'in-progress' && (
+                      <Button
+                        onClick={handleReprocess}
+                        disabled={isReprocessing}
+                        className={`flex items-center space-x-2 transition-all duration-300 ${isReprocessing
+                            ? 'bg-gradient-to-r from-blue-500 to-indigo-600 shadow-lg shadow-blue-200'
+                            : 'bg-gradient-to-r from-blue-600 to-blue-700 hover:from-blue-700 hover:to-blue-800'
+                          } text-white disabled:opacity-70`}
+                        title={`Reprocess AI (Current status: ${project.status})`}
+                      >
+                        {isReprocessing ? (
+                          <>
+                            <Loader2 className="h-4 w-4 animate-spin" />
+                            <span>Reprocessing...</span>
+                          </>
+                        ) : (
+                          <>
+                            <RefreshCw className="h-4 w-4" />
+                            <span>Reprocess AI</span>
+                          </>
                         )}
+                      </Button>
+                    )}
+                    <div className="text-right min-w-[100px]">
+                      <div className="text-sm text-gray-500 font-medium">Progress</div>
+                      {isReprocessing ? (
+                        <div className="flex items-center justify-end gap-2">
+                          <div className="flex space-x-1">
+                            <span className="w-2 h-2 bg-blue-500 rounded-full animate-bounce" style={{ animationDelay: '0ms' }}></span>
+                            <span className="w-2 h-2 bg-indigo-500 rounded-full animate-bounce" style={{ animationDelay: '150ms' }}></span>
+                            <span className="w-2 h-2 bg-purple-500 rounded-full animate-bounce" style={{ animationDelay: '300ms' }}></span>
+                          </div>
+                          <span className="text-sm font-semibold text-blue-600">Processing</span>
+                        </div>
+                      ) : project.status === 'ai-processing' ? (
+                        <div className="flex items-center justify-end gap-2">
+                          <Loader2 className="h-5 w-5 animate-spin text-amber-500" />
+                          <span className="text-lg font-bold text-amber-600">AI Active</span>
+                        </div>
+                      ) : (
+                        <div className="text-2xl font-bold bg-gradient-to-r from-[#D76A84] to-rose-600 bg-clip-text text-transparent">
+                          {project.progress}%
+                        </div>
+                      )}
+                    </div>
+                  </div>
+                </div>
+
+                {/* Progress bar with animation during reprocessing */}
+                {(isReprocessing || project.status === 'ai-processing') && (
+                  <div className="mt-4">
+                    <div className="w-full bg-gray-200 rounded-full h-2 overflow-hidden">
+                      <div className="h-2 rounded-full bg-gradient-to-r from-blue-500 via-indigo-500 to-purple-500 animate-pulse"
+                        style={{ width: isReprocessing ? '30%' : `${project.progress}%`, transition: 'width 0.3s ease' }}>
                       </div>
-                    ))}
+                    </div>
+                    <p className="text-xs text-gray-500 mt-1 text-center">
+                      {isReprocessing ? 'Starting AI reprocessing...' : 'AI is analyzing the video footage'}
+                    </p>
                   </div>
                 )}
               </div>
             )}
-          </div>
 
-          {/* Recording Information */}
-          <div className="bg-white">
-            <div className="flex items-center justify-between mb-4">
-              <div className="flex items-center space-x-2">
-                <button
-                  onClick={() => setIsRecordingInfoExpanded(!isRecordingInfoExpanded)}
-                  className="flex items-center space-x-2 text-gray-700 hover:text-gray-900"
-                >
-                  {isRecordingInfoExpanded ? <ChevronUp className="h-4 w-4" /> : <ChevronDown className="h-4 w-4" />}
-                  <span className="font-medium">Recording Information</span>
-                </button>
-              </div>
-              <button className="p-1 hover:bg-gray-100 rounded">
-                <ChevronDown className="h-4 w-4" />
-              </button>
+            <div
+              ref={videoContainerRef} // Attach ref to container div
+              className="relative aspect-video bg-black rounded-t-lg overflow-hidden flex flex-col"
+            >
+              {project?.videoUrl ? (
+                <>
+                  <video
+                    ref={videoRef}
+                    className="w-full h-full object-cover"
+                    src={getVideoUrl(project.videoUrl)}
+                    onTimeUpdate={onTimeUpdate}
+                    onLoadedMetadata={onLoadedMetadata}
+                    controls={false}
+                  />
+
+                  {/* Custom Controls */}
+                  <div className="absolute bottom-2 left-0 right-0 px-4 flex items-center space-x-4 bg-black bg-opacity-50 py-2 rounded">
+                    <button onClick={togglePlay} className="text-white">
+                      {isPlaying ? <Pause className="w-6 h-6" /> : <Play className="w-6 h-6" />}
+                    </button>
+
+                    {/* Progress bar */}
+                    <div
+                      className="flex-1 h-1 bg-gray-600 rounded cursor-pointer"
+                      onClick={onSeek}
+                      style={{ position: 'relative' }}
+                    >
+                      <div
+                        className="h-1 bg-blue-600 rounded"
+                        style={{ width: `${(currentTime / duration) * 100}%` }}
+                      />
+                    </div>
+
+                    {/* Time display */}
+                    <div className="text-white text-sm font-mono tabular-nums">
+                      {formatTime(currentTime)} / {formatTime(duration)}
+                    </div>
+
+                    {/* Fullscreen button */}
+                    <button onClick={toggleFullScreen} className="text-white">
+                      <Maximize className="w-6 h-6" />
+                    </button>
+                  </div>
+                </>
+              ) : (
+                <div className="text-white text-lg font-semibold flex items-center justify-center h-full">
+                  No video available
+                </div>
+              )}
             </div>
 
-            {isRecordingInfoExpanded && (
-              <div className="space-y-4">
-                {Object.entries(recordingInfo).map(([key, value], index) => (
-                  <div
-                    key={`${key}-${index}`}
-                    className="flex justify-between items-center py-2 border-b border-gray-100 last:border-b-0"
-                  >
-                    <span className="text-sm text-gray-600 capitalize">{key.replace(/([A-Z])/g, ' $1').trim()}:</span>
-                    <span className="text-sm font-medium text-gray-900">{value || '-'}</span>
-                  </div>
-                ))}
+            {/* Progress bar (project progress) */}
+            <div className="bg-white border-t border-gray-200 p-4">
+              <div className="flex items-center justify-between mb-3">
+                <div className="text-sm font-medium text-gray-700">{formatTime(currentTime)}</div>
+                <div className="flex items-center space-x-2">
+                  <button className="p-1 hover:bg-gray-100 rounded">
+                    <Rewind className="h-4 w-4" />
+                  </button>
+                  <button className="p-1 hover:bg-gray-100 rounded">
+                    <SkipBack className="h-4 w-4" />
+                  </button>
+                  <button onClick={togglePlay} className="p-1 hover:bg-gray-100 rounded">
+                    {isPlaying ? <Pause className="h-4 w-4" /> : <Play className="h-4 w-4" />}
+                  </button>
+                  <button className="p-1 hover:bg-gray-100 rounded">
+                    <SkipForward className="h-4 w-4" />
+                  </button>
+                  <button className="p-1 hover:bg-gray-100 rounded">
+                    <FastForward className="h-4 w-4" />
+                  </button>
+                  <span className="text-sm text-gray-500 mx-2">2X</span>
+                  <button className="p-1 hover:bg-gray-100 rounded">
+                    <Maximize className="h-4 w-4" />
+                  </button>
+                </div>
+              </div>
 
-                <div className="flex space-x-2 mt-4">
-                  <Button
-                    className="flex-1 text-blue-600 border border-blue-600 px-3 py-1.5 rounded-md text-sm hover:bg-blue-50 flex items-center justify-center space-x-1"
-                    variant="outline"
-                    onClick={() => setIsAddMetadataOpen(true)}
+              {/* Progress bar (project progress) */}
+              <div className="w-full bg-gray-200 rounded-full h-2">
+                <div
+                  className="bg-blue-600 h-2 rounded-full"
+                  style={{ width: `${project?.progress || 0}%` }}
+                />
+              </div>
+            </div>
+
+            {/* Observations Section */}
+            <ObservationsPanel
+              observations={project.observations}
+              onAddObservation={observationOpen}
+              pacpCodes={pacpCodes}
+              projectId={project._id}
+            />
+          </div>
+
+          {/* Right Sidebar */}
+          <div className="w-80 bg-white border-l border-gray-200 p-6 space-y-4">
+            {/* Snapshots */}
+            <div className="bg-white">
+              <div className="flex items-center justify-between mb-4">
+                <div className="flex items-center space-x-2">
+                  <button
+                    onClick={() => setIsSnapshotsExpanded(!isSnapshotsExpanded)}
+                    className="flex items-center space-x-2 text-gray-700 hover:text-gray-900"
                   >
-                    <Plus className="h-4 w-4" />
-                    <span>ADD CUSTOM METADATA</span>
+                    {isSnapshotsExpanded ? <ChevronUp className="h-4 w-4" /> : <ChevronDown className="h-4 w-4" />}
+                    <span className="font-medium">SNAPSHOTS</span>
+                  </button>
+                </div>
+                <button className="p-1 hover:bg-gray-100 rounded">
+                  <MoreHorizontal className="h-4 w-4" />
+                </button>
+              </div>
+
+              {isSnapshotsExpanded && (
+                <div className="space-y-2">
+                  {displaySnapshots.length === 0 ? (
+                    <div className="text-center py-8 text-gray-500">
+                      <div className="text-sm">No snapshots available</div>
+                    </div>
+                  ) : (
+                    <div className="relative">
+                      {/* Vertical timeline line */}
+                      <div className="absolute left-4 top-0 bottom-0 w-0.5 bg-gray-200"></div>
+                      {displaySnapshots.map((snapshot, index) => (
+                        <div key={`snapshot-${snapshot.id}-${index}`} className="relative flex items-center space-x-3 py-3">
+                          {/* Snapshot dot with color */}
+                          <div className={`w-3 h-3 rounded-full ${snapshot.color} relative z-10 border-2 border-white shadow-sm`}></div>
+
+                          {/* Snapshot content */}
+                          <div className="flex-1 min-w-0 bg-gray-50 rounded-lg p-3 hover:bg-gray-100 transition-colors">
+                            <div className="flex items-center justify-between">
+                              <div>
+                                <div className="text-sm font-medium text-gray-900">{snapshot.distance || 'N/A'}</div>
+                                <div className="text-xs text-gray-500">{snapshot.label}</div>
+                                {snapshot.timestamp && (
+                                  <div className="text-xs text-gray-400 mt-1">
+                                    {new Date(snapshot.timestamp).toLocaleString()}
+                                  </div>
+                                )}
+                              </div>
+                              <button className="p-1 hover:bg-white rounded-full transition-colors">
+                                <PlayCircle className="h-4 w-4 text-blue-600" />
+                              </button>
+                            </div>
+                          </div>
+
+                          {/* Arrow pointing down to next item */}
+                          {index < displaySnapshots.length - 1 && (
+                            <div
+                              key={`arrow-${index}`}
+                              className="absolute left-4 top-8 w-0 h-0 border-l-2 border-r-2 border-t-4 border-transparent border-t-gray-300"
+                            ></div>
+                          )}
+                        </div>
+                      ))}
+                    </div>
+                  )}
+                </div>
+              )}
+            </div>
+
+            {/* Recording Information */}
+            <div className="bg-white">
+              <div className="flex items-center justify-between mb-4">
+                <div className="flex items-center space-x-2">
+                  <button
+                    onClick={() => setIsRecordingInfoExpanded(!isRecordingInfoExpanded)}
+                    className="flex items-center space-x-2 text-gray-700 hover:text-gray-900"
+                  >
+                    {isRecordingInfoExpanded ? <ChevronUp className="h-4 w-4" /> : <ChevronDown className="h-4 w-4" />}
+                    <span className="font-medium">Recording Information</span>
+                  </button>
+                </div>
+                <button className="p-1 hover:bg-gray-100 rounded">
+                  <ChevronDown className="h-4 w-4" />
+                </button>
+              </div>
+
+              {isRecordingInfoExpanded && (
+                <div className="space-y-4">
+                  {Object.entries(recordingInfo).map(([key, value], index) => (
+                    <div
+                      key={`${key}-${index}`}
+                      className="flex justify-between items-center py-2 border-b border-gray-100 last:border-b-0"
+                    >
+                      <span className="text-sm text-gray-600 capitalize">{key.replace(/([A-Z])/g, ' $1').trim()}:</span>
+                      <span className="text-sm font-medium text-gray-900">{value || '-'}</span>
+                    </div>
+                  ))}
+
+                  <div className="flex space-x-2 mt-4">
+                    <Button
+                      className="flex-1 text-blue-600 border border-blue-600 px-3 py-1.5 rounded-md text-sm hover:bg-blue-50 flex items-center justify-center space-x-1"
+                      variant="outline"
+                      onClick={() => setIsAddMetadataOpen(true)}
+                    >
+                      <Plus className="h-4 w-4" />
+                      <span>ADD CUSTOM METADATA</span>
+                    </Button>
+                  </div>
+
+                  <Button
+                    className="w-full bg-blue-600 text-white px-3 py-1.5 rounded-md text-sm hover:bg-blue-700 flex items-center justify-center space-x-1"
+                    onClick={openEditMetadata}
+                  >
+                    <Edit3 className="h-4 w-4" />
+                    <span>Edit Metadata</span>
                   </Button>
                 </div>
-
-                <Button 
-                  className="w-full bg-blue-600 text-white px-3 py-1.5 rounded-md text-sm hover:bg-blue-700 flex items-center justify-center space-x-1"
-                  onClick={openEditMetadata}
-                >
-                  <Edit3 className="h-4 w-4" />
-                  <span>Edit Metadata</span>
-                </Button>
-              </div>
-            )}
+              )}
+            </div>
           </div>
-        </div>
 
-        {/* Dialogs - Outside flex container */}
-        <AddObservation
+          {/* Dialogs - Outside flex container */}
+          <AddObservation
             isOpen={isObservationOpen}
             onClose={isObservationClose}
             project_id={project._id}

@@ -13,11 +13,22 @@ import { Bell, User, Shield, Settings, Camera, Moon, Globe, Eye, EyeOff, Loader2
 import { useUser } from '@/components/providers/UserContext'
 import { useAlert } from '@/components/providers/AlertProvider'
 import { api } from '@/lib/helper'
+import { useSearchParams } from 'next/navigation'
 
 const SettingPageQcSide = () => {
   const { userData } = useUser()
   const { showAlert } = useAlert()
   const fileInputRef = useRef(null)
+
+  const searchParams = useSearchParams()
+  const [activeTab, setActiveTab] = useState(searchParams.get('tab') || 'profile')
+
+  useEffect(() => {
+    const tab = searchParams.get('tab')
+    if (tab) {
+      setActiveTab(tab)
+    }
+  }, [searchParams])
 
   // Profile State
   const [profile, setProfile] = useState({
@@ -101,7 +112,7 @@ const SettingPageQcSide = () => {
     // Load saved preferences from localStorage
     const savedNotifications = localStorage.getItem('qc_notifications')
     const savedPreferences = localStorage.getItem('qc_preferences')
-    
+
     if (savedNotifications) {
       try {
         setNotifications(JSON.parse(savedNotifications))
@@ -109,7 +120,7 @@ const SettingPageQcSide = () => {
         console.error('Error parsing saved notifications:', e)
       }
     }
-    
+
     if (savedPreferences) {
       try {
         setPreferences(JSON.parse(savedPreferences))
@@ -224,7 +235,7 @@ const SettingPageQcSide = () => {
       // Save to localStorage (could be extended to backend API later)
       localStorage.setItem('qc_preferences', JSON.stringify(preferences))
       showAlert('Preferences saved successfully!', 'success')
-      
+
       // Apply dark mode if changed
       if (preferences.darkMode) {
         document.documentElement.classList.add('dark')
@@ -314,7 +325,7 @@ const SettingPageQcSide = () => {
         <p className="text-gray-500 mt-1">Manage your QC technician preferences and account settings</p>
       </div>
 
-      <Tabs defaultValue="profile" className="space-y-4">
+      <Tabs value={activeTab} onValueChange={setActiveTab} className="space-y-4">
         <TabsList className="grid w-full grid-cols-4">
           <TabsTrigger value="profile">
             <User className="w-4 h-4 mr-2" />
@@ -463,9 +474,9 @@ const SettingPageQcSide = () => {
                   <Label>Email Alerts</Label>
                   <p className="text-sm text-gray-500">Receive inspection updates via email</p>
                 </div>
-                <Switch 
+                <Switch
                   checked={notifications.emailAlerts}
-                  onCheckedChange={(checked) => setNotifications({...notifications, emailAlerts: checked})}
+                  onCheckedChange={(checked) => setNotifications({ ...notifications, emailAlerts: checked })}
                 />
               </div>
               <Separator />
@@ -474,9 +485,9 @@ const SettingPageQcSide = () => {
                   <Label>SMS Alerts</Label>
                   <p className="text-sm text-gray-500">Get text messages for urgent issues</p>
                 </div>
-                <Switch 
+                <Switch
                   checked={notifications.smsAlerts}
-                  onCheckedChange={(checked) => setNotifications({...notifications, smsAlerts: checked})}
+                  onCheckedChange={(checked) => setNotifications({ ...notifications, smsAlerts: checked })}
                 />
               </div>
               <Separator />
@@ -485,9 +496,9 @@ const SettingPageQcSide = () => {
                   <Label>Defect Alerts</Label>
                   <p className="text-sm text-gray-500">Notify when defects are reported</p>
                 </div>
-                <Switch 
+                <Switch
                   checked={notifications.defectAlerts}
-                  onCheckedChange={(checked) => setNotifications({...notifications, defectAlerts: checked})}
+                  onCheckedChange={(checked) => setNotifications({ ...notifications, defectAlerts: checked })}
                 />
               </div>
               <Separator />
@@ -496,9 +507,9 @@ const SettingPageQcSide = () => {
                   <Label>Inspection Reminders</Label>
                   <p className="text-sm text-gray-500">Remind about scheduled inspections</p>
                 </div>
-                <Switch 
+                <Switch
                   checked={notifications.inspectionReminders}
-                  onCheckedChange={(checked) => setNotifications({...notifications, inspectionReminders: checked})}
+                  onCheckedChange={(checked) => setNotifications({ ...notifications, inspectionReminders: checked })}
                 />
               </div>
               <Separator />
@@ -535,9 +546,9 @@ const SettingPageQcSide = () => {
                   </Label>
                   <p className="text-sm text-gray-500">Switch to dark theme</p>
                 </div>
-                <Switch 
+                <Switch
                   checked={preferences.darkMode}
-                  onCheckedChange={(checked) => setPreferences({...preferences, darkMode: checked})}
+                  onCheckedChange={(checked) => setPreferences({ ...preferences, darkMode: checked })}
                 />
               </div>
               <Separator />
@@ -546,7 +557,7 @@ const SettingPageQcSide = () => {
                   <Globe className="w-4 h-4" />
                   Language
                 </Label>
-                <Select value={preferences.language} onValueChange={(value) => setPreferences({...preferences, language: value})}>
+                <Select value={preferences.language} onValueChange={(value) => setPreferences({ ...preferences, language: value })}>
                   <SelectTrigger>
                     <SelectValue />
                   </SelectTrigger>
@@ -559,7 +570,7 @@ const SettingPageQcSide = () => {
               </div>
               <div className="space-y-2">
                 <Label>Timezone</Label>
-                <Select value={preferences.timezone} onValueChange={(value) => setPreferences({...preferences, timezone: value})}>
+                <Select value={preferences.timezone} onValueChange={(value) => setPreferences({ ...preferences, timezone: value })}>
                   <SelectTrigger>
                     <SelectValue />
                   </SelectTrigger>
@@ -572,7 +583,7 @@ const SettingPageQcSide = () => {
               </div>
               <div className="space-y-2">
                 <Label>Measurement Unit</Label>
-                <Select value={preferences.measurementUnit} onValueChange={(value) => setPreferences({...preferences, measurementUnit: value})}>
+                <Select value={preferences.measurementUnit} onValueChange={(value) => setPreferences({ ...preferences, measurementUnit: value })}>
                   <SelectTrigger>
                     <SelectValue />
                   </SelectTrigger>
@@ -587,7 +598,7 @@ const SettingPageQcSide = () => {
                   <Camera className="w-4 h-4" />
                   Photo Quality
                 </Label>
-                <Select value={preferences.photoQuality} onValueChange={(value) => setPreferences({...preferences, photoQuality: value})}>
+                <Select value={preferences.photoQuality} onValueChange={(value) => setPreferences({ ...preferences, photoQuality: value })}>
                   <SelectTrigger>
                     <SelectValue />
                   </SelectTrigger>
