@@ -1,9 +1,22 @@
 const API = process.env.NEXT_PUBLIC_BACKEND_URL || "http://localhost:5000";
 
+// Helper function to safely access localStorage (client-side only)
+const getAuthToken = () => {
+  if (typeof window !== 'undefined' && window.localStorage) {
+    try {
+      return localStorage.getItem('authToken');
+    } catch (error) {
+      console.warn('Failed to access localStorage:', error);
+      return null;
+    }
+  }
+  return null;
+};
+
 export const api = async (path, method = "GET", body = null, headers = {}) => {
   const isFormData = body instanceof FormData;
-  const authToken = localStorage.getItem('authToken');
-  
+  const authToken = getAuthToken();
+
   const defaultHeaders = {
     ...(isFormData ? {} : { "Content-Type": "application/json" }),
     ...(authToken ? { "Authorization": `Bearer ${authToken}` } : {}),
@@ -33,8 +46,8 @@ export const api = async (path, method = "GET", body = null, headers = {}) => {
  */
 export const apiBlob = async (path, method = "GET", body = null, headers = {}) => {
   const isFormData = body instanceof FormData;
-  const authToken = localStorage.getItem('authToken');
-  
+  const authToken = getAuthToken();
+
   const defaultHeaders = {
     ...(isFormData ? {} : { "Content-Type": "application/json" }),
     ...(authToken ? { "Authorization": `Bearer ${authToken}` } : {}),
