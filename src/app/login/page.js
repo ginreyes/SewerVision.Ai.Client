@@ -84,10 +84,9 @@ const Login = () => {
 
       showAlert("Login successful!", "success");
 
+      // Redirect based on role - only to existing dashboard routes
       if (normalizedRole === "admin") {
         router.push("/admin/dashboard");
-      } else if (normalizedRole === "user") {
-        router.push("/users/dashboard");
       } else if (normalizedRole === "operator") {
         router.push("/operator/dashboard");
       } else if (normalizedRole === "qc-technician") {
@@ -95,8 +94,10 @@ const Login = () => {
       } else if (normalizedRole === "customer") {
         router.push("/customer/dashboard");
       } else {
-        showAlert(`Unknown role: ${normalizedRole}`, "warning");
-        router.push("/");
+        // Unknown role - show error and redirect to login
+        showAlert(`Unknown role: ${normalizedRole}. Please contact support.`, "error");
+        console.error("Unknown role received:", normalizedRole);
+        router.push("/login");
       }
     } catch (e) {
       console.error("Login error:", e);
@@ -122,7 +123,8 @@ const Login = () => {
     const token = localStorage.getItem("authToken");
 
     // Only redirect if we have a valid token AND a known role
-    const knownRoles = ["admin", "user", "operator", "qc-technician", "customer"];
+    // Updated to match actual existing dashboard routes
+    const knownRoles = ["admin", "operator", "qc-technician", "customer"];
 
     if (token && role && knownRoles.includes(role)) {
       router.push(`/${role}/dashboard`);
