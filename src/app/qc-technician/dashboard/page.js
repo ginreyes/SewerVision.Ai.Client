@@ -38,7 +38,7 @@ const QCTechnicianDashboard = () => {
   const [expandedDetection, setExpandedDetection] = useState(null)
   const [selectedDetection, setSelectedDetection] = useState(null)
   const [refreshing, setRefreshing] = useState(false)
-  
+
   // Bulk action state
   const [selectedDetections, setSelectedDetections] = useState(new Set())
   const [bulkActionLoading, setBulkActionLoading] = useState(false)
@@ -89,9 +89,9 @@ const QCTechnicianDashboard = () => {
         operator: project.operator || 'N/A',
         aiProcessingComplete: project.totalDetections > 0,
         totalDetections: project.totalDetections || 0,
-        status: project.status === 'pending' ? 'pending_qc' : 
-                project.status === 'in-review' ? 'in_review' : 
-                project.status === 'completed' ? 'completed' : 'processing',
+        status: project.status === 'pending' ? 'pending_qc' :
+          project.status === 'in-review' ? 'in_review' :
+            project.status === 'completed' ? 'completed' : 'processing',
         pipeLength: project.pipeLength || 'N/A',
         priority: project.priority || 'medium'
       })))
@@ -158,7 +158,7 @@ const QCTechnicianDashboard = () => {
 
     try {
       const detections = await qcApi.getProjectDetections(projectId, filterStatus === 'all' ? 'all' : filterStatus)
-      
+
       if (detections && Array.isArray(detections)) {
         setAiDetections(detections.map(detection => ({
           id: detection._id || detection.id,
@@ -203,22 +203,22 @@ const QCTechnicianDashboard = () => {
   // Filter detections based on search term and severity
   const filteredDetections = useMemo(() => {
     let filtered = aiDetections
-    
+
     // Apply severity filter
     if (filterSeverity !== 'all') {
       filtered = filtered.filter(d => d.severity.toLowerCase() === filterSeverity.toLowerCase())
     }
-    
+
     // Apply search filter
     if (debouncedSearchTerm) {
       const searchLower = debouncedSearchTerm.toLowerCase()
-      filtered = filtered.filter(d => 
+      filtered = filtered.filter(d =>
         d.type.toLowerCase().includes(searchLower) ||
         d.description.toLowerCase().includes(searchLower) ||
         d.location.toLowerCase().includes(searchLower)
       )
     }
-    
+
     return filtered
   }, [aiDetections, debouncedSearchTerm, filterSeverity])
 
@@ -247,10 +247,10 @@ const QCTechnicianDashboard = () => {
   // Bulk approve handler
   const handleBulkApprove = useCallback(async () => {
     if (selectedDetections.size === 0) return
-    
+
     setBulkActionLoading(true)
     try {
-      const promises = Array.from(selectedDetections).map(id => 
+      const promises = Array.from(selectedDetections).map(id =>
         qcApi.reviewDetection(id, { action: 'approved' })
       )
       await Promise.all(promises)
@@ -266,10 +266,10 @@ const QCTechnicianDashboard = () => {
   // Bulk reject handler
   const handleBulkReject = useCallback(async () => {
     if (selectedDetections.size === 0) return
-    
+
     setBulkActionLoading(true)
     try {
-      const promises = Array.from(selectedDetections).map(id => 
+      const promises = Array.from(selectedDetections).map(id =>
         qcApi.reviewDetection(id, { action: 'rejected' })
       )
       await Promise.all(promises)
@@ -282,53 +282,7 @@ const QCTechnicianDashboard = () => {
     }
   }, [selectedDetections, fetchProjectDetections, selectedProject])
 
-  // Keyboard shortcuts
-  useEffect(() => {
-    const handleKeyDown = (e) => {
-      // Only handle shortcuts when a detection is selected
-      if (!selectedDetection) return
-      
-      // Skip if user is typing in an input
-      if (e.target.tagName === 'INPUT' || e.target.tagName === 'TEXTAREA' || e.target.tagName === 'SELECT') return
 
-      // A key = Approve
-      if (e.key === 'a' || e.key === 'A') {
-        e.preventDefault()
-        handleApproveDetection(selectedDetection)
-      }
-      
-      // R key = Reject
-      if (e.key === 'r' || e.key === 'R') {
-        e.preventDefault()
-        handleRejectDetection(selectedDetection)
-      }
-      
-      // Escape = Deselect
-      if (e.key === 'Escape') {
-        setSelectedDetection(null)
-        setExpandedDetection(null)
-      }
-      
-      // Arrow keys for navigation
-      if (e.key === 'ArrowUp' || e.key === 'ArrowDown') {
-        e.preventDefault()
-        const currentIndex = filteredDetections.findIndex(d => d.id === selectedDetection.id)
-        if (currentIndex === -1) return
-        
-        let newIndex
-        if (e.key === 'ArrowUp') {
-          newIndex = currentIndex > 0 ? currentIndex - 1 : filteredDetections.length - 1
-        } else {
-          newIndex = currentIndex < filteredDetections.length - 1 ? currentIndex + 1 : 0
-        }
-        
-        setSelectedDetection(filteredDetections[newIndex])
-      }
-    }
-
-    window.addEventListener('keydown', handleKeyDown)
-    return () => window.removeEventListener('keydown', handleKeyDown)
-  }, [selectedDetection, filteredDetections, handleApproveDetection, handleRejectDetection])
 
   // Status helpers
   const getStatusColor = useCallback((status) => {
@@ -396,9 +350,18 @@ const QCTechnicianDashboard = () => {
   // Update charts when data changes
   useEffect(() => {
     const destroyCharts = () => {
-      if (qcStatsChartInstance.current) qcStatsChartInstance.current.destroy()
-      if (detectionTrendChartInstance.current) detectionTrendChartInstance.current.destroy()
-      if (priorityDistributionInstance.current) priorityDistributionInstance.current.destroy()
+      if (qcStatsChartInstance.current) {
+        qcStatsChartInstance.current.destroy()
+        qcStatsChartInstance.current = null
+      }
+      if (detectionTrendChartInstance.current) {
+        detectionTrendChartInstance.current.destroy()
+        detectionTrendChartInstance.current = null
+      }
+      if (priorityDistributionInstance.current) {
+        priorityDistributionInstance.current.destroy()
+        priorityDistributionInstance.current = null
+      }
     }
 
     destroyCharts()
@@ -408,11 +371,11 @@ const QCTechnicianDashboard = () => {
       qcStatsChartInstance.current = new Chart(qcStatsChartRef.current, {
         type: 'line',
         data: {
-          labels: weeklyQCStats.map(d => d.week),
+          labels: weeklyQCStats.map(d => d.week || 'W?'),
           datasets: [
             {
               label: 'Reviewed',
-              data: weeklyQCStats.map(d => d.reviewed || 0),
+              data: weeklyQCStats.map(d => Number(d.reviewed) || 0),
               borderColor: '#3B82F6',
               backgroundColor: 'rgba(59, 130, 246, 0.1)',
               tension: 0.4,
@@ -421,7 +384,7 @@ const QCTechnicianDashboard = () => {
             },
             {
               label: 'Approved',
-              data: weeklyQCStats.map(d => d.approved || 0),
+              data: weeklyQCStats.map(d => Number(d.approved) || 0),
               borderColor: '#10B981',
               backgroundColor: 'rgba(16, 185, 129, 0.1)',
               tension: 0.4,
@@ -430,7 +393,7 @@ const QCTechnicianDashboard = () => {
             },
             {
               label: 'Pending',
-              data: weeklyQCStats.map(d => d.pending || 0),
+              data: weeklyQCStats.map(d => Number(d.pending) || 0),
               borderColor: '#F59E0B',
               backgroundColor: 'rgba(245, 158, 11, 0.1)',
               tension: 0.4,
@@ -507,6 +470,55 @@ const QCTechnicianDashboard = () => {
 
     return destroyCharts
   }, [weeklyQCStats, detectionTypes, priorityDistribution])
+
+
+  useEffect(() => {
+    const handleKeyDown = (e) => {
+      // Only handle shortcuts when a detection is selected
+      if (!selectedDetection) return
+
+      // Skip if user is typing in an input
+      if (e.target.tagName === 'INPUT' || e.target.tagName === 'TEXTAREA' || e.target.tagName === 'SELECT') return
+
+      // A key = Approve
+      if (e.key === 'a' || e.key === 'A') {
+        e.preventDefault()
+        handleApproveDetection(selectedDetection)
+      }
+
+      // R key = Reject
+      if (e.key === 'r' || e.key === 'R') {
+        e.preventDefault()
+        handleRejectDetection(selectedDetection)
+      }
+
+      // Escape = Deselect
+      if (e.key === 'Escape') {
+        setSelectedDetection(null)
+        setExpandedDetection(null)
+      }
+
+      // Arrow keys for navigation
+      if (e.key === 'ArrowUp' || e.key === 'ArrowDown') {
+        e.preventDefault()
+        const currentIndex = filteredDetections.findIndex(d => d.id === selectedDetection.id)
+        if (currentIndex === -1) return
+
+        let newIndex
+        if (e.key === 'ArrowUp') {
+          newIndex = currentIndex > 0 ? currentIndex - 1 : filteredDetections.length - 1
+        } else {
+          newIndex = currentIndex < filteredDetections.length - 1 ? currentIndex + 1 : 0
+        }
+
+        setSelectedDetection(filteredDetections[newIndex])
+      }
+    }
+
+    window.addEventListener('keydown', handleKeyDown)
+    return () => window.removeEventListener('keydown', handleKeyDown)
+  }, [selectedDetection, filteredDetections, handleApproveDetection, handleRejectDetection])
+
 
   // Loading state
   if (loading && !dashboardStats) {
@@ -626,11 +638,10 @@ const QCTechnicianDashboard = () => {
               pendingProjects.map((project) => (
                 <div
                   key={project.id}
-                  className={`p-4 rounded-lg cursor-pointer transition-all border ${
-                    selectedProject?.id === project.id
+                  className={`p-4 rounded-lg cursor-pointer transition-all border ${selectedProject?.id === project.id
                       ? 'border-rose-500 bg-rose-50 shadow-sm'
                       : 'border-gray-200 hover:border-gray-300'
-                  }`}
+                    }`}
                   onClick={() => setSelectedProject(project)}
                 >
                   <div className="flex items-start justify-between">
@@ -640,8 +651,8 @@ const QCTechnicianDashboard = () => {
                       <div className="flex items-center gap-2 mt-2">
                         <span className={`px-2 py-1 rounded-full text-xs font-medium ${getStatusColor(project.status)}`}>
                           {project.status === 'pending_qc' || project.status === 'pending' ? 'Pending QC' :
-                           project.status === 'in_review' || project.status === 'in-review' ? 'In Review' : 
-                           project.status === 'completed' ? 'Completed' : 'Processing'}
+                            project.status === 'in_review' || project.status === 'in-review' ? 'In Review' :
+                              project.status === 'completed' ? 'Completed' : 'Processing'}
                         </span>
                         <span className={`px-2 py-1 rounded-full text-xs font-medium ${getPriorityColor(project.priority)}`}>
                           {project.priority}
@@ -677,8 +688,8 @@ const QCTechnicianDashboard = () => {
             <div>
               <h3 className="text-lg font-semibold text-gray-900">Quality Control Review</h3>
               <p className="text-xs text-gray-500 mt-1">
-                Keyboard shortcuts: <kbd className="px-1 py-0.5 bg-gray-100 rounded text-xs">A</kbd> Approve, 
-                <kbd className="px-1 py-0.5 bg-gray-100 rounded text-xs ml-1">R</kbd> Reject, 
+                Keyboard shortcuts: <kbd className="px-1 py-0.5 bg-gray-100 rounded text-xs">A</kbd> Approve,
+                <kbd className="px-1 py-0.5 bg-gray-100 rounded text-xs ml-1">R</kbd> Reject,
                 <kbd className="px-1 py-0.5 bg-gray-100 rounded text-xs ml-1">↑↓</kbd> Navigate
               </p>
             </div>
@@ -694,7 +705,7 @@ const QCTechnicianDashboard = () => {
                   className="pl-10 pr-4 py-2 border border-gray-300 rounded-lg text-sm focus:ring-2 focus:ring-rose-500 focus:border-transparent w-48"
                 />
               </div>
-              
+
               {/* Severity Filter */}
               <div className="relative">
                 <Filter className="absolute left-3 top-1/2 transform -translate-y-1/2 w-4 h-4 text-gray-400" />
@@ -710,7 +721,7 @@ const QCTechnicianDashboard = () => {
                   <option value="minor">Minor</option>
                 </select>
               </div>
-              
+
               {/* Status Filter */}
               <select
                 value={filterStatus}
@@ -724,7 +735,7 @@ const QCTechnicianDashboard = () => {
               </select>
             </div>
           </div>
-          
+
           {/* Bulk Actions Bar */}
           {selectedDetections.size > 0 && (
             <div className="mt-4 flex items-center justify-between bg-rose-50 rounded-lg p-3">
@@ -794,9 +805,9 @@ const QCTechnicianDashboard = () => {
                     title={selectedProject ? 'No Detections' : 'Select a Project'}
                     message={
                       debouncedSearchTerm || filterSeverity !== 'all'
-                        ? 'No detections match your filters' 
-                        : selectedProject 
-                          ? 'No detections found for this project' 
+                        ? 'No detections match your filters'
+                        : selectedProject
+                          ? 'No detections found for this project'
                           : 'Select a project to view detections'
                     }
                   />
@@ -817,7 +828,7 @@ const QCTechnicianDashboard = () => {
                           <Square className="w-5 h-5" />
                         )}
                       </button>
-                      
+
                       <div className="flex-1">
                         <DetectionCard
                           detection={detection}

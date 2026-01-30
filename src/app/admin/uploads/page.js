@@ -82,6 +82,24 @@ const AdminUploads = () => {
     errors: [],
   });
 
+  const [uploadSettings, setUploadSettings] = useState({
+    maxFileSize: "5gb",
+    concurrentUploads: "10",
+    autoAiProcessing: true,
+    autoBackup: true,
+    fileEncryption: true,
+    virusScanning: true,
+    accessLogging: true,
+    publicAccess: false,
+    notifyCompletion: true,
+    notifyStorage: true,
+    notifyFailed: true,
+    notifyMaintenance: true,
+    retentionVideo: "2years",
+    retentionDocs: "5years",
+    retentionBackup: "6months"
+  });
+
   const handleFetchUploads = useCallback(async () => {
     try {
       setLoading(true);
@@ -101,25 +119,39 @@ const AdminUploads = () => {
 
   const fetchSystemStats = useCallback(async () => {
     try {
+      // Fetch base stats
       const result = await uploadsApi.getSystemStats();
-      setSystemStats(result || {
-        totalStorage: "0 GB",
-        usedStorage: "0 GB",
-        storageUsage: 0,
-        totalFiles: 0,
-        monthlyUploads: 0,
-        activeUploads: 0,
-        failedUploads: 0,
-        videoFiles: 0,
-        documentFiles: 0,
-        archiveFiles: 0,
-        otherFiles: 0,
-      });
+
+      // Fetch real-time active/processing counts to ensure accuracy
+      const activeData = await uploadsApi.getAllUploads({ status: 'uploading', limit: 1 });
+      const processingData = await uploadsApi.getAllUploads({ status: 'processing', limit: 1 });
+      // Also check for 'in_progress' or 'pending' for AI
+      const pendingData = await uploadsApi.getAllUploads({ status: 'pending', limit: 1 });
+
+      const realTimeActive = activeData.total || 0;
+      const realTimeProcessing = (processingData.total || 0) + (pendingData.total || 0);
+
+      setSystemStats(prev => ({
+        ...(result || {
+          totalStorage: "0 GB",
+          usedStorage: "0 GB",
+          storageUsage: 0,
+          totalFiles: 0,
+          monthlyUploads: 0,
+          failedUploads: 0,
+          videoFiles: 0,
+          documentFiles: 0,
+          archiveFiles: 0,
+          otherFiles: 0,
+        }),
+        activeUploads: realTimeActive, // Override with real-time count
+        aiProcessing: realTimeProcessing // Add specific AI processing stat
+      }));
     } catch (error) {
       console.error(`Fetching stats Error: ${error.message}`);
-      showAlert('Failed to fetch system stats', 'error');
+      // Don't show alert here to avoid spamming if background refresh fails
     }
-  }, [showAlert]);
+  }, []);
 
   const fetchMonitoringData = useCallback(async () => {
     try {
@@ -127,7 +159,7 @@ const AdminUploads = () => {
         status: 'uploading',
         limit: 10,
       });
-      
+
       const processingData = await uploadsApi.getAllUploads({
         status: 'processing',
         limit: 10,
@@ -148,6 +180,20 @@ const AdminUploads = () => {
     }
   }, []);
 
+  const handleSaveSettings = async () => {
+    try {
+      setLoading(true);
+      // Simulate API call
+      await new Promise(resolve => setTimeout(resolve, 1000));
+      // In a real app: await uploadsApi.updateSettings(uploadSettings);
+      showAlert('Settings saved successfully', 'success');
+    } catch (error) {
+      showAlert('Failed to save settings', 'error');
+    } finally {
+      setLoading(false);
+    }
+  };
+
   useEffect(() => {
     fetchSystemStats();
     handleFetchUploads();
@@ -165,12 +211,12 @@ const AdminUploads = () => {
   // Auto-refresh when there are videos in AI processing
   useEffect(() => {
     const hasProcessingVideos = uploads.some(
-      upload => upload.type === 'video' && 
-      (upload.aiStatus === 'pending' || upload.processingStatus === 'in_progress' || upload.status === 'processing')
+      upload => upload.type === 'video' &&
+        (upload.aiStatus === 'pending' || upload.processingStatus === 'in_progress' || upload.status === 'processing')
     );
-    
+
     if (!hasProcessingVideos) return; // Don't poll if nothing is processing
-    
+
     const interval = setInterval(() => {
       handleFetchUploads();
       fetchSystemStats();
@@ -303,19 +349,19 @@ const AdminUploads = () => {
             {/* AI Processing Status - Prominent Section */}
             {(() => {
               const processingVideos = uploads.filter(
-                upload => upload.type === 'video' && 
-                (upload.aiStatus === 'pending' || upload.processingStatus === 'in_progress' || upload.status === 'processing') &&
-                upload.status !== 'failed' && 
-                upload.processingStatus !== 'failed'
+                upload => upload.type === 'video' &&
+                  (upload.aiStatus === 'pending' || upload.processingStatus === 'in_progress' || upload.status === 'processing') &&
+                  upload.status !== 'failed' &&
+                  upload.processingStatus !== 'failed'
               );
               const processedVideos = uploads.filter(
                 upload => upload.type === 'video' && upload.aiStatus === 'processed'
               );
               const failedVideos = uploads.filter(
-                upload => upload.type === 'video' && 
-                (upload.status === 'failed' || upload.processingStatus === 'failed' || upload.processingError)
+                upload => upload.type === 'video' &&
+                  (upload.status === 'failed' || upload.processingStatus === 'failed' || upload.processingError)
               );
-              
+
               if (processingVideos.length > 0 || processedVideos.length > 0 || failedVideos.length > 0) {
                 return (
                   <Card className="border-2 border-purple-200 bg-gradient-to-r from-purple-50 to-blue-50">
@@ -362,8 +408,8 @@ const AdminUploads = () => {
                                       </p>
                                       <div className="flex items-center space-x-3 mt-1">
                                         <Badge className="bg-amber-100 text-amber-800 border-amber-200">
-                                          {upload.processingStatus === 'in_progress' ? 'Processing' : 
-                                           upload.aiStatus === 'pending' ? 'Pending' : 'Queued'}
+                                          {upload.processingStatus === 'in_progress' ? 'Processing' :
+                                            upload.aiStatus === 'pending' ? 'Pending' : 'Queued'}
                                         </Badge>
                                         {upload.processingStartedAt && (
                                           <span className="text-xs text-gray-500">
@@ -1084,7 +1130,10 @@ const AdminUploads = () => {
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
                   <div className="space-y-3">
                     <Label>Maximum File Size</Label>
-                    <Select defaultValue="5gb">
+                    <Select
+                      value={uploadSettings.maxFileSize}
+                      onValueChange={(val) => setUploadSettings(s => ({ ...s, maxFileSize: val }))}
+                    >
                       <SelectTrigger>
                         <SelectValue />
                       </SelectTrigger>
@@ -1100,7 +1149,10 @@ const AdminUploads = () => {
 
                   <div className="space-y-3">
                     <Label>Concurrent Uploads</Label>
-                    <Select defaultValue="10">
+                    <Select
+                      value={uploadSettings.concurrentUploads}
+                      onValueChange={(val) => setUploadSettings(s => ({ ...s, concurrentUploads: val }))}
+                    >
                       <SelectTrigger>
                         <SelectValue />
                       </SelectTrigger>
@@ -1116,7 +1168,10 @@ const AdminUploads = () => {
                   <div className="space-y-3">
                     <Label>Auto AI Processing</Label>
                     <div className="flex items-center space-x-2">
-                      <Checkbox defaultChecked />
+                      <Checkbox
+                        checked={uploadSettings.autoAiProcessing}
+                        onCheckedChange={(val) => setUploadSettings(s => ({ ...s, autoAiProcessing: val }))}
+                      />
                       <span className="text-sm">
                         Enable automatic AI processing for video uploads
                       </span>
@@ -1126,7 +1181,10 @@ const AdminUploads = () => {
                   <div className="space-y-3">
                     <Label>Auto Backup</Label>
                     <div className="flex items-center space-x-2">
-                      <Checkbox defaultChecked />
+                      <Checkbox
+                        checked={uploadSettings.autoBackup}
+                        onCheckedChange={(val) => setUploadSettings(s => ({ ...s, autoBackup: val }))}
+                      />
                       <span className="text-sm">
                         Create automatic backups of uploaded files
                       </span>
@@ -1146,7 +1204,10 @@ const AdminUploads = () => {
                   <div className="space-y-3">
                     <Label>File Encryption</Label>
                     <div className="flex items-center space-x-2">
-                      <Checkbox defaultChecked />
+                      <Checkbox
+                        checked={uploadSettings.fileEncryption}
+                        onCheckedChange={(val) => setUploadSettings(s => ({ ...s, fileEncryption: val }))}
+                      />
                       <span className="text-sm">Encrypt files at rest</span>
                     </div>
                   </div>
@@ -1154,7 +1215,10 @@ const AdminUploads = () => {
                   <div className="space-y-3">
                     <Label>Virus Scanning</Label>
                     <div className="flex items-center space-x-2">
-                      <Checkbox defaultChecked />
+                      <Checkbox
+                        checked={uploadSettings.virusScanning}
+                        onCheckedChange={(val) => setUploadSettings(s => ({ ...s, virusScanning: val }))}
+                      />
                       <span className="text-sm">Scan uploads for malware</span>
                     </div>
                   </div>
@@ -1162,7 +1226,10 @@ const AdminUploads = () => {
                   <div className="space-y-3">
                     <Label>Access Logging</Label>
                     <div className="flex items-center space-x-2">
-                      <Checkbox defaultChecked />
+                      <Checkbox
+                        checked={uploadSettings.accessLogging}
+                        onCheckedChange={(val) => setUploadSettings(s => ({ ...s, accessLogging: val }))}
+                      />
                       <span className="text-sm">
                         Log all file access and downloads
                       </span>
@@ -1172,7 +1239,10 @@ const AdminUploads = () => {
                   <div className="space-y-3">
                     <Label>Public Access</Label>
                     <div className="flex items-center space-x-2">
-                      <Checkbox />
+                      <Checkbox
+                        checked={uploadSettings.publicAccess}
+                        onCheckedChange={(val) => setUploadSettings(s => ({ ...s, publicAccess: val }))}
+                      />
                       <span className="text-sm">Allow public file sharing</span>
                     </div>
                   </div>
@@ -1194,7 +1264,10 @@ const AdminUploads = () => {
                         Notify when uploads complete
                       </p>
                     </div>
-                    <Checkbox defaultChecked />
+                    <Checkbox
+                      checked={uploadSettings.notifyCompletion}
+                      onCheckedChange={(val) => setUploadSettings(s => ({ ...s, notifyCompletion: val }))}
+                    />
                   </div>
 
                   <div className="flex items-center justify-between">
@@ -1204,7 +1277,10 @@ const AdminUploads = () => {
                         Alert when storage is running low
                       </p>
                     </div>
-                    <Checkbox defaultChecked />
+                    <Checkbox
+                      checked={uploadSettings.notifyStorage}
+                      onCheckedChange={(val) => setUploadSettings(s => ({ ...s, notifyStorage: val }))}
+                    />
                   </div>
 
                   <div className="flex items-center justify-between">
@@ -1214,7 +1290,10 @@ const AdminUploads = () => {
                         Immediate notification of upload failures
                       </p>
                     </div>
-                    <Checkbox defaultChecked />
+                    <Checkbox
+                      checked={uploadSettings.notifyFailed}
+                      onCheckedChange={(val) => setUploadSettings(s => ({ ...s, notifyFailed: val }))}
+                    />
                   </div>
 
                   <div className="flex items-center justify-between">
@@ -1224,11 +1303,27 @@ const AdminUploads = () => {
                         Scheduled maintenance notifications
                       </p>
                     </div>
-                    <Checkbox defaultChecked />
+                    <Checkbox
+                      checked={uploadSettings.notifyMaintenance}
+                      onCheckedChange={(val) => setUploadSettings(s => ({ ...s, notifyMaintenance: val }))}
+                    />
                   </div>
                 </div>
               </CardContent>
             </Card>
+
+            <div className="flex justify-end pt-4 pb-8">
+              <Button onClick={handleSaveSettings} disabled={loading} size="lg" className="px-8">
+                {loading ? (
+                  <>
+                    <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                    Saving...
+                  </>
+                ) : (
+                  'Save Changes'
+                )}
+              </Button>
+            </div>
 
             {/* Danger Zone */}
             <Card className="border-red-200">

@@ -28,6 +28,7 @@ const OperatorSidebar = ({ isOpen, role }) => {
   const operator = [
     { label: "Dashboard", icon: LayoutDashboard, path: "/operator/dashboard" },
     { label: "Operations", icon: SearchX, path: "/operator/operations" },
+    { label: "Task", icon: Search, path: "/operator/task" },
     { label: "Equipment", icon: Monitor, path: "/operator/equipement" },
     { label: "Maintenance", icon: Wrench, path: "/operator/maintenance" },
     { label: "Logs", icon: BookOpen, path: "/operator/logs" },
@@ -57,7 +58,7 @@ const OperatorSidebar = ({ isOpen, role }) => {
           </div>
         ) : (
           sidebarItems.map((item, index) => {
-            const Icon = item.icon; 
+            const Icon = item.icon;
             return (
               <Link key={item.label} href={item.path}>
                 <div

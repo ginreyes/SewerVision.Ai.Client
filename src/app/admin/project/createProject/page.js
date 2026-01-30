@@ -107,7 +107,7 @@ export default function CreateProjectPage() {
   const [videoFile, setVideoFile] = useState(null);
   const { showAlert } = useAlert();
   const router = useRouter();
-  const { userId } = useUser()
+  const { userId } = useUser() || {}
 
   // User data states
   const [operators, setOperators] = useState([]);
@@ -172,11 +172,11 @@ export default function CreateProjectPage() {
       const response = await api("/api/users/get-customers", "GET");
       const data = response.data.data.customers
       setCustomers(data)
-    } 
+    }
     catch (error) {
       showAlert("Failed to fetch customers", "error");
       console.error("Error fetching customers:", error);
-    } 
+    }
     finally {
       setLoadingCustomers(false);
     }
@@ -223,7 +223,7 @@ export default function CreateProjectPage() {
     name: setName,
     location: setLocation,
     client: setClient,
-    customerId: setCustomerId, 
+    customerId: setCustomerId,
     workOrder: setWorkOrder,
     priority: setPriority,
     totalLength: setTotalLength,
@@ -408,7 +408,7 @@ export default function CreateProjectPage() {
               <h3 className="text-xl font-bold text-gray-900 mb-2">Project Details</h3>
               <p className="text-gray-600">Let's start with the basic project information</p>
             </div>
-            
+
             <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
               <InputField
                 label="Project Name"
@@ -419,15 +419,15 @@ export default function CreateProjectPage() {
                 error={errors.name}
                 placeholder="Enter project name"
               />
-              
+
               {/* Customer Selection Dropdown */}
               <div className="space-y-2">
                 <Label className="text-sm font-medium text-gray-700">
                   Customer
                   <span className="text-red-500 ml-1">*</span>
                 </Label>
-                <Select 
-                  value={customerId} 
+                <Select
+                  value={customerId}
                   onValueChange={(value) => handleFieldChange("customerId", value)}
                 >
                   <SelectTrigger className={`h-10 ${errors.customerId ? 'border-red-500 focus:border-red-500 focus:ring-red-100' : 'border-gray-200 focus:border-blue-500 focus:ring-blue-100'}`}>
@@ -475,7 +475,7 @@ export default function CreateProjectPage() {
                 error={errors.client}
                 placeholder="Enter client organization name"
               />
-              
+
               <InputField
                 label="Location"
                 name="location"
@@ -485,7 +485,7 @@ export default function CreateProjectPage() {
                 error={errors.location}
                 placeholder="Enter project location"
               />
-              
+
               <InputField
                 label="Work Order"
                 name="workOrder"
@@ -495,7 +495,7 @@ export default function CreateProjectPage() {
                 error={errors.workOrder}
                 placeholder="Enter work order number"
               />
-              
+
               <div className="space-y-2">
                 <Label className="text-sm font-medium text-gray-700">Priority</Label>
                 <Select value={priority} onValueChange={(value) => handleFieldChange("priority", value)}>
@@ -960,10 +960,10 @@ export default function CreateProjectPage() {
             {steps.map((step, index) => (
               <div key={step.id} className="flex items-center">
                 <div className={`flex items-center justify-center w-14 h-14 rounded-full text-xl font-bold transition-all duration-300 ${currentStep === step.id
-                    ? step.color + ' text-white shadow-md transform scale-110'
-                    : currentStep > step.id
-                      ? 'bg-green-500 text-white'
-                      : 'bg-gray-200 text-gray-600'
+                  ? step.color + ' text-white shadow-md transform scale-110'
+                  : currentStep > step.id
+                    ? 'bg-green-500 text-white'
+                    : 'bg-gray-200 text-gray-600'
                   }`}>
                   {currentStep > step.id ? (
                     <CheckCircle className="h-6 w-6" />

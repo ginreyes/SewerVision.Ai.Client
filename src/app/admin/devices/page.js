@@ -48,11 +48,10 @@ const DeviceCard = ({ device, isField = true, onSettings, onViewFootage, isSelec
 
   return (
     <div
-      className={`bg-white rounded-xl shadow-lg hover:shadow-xl transition-all duration-300 cursor-pointer ${
-        isSelected
+      className={`bg-white rounded-xl shadow-lg hover:shadow-xl transition-all duration-300 cursor-pointer ${isSelected
           ? 'ring-2 ring-blue-500 scale-[1.02] bg-blue-50'
           : 'hover:-translate-y-1'
-      }`}
+        }`}
       onClick={() => onSettings(device)}
     >
       <div className="p-6">
@@ -94,13 +93,12 @@ const DeviceCard = ({ device, isField = true, onSettings, onViewFootage, isSelec
             <div className="flex items-center justify-between">
               <span>Load: {device.load}%</span>
               <span
-                className={`px-2 py-1 rounded-full text-xs ${
-                  device.performance === 'high'
+                className={`px-2 py-1 rounded-full text-xs ${device.performance === 'high'
                     ? 'bg-green-100 text-green-800'
                     : device.performance === 'optimal'
-                    ? 'bg-blue-100 text-blue-800'
-                    : 'bg-yellow-100 text-yellow-800'
-                }`}
+                      ? 'bg-blue-100 text-blue-800'
+                      : 'bg-yellow-100 text-yellow-800'
+                  }`}
               >
                 {device.performance}
               </span>
@@ -243,7 +241,9 @@ const Devices = () => {
         return
       }
 
-      const enriched = data.map(device => {
+      const devicesList = Array.isArray(data) ? data : (data?.data && Array.isArray(data.data) ? data.data : []);
+
+      const enriched = devicesList.map(device => {
         const colorMap = {
           camera: 'bg-gradient-to-br from-blue-500 to-purple-600',
           tablet: 'bg-gradient-to-br from-green-500 to-emerald-600',
@@ -327,8 +327,8 @@ const Devices = () => {
   const handleOpenSettings = (device) => {
     console.log('⚙️ Opening settings for:', device.name, device._id)
     setSelectedDeviceId(device._id)
-    setSelectedSettingsDevice(device) 
-    setSelectedFootageDevice(null)   
+    setSelectedSettingsDevice(device)
+    setSelectedFootageDevice(null)
     setShowSettingsModal(true)
   }
 
@@ -363,9 +363,9 @@ const Devices = () => {
         </div>
       </div>
 
-      <AddDeviceModal 
-        isOpen={showModal} 
-        onClose={() => setShowModal(false)} 
+      <AddDeviceModal
+        isOpen={showModal}
+        onClose={() => setShowModal(false)}
         onAddDevice={(newDevice) => {
           console.log('✅ New device added:', newDevice)
         }}
@@ -396,22 +396,20 @@ const Devices = () => {
           <div className="flex space-x-1 bg-gray-100 p-1 rounded-lg w-fit">
             <button
               onClick={() => setActiveTab('field')}
-              className={`px-4 py-2 rounded-md text-sm font-medium ${
-                activeTab === 'field'
+              className={`px-4 py-2 rounded-md text-sm font-medium ${activeTab === 'field'
                   ? 'bg-white text-blue-600 shadow-sm'
                   : 'text-gray-600 hover:text-gray-900'
-              }`}
+                }`}
             >
               <Truck className="w-4 h-4 mr-2 inline" />
               Field Devices
             </button>
             <button
               onClick={() => setActiveTab('cloud')}
-              className={`px-4 py-2 rounded-md text-sm font-medium ${
-                activeTab === 'cloud'
+              className={`px-4 py-2 rounded-md text-sm font-medium ${activeTab === 'cloud'
                   ? 'bg-white text-blue-600 shadow-sm'
                   : 'text-gray-600 hover:text-gray-900'
-              }`}
+                }`}
             >
               <Cloud className="w-4 h-4 mr-2 inline" />
               Cloud Infrastructure

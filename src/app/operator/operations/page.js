@@ -8,55 +8,72 @@ const OperationsPage = () => {
   const [devices, setDevices] = useState([])
   const [uploads, setUploads] = useState([])
   const [loading, setLoading] = useState(true)
-  
+
+  // Helper function to format devices (reusable) - MUST be defined before fetchData
+  const formatDevice = (device, index, username) => ({
+    id: device._id,
+    name: device.name || `Device ${index + 1}`,
+    status: device.status || 'offline',
+    location: device.location || 'Unknown',
+    recordingTime: '00:00:00',
+    footage: '0 ft',
+    aiDetections: 0,
+    battery: device.specifications?.battery ? parseInt(device.specifications.battery) : 0,
+    signal: device.status === 'online' ? 'strong' : device.status === 'offline' ? 'none' : 'weak',
+    operator: device.operator?.first_name && device.operator?.last_name
+      ? `${device.operator.first_name} ${device.operator.last_name}`
+      : username
+  })
+
   const fetchData = useCallback(async () => {
-      try {
-        const username = localStorage.getItem('username')
-        if (!username) return
+    try {
+      const username = localStorage.getItem('username')
+      if (!username) return
 
-        // Get user ID
-        const userResponse = await api(`/api/users/role/${username}`, 'GET')
-        if (!userResponse.ok || !userResponse.data?._id) return
+      // Get user ID
+      const userResponse = await api(`/api/users/role/${username}`, 'GET')
+      if (!userResponse.ok || !userResponse.data?._id) return
 
-        const userId = userResponse.data._id
+      const userId = userResponse.data._id
 
-        // Fetch devices assigned to operator
-        const devicesResponse = await api('/api/devices/get-all-devices', 'GET')
-        if (devicesResponse.ok && devicesResponse.data?.data) {
-          const allDevices = devicesResponse.data.data
-          const operatorDevices = allDevices.filter(d => 
-            d.operator && (d.operator._id === userId || d.operator.toString() === userId)
-          )
-          
-          const formattedDevices = operatorDevices.map((device, index) => formatDevice(device, index, username))
-          
-          setDevices(formattedDevices)
-          if (formattedDevices.length > 0) {
-            setSelectedDevice(formattedDevices[0].id)
-          }
+      // Fetch devices assigned to operator
+      const devicesResponse = await api('/api/devices/get-all-devices', 'GET')
+      if (devicesResponse.ok && devicesResponse.data?.data) {
+        const allDevices = devicesResponse.data.data
+        const operatorDevices = allDevices.filter(d =>
+          d.operator && (d.operator._id === userId || d.operator.toString() === userId)
+        )
+
+        const formattedDevices = operatorDevices.map((device, index) => formatDevice(device, index, username))
+
+        setDevices(formattedDevices)
+        if (formattedDevices.length > 0) {
+          setSelectedDevice(formattedDevices[0].id)
         }
-
-        // Fetch uploads
-        const uploadsResponse = await api('/api/uploads/get-all-uploads?limit=10', 'GET')
-        if (uploadsResponse.ok && uploadsResponse.data?.data?.uploads) {
-          const allUploads = uploadsResponse.data.data.uploads
-          const formattedUploads = allUploads.slice(0, 4).map((upload, index) => ({
-            id: upload._id,
-            device: upload.device || `Device ${index + 1}`,
-            name: upload.originalName || upload.filename || `Upload ${index + 1}`,
-            size: upload.size || '0 MB',
-            status: upload.status || 'pending',
-            progress: upload.status === 'completed' ? 100 : upload.status === 'uploading' ? 67 : upload.status === 'failed' ? 23 : 0
-          }))
-          setUploads(formattedUploads)
-        }
-      } catch (error) {
-        console.error('Error fetching operations data:', error)
-      } finally {
-        setLoading(false)
       }
-    }
 
+      // Fetch uploads
+      const uploadsResponse = await api('/api/uploads/get-all-uploads?limit=10', 'GET')
+      if (uploadsResponse.ok && uploadsResponse.data?.data?.uploads) {
+        const allUploads = uploadsResponse.data.data.uploads
+        const formattedUploads = allUploads.slice(0, 4).map((upload, index) => ({
+          id: upload._id,
+          device: upload.device || `Device ${index + 1}`,
+          name: upload.originalName || upload.filename || `Upload ${index + 1}`,
+          size: upload.size || '0 MB',
+          status: upload.status || 'pending',
+          progress: upload.status === 'completed' ? 100 : upload.status === 'uploading' ? 67 : upload.status === 'failed' ? 23 : 0
+        }))
+        setUploads(formattedUploads)
+      }
+    } catch (error) {
+      console.error('Error fetching operations data:', error)
+    } finally {
+      setLoading(false)
+    }
+  }, [])
+
+  useEffect(() => {
     fetchData()
   }, [fetchData])
 
@@ -72,7 +89,7 @@ const OperationsPage = () => {
           const userResponse = await api(`/api/users/role/${username}`, 'GET')
           if (userResponse.ok && userResponse.data?._id) {
             const userId = userResponse.data._id
-            const operatorDevices = allDevices.filter(d => 
+            const operatorDevices = allDevices.filter(d =>
               d.operator && (d.operator._id === userId || d.operator.toString() === userId)
             )
             const formattedDevices = operatorDevices.map((device, index) => formatDevice(device, index, username))
@@ -97,7 +114,7 @@ const OperationsPage = () => {
           const userResponse = await api(`/api/users/role/${username}`, 'GET')
           if (userResponse.ok && userResponse.data?._id) {
             const userId = userResponse.data._id
-            const operatorDevices = allDevices.filter(d => 
+            const operatorDevices = allDevices.filter(d =>
               d.operator && (d.operator._id === userId || d.operator.toString() === userId)
             )
             const formattedDevices = operatorDevices.map((device, index) => formatDevice(device, index, username))
@@ -109,22 +126,6 @@ const OperationsPage = () => {
       console.error('Error stopping recording:', error)
     }
   }, [])
-
-  // Helper function to format devices (reusable)
-  const formatDevice = (device, index, username) => ({
-    id: device._id,
-    name: device.name || `Device ${index + 1}`,
-    status: device.status || 'offline',
-    location: device.location || 'Unknown',
-    recordingTime: '00:00:00',
-    footage: '0 ft',
-    aiDetections: 0,
-    battery: device.specifications?.battery ? parseInt(device.specifications.battery) : 0,
-    signal: device.status === 'online' ? 'strong' : device.status === 'offline' ? 'none' : 'weak',
-    operator: device.operator?.first_name && device.operator?.last_name 
-      ? `${device.operator.first_name} ${device.operator.last_name}`
-      : username
-  })
 
   const getDeviceStatusColor = useCallback((status) => {
     switch (status) {
@@ -185,12 +186,11 @@ const OperationsPage = () => {
         {/* Device Grid Overview */}
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4 mb-6">
           {devices.length > 0 ? devices.map((device) => (
-            <div 
+            <div
               key={device.id}
               onClick={() => setSelectedDevice(device.id)}
-              className={`bg-white rounded-lg shadow-sm p-4 cursor-pointer transition-all hover:shadow-md ${
-                selectedDevice === device.id ? 'ring-2 ring-blue-500 border-blue-200' : 'border border-gray-200'
-              }`}
+              className={`bg-white rounded-lg shadow-sm p-4 cursor-pointer transition-all hover:shadow-md ${selectedDevice === device.id ? 'ring-2 ring-blue-500 border-blue-200' : 'border border-gray-200'
+                }`}
             >
               <div className="flex items-center justify-between mb-3">
                 <div className="flex items-center space-x-2">
@@ -201,7 +201,7 @@ const OperationsPage = () => {
                   {device.status}
                 </span>
               </div>
-              
+
               <div className="space-y-2 text-sm">
                 <div className="flex justify-between">
                   <span className="text-gray-600">Location:</span>
@@ -238,7 +238,7 @@ const OperationsPage = () => {
               <h2 className="text-xl font-semibold text-gray-900">Device Control</h2>
               <span className="text-lg font-medium text-gray-600">{selectedDeviceData?.name}</span>
             </div>
-            
+
             {selectedDeviceData?.status === 'recording' ? (
               <div className="bg-red-50 border border-red-200 rounded-lg p-6">
                 <div className="flex items-center justify-between mb-4">
@@ -248,7 +248,7 @@ const OperationsPage = () => {
                   </div>
                   <div className="text-2xl font-mono text-gray-900">{selectedDeviceData.recordingTime}</div>
                 </div>
-                
+
                 <div className="grid grid-cols-3 gap-4 mb-6">
                   <div className="bg-white p-3 rounded-lg text-center">
                     <div className="text-2xl font-bold text-blue-600">{selectedDeviceData.footage}</div>
@@ -265,7 +265,7 @@ const OperationsPage = () => {
                 </div>
 
                 <div className="flex space-x-4">
-                  <button 
+                  <button
                     onClick={() => handleStopRecording(selectedDeviceData.id)}
                     className="bg-red-600 hover:bg-red-700 text-white px-6 py-3 rounded-lg font-medium flex items-center space-x-2"
                   >
@@ -282,7 +282,7 @@ const OperationsPage = () => {
                 <Camera className="w-16 h-16 text-gray-400 mx-auto mb-4" />
                 <h3 className="text-lg font-medium text-gray-900 mb-2">Device Ready</h3>
                 <p className="text-gray-600 mb-6">Location: {selectedDeviceData.location}</p>
-                <button 
+                <button
                   onClick={() => handleStartRecording(selectedDeviceData.id)}
                   className="bg-blue-600 hover:bg-blue-700 text-white px-6 py-3 rounded-lg font-medium flex items-center space-x-2 mx-auto"
                 >
@@ -319,12 +319,11 @@ const OperationsPage = () => {
                       <h3 className="font-medium text-gray-900">{file.name}</h3>
                       <p className="text-sm text-gray-600">{file.device}</p>
                     </div>
-                    <span className={`px-2 py-1 rounded text-xs font-medium ${
-                      file.status === 'complete' ? 'bg-green-100 text-green-800' :
+                    <span className={`px-2 py-1 rounded text-xs font-medium ${file.status === 'complete' ? 'bg-green-100 text-green-800' :
                       file.status === 'uploading' ? 'bg-blue-100 text-blue-800' :
-                      file.status === 'failed' ? 'bg-red-100 text-red-800' :
-                      'bg-gray-100 text-gray-600'
-                    }`}>
+                        file.status === 'failed' ? 'bg-red-100 text-red-800' :
+                          'bg-gray-100 text-gray-600'
+                      }`}>
                       {file.status}
                     </span>
                   </div>
@@ -333,11 +332,10 @@ const OperationsPage = () => {
                     <span>{file.progress}%</span>
                   </div>
                   <div className="w-full bg-gray-200 rounded-full h-2">
-                    <div 
-                      className={`h-2 rounded-full transition-all duration-300 ${
-                        file.status === 'complete' ? 'bg-green-500' : 
+                    <div
+                      className={`h-2 rounded-full transition-all duration-300 ${file.status === 'complete' ? 'bg-green-500' :
                         file.status === 'failed' ? 'bg-red-500' : 'bg-blue-500'
-                      }`}
+                        }`}
                       style={{ width: `${file.progress}%` }}
                     ></div>
                   </div>

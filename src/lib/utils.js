@@ -1,10 +1,10 @@
 import { clsx } from "clsx";
 import { twMerge } from "tailwind-merge"
 
-import { 
-  File, 
-  Database, 
-  Image,
+import {
+  File,
+  Database,
+  Image as ImageIcon,
   FileVideo,
   Archive,
 
@@ -21,7 +21,7 @@ export const getFileTypeIcon = (type) => {
     case 'document': return <File className="w-5 h-5 text-green-600" />;
     case 'archive': return <Archive className="w-5 h-5 text-purple-600" />;
     case 'data': return <Database className="w-5 h-5 text-orange-600" />;
-    case 'image': return <Image className="w-5 h-5 text-pink-600" />;
+    case 'image': return <ImageIcon className="w-5 h-5 text-pink-600" />;
     default: return <File className="w-5 h-5 text-gray-600" />;
   }
 };

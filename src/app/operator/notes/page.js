@@ -3,9 +3,8 @@
 import React from 'react';
 import NotesPage from '@/components/notes/NotesPage';
 
-const QcNotes = () => {
-  return <NotesPage />;
+const OperatorNotes = () => {
+    return <NotesPage />;
 }
 
-export default QcNotes;
-
+export default OperatorNotes;

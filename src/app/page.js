@@ -11,7 +11,7 @@ export default function Home() {
     // Check if user is already logged in and redirect them
     const token = localStorage.getItem("authToken");
     const role = localStorage.getItem("role");
-    
+
     if (token && role) {
       const knownRoles = ["admin", "user", "operator", "qc-technician", "customer"];
       if (knownRoles.includes(role.toLowerCase())) {
@@ -53,7 +53,7 @@ export default function Home() {
   ];
 
   return (
-    <div className="min-h-screen w-full relative overflow-hidden bg-gray-100">
+    <div className="min-h-screen w-full relative overflow-y-auto bg-gray-100">
       {/* Animated Background */}
       <div className="absolute inset-0">
         {/* Animated Gradient Orbs with Rose/Pink theme */}
@@ -61,7 +61,7 @@ export default function Home() {
         <div className="absolute top-0 -right-4 w-72 h-72 bg-pink-300 rounded-full mix-blend-multiply filter blur-xl opacity-60 animate-blob animation-delay-2000"></div>
         <div className="absolute -bottom-8 left-20 w-72 h-72 bg-red-300 rounded-full mix-blend-multiply filter blur-xl opacity-60 animate-blob animation-delay-4000"></div>
         <div className="absolute bottom-0 right-20 w-72 h-72 bg-orange-300 rounded-full mix-blend-multiply filter blur-xl opacity-60 animate-blob animation-delay-6000"></div>
-        
+
         {/* Grid Pattern Overlay */}
         <div className="absolute inset-0 bg-grid-pattern opacity-5"></div>
       </div>
@@ -91,8 +91,8 @@ export default function Home() {
               </span>
             </h2>
             <p className="text-xl text-gray-600 mb-8 leading-relaxed">
-              Transform your pipeline inspections with AI-powered defect detection, 
-              real-time monitoring, and comprehensive analytics. Join the future of 
+              Transform your pipeline inspections with AI-powered defect detection,
+              real-time monitoring, and comprehensive analytics. Join the future of
               infrastructure maintenance.
             </p>
 

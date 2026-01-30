@@ -8,7 +8,7 @@ import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
 import { AiOutlineLogout } from 'react-icons/ai';
 import { RxAvatar } from 'react-icons/rx';
-import { FiSearch, FiClock, FiTrendingUp, FiFile, FiUsers, FiSettings } from 'react-icons/fi';
+import { FiSearch, FiClock, FiFile, FiUsers, FiSettings } from 'react-icons/fi';
 import Link from 'next/link';
 import Image from 'next/image';
 import { api } from '@/lib/helper';
@@ -27,7 +27,7 @@ const searchCategories = {
 };
 
 const Navbar = (props) => {
-  const {openSideBar , role}  = props
+  const { openSideBar, role } = props
   const [open, setOpen] = useState(false);
   const [searchQuery, setSearchQuery] = useState('');
   const [searchOpen, setSearchOpen] = useState(false);
@@ -35,13 +35,6 @@ const Navbar = (props) => {
   const [recentSearches, setRecentSearches] = useState([]);
   const [searchHistory, setSearchHistory] = useState([]);
   const [loading, setLoading] = useState(false);
-  const [popularSearches] = useState([
-    'sewer inspection reports',
-    'pipeline maintenance',
-    'water quality data',
-    'system diagnostics',
-    'equipment status',
-  ]);
 
   const router = useRouter();
   const searchInputRef = useRef(null);
@@ -82,12 +75,12 @@ const Navbar = (props) => {
   const performSearch = async (query) => {
     try {
       setLoading(true);
-      setSearchResults([]); 
-  
-      const response = await api('/api/search/search', 'POST', { query });
-  
+      setSearchResults([]);
+
+      const response = await api('/api/search/search-all', 'POST', { query });
+
       console.log('Search API Response:', response);
-  
+
       if (response.ok && response.data?.success) {
         setSearchResults(response.data.results || []);
       } else {
@@ -277,26 +270,6 @@ const Navbar = (props) => {
                     ))}
                   </div>
                 )}
-
-                {/* Popular */}
-                {searchQuery.length <= 1 && (
-                  <div className="p-2 border-t border-gray-100">
-                    <h3 className="text-sm font-semibold text-gray-700 mb-2 flex items-center">
-                      <FiTrendingUp className="w-4 h-4 mr-1" />
-                      Popular
-                    </h3>
-                    {popularSearches.map((search, index) => (
-                      <div
-                        key={index}
-                        className="flex items-center space-x-2 p-2 hover:bg-gray-50 rounded cursor-pointer"
-                        onClick={() => handleRecentSearchClick(search)}
-                      >
-                        <FiTrendingUp className="w-3 h-3 text-gray-400" />
-                        <span className="text-sm text-gray-700">{search}</span>
-                      </div>
-                    ))}
-                  </div>
-                )}
               </div>
             )}
           </div>
@@ -322,7 +295,7 @@ const Navbar = (props) => {
               </button>
             </PopoverTrigger>
             <PopoverContent className="w-44 p-2">
-              <Link href="/admin/profile">
+              <Link href={role ? `/${role}/settings` : '/admin/settings'}>
                 <Button variant="ghost" className="w-full justify-start p-2 h-auto">
                   <RxAvatar className="w-4 h-4 mr-2" />
                   Profile
