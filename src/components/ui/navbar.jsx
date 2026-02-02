@@ -293,7 +293,7 @@ const Navbar = (props) => {
         {/* Right: Settings, Notifications, Avatar */}
         <div className="flex items-center space-x-4">
           <button className="focus:outline-none" onClick={handleSettings}>
-            <Image src="/setting.png" alt="Settings" width={22} height={22} />
+            <Image src="/Setting.png" alt="System Settings" width={22} height={22} className="object-contain" />
           </button>
 
           <NotificationBell className="focus:outline-none" />

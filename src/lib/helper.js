@@ -23,21 +23,45 @@ export const api = async (path, method = "GET", body = null, headers = {}) => {
     ...headers,
   };
 
-  const res = await fetch(`${API}${path}`, {
-    method,
-    headers: defaultHeaders,
-    body: isFormData ? body : body ? JSON.stringify(body) : null,
-  });
+  try {
+    const res = await fetch(`${API}${path}`, {
+      method,
+      headers: defaultHeaders,
+      body: isFormData ? body : body ? JSON.stringify(body) : null,
+      credentials: "include", // Important for CORS and sending cookies if needed
+    });
 
-  const contentType = res.headers.get("content-type");
-  const isJson = contentType && contentType.includes("application/json");
-  const data = isJson ? await res.json() : await res.text();
+    const contentType = res.headers.get("content-type");
+    const isJson = contentType && contentType.includes("application/json");
 
-  return {
-    ok: res.ok,
-    status: res.status,
-    data,
-  };
+    // Safety check for empty responses
+    let data;
+    try {
+      if (isJson) {
+        data = await res.json();
+      } else {
+        const text = await res.text();
+        data = text ? text : null;
+      }
+    } catch (parseError) {
+      console.warn('Failed to parse response:', parseError);
+      data = null;
+    }
+
+    return {
+      ok: res.ok,
+      status: res.status,
+      data,
+    };
+  } catch (networkError) {
+    console.error('Network Error:', networkError);
+    return {
+      ok: false,
+      status: 0,
+      data: { message: 'Network error: Please check your connection or server status.' },
+      originalError: networkError
+    };
+  }
 };
 
 /**
@@ -54,28 +78,40 @@ export const apiBlob = async (path, method = "GET", body = null, headers = {}) =
     ...headers,
   };
 
-  const res = await fetch(`${API}${path}`, {
-    method,
-    headers: defaultHeaders,
-    body: isFormData ? body : body ? JSON.stringify(body) : null,
-  });
+  try {
+    const res = await fetch(`${API}${path}`, {
+      method,
+      headers: defaultHeaders,
+      body: isFormData ? body : body ? JSON.stringify(body) : null,
+      credentials: "include",
+    });
 
-  let errorData = null;
-  if (!res.ok) {
-    try {
-      const contentType = res.headers.get("content-type");
-      const isJson = contentType && contentType.includes("application/json");
-      errorData = isJson ? await res.json() : await res.text();
-    } catch {
-      errorData = { message: 'Failed to fetch file' };
+    let errorData = null;
+    if (!res.ok) {
+      try {
+        const contentType = res.headers.get("content-type");
+        const isJson = contentType && contentType.includes("application/json");
+        errorData = isJson ? await res.json() : await res.text();
+      } catch {
+        errorData = { message: 'Failed to fetch file' };
+      }
     }
-  }
 
-  return {
-    ok: res.ok,
-    status: res.status,
-    headers: res.headers,
-    blob: res.ok ? await res.blob() : null,
-    error: errorData,
-  };
+    return {
+      ok: res.ok,
+      status: res.status,
+      headers: res.headers,
+      blob: res.ok ? await res.blob() : null,
+      error: errorData,
+    };
+  } catch (networkError) {
+    console.error('Network Error (Blob):', networkError);
+    return {
+      ok: false,
+      status: 0,
+      headers: null,
+      blob: null,
+      error: { message: 'Network error: Please check your connection.' }
+    };
+  }
 };

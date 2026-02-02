@@ -250,7 +250,8 @@ function OperatorSettingsContent() {
 
       const token = localStorage.getItem('token');
       // Adjust URL to your backend
-      const res = await fetch(`${process.env.NEXT_PUBLIC_API_URL || 'http://localhost:5000'}/api/users/upload-avatar`, {
+      const backendUrl = process.env.NEXT_PUBLIC_BACKEND_URL || 'http://localhost:5000';
+      const res = await fetch(`${backendUrl}/api/users/upload-avatar`, {
         method: 'POST',
         headers: {
           'Authorization': `Bearer ${token}`
