@@ -1,6 +1,7 @@
 "use client";
 import React, { useState, useEffect } from "react";
 import AddUserModal from "./AddUserModal";
+import SendEmailModal from "./SendEmailModal";
 import { api } from "@/lib/helper";
 import { useAlert } from "@/components/providers/AlertProvider";
 import { useDialog } from "@/components/providers/DialogProvider";
@@ -39,12 +40,12 @@ const UserPage = () => {
       });
 
       const { ok, data } = await api(`/api/users/get-all-user?${queryParams}`, "GET");
-      
+
       if (ok && Array.isArray(data.users)) {
         setUsers(data.users);
         setTotalPages(data.pagination?.totalPages || 1);
         setTotalUsers(data.pagination?.total || 0);
-      } 
+      }
       else {
         console.error("Failed to fetch users or users is not an array");
         setUsers([]);
@@ -81,7 +82,63 @@ const UserPage = () => {
   // Server-side filtering now, so no client-side filtering needed
   // But keep for any remaining client-side operations
   const filteredUsers = users;
-  
+
+  const [emailModalOpen, setEmailModalOpen] = useState(false);
+  const [selectedUserForEmail, setSelectedUserForEmail] = useState(null);
+
+  const handleDisable = async (item) => {
+    const userId = item.user.user_id;
+    const currentStatus = item.status === 'Active';
+    const newActive = !currentStatus;
+
+    try {
+      const { ok } = await api('/api/users/change-info', 'PUT', {
+        user_id: userId,
+        active: newActive
+      });
+
+      if (ok) {
+        setUsers(prev => prev.map(u => {
+          if (u._id === userId || u.user_id === userId) {
+            return { ...u, active: newActive, status: newActive ? 'Active' : 'Inactive' };
+          }
+          return u;
+        }));
+        showAlert(newActive ? "User enabled" : "User disabled", "success");
+      } else {
+        showAlert("Failed to update status", "error");
+      }
+    } catch (err) {
+      console.error(err);
+      showAlert("Failed to update status", "error");
+    }
+  }
+
+  const handleOpenEmailModal = (item) => {
+    setSelectedUserForEmail(item);
+    setEmailModalOpen(true);
+  }
+
+  const handleSendEmail = async (subject, message) => {
+    if (!selectedUserForEmail) return;
+    try {
+      const { ok } = await api('/api/users/send-email', 'POST', {
+        user_id: selectedUserForEmail.user.user_id,
+        subject,
+        message
+      });
+
+      if (ok) {
+        showAlert("Email sent successfully", "success");
+      } else {
+        showAlert("Failed to send email", "error");
+      }
+    } catch (err) {
+      console.error(err);
+      showAlert("Error sending email", "error");
+    }
+  }
+
 
   const columns = [
     { key: "user", name: "USER" },
@@ -104,38 +161,36 @@ const UserPage = () => {
     status: u.status,
   }));
 
-  const filterOptions = [
-    {
-      key: "role",
-      label: "Role",
-      options: [
-        { label: "Show All", value: "all" },
-        { label: "Admin", value: "admin" },
-        { label: "User", value: "user" },
-        { label: "Customer", value: "customer" },
-        { label: "QC Technician", value: "Qc-Technician" },
-        { label: "Operator", value: "Operator" },
-      ],
-    },
-    {
-      key: "plan",
-      label: "Plan",
-      options: [
-        { label: "Show All", value: "all" },
-        { label: "Enterprise", value: "Enterprise" },
-        { label: "Basic", value: "Basic" },
-      ],
-    },
-    {
-      key: "status",
-      label: "Status",
-      options: [
-        { label: "Show All", value: "all" },
-        { label: "Active", value: "Active" },
-        { label: "Inactive", value: "Inactive" },
-        { label: "Pending", value: "Pending" },
-      ],
-    },
+  const filterOptions = [{
+    key: "role",
+    label: "Role",
+    options: [
+      { label: "Show All", value: "all" },
+      { label: "Admin", value: "admin" },
+      { label: "Customer", value: "customer" },
+      { label: "QC Technician", value: "Qc-Technician" },
+      { label: "Operator", value: "Operator" },
+    ],
+  },
+  {
+    key: "plan",
+    label: "Plan",
+    options: [
+      { label: "Show All", value: "all" },
+      { label: "Enterprise", value: "Enterprise" },
+      { label: "Basic", value: "Basic" },
+    ],
+  },
+  {
+    key: "status",
+    label: "Status",
+    options: [
+      { label: "Show All", value: "all" },
+      { label: "Active", value: "Active" },
+      { label: "Inactive", value: "Inactive" },
+      { label: "Pending", value: "Pending" },
+    ],
+  },
   ];
 
   const handleFilterChange = (key, val) => {
@@ -154,11 +209,20 @@ const UserPage = () => {
         onSearch={setSearch}
         onFilterChange={handleFilterChange}
         loading={loading}
-        ButtonPlacement={<AddUserModal fetchUser = {fetchUsers} />}
+        ButtonPlacement={<AddUserModal fetchUser={fetchUsers} />}
         onDelete={handleDelete}
+        onDisable={handleDisable}
+        onEmail={handleOpenEmailModal}
         onView={(item) => {
           router.push(`/admin/users/${item.user.user_id}`);
         }}
+      />
+
+      <SendEmailModal
+        isOpen={emailModalOpen}
+        onClose={() => setEmailModalOpen(false)}
+        onSend={handleSendEmail}
+        recipientName={selectedUserForEmail?.user?.name || "User"}
       />
     </div>
   );

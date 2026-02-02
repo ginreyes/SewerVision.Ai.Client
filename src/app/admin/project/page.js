@@ -1,6 +1,6 @@
 "use client";
-import React, { useState, useEffect } from "react";
-import { Search, Plus } from "lucide-react";
+import React, { useState, useEffect, Suspense } from "react";
+import { Search, Plus, Loader2 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import ProjectDetail from "./components/ProjectDetail";
 import ProjectCard from "./components/ProjectCard";
@@ -9,7 +9,7 @@ import { useAlert } from "@/components/providers/AlertProvider";
 import debounce from "lodash/debounce";
 import { useRouter, useSearchParams } from "next/navigation";
 
-const SewerVisionInspectionModule = () => {
+const SewerVisionInspectionModuleContent = () => {
   const [projects, setProjects] = useState([]);
   const [selectedProject, setSelectedProject] = useState(null);
   const [searchTerm, setSearchTerm] = useState("");
@@ -210,6 +210,25 @@ const SewerVisionInspectionModule = () => {
         )}
       </div>
     </div>
+  );
+};
+
+// Loading fallback for Suspense
+const ProjectPageLoading = () => (
+  <div className="min-h-screen flex items-center justify-center">
+    <div className="text-center">
+      <Loader2 className="h-8 w-8 animate-spin text-primary mx-auto" />
+      <span className="mt-2 block text-gray-600">Loading projects...</span>
+    </div>
+  </div>
+);
+
+// Main export wrapped in Suspense
+const SewerVisionInspectionModule = () => {
+  return (
+    <Suspense fallback={<ProjectPageLoading />}>
+      <SewerVisionInspectionModuleContent />
+    </Suspense>
   );
 };
 

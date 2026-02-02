@@ -15,14 +15,14 @@ import WeekView from "./components/WeekView";
 import DayView from "./components/DayView";
 
 
-const generateCalendarGrid = () => {
+const generateCalendarGrid = (selectedMonth, selectedYear) => {
   const today = new Date();
 
-  // Fallbacks in case state hasn't been initialized properly
+  // Fallbacks in case arguments are not provided
   const month =
-    typeof currentMonth === "number" ? currentMonth : today.getMonth();
+    typeof selectedMonth === "number" ? selectedMonth : today.getMonth();
   const year =
-    typeof currentYear === "number" ? currentYear : today.getFullYear();
+    typeof selectedYear === "number" ? selectedYear : today.getFullYear();
 
   const firstDay = new Date(year, month, 1);
   const lastDay = new Date(year, month + 1, 0);
@@ -108,8 +108,8 @@ const Calendar = () => {
   };
 
   const filteredEvents = filters.viewAll
-  ? (Array.isArray(event_list) ? event_list : [])
-  : (Array.isArray(event_list) ? event_list.filter(event => filters[event.category]) : []);
+    ? (Array.isArray(event_list) ? event_list : [])
+    : (Array.isArray(event_list) ? event_list.filter(event => filters[event.category]) : []);
 
 
   const handlePrevious = () => {
@@ -121,12 +121,12 @@ const Calendar = () => {
     } else if (viewMode === "month" || viewMode === "list") {
       newDate.setMonth(newDate.getMonth() - 1);
     }
-  
+
     setDate(newDate);
     setCurrentMonth(newDate.getMonth());
     setCurrentYear(newDate.getFullYear());
   };
-  
+
   const handleNext = () => {
     const newDate = new Date(date);
     if (viewMode === "day") {
@@ -136,12 +136,12 @@ const Calendar = () => {
     } else if (viewMode === "month" || viewMode === "list") {
       newDate.setMonth(newDate.getMonth() + 1);
     }
-  
+
     setDate(newDate);
     setCurrentMonth(newDate.getMonth());
     setCurrentYear(newDate.getFullYear());
   };
-  
+
 
   const handleChangeHeader = () => {
     if (viewMode === "month") {
@@ -194,18 +194,18 @@ const Calendar = () => {
   return (
     <>
       <div className="max-w-7xl mx-auto ">
-      <Card className="flex auto w-full flex-row overflow-hidden">
-        <div className="w-[309px] border-r flex flex-col p-4 bg-gray-50">
-          {/* Add Event Button - Centered */}
-          <div className="flex justify-center mb-6">
-            <Button
-              variant="rose"
-              className="w-[200px] h-12 cursor-pointer "
-              onClick={AddEvent}
-            >
-              + Add Event
-            </Button>
-          </div>
+        <Card className="flex auto w-full flex-row overflow-hidden">
+          <div className="w-[309px] border-r flex flex-col p-4 bg-gray-50">
+            {/* Add Event Button - Centered */}
+            <div className="flex justify-center mb-6">
+              <Button
+                variant="rose"
+                className="w-[200px] h-12 cursor-pointer "
+                onClick={AddEvent}
+              >
+                + Add Event
+              </Button>
+            </div>
 
             <ShadcnCalendar
               mode="single"
@@ -213,96 +213,96 @@ const Calendar = () => {
               onSelect={setDate}
               captionLayout="dropdown"
             />
- 
 
-          <div className="space-y-3">
-          <EventFilters filters={filters} setFilters={setFilters} />
-          </div>
-        </div>
 
-        <div className="flex-1 p-6">
-          <div className="flex justify-between border-b pb-5">
-            <div className="flex space-x-4 justify-start ">
-              <Button
-                onClick={handlePrevious}
-                variant="outline"
-                className="cursor-pointer"
-              >
-                <ArrowLeft />
-              </Button>
-              <Button
-                onClick={handleNext}
-                variant="outline"
-                className="cursor-pointer"
-              >
-                <ArrowRight />
-              </Button>
-              <h1 className="text-3xl font-bold text-gray-800 select-none">
-                {handleChangeHeader()}
-              </h1>
+            <div className="space-y-3">
+              <EventFilters filters={filters} setFilters={setFilters} />
             </div>
+          </div>
 
-            <div className="flex justify-end space-x-4">
-              {["month", "week", "day", "list"].map((mode) => (
+          <div className="flex-1 p-6">
+            <div className="flex justify-between border-b pb-5">
+              <div className="flex space-x-4 justify-start ">
                 <Button
-                  key={mode}
-                  variant={viewMode === mode ? "rose" : "outline"}
-                  onClick={() => setViewMode(mode)}
-                  className="cursor-pointer w-24 text-center"
+                  onClick={handlePrevious}
+                  variant="outline"
+                  className="cursor-pointer"
                 >
-                  {mode.charAt(0).toUpperCase() + mode.slice(1)}
+                  <ArrowLeft />
                 </Button>
-              ))}
+                <Button
+                  onClick={handleNext}
+                  variant="outline"
+                  className="cursor-pointer"
+                >
+                  <ArrowRight />
+                </Button>
+                <h1 className="text-3xl font-bold text-gray-800 select-none">
+                  {handleChangeHeader()}
+                </h1>
+              </div>
+
+              <div className="flex justify-end space-x-4">
+                {["month", "week", "day", "list"].map((mode) => (
+                  <Button
+                    key={mode}
+                    variant={viewMode === mode ? "rose" : "outline"}
+                    onClick={() => setViewMode(mode)}
+                    className="cursor-pointer w-24 text-center"
+                  >
+                    {mode.charAt(0).toUpperCase() + mode.slice(1)}
+                  </Button>
+                ))}
+              </div>
             </div>
+            {/* View Tabs Render */}
+            <div className="w-full">
+              {viewMode === "month" && (
+                <MonthViewCalendar
+                  currentYear={currentYear}
+                  currentMonth={currentMonth}
+                  today={new Date()}
+                  event_list={filteredEvents}
+                  AddEvent={handleAddOrEditEvent}
+                />
+              )}
+
+              {viewMode === "week" && (
+                <WeekView
+                  date={date}
+                  AddEvent={handleAddOrEditEvent}
+                  event_list={filteredEvents}
+                />
+              )}
+
+              {viewMode === "day" && (
+                <DayView
+                  date={date}
+                  AddEvent={handleAddOrEditEvent}
+                  event_list={filteredEvents}
+                />
+              )}
+
+              {viewMode === "list" && (
+                <ListViewCalendar
+                  date={date}
+                  event_list={filteredEvents}
+                  onEventClick={handleAddOrEditEvent}
+                />
+              )}
+            </div>
+
+            <EventModal
+              open={drawerOpen}
+              onOpenChange={setDrawerOpen}
+              date={selectedDate}
+              selectedDate={selectedDate}
+              userId={userId}
+              onEventSaved={handleFetchListEvents}
+              eventData={selectedEvent}
+            />
           </div>
-          {/* View Tabs Render */}
-          <div className="w-full">
-            {viewMode === "month" && (
-              <MonthViewCalendar
-                currentYear={currentYear}
-                currentMonth={currentMonth}
-                today={new Date()}
-                event_list={filteredEvents}
-                AddEvent={handleAddOrEditEvent}
-              />
-            )}
-
-            {viewMode === "week" && (
-              <WeekView
-                date={date}
-                AddEvent={handleAddOrEditEvent}
-                event_list={filteredEvents}
-              />
-            )}
-
-            {viewMode === "day" && (
-              <DayView
-                date={date}
-                AddEvent={handleAddOrEditEvent}
-                event_list={filteredEvents}
-              />
-            )}
-
-            {viewMode === "list" && (
-              <ListViewCalendar
-                date={date}
-                event_list={filteredEvents}
-                onEventClick={handleAddOrEditEvent}
-              />
-            )}
-          </div>
-
-          <EventModal
-            open={drawerOpen}
-            onOpenChange={setDrawerOpen}
-            date={selectedDate}
-            selectedDate={selectedDate}
-            userId={userId}
-            onEventSaved={handleFetchListEvents}
-            eventData={selectedEvent}
-          />
-        </div>
-      </Card>
+        </Card>
       </div>
     </>
   );

@@ -12,23 +12,66 @@
 export { usePolling } from './usePolling'
 
 // Debounce and throttle hooks for performance optimization
-export { 
-  useDebounce, 
-  useDebouncedCallback, 
-  useThrottle 
+export {
+  useDebounce,
+  useDebouncedCallback,
+  useThrottle
 } from './useDebounce'
 
-// Caching hooks and utilities
-export { 
-  useCache, 
-  cacheUtils 
+// Caching hooks and utilities (legacy - consider using TanStack Query hooks instead)
+export {
+  useCache,
+  cacheUtils
 } from './useCache'
 
 // Performance monitoring hooks
-export { 
-  useRenderPerformance, 
+export {
+  useRenderPerformance,
   useApiPerformance,
   getPerformanceMetrics,
   clearPerformanceMetrics,
   getPerformanceSummary
 } from './usePerformance'
+
+// TanStack Query hooks for data fetching and caching
+export {
+  // Dashboard hooks
+  useDashboardStats,
+
+  // Operator hooks
+  useOperatorDashboardStats,
+  useOperatorTasks,
+  useOperatorReports,
+  useOperatorOverview,
+  useStartRecording,
+  useStopRecording,
+
+  // QC Technician hooks
+  useQCDashboardStats,
+  useQCAssignments,
+  useQCAssignment,
+  useProjectDetections,
+  useDetection,
+  useDetectionComments,
+  useReviewDetection,
+  useStartQCSession,
+  useEndQCSession,
+  useAddDetectionComment,
+  useQCCertifications,
+  useCreateCertification,
+  useQCReports,
+  useQCReportByProject,
+
+  // Notes hooks
+  useNotes,
+  useNote,
+  useNotesStats,
+  useCreateNote,
+  useUpdateNote,
+  useDeleteNote,
+
+  // Cache utilities
+  useQueryUtilities,
+  queryKeys,
+} from './useQueryHooks'
+

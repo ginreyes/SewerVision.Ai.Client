@@ -1,5 +1,5 @@
 'use client'
-import React, { useState, useEffect, useRef } from 'react'
+import React, { useState, useEffect, useRef, Suspense } from 'react'
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card'
 import { Label } from '@/components/ui/label'
 import { Input } from '@/components/ui/input'
@@ -15,7 +15,8 @@ import { useAlert } from '@/components/providers/AlertProvider'
 import { api } from '@/lib/helper'
 import { useSearchParams } from 'next/navigation'
 
-const SettingPageQcSide = () => {
+// Inner component that uses useSearchParams
+const SettingPageContent = () => {
   const { userData } = useUser()
   const { showAlert } = useAlert()
   const fileInputRef = useRef(null)
@@ -747,6 +748,24 @@ const SettingPageQcSide = () => {
         </TabsContent>
       </Tabs>
     </div>
+  )
+}
+
+// Loading fallback for Suspense
+const SettingsPageLoading = () => (
+  <div className="container mx-auto p-6 max-w-4xl">
+    <div className="flex items-center justify-center py-20">
+      <Loader2 className="w-8 h-8 animate-spin text-gray-400" />
+    </div>
+  </div>
+)
+
+// Main export wrapped in Suspense
+const SettingPageQcSide = () => {
+  return (
+    <Suspense fallback={<SettingsPageLoading />}>
+      <SettingPageContent />
+    </Suspense>
   )
 }
 

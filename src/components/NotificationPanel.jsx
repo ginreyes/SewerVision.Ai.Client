@@ -25,8 +25,13 @@ import {
   Shield,
   AlertTriangle,
   Loader2,
+  Sparkles,
+  Gift,
 } from 'lucide-react';
 import { formatDistanceToNow } from 'date-fns';
+import { whatsNewData } from '@/data/whatsNewData';
+
+const WHATS_NEW_VERSION_KEY = 'sewervision_whats_new_last_viewed_version';
 
 // Notification type configurations
 const notificationTypeConfig = {
@@ -66,6 +71,12 @@ const notificationTypeConfig = {
     bgColor: 'bg-rose-50',
     borderColor: 'border-rose-200',
   },
+  new_update: {
+    icon: Gift,
+    color: 'text-purple-600',
+    bgColor: 'bg-purple-50',
+    borderColor: 'border-purple-200',
+  }
 };
 
 const NotificationItem = ({
@@ -122,15 +133,15 @@ const NotificationItem = ({
               <p className="text-sm text-gray-600 mt-1 line-clamp-2">
                 {notification.message}
               </p>
-              
+
               {/* Metadata badges */}
               {notification.metadata?.severity && (
                 <span className={`
                   inline-flex items-center px-2 py-0.5 rounded-full text-xs font-medium mt-2
                   ${notification.metadata.severity === 'critical' ? 'bg-red-100 text-red-700' :
                     notification.metadata.severity === 'high' ? 'bg-orange-100 text-orange-700' :
-                    notification.metadata.severity === 'medium' ? 'bg-yellow-100 text-yellow-700' :
-                    'bg-gray-100 text-gray-700'}
+                      notification.metadata.severity === 'medium' ? 'bg-yellow-100 text-yellow-700' :
+                        'bg-gray-100 text-gray-700'}
                 `}>
                   {notification.metadata.severity.toUpperCase()}
                 </span>
@@ -202,7 +213,7 @@ export const NotificationBell = ({ className }) => {
           )}
         </Button>
       </PopoverTrigger>
-      <PopoverContent 
+      <PopoverContent
         className="w-96 p-0 shadow-2xl border-0 rounded-2xl overflow-hidden"
         align="end"
         sideOffset={8}
@@ -232,6 +243,36 @@ const NotificationPanel = ({ onClose }) => {
 
   const scrollRef = useRef(null);
   const [isClearing, setIsClearing] = useState(false);
+  const [combinedNotifications, setCombinedNotifications] = React.useState([]);
+
+  // Mix system notifications with API notifications
+  React.useEffect(() => {
+    let result = [...notifications];
+
+    // Check for local "What's New" update
+    if (typeof window !== 'undefined') {
+      const lastViewedVersion = localStorage.getItem(WHATS_NEW_VERSION_KEY);
+      const latestVersion = whatsNewData[0];
+
+      if (lastViewedVersion !== latestVersion.id) {
+        // Create a pseudo-notification
+        const updateNotification = {
+          _id: 'local_whats_new',
+          type: 'new_update',
+          title: `New Update ${latestVersion.id} Available!`,
+          message: latestVersion.label || 'Check out the latest features and improvements.',
+          read: false,
+          createdAt: new Date().toISOString(),
+          actionUrl: 'app://whats-new',
+          metadata: { severity: 'medium' }
+        };
+
+        // Prepend to list
+        result = [updateNotification, ...result];
+      }
+    }
+    setCombinedNotifications(result);
+  }, [notifications]);
 
   const handleMarkAsRead = async (id) => {
     try {
@@ -268,9 +309,69 @@ const NotificationPanel = ({ onClose }) => {
     }
   };
 
+  // Security: Rewrite notification URLs to match current user's role
   const handleNavigate = (url) => {
     onClose?.();
-    router.push(url);
+
+    if (url === 'app://whats-new') {
+      window.dispatchEvent(new CustomEvent('openTourGuide', { detail: { tab: 'whats-new' } }));
+      return;
+    }
+
+    // Get the current user's role base path from the pathname
+    // e.g., /admin, /qc-technician, /operator, /customer
+    const currentRoleBase = pathname.split('/').slice(0, 2).join('/');
+
+    // Define role-specific route mappings
+    const roleRouteMappings = {
+      '/qc-technician': {
+        // QC technicians should go to their project page, not admin
+        '/admin/project': '/qc-technician/project',
+        '/admin/projects': '/qc-technician/dashboard',
+        '/admin/dashboard': '/qc-technician/dashboard',
+        '/admin/quality-control': '/qc-technician/quality-control',
+      },
+      '/operator': {
+        '/admin/project': '/operator/project',
+        '/admin/projects': '/operator/dashboard',
+        '/admin/dashboard': '/operator/dashboard',
+        '/admin/uploads': '/operator/uploads',
+      },
+      '/customer': {
+        '/admin/project': '/customer/project',
+        '/admin/projects': '/customer/dashboard',
+        '/admin/dashboard': '/customer/dashboard',
+        '/admin/reports': '/customer/reports',
+      },
+    };
+
+    // Check if we need to rewrite the URL
+    let targetUrl = url;
+
+    // If the URL starts with a different role's path, rewrite it
+    const roleMapping = roleRouteMappings[currentRoleBase];
+    if (roleMapping) {
+      // Find matching route prefix and replace
+      for (const [fromPath, toPath] of Object.entries(roleMapping)) {
+        if (url.startsWith(fromPath)) {
+          targetUrl = url.replace(fromPath, toPath);
+          console.log(`[Security] Rewriting notification URL: ${url} -> ${targetUrl}`);
+          break;
+        }
+      }
+    }
+
+    // Additional security: Ensure the URL matches the current role base or is allowed
+    const isOwnRolePath = targetUrl.startsWith(currentRoleBase);
+    const isAllowedPath = targetUrl.startsWith('/') && !targetUrl.includes('/admin') || currentRoleBase === '/admin';
+
+    if (!isOwnRolePath && !isAllowedPath && currentRoleBase !== '/admin') {
+      // Redirect to dashboard if trying to access unauthorized route
+      console.warn(`[Security] Blocked navigation to unauthorized route: ${targetUrl}`);
+      targetUrl = `${currentRoleBase}/dashboard`;
+    }
+
+    router.push(targetUrl);
   };
 
   const handleRefresh = () => {
@@ -294,7 +395,7 @@ const NotificationPanel = ({ onClose }) => {
             <h3 className="text-lg font-semibold text-gray-900">Notifications</h3>
             {unreadCount > 0 && (
               <p className="text-sm text-gray-500 mt-0.5">
-                {unreadCount} unread notification{unreadCount !== 1 ? 's' : ''}
+                {combinedNotifications.filter(n => !n.read).length} unread notification{combinedNotifications.filter(n => !n.read).length !== 1 ? 's' : ''}
               </p>
             )}
           </div>
@@ -313,7 +414,7 @@ const NotificationPanel = ({ onClose }) => {
               size="icon"
               onClick={() => {
                 const basePath = pathname.split('/').slice(0, 2).join('/');
-                router.push(`${basePath}/settings`);
+                router.push(`${basePath}/settings?tab=preferences`);
               }}
               className="h-8 w-8 text-gray-500 hover:text-gray-700"
             >
@@ -323,7 +424,7 @@ const NotificationPanel = ({ onClose }) => {
         </div>
 
         {/* Actions */}
-        {notifications.length > 0 && (
+        {combinedNotifications.length > 0 && (
           <div className="flex items-center gap-2 mt-3">
             {unreadCount > 0 && (
               <Button
@@ -365,14 +466,14 @@ const NotificationPanel = ({ onClose }) => {
       )}
 
       {/* Notifications List */}
-      <ScrollArea 
-        className="h-[400px]" 
+      <ScrollArea
+        className="h-[400px]"
         ref={scrollRef}
         onScrollCapture={handleScroll}
       >
-        {notifications.length > 0 ? (
+        {combinedNotifications.length > 0 ? (
           <>
-            {notifications.map((notification) => (
+            {combinedNotifications.map((notification) => (
               <NotificationItem
                 key={notification._id}
                 notification={notification}
@@ -386,7 +487,7 @@ const NotificationPanel = ({ onClose }) => {
                 <Loader2 className="w-5 h-5 animate-spin text-gray-400" />
               </div>
             )}
-            {!hasMore && notifications.length > 5 && (
+            {!hasMore && combinedNotifications.length > 5 && (
               <div className="py-4 text-center text-sm text-gray-400">
                 You've reached the end
               </div>
@@ -411,7 +512,7 @@ const NotificationPanel = ({ onClose }) => {
       </ScrollArea>
 
       {/* Footer */}
-      {notifications.length > 0 && (
+      {combinedNotifications.length > 0 && (
         <div className="p-3 border-t border-gray-100 bg-gray-50/50">
           <Button
             variant="ghost"

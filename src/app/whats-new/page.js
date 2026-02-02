@@ -1,0 +1,317 @@
+"use client";
+
+import { useState } from "react";
+import { Button } from "@/components/ui/button";
+import {
+    FaArrowLeft,
+    FaUserShield,
+    FaCog,
+    FaTools,
+    FaUserTag,
+    FaEllipsisH,
+    FaImage,
+    FaTimes
+} from "react-icons/fa";
+import Link from "next/link";
+import { Dialog, DialogContent } from "@/components/ui/dialog";
+import Image from "next/image";
+import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
+import { whatsNewData } from "@/data/whatsNewData";
+
+const WhatsNew = () => {
+    // Default to the first version (latest)
+    const [activeVersion, setActiveVersion] = useState(whatsNewData[0]?.id || "");
+    const [selectedItem, setSelectedItem] = useState(null);
+    const [isDialogOpen, setIsDialogOpen] = useState(false);
+
+    const getBadgeStyle = (type) => {
+        switch (type) {
+            case 'feature': return 'bg-green-100 text-green-700 border-green-200';
+            case 'fix': return 'bg-red-100 text-red-700 border-red-200';
+            case 'ui': return 'bg-purple-100 text-purple-700 border-purple-200';
+            case 'improvement': return 'bg-blue-100 text-blue-700 border-blue-200';
+            case 'security': return 'bg-amber-100 text-amber-700 border-amber-200';
+            default: return 'bg-gray-100 text-gray-700 border-gray-200';
+        }
+    };
+
+    const getBadgeLabel = (type) => {
+        switch (type) {
+            case 'feature': return '✨ New';
+            case 'fix': return '🐛 Fix';
+            case 'ui': return '🎨 UI';
+            case 'improvement': return '⚡ Better';
+            case 'security': return '🛡️ Security';
+            default: return 'Update';
+        }
+    };
+
+    const roleConfig = {
+        admin: { icon: FaUserShield, label: 'Admin', color: 'text-red-600' },
+        qc: { icon: FaCog, label: 'QC Tech', color: 'text-purple-600' },
+        operator: { icon: FaTools, label: 'Operator', color: 'text-orange-600' },
+        customer: { icon: FaUserTag, label: 'Customer', color: 'text-green-600' },
+        other: { icon: FaEllipsisH, label: 'General', color: 'text-gray-600' }
+    };
+
+    const currentVersion = whatsNewData.find(v => v.id === activeVersion);
+
+    const handleCardClick = (item) => {
+        setSelectedItem(item);
+        setIsDialogOpen(true);
+    };
+
+    return (
+        <div className="min-h-screen bg-gray-50 py-8 px-4 sm:px-6 lg:px-8 font-sans">
+            <div className="max-w-7xl mx-auto">
+                {/* Header */}
+                <div className="flex items-center justify-between mb-8">
+                    <div>
+                        <h1 className="text-4xl font-extrabold text-gray-900 tracking-tight">What's New</h1>
+                        <p className="text-gray-500 mt-2 text-lg">Discover the latest features and improvements</p>
+                    </div>
+                    <Link href="/">
+                        <Button variant="outline" size="sm" className="gap-2 h-10 border-rose-200 text-rose-600 hover:bg-rose-50 hover:text-rose-700 hover:border-rose-300">
+                            <FaArrowLeft className="w-3 h-3" /> Back to Home
+                        </Button>
+                    </Link>
+                </div>
+
+                {/* Main Layout */}
+                <div className="flex flex-col lg:flex-row gap-6">
+                    {/* Sidebar / Version Tabs */}
+                    <div className="w-full lg:w-72 flex-shrink-0 space-y-2">
+                        <p className="text-xs font-bold text-gray-400 uppercase tracking-wider mb-3 px-2">Version History</p>
+                        {whatsNewData.map((ver) => (
+                            <button
+                                key={ver.id}
+                                onClick={() => setActiveVersion(ver.id)}
+                                className={`w-full text-left px-5 py-4 rounded-xl transition-all duration-300 flex items-center justify-between group flex-wrap gap-2 ${activeVersion === ver.id
+                                    ? "bg-white shadow-lg border-2 border-rose-200 ring-2 ring-rose-50"
+                                    : "bg-white hover:bg-gray-50 border border-gray-100 text-gray-600 hover:shadow-md"
+                                    }`}
+                            >
+                                <div>
+                                    <div className={`font-bold text-lg transition-colors ${activeVersion === ver.id ? "text-rose-600" : "text-gray-700 group-hover:text-rose-500"}`}>
+                                        {ver.id}
+                                    </div>
+                                    <div className="text-xs text-gray-400 mt-1">{ver.date}</div>
+                                    <div className={`text-xs mt-0.5 font-medium ${activeVersion === ver.id ? "text-rose-400" : "text-gray-400"}`}>{ver.label}</div>
+                                </div>
+                                {ver.isNew && (
+                                    <span className="bg-gradient-to-r from-rose-500 to-purple-600 text-white text-[10px] font-bold px-2.5 py-1 rounded-full shadow-md animate-pulse">
+                                        LATEST
+                                    </span>
+                                )}
+                            </button>
+                        ))}
+                    </div>
+
+                    {/* Content Area with Tabs */}
+                    <div className="flex-1 min-w-0">
+                        {currentVersion ? (
+                            <div className="bg-white rounded-2xl shadow-xl border border-gray-100 overflow-hidden animate-in fade-in slide-in-from-bottom-4 duration-500">
+                                <Tabs defaultValue="admin" className="w-full">
+                                    <div className="border-b border-gray-100 bg-gray-50/50 px-2 pt-2 sm:px-6 sm:pt-6 overflow-x-auto">
+                                        <TabsList className="w-full flex sm:grid sm:grid-cols-5 gap-2 bg-transparent h-auto p-0 min-w-max sm:min-w-0">
+                                            {Object.entries(roleConfig).map(([key, config]) => {
+                                                const Icon = config.icon;
+                                                const count = currentVersion.updates[key]?.length || 0;
+                                                return (
+                                                    <TabsTrigger
+                                                        key={key}
+                                                        value={key}
+                                                        className="flex flex-col items-center gap-2 py-3 px-4 sm:px-2 data-[state=active]:bg-white data-[state=active]:shadow-md data-[state=active]:border-gray-200 data-[state=active]:text-rose-600 rounded-t-xl sm:rounded-xl transition-all border border-transparent flex-1"
+                                                    >
+                                                        <Icon className={`w-5 h-5 ${config.color}`} />
+                                                        <div className="text-xs font-semibold whitespace-nowrap">{config.label}</div>
+                                                        {count > 0 && (
+                                                            <span className="bg-rose-100 text-rose-600 text-[10px] font-bold px-2 py-0.5 rounded-full">
+                                                                {count}
+                                                            </span>
+                                                        )}
+                                                    </TabsTrigger>
+                                                );
+                                            })}
+                                        </TabsList>
+                                    </div>
+
+                                    {Object.entries(roleConfig).map(([key, config]) => (
+                                        <TabsContent key={key} value={key} className="p-4 sm:p-6 mt-0 bg-white min-h-[400px]">
+                                            {currentVersion.updates[key]?.length > 0 ? (
+                                                <div className="grid grid-cols-1 gap-4">
+                                                    {currentVersion.updates[key].map((item, idx) => (
+                                                        <div
+                                                            key={idx}
+                                                            onClick={() => handleCardClick(item)}
+                                                            className="group bg-white border border-gray-100 rounded-xl p-5 hover:shadow-lg hover:border-rose-100 transition-all duration-300 cursor-pointer transform hover:-translate-y-1 relative overflow-hidden"
+                                                        >
+                                                            {/* Hover gradient effect */}
+                                                            <div className="absolute top-0 left-0 w-1 h-full bg-gradient-to-b from-rose-400 to-purple-500 opacity-0 group-hover:opacity-100 transition-opacity"></div>
+
+                                                            <div className="flex items-start justify-between mb-3 pl-2">
+                                                                <span className={`px-3 py-1.5 rounded-lg text-xs font-bold uppercase border ${getBadgeStyle(item.type)}`}>
+                                                                    {getBadgeLabel(item.type)}
+                                                                </span>
+                                                                {item.image && (
+                                                                    <div className="flex items-center gap-2 text-xs text-gray-400 group-hover:text-rose-500 transition-colors bg-gray-50 px-2 py-1 rounded-full group-hover:bg-rose-50">
+                                                                        <FaImage className="w-3.5 h-3.5" />
+                                                                        <span className="font-medium">Preview</span>
+                                                                    </div>
+                                                                )}
+                                                            </div>
+                                                            <h3 className="text-lg font-bold text-gray-900 mb-2 group-hover:text-rose-600 transition-colors pl-2">
+                                                                {item.title}
+                                                            </h3>
+                                                            <p className="text-sm text-gray-500 leading-relaxed pl-2 line-clamp-2">
+                                                                {item.description}
+                                                            </p>
+                                                        </div>
+                                                    ))}
+                                                </div>
+                                            ) : (
+                                                <div className="text-center py-20 flex flex-col items-center justify-center opacity-60">
+                                                    <div className="w-20 h-20 bg-gray-50 rounded-full flex items-center justify-center mb-4">
+                                                        <config.icon className={`w-8 h-8 ${config.color} opacity-50`} />
+                                                    </div>
+                                                    <p className="text-gray-500 font-medium">No updates for {config.label} in this version</p>
+                                                </div>
+                                            )}
+                                        </TabsContent>
+                                    ))}
+                                </Tabs>
+                            </div>
+                        ) : (
+                            <div className="bg-white rounded-2xl shadow-xl p-8 text-center text-gray-500">
+                                Select a version to view details
+                            </div>
+                        )}
+                    </div>
+                </div>
+
+                <div className="mt-12 text-center border-t border-gray-200 pt-8">
+                    <p className="text-gray-400 text-sm flex items-center justify-center gap-2">
+                        <span>© {new Date().getFullYear()} SewerVision AI</span>
+                        <span className="w-1 h-1 rounded-full bg-gray-300"></span>
+                        <span>All rights reserved</span>
+                    </p>
+                </div>
+            </div>
+
+            {/* Enhanced Dialog */}
+            <Dialog open={isDialogOpen} onOpenChange={setIsDialogOpen}>
+                <DialogContent className="max-w-6xl p-0 gap-0 overflow-hidden border-0 bg-white shadow-2xl rounded-2xl">
+                    <div className="flex flex-col md:flex-row h-[85vh] md:h-[70vh]">
+                        {/* Left Side - Image */}
+                        <div className="w-full md:w-3/5 bg-gray-50 relative flex items-center justify-center p-8 border-b md:border-b-0 md:border-r border-gray-200">
+                            {/* Background Pattern */}
+                            <div className="absolute inset-0 opacity-5 bg-[radial-gradient(#e5e7eb_1px,transparent_1px)] [background-size:16px_16px]"></div>
+
+                            {selectedItem?.image ? (
+                                <div
+                                    className="relative w-full h-full shadow-lg rounded-lg overflow-hidden bg-white cursor-zoom-in group"
+                                    onClick={() => setSelectedItem(prev => ({ ...prev, isZoomed: true }))}
+                                >
+                                    <Image
+                                        src={selectedItem.image}
+                                        alt={selectedItem.title}
+                                        fill
+                                        className="object-cover transition-transform duration-500 group-hover:scale-105"
+                                    />
+                                    <div className="absolute inset-0 bg-black/0 group-hover:bg-black/10 transition-colors flex items-center justify-center">
+                                        <div className="bg-white/90 text-gray-800 text-xs font-bold px-3 py-1.5 rounded-full shadow-lg opacity-0 group-hover:opacity-100 transform translate-y-2 group-hover:translate-y-0 transition-all flex items-center gap-2">
+                                            <FaImage className="w-3 h-3" /> Click to Zoom
+                                        </div>
+                                    </div>
+                                </div>
+                            ) : (
+                                <div className="text-gray-400 text-center z-10">
+                                    <div className="w-24 h-24 bg-gray-100 rounded-full flex items-center justify-center mx-auto mb-4">
+                                        <FaImage className="w-10 h-10 opacity-30" />
+                                    </div>
+                                    <p className="text-sm font-medium">No preview available</p>
+                                </div>
+                            )}
+                        </div>
+
+                        {/* Right Side - Details */}
+                        <div className="w-full md:w-2/5 bg-white p-8 overflow-y-auto relative">
+                            {selectedItem && (
+                                <div className="space-y-6 pt-4">
+                                    <div>
+                                        <span className={`px-3 py-1.5 rounded-lg text-xs font-bold uppercase border ${getBadgeStyle(selectedItem.type)}`}>
+                                            {getBadgeLabel(selectedItem.type)}
+                                        </span>
+                                    </div>
+
+                                    <div>
+                                        <h2 className="text-2xl font-bold text-gray-900 mb-3 leading-tight">
+                                            {selectedItem.title}
+                                        </h2>
+                                        <p className="text-gray-600 leading-relaxed text-base">
+                                            {selectedItem.description}
+                                        </p>
+                                    </div>
+
+                                    {selectedItem.details && selectedItem.details.length > 0 && (
+                                        <div className="bg-gray-50 rounded-xl p-5 border border-gray-100">
+                                            <h3 className="text-xs font-bold text-gray-500 uppercase tracking-wider mb-4 flex items-center gap-2">
+                                                <FaCog className="w-3 h-3" /> Key Features
+                                            </h3>
+                                            <ul className="space-y-3">
+                                                {selectedItem.details.map((detail, idx) => (
+                                                    <li key={idx} className="flex items-start gap-3 text-sm text-gray-700">
+                                                        <div className="mt-1 w-4 h-4 rounded-full bg-green-100 flex items-center justify-center flex-shrink-0">
+                                                            <span className="text-green-600 text-[10px] font-bold">✓</span>
+                                                        </div>
+                                                        <span className="leading-snug">{detail}</span>
+                                                    </li>
+                                                ))}
+                                            </ul>
+                                        </div>
+                                    )}
+
+                                    <div className="pt-6 border-t border-gray-200 mt-auto">
+                                        <p className="text-xs text-gray-400 font-medium">
+                                            Included in <span className="text-rose-500">Release {currentVersion.id}</span>
+                                        </p>
+                                    </div>
+                                </div>
+                            )}
+                        </div>
+                    </div>
+                </DialogContent>
+            </Dialog>
+
+            {/* Full Screen Image Zoom Overlay */}
+            {selectedItem?.isZoomed && selectedItem.image && (
+                <div
+                    className="fixed inset-0 z-[9999] bg-black/95 flex items-center justify-center p-4 md:p-10 animate-in fade-in duration-200"
+                    onClick={() => setSelectedItem(prev => ({ ...prev, isZoomed: false }))}
+                >
+                    <button
+                        className="absolute top-6 right-6 text-white/50 hover:text-white bg-white/10 hover:bg-white/20 rounded-full p-3 transition-all z-50 backdrop-blur-sm"
+                        onClick={(e) => {
+                            e.stopPropagation();
+                            setSelectedItem(prev => ({ ...prev, isZoomed: false }));
+                        }}
+                    >
+                        <FaTimes className="w-6 h-6" />
+                    </button>
+
+                    <div className="relative w-full h-full max-w-7xl max-h-[90vh]" onClick={e => e.stopPropagation()}>
+                        <Image
+                            src={selectedItem.image}
+                            alt={selectedItem.title}
+                            fill
+                            className="object-contain"
+                            priority
+                        />
+                    </div>
+                </div>
+            )}
+        </div>
+    );
+};
+
+export default WhatsNew;

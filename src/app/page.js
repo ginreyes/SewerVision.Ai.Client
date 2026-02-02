@@ -1,8 +1,9 @@
 'use client'
 import { useEffect } from "react";
 import { useRouter } from "next/navigation";
+import Link from "next/link";
 import Login from "./login/page";
-import { FaCamera, FaBrain, FaChartLine, FaShieldAlt, FaClock, FaUsers } from "react-icons/fa";
+import { FaCamera, FaBrain, FaChartLine, FaShieldAlt, FaClock, FaUsers, FaArrowRight, FaStar } from "react-icons/fa";
 
 export default function Home() {
   const router = useRouter();
@@ -54,6 +55,21 @@ export default function Home() {
 
   return (
     <div className="min-h-screen w-full relative overflow-y-auto bg-gray-100">
+      {/* New Updates Button */}
+      <div className="absolute top-6 right-6 z-50">
+        <Link
+          href="/whats-new"
+          className="flex items-center gap-2 px-5 py-2.5 bg-white/90 backdrop-blur-md rounded-full shadow-lg border border-rose-100 text-rose-600 font-bold text-sm hover:bg-white hover:scale-105 transition-all duration-300 group"
+        >
+          <div className="relative flex h-3 w-3">
+            <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-rose-400 opacity-75"></span>
+            <span className="relative inline-flex rounded-full h-3 w-3 bg-rose-500"></span>
+          </div>
+          <span className="group-hover:text-rose-700">See What's New</span>
+          <FaStar className="h-4 w-4 text-yellow-500 group-hover:rotate-180 transition-transform duration-500" />
+        </Link>
+      </div>
+
       {/* Animated Background */}
       <div className="absolute inset-0">
         {/* Animated Gradient Orbs with Rose/Pink theme */}
@@ -96,6 +112,21 @@ export default function Home() {
               infrastructure maintenance.
             </p>
 
+            <div className="flex gap-4 mb-10">
+              <a
+                href="/login"
+                className="px-8 py-4 bg-gradient-to-r from-[#D76A84] to-rose-600 hover:from-rose-600 hover:to-pink-700 text-white font-bold rounded-xl shadow-lg hover:shadow-xl transform hover:-translate-y-1 transition-all flex items-center gap-2 text-lg"
+              >
+                Launch Portal <FaArrowRight />
+              </a>
+              <a
+                href="/register"
+                className="px-8 py-4 bg-white text-rose-600 font-bold rounded-xl shadow-md border border-rose-100 hover:bg-gray-50 hover:shadow-lg transform hover:-translate-y-1 transition-all text-lg"
+              >
+                Create Account
+              </a>
+            </div>
+
             {/* Stats */}
             <div className="grid grid-cols-3 gap-6 mb-8">
               <div className="bg-white/90 backdrop-blur-sm rounded-2xl p-4 shadow-lg border border-rose-100 hover:shadow-xl transition-all duration-300">
@@ -118,28 +149,31 @@ export default function Home() {
               </div>
             </div>
           </div>
+        </div>
 
-          {/* Features Grid */}
-          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4 max-w-4xl">
+        {/* Right Side - Features Display */}
+        <div className="flex-1 flex items-center justify-center px-8 lg:px-16 py-12 relative">
+          <div className="absolute inset-0 bg-gradient-to-l from-rose-50/50 to-transparent pointer-events-none"></div>
+
+          <div className="w-full max-w-lg space-y-4">
             {features.map((feature, index) => (
               <div
                 key={index}
-                className="bg-white/70 backdrop-blur-sm rounded-xl p-4 border border-rose-100 hover:bg-white/90 hover:shadow-lg hover:border-rose-200 transition-all duration-300 hover:-translate-y-1"
+                className="bg-white/80 backdrop-blur-md rounded-2xl p-5 border border-white shadow-xl hover:shadow-2xl hover:scale-105 transition-all duration-300 group cursor-default"
               >
-                <div className="p-2 bg-gradient-to-r from-[#D76A84] to-rose-500 rounded-lg w-fit text-white mb-3">
-                  {feature.icon}
+                <div className="flex items-center gap-4">
+                  <div className="p-3 bg-gradient-to-br from-rose-50 to-pink-50 rounded-xl group-hover:from-rose-100 group-hover:to-pink-100 transition-colors">
+                    <div className="text-rose-500">
+                      {feature.icon}
+                    </div>
+                  </div>
+                  <div>
+                    <h3 className="font-bold text-gray-900 text-lg">{feature.title}</h3>
+                    <p className="text-gray-600 text-sm leading-snug">{feature.description}</p>
+                  </div>
                 </div>
-                <h3 className="font-semibold text-gray-900 mb-1">{feature.title}</h3>
-                <p className="text-sm text-gray-600">{feature.description}</p>
               </div>
             ))}
-          </div>
-        </div>
-
-        {/* Right Side - Login */}
-        <div className="flex-shrink-0 lg:w-[500px] flex items-center justify-center px-8 py-12">
-          <div className="w-full max-w-md">
-            <Login />
           </div>
         </div>
       </div>

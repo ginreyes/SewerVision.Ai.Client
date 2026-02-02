@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useEffect, useCallback } from "react";
+import { useState, useEffect, useCallback, Suspense } from "react";
 import { useParams, useRouter, useSearchParams } from "next/navigation";
 import {
   ArrowLeft,
@@ -92,12 +92,12 @@ const EditableSection = ({
   );
 };
 
-const ObservationDetailsPage = () => {
+const ObservationDetailsPageContent = () => {
   const router = useRouter();
   const [observation, setObservation] = useState(null);
   const [editingSections, setEditingSections] = useState({});
   const [sectionData, setSectionData] = useState({});
-  const [projects,setProjects] = useState([]);
+  const [projects, setProjects] = useState([]);
   const [users, setUsers] = useState(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
@@ -106,15 +106,15 @@ const ObservationDetailsPage = () => {
 
   const searchParams = useSearchParams();
   const projectId = searchParams.get("projectId");
-  
+
 
   const { observation_id } = useParams();
   const { showAlert } = useAlert();
-  const {showDelete} = useDialog();
+  const { showDelete } = useDialog();
 
 
   // Fetch observation data from API
- 
+
   const getSeverityColor = (severity) => {
     const severityMap = {
       high: "bg-red-100 text-red-800 border-red-200",
@@ -182,7 +182,7 @@ const ObservationDetailsPage = () => {
       } else {
         showAlert('Failed to load project information');
       }
-    } 
+    }
     catch (error) {
       console.error(`Failed to load project information: ${error.message}`);
     }
@@ -191,7 +191,7 @@ const ObservationDetailsPage = () => {
   const fetchUserCreatedBy = useCallback(async (userId) => {
     try {
       const { ok, data } = await api(`/api/users/get-user-details/${userId}`, 'GET');
-  
+
       if (ok && data.user) {
         setUsers(`${data.user.first_name} ${data.user.last_name}`);
       } else {
@@ -202,20 +202,20 @@ const ObservationDetailsPage = () => {
       showAlert('An unexpected error occurred while loading user information');
     }
   }, [showAlert]);
-  
-  
-  
+
+
+
 
   const handleDelete = async () => {
     if (confirm("Are you sure you want to delete this observation?")) {
       try {
         const { ok } = await api(
-          `/api/observations/delete-observation/${observation_id}`,'DELETE');
+          `/api/observations/delete-observation/${observation_id}`, 'DELETE');
 
         if (ok) {
           showAlert(`observation successfully deleted:${observation_id}`)
           router.push(`/admin/project/observationpages/${observation_id}`);
-        } 
+        }
         else {
           setError("Failed to delete observation");
         }
@@ -247,7 +247,7 @@ const ObservationDetailsPage = () => {
   useEffect(() => {
     fetchpacpCodes();
     handleFetchProject();
-  }, [fetchpacpCodes,handleFetchProject,fetchUserCreatedBy]);
+  }, [fetchpacpCodes, handleFetchProject, fetchUserCreatedBy]);
 
   useEffect(() => {
     const fetchObservation = async () => {
@@ -257,27 +257,27 @@ const ObservationDetailsPage = () => {
         );
         const observation = data.data;
         const createdBy = observation.createdBy;
-  
+
         setObservation(observation);
-  
+
         if (createdBy) {
           await fetchUserCreatedBy(createdBy);
         }
-  
+
         setSectionData({
           basicInfo: { ...observation },
           observationDetails: { ...observation },
           additionalProperties: { ...observation },
           severity: { ...observation },
         });
-  
+
         setLoading(false);
       } catch (err) {
         setError("Failed to load observation details");
         setLoading(false);
       }
     };
-  
+
     if (observation_id) {
       fetchObservation();
     }
@@ -619,11 +619,10 @@ const ObservationDetailsPage = () => {
                     />
                   ) : (
                     <span
-                      className={`inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium ${
-                        observation.continuous
+                      className={`inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium ${observation.continuous
                           ? "bg-green-100 text-green-800"
                           : "bg-gray-100 text-gray-800"
-                      }`}
+                        }`}
                     >
                       {observation.continuous ? "Yes" : "No"}
                     </span>
@@ -654,11 +653,10 @@ const ObservationDetailsPage = () => {
                     />
                   ) : (
                     <span
-                      className={`inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium ${
-                        observation.snapshot
+                      className={`inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium ${observation.snapshot
                           ? "bg-green-100 text-green-800"
                           : "bg-gray-100 text-gray-800"
-                      }`}
+                        }`}
                     >
                       {observation.snapshot ? "Yes" : "No"}
                     </span>
@@ -689,11 +687,10 @@ const ObservationDetailsPage = () => {
                     />
                   ) : (
                     <span
-                      className={`inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium ${
-                        observation.aiGenerated
+                      className={`inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium ${observation.aiGenerated
                           ? "bg-purple-100 text-purple-800"
                           : "bg-gray-100 text-gray-800"
-                      }`}
+                        }`}
                     >
                       {observation.aiGenerated ? "Yes" : "No"}
                     </span>
@@ -852,6 +849,25 @@ const ObservationDetailsPage = () => {
         </div>
       </div>
     </div>
+  );
+};
+
+// Loading fallback for Suspense
+const ObservationPageLoading = () => (
+  <div className="min-h-screen bg-gray-50 flex items-center justify-center">
+    <div className="text-center">
+      <div className="animate-spin rounded-full h-32 w-32 border-b-2 border-blue-600"></div>
+      <p className="mt-4 text-gray-600">Loading observation details...</p>
+    </div>
+  </div>
+);
+
+// Main export wrapped in Suspense
+const ObservationDetailsPage = () => {
+  return (
+    <Suspense fallback={<ObservationPageLoading />}>
+      <ObservationDetailsPageContent />
+    </Suspense>
   );
 };
 

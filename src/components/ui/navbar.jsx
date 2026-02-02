@@ -12,7 +12,8 @@ import { FiSearch, FiClock, FiFile, FiUsers, FiSettings } from 'react-icons/fi';
 import Link from 'next/link';
 import Image from 'next/image';
 import { api } from '@/lib/helper';
-import { NotificationBell } from '../NotoficationPanel';
+import { NotificationBell } from '../NotificationPanel';
+import { useUser } from '@/components/providers/UserContext';
 
 // Search categories for icons and styling
 const searchCategories = {
@@ -36,6 +37,7 @@ const Navbar = (props) => {
   const [searchHistory, setSearchHistory] = useState([]);
   const [loading, setLoading] = useState(false);
 
+  const { userData, logout } = useUser();
   const router = useRouter();
   const searchInputRef = useRef(null);
   const searchContainerRef = useRef(null);
@@ -160,14 +162,27 @@ const Navbar = (props) => {
   };
 
   const handleLogout = () => {
-    localStorage.removeItem('authToken');
-    localStorage.removeItem('role');
-    router.push('/');
+    if (logout) {
+      logout();
+    } else {
+      localStorage.removeItem('authToken');
+      localStorage.removeItem('role');
+      localStorage.removeItem('username');
+      router.push('/');
+    }
   };
 
   const handleSettings = () => {
-    router.push('/admin/settings');
+    // Route to the appropriate settings page based on user role
+    const currentRole = userData?.role || role;
+    const settingsPath = currentRole ? `/${currentRole}/settings` : '/admin/settings';
+    router.push(settingsPath);
   };
+
+  const userDisplayName = userData ? `${userData.first_name || ''} ${userData.last_name || ''}`.trim() || userData.username : 'David Flores';
+  const userInitials = userDisplayName ? userDisplayName.charAt(0).toUpperCase() : 'U';
+  const userRole = userData?.role || role || 'Admin';
+  const userAvatar = userData?.avatar || "/avatar_default.png";
 
   return (
     <nav className="border-b p-4 ">
@@ -287,28 +302,97 @@ const Navbar = (props) => {
 
           <Popover open={open} onOpenChange={setOpen}>
             <PopoverTrigger asChild>
-              <button className="focus:outline-none">
-                <Avatar className="w-10 h-10">
-                  <AvatarImage src="/avatar_default.png" alt="User" />
-                  <AvatarFallback>DF</AvatarFallback>
-                </Avatar>
+              <button className="focus:outline-none group">
+                <div className="relative">
+                  <Avatar className="w-10 h-10 ring-2 ring-transparent group-hover:ring-rose-200 transition-all duration-200">
+                    <AvatarImage src={userAvatar} alt="User" />
+                    <AvatarFallback className="bg-gradient-to-br from-rose-400 to-pink-500 text-white font-semibold">{userInitials}</AvatarFallback>
+                  </Avatar>
+                  <span className="absolute bottom-0 right-0 w-3 h-3 bg-green-500 border-2 border-white rounded-full"></span>
+                </div>
               </button>
             </PopoverTrigger>
-            <PopoverContent className="w-44 p-2">
-              <Link href={role ? `/${role}/settings` : '/admin/settings'}>
-                <Button variant="ghost" className="w-full justify-start p-2 h-auto">
-                  <RxAvatar className="w-4 h-4 mr-2" />
-                  Profile
+            <PopoverContent className="w-64 p-0 shadow-xl border-0 rounded-xl overflow-hidden" align="end">
+              {/* User Info Header */}
+              <div className="bg-gradient-to-r from-rose-500 via-pink-500 to-purple-500 p-4 text-white">
+                <div className="flex items-center gap-3">
+                  <Avatar className="w-12 h-12 ring-2 ring-white/30">
+                    <AvatarImage src={userAvatar} alt="User" />
+                    <AvatarFallback className="bg-white/20 text-white font-semibold">{userInitials}</AvatarFallback>
+                  </Avatar>
+                  <div className="flex-1 min-w-0">
+                    <p className="font-semibold truncate">{userDisplayName}</p>
+                    <p className="text-white/80 text-sm truncate">{userRole}</p>
+                  </div>
+                </div>
+              </div>
+
+              {/* Menu Items */}
+              <div className="p-2 bg-white">
+                <Link href={userRole ? `/${userRole}/settings` : '/admin/settings'}>
+                  <Button variant="ghost" className="w-full justify-start p-3 h-auto rounded-lg hover:bg-gray-50 group">
+                    <RxAvatar className="w-5 h-5 mr-3 text-gray-500 group-hover:text-rose-500 transition-colors" />
+                    <div className="text-left">
+                      <p className="font-medium text-gray-700">Profile</p>
+                      <p className="text-xs text-gray-400">View and edit your profile</p>
+                    </div>
+                  </Button>
+                </Link>
+
+                <Link href={userRole ? `/${userRole}/settings?tab=preferences` : '/admin/settings?tab=preferences'}>
+                  <Button variant="ghost" className="w-full justify-start p-3 h-auto rounded-lg hover:bg-gray-50 group">
+                    <FiSettings className="w-5 h-5 mr-3 text-gray-500 group-hover:text-blue-500 transition-colors" />
+                    <div className="text-left">
+                      <p className="font-medium text-gray-700">Settings</p>
+                      <p className="text-xs text-gray-400">Manage your preferences</p>
+                    </div>
+                  </Button>
+                </Link>
+
+                {(userRole === 'operator' || userData?.role === 'operator') && (
+                  <Link href="/operator/settings">
+                    <Button variant="ghost" className="w-full justify-start p-3 h-auto rounded-lg hover:bg-gray-50 group">
+                      <FiSettings className="w-5 h-5 mr-3 text-gray-500 group-hover:text-cyan-500 transition-colors" />
+                      <div className="text-left">
+                        <p className="font-medium text-gray-700">Operator Settings</p>
+                        <p className="text-xs text-gray-400">Manage operator config</p>
+                      </div>
+                    </Button>
+                  </Link>
+                )}
+
+                <Button
+                  variant="ghost"
+                  className="w-full justify-start p-3 h-auto rounded-lg hover:bg-gray-50 group"
+                  onClick={() => {
+                    setOpen(false);
+                    // Dispatch custom event to trigger tour
+                    window.dispatchEvent(new CustomEvent('openTourGuide'));
+                  }}
+                >
+                  <svg xmlns="http://www.w3.org/2000/svg" className="w-5 h-5 mr-3 text-gray-500 group-hover:text-purple-500 transition-colors" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9.663 17h4.673M12 3v1m6.364 1.636l-.707.707M21 12h-1M4 12H3m3.343-5.657l-.707-.707m2.828 9.9a5 5 0 117.072 0l-.548.547A3.374 3.374 0 0014 18.469V19a2 2 0 11-4 0v-.531c0-.895-.356-1.754-.988-2.386l-.548-.547z" />
+                  </svg>
+                  <div className="text-left">
+                    <p className="font-medium text-gray-700">Tour Guide</p>
+                    <p className="text-xs text-gray-400">Learn how to use the app</p>
+                  </div>
                 </Button>
-              </Link>
-              <Button
-                variant="ghost"
-                className="w-full justify-start p-2 h-auto"
-                onClick={handleLogout}
-              >
-                <AiOutlineLogout className="w-4 h-4 mr-2" />
-                Log out
-              </Button>
+
+                <div className="border-t border-gray-100 my-2"></div>
+
+                <Button
+                  variant="ghost"
+                  className="w-full justify-start p-3 h-auto rounded-lg hover:bg-red-50 group text-red-600"
+                  onClick={handleLogout}
+                >
+                  <AiOutlineLogout className="w-5 h-5 mr-3 group-hover:text-red-600 transition-colors" />
+                  <div className="text-left">
+                    <p className="font-medium">Log out</p>
+                    <p className="text-xs text-red-400">Sign out of your account</p>
+                  </div>
+                </Button>
+              </div>
             </PopoverContent>
           </Popover>
         </div>

@@ -25,10 +25,21 @@ import { Card, CardContent } from "@/components/ui/card"
 import { Badge } from "@/components/ui/badge"
 import { Separator } from "@/components/ui/separator"
 import { Textarea } from "@/components/ui/textarea"
+import {
+  Building2,
+  UserPlus,
+  ShieldCheck,
+  Wrench,
+  ArrowLeft,
+  CheckCircle2,
+  User,
+  Mail,
+  UserCircle
+} from "lucide-react"
 
-const AddUserModal = ({fetchUser}) => {
+const AddUserModal = ({ fetchUser }) => {
   const [open, setOpen] = useState(false)
-  const [step, setStep] = useState(1) 
+  const [step, setStep] = useState(1)
   const [formData, setFormData] = useState({
     username: "",
     email: "",
@@ -54,33 +65,41 @@ const AddUserModal = ({fetchUser}) => {
   const { showAlert } = useAlert()
 
   const roles = [
-    { 
-      value: 'admin', 
-      label: 'Admin', 
-      description: 'Full system access and management',
-      color: 'bg-red-100 text-red-800 border-red-200',
-      icon: '⚡'
+    {
+      value: 'admin',
+      label: 'Admin',
+      description: 'Full system access and management capabilities',
+      color: 'from-red-500 to-rose-600',
+      bgColor: 'bg-red-50',
+      borderColor: 'border-red-200',
+      icon: ShieldCheck
     },
-    { 
-      value: 'customer', 
-      label: 'Customer', 
-      description: 'Client account with project access',
-      color: 'bg-green-100 text-green-800 border-green-200',
-      icon: '🏢'
+    {
+      value: 'customer',
+      label: 'Customer',
+      description: 'Client account with project viewing access',
+      color: 'from-emerald-500 to-green-600',
+      bgColor: 'bg-emerald-50',
+      borderColor: 'border-emerald-200',
+      icon: Building2
     },
-    { 
-      value: 'qc-technician', 
-      label: 'QC Technician', 
-      description: 'Quality control and technical operations',
-      color: 'bg-purple-100 text-purple-800 border-purple-200',
-      icon: '🔧'
+    {
+      value: 'qc-technician',
+      label: 'QC Technician',
+      description: 'Quality control, inspections and technical reports',
+      color: 'from-violet-500 to-purple-600',
+      bgColor: 'bg-violet-50',
+      borderColor: 'border-violet-200',
+      icon: Wrench
     },
-    { 
-      value: 'operator', 
-      label: 'Operator', 
-      description: 'Equipment operation and maintenance',
-      color: 'bg-orange-100 text-orange-800 border-orange-200',
-      icon: '⚙️'
+    {
+      value: 'operator',
+      label: 'Operator',
+      description: 'Equipment operation, field work and maintenance',
+      color: 'from-orange-500 to-amber-600',
+      bgColor: 'bg-orange-50',
+      borderColor: 'border-orange-200',
+      icon: UserPlus
     },
   ]
 
@@ -90,8 +109,8 @@ const AddUserModal = ({fetchUser}) => {
   }
 
   const handleRoleSelect = (role) => {
-    setFormData((prev) => ({ 
-      ...prev, 
+    setFormData((prev) => ({
+      ...prev,
       role: role,
       // Reset all role-specific fields
       certification: "",
@@ -151,34 +170,18 @@ const AddUserModal = ({fetchUser}) => {
         payload.billing_contact = formData.billing_contact
       }
 
-      await api("/api/users/create-user", "POST", payload)
+      const { ok, data } = await api("/api/users/create-user", "POST", payload)
+
+      if (!ok) {
+        throw new Error(data?.message || "Failed to create user")
+      }
 
       // Reset form
-      setFormData({
-        username: "",
-        email: "",
-        first_name: "",
-        last_name: "",
-        role: "",
-        certification: "",
-        license_number: "",
-        experience_years: "",
-        shift_preference: "",
-        equipment_experience: "",
-        company_name: "",
-        industry: "",
-        phone_number: "",
-        address: "",
-        account_type: "standard",
-        company_size: "",
-        tax_id: "",
-        billing_contact: "",
-      })
-      setStep(1)
-      setOpen(false)
+      resetAndClose()
       showAlert("User created successfully! Account credentials sent via email.", "success")
       fetchUser()
     } catch (error) {
+      console.error(error)
       showAlert(`User creation failed: ${error.message}`, "error")
     }
   }
@@ -214,249 +217,231 @@ const AddUserModal = ({fetchUser}) => {
     switch (formData.role) {
       case "qc-technician":
         return (
-          <Card className="border-purple-200">
-            <CardContent className="p-4">
-              <div className="flex items-center gap-2 mb-4">
-                <span className="text-2xl">🔧</span>
-                <div>
-                  <h4 className="font-semibold text-purple-700">QC Technician Details</h4>
-                  <p className="text-sm text-gray-600">Certification and experience information</p>
-                </div>
+          <div className="bg-violet-50/50 p-4 rounded-xl border border-violet-100 space-y-4">
+            <div className="flex items-center gap-2 mb-2">
+              <Wrench className="w-5 h-5 text-violet-600" />
+              <h4 className="font-semibold text-violet-900">Professional Qualifications</h4>
+            </div>
+
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+              <div>
+                <Label htmlFor="certification" className="text-violet-900">Certification *</Label>
+                <Input
+                  name="certification"
+                  value={formData.certification}
+                  onChange={handleChange}
+                  required
+                  placeholder="e.g., ACI Level II"
+                  className="mt-1 bg-white"
+                />
               </div>
-              <div className="space-y-4">
-                <div>
-                  <Label htmlFor="certification">Certification *</Label>
-                  <Input
-                    name="certification"
-                    value={formData.certification}
-                    onChange={handleChange}
-                    required
-                    placeholder="e.g., ACI Level II, ASNT NDT"
-                    className="mt-1"
-                  />
-                </div>
-                <div>
-                  <Label htmlFor="license_number">License Number *</Label>
-                  <Input
-                    name="license_number"
-                    value={formData.license_number}
-                    onChange={handleChange}
-                    required
-                    placeholder="Enter license/certification number"
-                    className="mt-1"
-                  />
-                </div>
-                <div>
-                  <Label htmlFor="experience_years">Years of Experience *</Label>
-                  <Input
-                    name="experience_years"
-                    type="number"
-                    min="0"
-                    value={formData.experience_years}
-                    onChange={handleChange}
-                    required
-                    placeholder="Total years of QC experience"
-                    className="mt-1"
-                  />
-                </div>
+              <div>
+                <Label htmlFor="license_number" className="text-violet-900">License Number *</Label>
+                <Input
+                  name="license_number"
+                  value={formData.license_number}
+                  onChange={handleChange}
+                  required
+                  placeholder="Enter license #"
+                  className="mt-1 bg-white"
+                />
               </div>
-            </CardContent>
-          </Card>
+              <div className="md:col-span-2">
+                <Label htmlFor="experience_years" className="text-violet-900">Years of Experience *</Label>
+                <Input
+                  name="experience_years"
+                  type="number"
+                  min="0"
+                  value={formData.experience_years}
+                  onChange={handleChange}
+                  required
+                  placeholder="Total years"
+                  className="mt-1 bg-white"
+                />
+              </div>
+            </div>
+          </div>
         )
 
       case "operator":
         return (
-          <Card className="border-orange-200">
-            <CardContent className="p-4">
-              <div className="flex items-center gap-2 mb-4">
-                <span className="text-2xl">⚙️</span>
-                <div>
-                  <h4 className="font-semibold text-orange-700">Operator Details</h4>
-                  <p className="text-sm text-gray-600">Operational qualifications and preferences</p>
-                </div>
+          <div className="bg-orange-50/50 p-4 rounded-xl border border-orange-100 space-y-4">
+            <div className="flex items-center gap-2 mb-2">
+              <UserPlus className="w-5 h-5 text-orange-600" />
+              <h4 className="font-semibold text-orange-900">Operational Details</h4>
+            </div>
+
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+              <div>
+                <Label htmlFor="certification" className="text-orange-900">Certification *</Label>
+                <Input
+                  name="certification"
+                  value={formData.certification}
+                  onChange={handleChange}
+                  required
+                  placeholder="Operator License"
+                  className="mt-1 bg-white"
+                />
               </div>
-              <div className="space-y-4">
-                <div>
-                  <Label htmlFor="certification">Certification *</Label>
-                  <Input
-                    name="certification"
-                    value={formData.certification}
-                    onChange={handleChange}
-                    required
-                    placeholder="e.g., Heavy Equipment Operator License"
-                    className="mt-1"
-                  />
-                </div>
-                <div>
-                  <Label htmlFor="shift_preference">Shift Preference *</Label>
-                  <Select 
-                    value={formData.shift_preference} 
-                    onValueChange={(value) => handleSelectChange('shift_preference', value)}
-                    required
-                  >
-                    <SelectTrigger className="w-full mt-1">
-                      <SelectValue placeholder="Select preferred shift" />
-                    </SelectTrigger>
-                    <SelectContent>
-                      <SelectItem value="day">🌅 Day Shift (6 AM - 2 PM)</SelectItem>
-                      <SelectItem value="night">🌙 Night Shift (10 PM - 6 AM)</SelectItem>
-                      <SelectItem value="rotating">🔄 Rotating Shift</SelectItem>
-                    </SelectContent>
-                  </Select>
-                </div>
-                <div>
-                  <Label htmlFor="equipment_experience">Equipment Experience *</Label>
-                  <Textarea
-                    name="equipment_experience"
-                    value={formData.equipment_experience}
-                    onChange={handleChange}
-                    required
-                    placeholder="List equipment types and years of experience (e.g., Excavators - 5 years, Cranes - 3 years)"
-                    className="mt-1"
-                    rows={3}
-                  />
-                </div>
+              <div>
+                <Label htmlFor="shift_preference" className="text-orange-900">Shift Preference *</Label>
+                <Select
+                  value={formData.shift_preference}
+                  onValueChange={(value) => handleSelectChange('shift_preference', value)}
+                  required
+                >
+                  <SelectTrigger className="w-full mt-1 bg-white">
+                    <SelectValue placeholder="Select shift" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="day">🌅 Day Shift</SelectItem>
+                    <SelectItem value="night">🌙 Night Shift</SelectItem>
+                    <SelectItem value="rotating">🔄 Rotating</SelectItem>
+                  </SelectContent>
+                </Select>
               </div>
-            </CardContent>
-          </Card>
+              <div className="md:col-span-2">
+                <Label htmlFor="equipment_experience" className="text-orange-900">Equipment Experience *</Label>
+                <Textarea
+                  name="equipment_experience"
+                  value={formData.equipment_experience}
+                  onChange={handleChange}
+                  required
+                  placeholder="List equipment details..."
+                  className="mt-1 bg-white"
+                  rows={2}
+                />
+              </div>
+            </div>
+          </div>
         )
 
       case "customer":
         return (
           <div className="space-y-4">
             {/* Company Information */}
-            <Card className="border-green-200">
-              <CardContent className="p-4">
-                <div className="flex items-center gap-2 mb-4">
-                  <span className="text-2xl">🏢</span>
-                  <div>
-                    <h4 className="font-semibold text-green-700">Company Information</h4>
-                    <p className="text-sm text-gray-600">Business details and contact information</p>
-                  </div>
-                </div>
-                <div className="space-y-4">
-                  <div>
-                    <Label htmlFor="company_name">Company Name *</Label>
-                    <Input
-                      name="company_name"
-                      value={formData.company_name}
-                      onChange={handleChange}
-                      required
-                      placeholder="Enter company/organization name"
-                      className="mt-1"
-                    />
-                  </div>
-                  <div className="grid grid-cols-2 gap-4">
-                    <div>
-                      <Label htmlFor="industry">Industry *</Label>
-                      <Input
-                        name="industry"
-                        value={formData.industry}
-                        onChange={handleChange}
-                        required
-                        placeholder="e.g., Construction, Infrastructure"
-                        className="mt-1"
-                      />
-                    </div>
-                    <div>
-                      <Label htmlFor="company_size">Company Size</Label>
-                      <Select 
-                        value={formData.company_size} 
-                        onValueChange={(value) => handleSelectChange('company_size', value)}
-                      >
-                        <SelectTrigger className="mt-1">
-                          <SelectValue placeholder="Select size" />
-                        </SelectTrigger>
-                        <SelectContent>
-                          <SelectItem value="1-10">1-10 employees</SelectItem>
-                          <SelectItem value="11-50">11-50 employees</SelectItem>
-                          <SelectItem value="51-200">51-200 employees</SelectItem>
-                          <SelectItem value="201-500">201-500 employees</SelectItem>
-                          <SelectItem value="500+">500+ employees</SelectItem>
-                        </SelectContent>
-                      </Select>
-                    </div>
-                  </div>
-                  <div className="grid grid-cols-2 gap-4">
-                    <div>
-                      <Label htmlFor="phone_number">Phone Number *</Label>
-                      <Input
-                        name="phone_number"
-                        value={formData.phone_number}
-                        onChange={handleChange}
-                        required
-                        placeholder="+961 1 234 567"
-                        className="mt-1"
-                      />
-                    </div>
-                    <div>
-                      <Label htmlFor="tax_id">Tax ID / Registration No.</Label>
-                      <Input
-                        name="tax_id"
-                        value={formData.tax_id}
-                        onChange={handleChange}
-                        placeholder="Company tax ID"
-                        className="mt-1"
-                      />
-                    </div>
-                  </div>
-                  <div>
-                    <Label htmlFor="address">Address *</Label>
-                    <Textarea
-                      name="address"
-                      value={formData.address}
-                      onChange={handleChange}
-                      required
-                      placeholder="Enter complete company address"
-                      className="mt-1"
-                      rows={2}
-                    />
-                  </div>
-                </div>
-              </CardContent>
-            </Card>
+            <div className="bg-emerald-50/50 p-4 rounded-xl border border-emerald-100 space-y-4">
+              <div className="flex items-center gap-2 mb-2">
+                <Building2 className="w-5 h-5 text-emerald-600" />
+                <h4 className="font-semibold text-emerald-900">Company Profile</h4>
+              </div>
 
-            {/* Account Settings */}
-            <Card className="border-blue-200">
-              <CardContent className="p-4">
-                <div className="flex items-center gap-2 mb-4">
-                  <span className="text-2xl">👑</span>
-                  <div>
-                    <h4 className="font-semibold text-blue-700">Account Settings</h4>
-                    <p className="text-sm text-gray-600">Account type and billing preferences</p>
-                  </div>
+              <div className="grid grid-cols-1 gap-4">
+                <div>
+                  <Label htmlFor="company_name" className="text-emerald-900">Company Name *</Label>
+                  <Input
+                    name="company_name"
+                    value={formData.company_name}
+                    onChange={handleChange}
+                    required
+                    placeholder="Organization name"
+                    className="mt-1 bg-white"
+                  />
                 </div>
-                <div className="space-y-4">
+                <div className="grid grid-cols-2 gap-4">
                   <div>
-                    <Label htmlFor="account_type">Account Type</Label>
-                    <Select 
-                      value={formData.account_type} 
-                      onValueChange={(value) => handleSelectChange('account_type', value)}
+                    <Label htmlFor="industry" className="text-emerald-900">Industry *</Label>
+                    <Input
+                      name="industry"
+                      value={formData.industry}
+                      onChange={handleChange}
+                      required
+                      placeholder="Type of industry"
+                      className="mt-1 bg-white"
+                    />
+                  </div>
+                  <div>
+                    <Label htmlFor="company_size" className="text-emerald-900">Employees</Label>
+                    <Select
+                      value={formData.company_size}
+                      onValueChange={(value) => handleSelectChange('company_size', value)}
                     >
-                      <SelectTrigger className="mt-1">
-                        <SelectValue />
+                      <SelectTrigger className="mt-1 bg-white">
+                        <SelectValue placeholder="Select size" />
                       </SelectTrigger>
                       <SelectContent>
-                        <SelectItem value="trial">🌟 Trial (30 days)</SelectItem>
-                        <SelectItem value="standard">💼 Standard</SelectItem>
-                        <SelectItem value="premium">👑 Premium</SelectItem>
+                        <SelectItem value="1-10">1-10</SelectItem>
+                        <SelectItem value="11-50">11-50</SelectItem>
+                        <SelectItem value="51-200">51-200</SelectItem>
+                        <SelectItem value="200+">200+</SelectItem>
                       </SelectContent>
                     </Select>
                   </div>
+                </div>
+                <div className="grid grid-cols-2 gap-4">
                   <div>
-                    <Label htmlFor="billing_contact">Billing Contact Email</Label>
+                    <Label htmlFor="phone_number" className="text-emerald-900">Phone *</Label>
                     <Input
-                      name="billing_contact"
-                      type="email"
-                      value={formData.billing_contact}
+                      name="phone_number"
+                      value={formData.phone_number}
                       onChange={handleChange}
-                      placeholder="Leave empty to use account email"
-                      className="mt-1"
+                      required
+                      placeholder="+123..."
+                      className="mt-1 bg-white"
+                    />
+                  </div>
+                  <div>
+                    <Label htmlFor="tax_id" className="text-emerald-900">Tax ID</Label>
+                    <Input
+                      name="tax_id"
+                      value={formData.tax_id}
+                      onChange={handleChange}
+                      placeholder="Optional"
+                      className="mt-1 bg-white"
                     />
                   </div>
                 </div>
-              </CardContent>
-            </Card>
+                <div>
+                  <Label htmlFor="address" className="text-emerald-900">Full Address *</Label>
+                  <Textarea
+                    name="address"
+                    value={formData.address}
+                    onChange={handleChange}
+                    required
+                    placeholder="HQ address"
+                    className="mt-1 bg-white"
+                    rows={2}
+                  />
+                </div>
+              </div>
+            </div>
+
+            {/* Account Settings */}
+            <div className="bg-blue-50/50 p-4 rounded-xl border border-blue-100 space-y-4">
+              <div className="flex items-center gap-2 mb-2">
+                <UserCircle className="w-5 h-5 text-blue-600" />
+                <h4 className="font-semibold text-blue-900">Account Subscription</h4>
+              </div>
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                <div>
+                  <Label htmlFor="account_type" className="text-blue-900">Plan Type</Label>
+                  <Select
+                    value={formData.account_type}
+                    onValueChange={(value) => handleSelectChange('account_type', value)}
+                  >
+                    <SelectTrigger className="mt-1 bg-white">
+                      <SelectValue />
+                    </SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="trial">🌟 Trial</SelectItem>
+                      <SelectItem value="standard">💼 Standard</SelectItem>
+                      <SelectItem value="premium">👑 Premium</SelectItem>
+                    </SelectContent>
+                  </Select>
+                </div>
+                <div>
+                  <Label htmlFor="billing_contact" className="text-blue-900">Billing Email</Label>
+                  <Input
+                    name="billing_contact"
+                    type="email"
+                    value={formData.billing_contact}
+                    onChange={handleChange}
+                    placeholder="Optional"
+                    className="mt-1 bg-white"
+                  />
+                </div>
+              </div>
+            </div>
           </div>
         )
 
@@ -468,152 +453,158 @@ const AddUserModal = ({fetchUser}) => {
   return (
     <Dialog open={open} onOpenChange={setOpen}>
       <DialogTrigger asChild>
-        <Button variant="rose" className="gap-2">
-          <span>+</span> Add New User
+        <Button variant="rose" className="gap-2 shadow-sm">
+          <UserPlus className="w-4 h-4" /> Add New User
         </Button>
       </DialogTrigger>
-      <DialogContent className="sm:max-w-[650px] max-h-[90vh] overflow-y-auto">
-        <DialogHeader>
-          <DialogTitle className="text-xl flex items-center gap-2">
+      <DialogContent className="sm:max-w-[700px] max-h-[90vh] overflow-y-auto p-0 border-0 shadow-2xl bg-white/95 backdrop-blur-sm">
+        <DialogHeader className="p-6 pb-2 border-b bg-white sticky top-0 z-10">
+          <DialogTitle className="text-2xl font-bold flex items-center gap-2">
             {step === 1 ? (
               <>
-                <span>👥</span> Create New User
+                <div className="p-2 bg-rose-100 rounded-lg">
+                  <UserPlus className="w-6 h-6 text-rose-600" />
+                </div>
+                Create New User
               </>
             ) : (
-              <>
-                <Button 
-                  variant="ghost" 
-                  size="sm" 
+              <div className="flex items-center gap-3 w-full">
+                <Button
+                  variant="ghost"
+                  size="icon"
                   onClick={handleBack}
-                  className="mr-2 p-1"
+                  className="rounded-full hover:bg-gray-100 -ml-2"
                 >
-                  ←
+                  <ArrowLeft className="w-5 h-5" />
                 </Button>
-                <span>{selectedRole?.icon}</span> {selectedRole?.label} Registration
-              </>
+                <div className="flex items-center gap-2">
+                  <div className={`p-1.5 rounded-md ${selectedRole?.bgColor}`}>
+                    {selectedRole && <selectedRole.icon className={`w-5 h-5 ${selectedRole.color.split(' ')[1] || 'text-gray-600'}`} />}
+                  </div>
+                  <span>{selectedRole?.label} Registration</span>
+                </div>
+              </div>
             )}
           </DialogTitle>
         </DialogHeader>
 
-        {step === 1 ? (
-          // Step 1: Role Selection
-          <div className="space-y-4 py-4">
-            <div className="text-center mb-6">
-              <h3 className="text-lg font-semibold mb-2">Choose User Role</h3>
-              <p className="text-sm text-gray-600">Select the appropriate role for the new user</p>
-            </div>
-            
-            <div className="grid gap-3">
-              {roles.map((role) => (
-                <Card
-                  key={role.value}
-                  className="cursor-pointer hover:shadow-md transition-all duration-200 border-2 hover:border-gray-300"
-                  onClick={() => handleRoleSelect(role.value)}
-                >
-                  <CardContent className="p-4">
-                    <div className="flex items-center gap-3">
-                      <div className="text-2xl">{role.icon}</div>
-                      <div className="flex-1">
-                        <div className="flex items-center gap-2 mb-1">
-                          <h4 className="font-semibold">{role.label}</h4>
-                          <Badge variant="outline" className={role.color}>
-                            {role.value}
-                          </Badge>
-                        </div>
-                        <p className="text-sm text-gray-600">{role.description}</p>
+        <div className="p-6">
+          {step === 1 ? (
+            // Step 1: Role Selection
+            <div className="space-y-6">
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                {roles.map((role) => (
+                  <div
+                    key={role.value}
+                    className={`
+                    relative group cursor-pointer rounded-xl border-2 p-5 transition-all duration-300
+                    hover:border-rose-200 hover:shadow-lg hover:-translate-y-1
+                    ${role.bgColor} ${role.borderColor}
+                  `}
+                    onClick={() => handleRoleSelect(role.value)}
+                  >
+                    <div className="flex items-start justify-between mb-3">
+                      <div className={`p-3 rounded-xl bg-white shadow-sm ring-1 ring-black/5`}>
+                        <role.icon className={`w-6 h-6 bg-gradient-to-br ${role.color} bg-clip-text text-transparent`} />
                       </div>
-                      <div className="text-gray-400">→</div>
+                      {/* Hover indicator */}
+                      <div className="opacity-0 group-hover:opacity-100 transition-opacity">
+                        <CheckCircle2 className="w-6 h-6 text-rose-500" />
+                      </div>
                     </div>
-                  </CardContent>
-                </Card>
-              ))}
-            </div>
-          </div>
-        ) : (
-          // Step 2: User Details Form
-          <form onSubmit={handleSubmit} className="space-y-6 py-4">
-            {/* Role Badge */}
-            <div className="flex items-center justify-center">
-              <Badge className={`${selectedRole?.color} px-4 py-2 text-sm`}>
-                {selectedRole?.icon} {selectedRole?.label}
-              </Badge>
-            </div>
 
-            {/* Role-specific fields first */}
-            {getRoleSpecificFields()}
-
-            {getRoleSpecificFields() && <Separator />}
-
-            {/* Basic Information */}
-            <div>
-              <h3 className="text-lg font-semibold mb-4 flex items-center gap-2">
-                <span>📝</span> Basic Information
-              </h3>
-              <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-                <div>
-                  <Label htmlFor="first_name">First Name *</Label>
-                  <Input
-                    name="first_name"
-                    value={formData.first_name}
-                    onChange={handleChange}
-                    required
-                    placeholder="Enter first name"
-                    className="mt-1"
-                  />
-                </div>
-                <div>
-                  <Label htmlFor="last_name">Last Name *</Label>
-                  <Input
-                    name="last_name"
-                    value={formData.last_name}
-                    onChange={handleChange}
-                    required
-                    placeholder="Enter last name"
-                    className="mt-1"
-                  />
-                </div>
-                <div>
-                  <Label htmlFor="username">Username *</Label>
-                  <Input
-                    name="username"
-                    value={formData.username}
-                    onChange={handleChange}
-                    required
-                    placeholder="Unique username"
-                    className="mt-1"
-                  />
-                </div>
-                <div>
-                  <Label htmlFor="email">Email *</Label>
-                  <Input
-                    name="email"
-                    type="email"
-                    value={formData.email}
-                    onChange={handleChange}
-                    required
-                    placeholder="user@company.com"
-                    className="mt-1"
-                  />
-                </div>
+                    <div>
+                      <h3 className="font-bold text-gray-900 mb-1">{role.label}</h3>
+                      <p className="text-sm text-gray-600 leading-relaxed">{role.description}</p>
+                    </div>
+                  </div>
+                ))}
               </div>
             </div>
+          ) : (
+            // Step 2: User Details Form
+            <form onSubmit={handleSubmit} className="space-y-6 animate-in slide-in-from-right-4 duration-300">
 
-            {/* Actions */}
-            <DialogFooter className="flex justify-between pt-4">
-              <Button type="button" variant="outline" onClick={resetAndClose}>
-                Cancel
-              </Button>
-              <div className="flex gap-2">
-                <Button type="button" variant="ghost" onClick={handleBack}>
-                  ← Back
+              {/* Basic Information Section */}
+              <div className="space-y-4">
+                <div className="flex items-center gap-2 pb-2 border-b border-gray-100">
+                  <User className="w-5 h-5 text-rose-500" />
+                  <h3 className="font-bold text-gray-900">Basic Information</h3>
+                </div>
+
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-5">
+                  <div className="space-y-2">
+                    <Label htmlFor="first_name">First Name *</Label>
+                    <Input
+                      name="first_name"
+                      value={formData.first_name}
+                      onChange={handleChange}
+                      required
+                      placeholder="John"
+                      className="focus-visible:ring-rose-500"
+                    />
+                  </div>
+                  <div className="space-y-2">
+                    <Label htmlFor="last_name">Last Name *</Label>
+                    <Input
+                      name="last_name"
+                      value={formData.last_name}
+                      onChange={handleChange}
+                      required
+                      placeholder="Doe"
+                      className="focus-visible:ring-rose-500"
+                    />
+                  </div>
+                  <div className="space-y-2">
+                    <Label htmlFor="username">Username *</Label>
+                    <div className="relative">
+                      <UserCircle className="absolute left-3 top-2.5 h-4 w-4 text-gray-400" />
+                      <Input
+                        name="username"
+                        value={formData.username}
+                        onChange={handleChange}
+                        required
+                        placeholder="jdoe123"
+                        className="pl-9 focus-visible:ring-rose-500"
+                      />
+                    </div>
+                  </div>
+                  <div className="space-y-2">
+                    <Label htmlFor="email">Email Address *</Label>
+                    <div className="relative">
+                      <Mail className="absolute left-3 top-2.5 h-4 w-4 text-gray-400" />
+                      <Input
+                        name="email"
+                        type="email"
+                        value={formData.email}
+                        onChange={handleChange}
+                        required
+                        placeholder="john@example.com"
+                        className="pl-9 focus-visible:ring-rose-500"
+                      />
+                    </div>
+                  </div>
+                </div>
+              </div>
+
+              {/* Role Specific Fields */}
+              {getRoleSpecificFields()}
+
+              <div className="flex justify-end gap-3 pt-4 border-t border-gray-100">
+                <Button type="button" variant="outline" onClick={resetAndClose}>
+                  Cancel
                 </Button>
-                <Button type="submit" variant="rose">
-                  Create User
+                <Button
+                  type="submit"
+                  variant="rose" // Using your custom rose variant
+                  className="bg-gradient-to-r from-rose-500 to-pink-600 hover:from-rose-600 hover:to-pink-700 text-white shadow-md transition-all hover:scale-[1.02]"
+                >
+                  Create Account
                 </Button>
               </div>
-            </DialogFooter>
-          </form>
-        )}
+            </form>
+          )}
+        </div>
       </DialogContent>
     </Dialog>
   )

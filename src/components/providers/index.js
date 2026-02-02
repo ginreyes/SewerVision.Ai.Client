@@ -6,6 +6,7 @@ import { DialogProvider } from "./DialogProvider";
 import { UserProvider } from "./UserContext";
 import { useRouter } from "next/navigation";
 import NotificationProvider from "./NotificationProvider";
+import { QueryProvider } from "./QueryProvider";
 
 
 
@@ -18,18 +19,20 @@ export function AppProviders({ children }) {
       router.push(`/${role}/dashboard`);
     }
   }, [router])
-  
+
   return (
-     <UserProvider>
-      <NotificationProvider>
-        <AlertProvider>
-          <DialogProvider>
-          
+    <QueryProvider>
+      <UserProvider>
+        <NotificationProvider>
+          <AlertProvider>
+            <DialogProvider>
+
               {children}
-          
-          </DialogProvider>
-        </AlertProvider>
-      </NotificationProvider>
-    </UserProvider>
+
+            </DialogProvider>
+          </AlertProvider>
+        </NotificationProvider>
+      </UserProvider>
+    </QueryProvider>
   );
 }

@@ -16,15 +16,188 @@ import {
     Play,
     Search,
     Star,
-    Flag
+    Flag,
+    RefreshCw,
+    Loader2,
+    Filter,
+    ChevronRight,
+    Zap,
+    ClipboardList,
+    TrendingUp
 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
+import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
+import { Badge } from '@/components/ui/badge';
+import { Input } from '@/components/ui/input';
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
+import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import AddNewTaskModal from './AddNewTaskModal';
 import { useUser } from '@/components/providers/UserContext';
 import { useAlert } from '@/components/providers/AlertProvider';
 import qcApi from '@/data/qcApi';
+import operatorApi from '@/data/operatorApi';
 import { useRouter } from 'next/navigation';
 
+// Compact Stat Card
+const StatCard = ({ icon: Icon, value, label, color = 'blue' }) => {
+    const colorClasses = {
+        blue: 'from-blue-500 to-blue-600',
+        green: 'from-green-500 to-emerald-600',
+        orange: 'from-orange-500 to-amber-600',
+        red: 'from-red-500 to-rose-600',
+        purple: 'from-purple-500 to-indigo-600'
+    };
+
+    return (
+        <div className="bg-white rounded-xl border border-gray-100 p-4 hover:shadow-md transition-all">
+            <div className="flex items-center justify-between">
+                <div className={`p-2 rounded-lg bg-gradient-to-br ${colorClasses[color]}`}>
+                    <Icon className="w-5 h-5 text-white" />
+                </div>
+            </div>
+            <div className="mt-3">
+                <p className="text-2xl font-bold text-gray-900">{value}</p>
+                <p className="text-sm text-gray-500">{label}</p>
+            </div>
+        </div>
+    );
+};
+
+// Status Badge
+const StatusBadge = ({ status }) => {
+    const config = {
+        pending: { color: 'bg-yellow-100 text-yellow-700 border-yellow-200', dot: 'bg-yellow-500' },
+        'in-progress': { color: 'bg-blue-100 text-blue-700 border-blue-200', dot: 'bg-blue-500 animate-pulse' },
+        completed: { color: 'bg-green-100 text-green-700 border-green-200', dot: 'bg-green-500' },
+        scheduled: { color: 'bg-purple-100 text-purple-700 border-purple-200', dot: 'bg-purple-500' },
+        urgent: { color: 'bg-red-100 text-red-700 border-red-200', dot: 'bg-red-500 animate-pulse' }
+    };
+
+    const statusConfig = config[status] || config.pending;
+
+    return (
+        <span className={`inline-flex items-center gap-1.5 px-2 py-0.5 rounded-full text-xs font-medium border ${statusConfig.color}`}>
+            <span className={`w-1.5 h-1.5 rounded-full ${statusConfig.dot}`} />
+            {status.charAt(0).toUpperCase() + status.slice(1).replace('-', ' ')}
+        </span>
+    );
+};
+
+// Priority Badge
+const PriorityBadge = ({ priority }) => {
+    const config = {
+        low: 'text-gray-500',
+        medium: 'text-yellow-500',
+        high: 'text-orange-500',
+        critical: 'text-red-500'
+    };
+
+    return (
+        <Flag className={`w-4 h-4 ${config[priority] || config.medium}`} fill="currentColor" />
+    );
+};
+
+// Task Card (Compact)
+const TaskCard = ({ task, onClick, isSelected }) => {
+    const typeIcons = {
+        inspection: Camera,
+        assessment: FileText,
+        review: Eye,
+        survey: MapPin,
+        report: FileText,
+        emergency: AlertCircle
+    };
+
+    const typeColors = {
+        inspection: 'bg-blue-500',
+        assessment: 'bg-green-500',
+        review: 'bg-orange-500',
+        survey: 'bg-indigo-500',
+        report: 'bg-purple-500',
+        emergency: 'bg-red-500'
+    };
+
+    const Icon = typeIcons[task.type] || FileText;
+
+    return (
+        <div
+            onClick={onClick}
+            className={`bg-white rounded-xl p-4 cursor-pointer transition-all duration-200 hover:shadow-lg border-2 ${isSelected ? 'border-blue-500 shadow-md' : 'border-transparent hover:border-gray-200'
+                }`}
+        >
+            {/* Header */}
+            <div className="flex items-start justify-between mb-3">
+                <div className="flex items-center gap-3">
+                    <div className={`p-2 rounded-lg ${typeColors[task.type] || 'bg-gray-500'}`}>
+                        <Icon className="w-4 h-4 text-white" />
+                    </div>
+                    <div className="flex-1 min-w-0">
+                        <h3 className="font-semibold text-gray-900 text-sm truncate">{task.title}</h3>
+                        <p className="text-xs text-gray-500 truncate">{task.description}</p>
+                    </div>
+                </div>
+                <PriorityBadge priority={task.priority} />
+            </div>
+
+            {/* Info Row */}
+            <div className="flex items-center gap-4 mb-3 text-xs text-gray-500">
+                <span className="flex items-center gap-1">
+                    <User className="w-3 h-3" />
+                    {task.assignee}
+                </span>
+                <span className="flex items-center gap-1">
+                    <MapPin className="w-3 h-3" />
+                    {task.location}
+                </span>
+            </div>
+
+            {/* Progress (if applicable) */}
+            {task.progress > 0 && task.progress < 100 && (
+                <div className="mb-3">
+                    <div className="flex justify-between text-xs text-gray-600 mb-1">
+                        <span>Progress</span>
+                        <span>{task.progress}%</span>
+                    </div>
+                    <div className="w-full h-1.5 bg-gray-100 rounded-full overflow-hidden">
+                        <div
+                            className="h-full bg-blue-500 rounded-full transition-all"
+                            style={{ width: `${task.progress}%` }}
+                        />
+                    </div>
+                </div>
+            )}
+
+            {/* Footer */}
+            <div className="flex items-center justify-between">
+                <StatusBadge status={task.status} />
+                <div className="flex items-center gap-2 text-xs text-gray-500">
+                    <Clock className="w-3 h-3" />
+                    {task.estimatedDuration}
+                </div>
+            </div>
+
+            {/* AI Badge */}
+            {task.aiProcessing && (
+                <div className="mt-3 pt-3 border-t border-gray-100">
+                    <div className="flex items-center justify-between">
+                        <span className={`inline-flex items-center gap-1 px-2 py-0.5 rounded text-xs font-medium ${task.aiProcessing === 'completed' ? 'bg-green-50 text-green-700' :
+                                task.aiProcessing === 'processing' ? 'bg-yellow-50 text-yellow-700' :
+                                    'bg-gray-50 text-gray-600'
+                            }`}>
+                            <Brain className="w-3 h-3" />
+                            AI {task.aiProcessing}
+                        </span>
+                        {task.confidence && (
+                            <span className="text-xs text-gray-500">{task.confidence}% confidence</span>
+                        )}
+                    </div>
+                </div>
+            )}
+        </div>
+    );
+};
+
+// Main Component
 const TasksPage = ({ role = 'admin' }) => {
     const { userId, userData } = useUser();
     const { showAlert } = useAlert();
@@ -36,6 +209,7 @@ const TasksPage = ({ role = 'admin' }) => {
     const [selectedTask, setSelectedTask] = useState(null);
     const [tasks, setTasks] = useState([]);
     const [loading, setLoading] = useState(true);
+    const [refreshing, setRefreshing] = useState(false);
     const [stats, setStats] = useState({
         active: 0,
         urgent: 0,
@@ -55,11 +229,9 @@ const TasksPage = ({ role = 'admin' }) => {
             setLoading(true);
 
             if (role === 'qc-technician') {
-                // Fetch QC assignments
                 const status = filterStatus === 'all' ? 'all' : filterStatus;
                 const assignments = await qcApi.getAssignments(userId, status);
 
-                // Convert assignments to tasks format
                 const tasksList = assignments.map(assignment => ({
                     id: assignment._id,
                     title: `QC Review: ${assignment.projectId?.name || 'Project'}`,
@@ -71,7 +243,7 @@ const TasksPage = ({ role = 'admin' }) => {
                     location: assignment.projectId?.location || 'N/A',
                     device: 'QC Review Station',
                     startTime: assignment.assignedAt || new Date().toISOString(),
-                    estimatedDuration: `${assignment.totalDetections * 2 || 30} minutes`,
+                    estimatedDuration: `${assignment.totalDetections * 2 || 30} min`,
                     progress: assignment.totalDetections > 0
                         ? Math.round((assignment.reviewedDetections / assignment.totalDetections) * 100)
                         : 0,
@@ -85,34 +257,20 @@ const TasksPage = ({ role = 'admin' }) => {
                 }));
 
                 setTasks(tasksList);
-
-                // Calculate stats
-                const activeCount = tasksList.filter(t => ['pending', 'in-progress'].includes(t.status)).length;
-                const urgentCount = tasksList.filter(t => t.priority === 'critical' || t.priority === 'high').length;
-                const completedToday = tasksList.filter(t => {
-                    const taskDate = new Date(t.startTime);
-                    const today = new Date();
-                    return t.status === 'completed' &&
-                        taskDate.toDateString() === today.toDateString();
-                }).length;
-
-                setStats({
-                    active: activeCount,
-                    urgent: urgentCount,
-                    completedToday,
-                    efficiency: tasksList.length > 0
-                        ? Math.round((tasksList.filter(t => t.status === 'completed').length / tasksList.length) * 100)
-                        : 94
-                });
+                calculateStats(tasksList);
+            } else if (role === 'operator') {
+                try {
+                    const tasksList = await operatorApi.getTasks(userId, filterStatus);
+                    setTasks(tasksList);
+                    calculateStats(tasksList);
+                } catch (error) {
+                    console.log('No operator tasks found');
+                    setTasks([]);
+                    setStats({ active: 0, urgent: 0, completedToday: 0, efficiency: 94 });
+                }
             } else {
-                // For admin and operator, keep mock data for now
                 setTasks(getMockTasks());
-                setStats({
-                    active: 5,
-                    urgent: 1,
-                    completedToday: 3,
-                    efficiency: 94
-                });
+                setStats({ active: 5, urgent: 1, completedToday: 3, efficiency: 94 });
             }
         } catch (error) {
             console.error('Error fetching tasks:', error);
@@ -123,16 +281,41 @@ const TasksPage = ({ role = 'admin' }) => {
         }
     };
 
+    const calculateStats = (tasksList) => {
+        const activeCount = tasksList.filter(t => ['pending', 'in-progress'].includes(t.status)).length;
+        const urgentCount = tasksList.filter(t => t.priority === 'critical' || t.priority === 'high').length;
+        const today = new Date();
+        const completedToday = tasksList.filter(t => {
+            const taskDate = new Date(t.startTime);
+            return t.status === 'completed' && taskDate.toDateString() === today.toDateString();
+        }).length;
+
+        setStats({
+            active: activeCount,
+            urgent: urgentCount,
+            completedToday,
+            efficiency: tasksList.length > 0
+                ? Math.round((tasksList.filter(t => t.status === 'completed').length / tasksList.length) * 100)
+                : 94
+        });
+    };
+
+    const handleRefresh = async () => {
+        setRefreshing(true);
+        await fetchTasks();
+        setRefreshing(false);
+    };
+
     const getMockTasks = () => [
         {
             id: 1,
             title: 'Main St Pipeline Inspection',
-            description: 'CCTV inspection of 500ft main street sewer line',
+            description: 'CCTV inspection of 500ft sewer line',
             status: 'in-progress',
             priority: 'high',
             assignee: 'John Smith',
             location: 'Main St Pipeline',
-            device: 'CCTV Inspection Camera Unit 1',
+            device: 'CCTV Unit 1',
             startTime: '2024-08-12 09:00',
             estimatedDuration: '2 hours',
             progress: 65,
@@ -143,85 +326,49 @@ const TasksPage = ({ role = 'admin' }) => {
         },
         {
             id: 2,
-            title: 'Oak Ave Pipeline Assessment',
-            description: 'Post-repair verification and documentation',
+            title: 'Oak Ave Assessment',
+            description: 'Post-repair verification',
             status: 'pending',
             priority: 'medium',
             assignee: 'Sarah Johnson',
             location: 'Oak Ave',
-            device: 'Mobile Inspection Tablet',
+            device: 'Mobile Tablet',
             startTime: '2024-08-12 14:00',
             estimatedDuration: '1.5 hours',
             progress: 0,
             type: 'assessment',
-            aiProcessing: 'pending',
-            footage: '0 GB'
+            aiProcessing: 'pending'
         },
         {
             id: 3,
             title: 'QC Review - Pipeline 45A',
-            description: 'Review AI-generated defect detection results',
+            description: 'Review AI defect detection',
             status: 'in-progress',
             priority: 'high',
             assignee: 'Mike Davis',
             location: 'QC Department',
-            device: 'QC Review Station',
+            device: 'QC Station',
             startTime: '2024-08-12 10:30',
-            estimatedDuration: '45 minutes',
+            estimatedDuration: '45 min',
             progress: 80,
             type: 'review',
             aiProcessing: 'completed',
-            footage: '5.2 GB',
             confidence: 92
         },
         {
             id: 4,
-            title: 'Industrial District Survey',
-            description: 'Preliminary assessment of multiple manholes',
-            status: 'scheduled',
-            priority: 'low',
-            assignee: 'Lisa Chen',
-            location: 'Industrial District',
-            device: 'Handheld Scanner',
-            startTime: '2024-08-13 08:00',
-            estimatedDuration: '3 hours',
-            progress: 0,
-            type: 'survey',
-            aiProcessing: 'pending',
-            footage: '0 GB'
-        },
-        {
-            id: 5,
-            title: 'Report Generation - Elm Street',
-            description: 'Generate PACP compliant inspection report',
-            status: 'completed',
-            priority: 'medium',
-            assignee: 'QC Technician',
-            location: 'Cloud Processing',
-            device: 'AI Processing Node 1',
-            startTime: '2024-08-11 16:00',
-            estimatedDuration: '30 minutes',
-            progress: 100,
-            type: 'report',
-            aiProcessing: 'completed',
-            footage: '1.8 GB',
-            confidence: 96
-        },
-        {
-            id: 6,
-            title: 'Emergency Blockage Investigation',
-            description: 'Urgent inspection due to reported backup',
+            title: 'Emergency Blockage',
+            description: 'Urgent inspection - reported backup',
             status: 'urgent',
             priority: 'critical',
             assignee: 'Emergency Team',
-            location: 'Residential Block 5',
-            device: 'Mobile Unit Alpha',
+            location: 'Block 5',
+            device: 'Mobile Unit',
             startTime: '2024-08-12 11:45',
             estimatedDuration: '1 hour',
             progress: 25,
             type: 'emergency',
-            aiProcessing: 'processing',
-            footage: '0.8 GB'
+            aiProcessing: 'processing'
         }
     ];
 
@@ -230,6 +377,7 @@ const TasksPage = ({ role = 'admin' }) => {
     };
 
     const handleTaskClick = (task) => {
+        setSelectedTask(task);
         if (role === 'qc-technician' && task.projectId) {
             router.push(`/qc-technician/quality-control?projectId=${task.projectId}`);
         }
@@ -238,29 +386,26 @@ const TasksPage = ({ role = 'admin' }) => {
     const getFilteredTasks = () => {
         let filtered = tasks;
 
-        // Filter by tab (active/completed/all)
         if (activeTab === 'active') {
             filtered = filtered.filter(task => ['pending', 'in-progress', 'scheduled', 'urgent'].includes(task.status));
         } else if (activeTab === 'completed') {
             filtered = filtered.filter(task => task.status === 'completed');
         }
 
-        // Filter by search
         if (searchQuery) {
+            const query = searchQuery.toLowerCase();
             filtered = filtered.filter(task =>
-                task.title.toLowerCase().includes(searchQuery.toLowerCase()) ||
-                task.description.toLowerCase().includes(searchQuery.toLowerCase()) ||
-                task.assignee.toLowerCase().includes(searchQuery.toLowerCase()) ||
-                task.location.toLowerCase().includes(searchQuery.toLowerCase())
+                task.title.toLowerCase().includes(query) ||
+                task.description.toLowerCase().includes(query) ||
+                task.assignee.toLowerCase().includes(query) ||
+                task.location.toLowerCase().includes(query)
             );
         }
 
-        // Filter by status
         if (filterStatus !== 'all') {
             filtered = filtered.filter(task => task.status === filterStatus);
         }
 
-        // Filter by priority
         if (filterPriority !== 'all') {
             filtered = filtered.filter(task => task.priority === filterPriority);
         }
@@ -268,358 +413,147 @@ const TasksPage = ({ role = 'admin' }) => {
         return filtered;
     };
 
-    const getStatusColor = (status) => {
-        const colors = {
-            'pending': 'text-yellow-600 bg-yellow-100',
-            'in-progress': 'text-blue-600 bg-blue-100',
-            'completed': 'text-green-600 bg-green-100',
-            'scheduled': 'text-purple-600 bg-purple-100',
-            'urgent': 'text-red-600 bg-red-100'
-        };
-        return colors[status] || 'text-gray-600 bg-gray-100';
-    };
+    const filteredTasks = getFilteredTasks();
 
-    const getPriorityColor = (priority) => {
-        const colors = {
-            'low': 'text-gray-600',
-            'medium': 'text-yellow-600',
-            'high': 'text-orange-600',
-            'critical': 'text-red-600'
-        };
-        return colors[priority] || 'text-gray-600';
-    };
-
-    const getTaskIcon = (type) => {
-        const icons = {
-            'inspection': Camera,
-            'assessment': FileText,
-            'review': Eye,
-            'survey': MapPin,
-            'report': FileText,
-            'emergency': AlertCircle
-        };
-        const Icon = icons[type] || FileText;
-        return <Icon className="w-5 h-5" />;
-    };
-
-    const getTaskTypeColor = (type) => {
-        const colors = {
-            'inspection': 'bg-gradient-to-br from-blue-500 to-purple-600',
-            'assessment': 'bg-gradient-to-br from-green-500 to-emerald-600',
-            'review': 'bg-gradient-to-br from-orange-500 to-red-600',
-            'survey': 'bg-gradient-to-br from-indigo-500 to-blue-600',
-            'report': 'bg-gradient-to-br from-purple-500 to-pink-600',
-            'emergency': 'bg-gradient-to-br from-red-500 to-red-700'
-        };
-        return colors[type] || 'bg-gradient-to-br from-gray-500 to-gray-700';
-    };
-
-    const StatCard = ({ title, value, subtitle, icon: Icon, color }) => (
-        <div className="bg-white rounded-xl shadow-lg p-6">
-            <div className="flex items-center justify-between">
-                <div>
-                    <p className="text-sm text-gray-600 font-medium">{title}</p>
-                    <p className="text-2xl font-bold text-gray-900 mt-1">{value}</p>
-                    <p className="text-xs text-gray-500 mt-1">{subtitle}</p>
-                </div>
-                <div className={`p-3 rounded-xl ${color}`}>
-                    <Icon className="w-6 h-6 text-white" />
-                </div>
-            </div>
-        </div>
-    );
-
-    const TaskCard = ({ task }) => {
-        const statusClasses = getStatusColor(task.status);
-        const typeColor = getTaskTypeColor(task.type);
-
+    if (loading) {
         return (
-            <div
-                className={`bg-white rounded-xl shadow-lg hover:shadow-xl transition-all duration-300 cursor-pointer transform hover:-translate-y-1 ${selectedTask?.id === task.id ? 'ring-2 ring-blue-500' : ''
-                    }`}
-                onClick={() => {
-                    setSelectedTask(task);
-                    handleTaskClick(task);
-                }}
-            >
-                <div className="p-6">
-                    {/* Header */}
-                    <div className="flex items-start justify-between mb-4">
-                        <div className={`p-3 rounded-xl ${typeColor} text-white`}>
-                            {getTaskIcon(task.type)}
-                        </div>
-                        <div className="flex items-center space-x-2">
-                            <Flag className={`w-4 h-4 ${getPriorityColor(task.priority)}`} />
-                            <span className={`px-2 py-1 rounded-full text-xs font-medium ${statusClasses}`}>
-                                {task.status.charAt(0).toUpperCase() + task.status.slice(1).replace('-', ' ')}
-                            </span>
-                        </div>
-                    </div>
-
-                    {/* Title and Description */}
-                    <h3 className="text-lg font-semibold text-gray-900 mb-2">{task.title}</h3>
-                    <p className="text-sm text-gray-600 mb-4">{task.description}</p>
-
-                    {/* Task Details */}
-                    <div className="space-y-2 text-sm text-gray-600 mb-4">
-                        <div className="flex items-center justify-between">
-                            <span className="flex items-center">
-                                <User className="w-4 h-4 mr-2" />
-                                {task.assignee}
-                            </span>
-                            <span className="flex items-center">
-                                <MapPin className="w-4 h-4 mr-1" />
-                                {task.location}
-                            </span>
-                        </div>
-
-                        <div className="flex items-center justify-between">
-                            <span className="flex items-center">
-                                <Calendar className="w-4 h-4 mr-2" />
-                                {new Date(task.startTime).toLocaleDateString()}
-                            </span>
-                            <span className="flex items-center">
-                                <Clock className="w-4 h-4 mr-1" />
-                                {task.estimatedDuration}
-                            </span>
-                        </div>
-
-                        <div className="flex items-center justify-between">
-                            <span className="flex items-center">
-                                <Camera className="w-4 h-4 mr-2" />
-                                {task.device}
-                            </span>
-                            {task.footage && (
-                                <span className="text-xs text-gray-500">
-                                    {task.footage}
-                                </span>
-                            )}
-                        </div>
-                    </div>
-
-                    {/* Progress Bar */}
-                    {task.progress > 0 && (
-                        <div className="mb-4">
-                            <div className="flex justify-between text-xs text-gray-600 mb-1">
-                                <span>Progress</span>
-                                <span>{task.progress}%</span>
-                            </div>
-                            <div className="w-full bg-gray-200 rounded-full h-2">
-                                <div
-                                    className="bg-blue-500 h-2 rounded-full transition-all duration-300"
-                                    style={{ width: `${task.progress}%` }}
-                                ></div>
-                            </div>
-                        </div>
-                    )}
-
-                    {/* AI Processing Status */}
-                    {task.aiProcessing && (
-                        <div className="mb-4">
-                            <div className="flex items-center justify-between">
-                                <span className={`px-3 py-1 rounded-full text-xs font-medium ${task.aiProcessing === 'completed' ? 'bg-green-100 text-green-800' :
-                                    task.aiProcessing === 'processing' ? 'bg-yellow-100 text-yellow-800' :
-                                        task.aiProcessing === 'ready' ? 'bg-blue-100 text-blue-800' :
-                                            'bg-gray-100 text-gray-800'
-                                    }`}>
-                                    <Brain className="w-3 h-3 mr-1 inline" />
-                                    AI {task.aiProcessing.charAt(0).toUpperCase() + task.aiProcessing.slice(1)}
-                                </span>
-                                {task.confidence && (
-                                    <span className="text-xs text-gray-500">
-                                        Confidence: {task.confidence}%
-                                    </span>
-                                )}
-                            </div>
-                        </div>
-                    )}
-
-                    {/* Action Buttons */}
-                    <div className="flex space-x-2">
-                        <Button className="flex-1 bg-blue-500">
-                            {task.status === 'completed' ? (
-                                <>
-                                    <Download className="w-4 h-4 mr-2" />
-                                    Download Report
-                                </>
-                            ) : task.status === 'in-progress' ? (
-                                <>
-                                    <Eye className="w-4 h-4 mr-2" />
-                                    Monitor
-                                </>
-                            ) : (
-                                <>
-                                    <Play className="w-4 h-4 mr-2" />
-                                    Start Task
-                                </>
-                            )}
-                        </Button>
-                        <Button variant="outline" size="icon">
-                            <MoreHorizontal className="w-4 h-4" />
-                        </Button>
-                    </div>
+            <div className="flex items-center justify-center h-[60vh]">
+                <div className="text-center">
+                    <Loader2 className="w-10 h-10 animate-spin text-blue-500 mx-auto mb-3" />
+                    <p className="text-gray-500">Loading tasks...</p>
                 </div>
             </div>
         );
-    };
-
-    const filteredTasks = getFilteredTasks();
+    }
 
     return (
-        <div className="max-w-7xl mx-auto bg-gray-50">
+        <div className="p-6 max-w-7xl mx-auto space-y-6">
             {/* Header */}
-            <div className="bg-white shadow-sm border-b border-gray-200">
-                <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-                    <div className="flex items-center justify-between h-16">
-                        <div className="flex items-center space-x-4">
-                            <h1 className="text-2xl font-bold text-gray-900">
-                                {role === 'admin' ? 'SewerVision.ai Tasks' : 'My Tasks'}
-                            </h1>
-                            <span className="px-3 py-1 bg-green-100 text-green-800 rounded-full text-sm font-medium">
-                                Live System
-                            </span>
-                        </div>
-                        {role === 'admin' && (
-                            <div className="flex items-center space-x-4">
-                                <AddNewTaskModal onAddTask={handleAddTask} />
-                            </div>
-                        )}
-                    </div>
+            <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
+                <div>
+                    <h1 className="text-2xl font-bold text-gray-900">
+                        {role === 'admin' ? 'Task Management' : 'My Tasks'}
+                    </h1>
+                    <p className="text-sm text-gray-500 mt-0.5">
+                        {role === 'operator' ? 'Your assigned inspections and operations' :
+                            role === 'qc-technician' ? 'QC reviews and assignments' :
+                                'Manage all system tasks'}
+                    </p>
+                </div>
+                <div className="flex items-center gap-3">
+                    {role === 'admin' && <AddNewTaskModal onAddTask={handleAddTask} />}
+                    <Button onClick={handleRefresh} variant="outline" size="sm" disabled={refreshing}>
+                        <RefreshCw className={`w-4 h-4 mr-2 ${refreshing ? 'animate-spin' : ''}`} />
+                        Refresh
+                    </Button>
                 </div>
             </div>
 
-            <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
-                {/* Stats Overview */}
-                {loading ? (
-                    <div className="flex items-center justify-center py-12">
-                        <div className="text-center">
-                            <div className="w-16 h-16 border-4 border-blue-500 border-t-transparent rounded-full animate-spin mx-auto mb-4"></div>
-                            <p className="text-gray-600">Loading tasks...</p>
-                        </div>
-                    </div>
-                ) : (
-                    <>
-                        <div className="grid grid-cols-1 md:grid-cols-4 gap-6 mb-8">
-                            <StatCard
-                                title="Active Tasks"
-                                value={stats.active.toString()}
-                                subtitle="Currently in progress"
-                                icon={Clock}
-                                color="bg-gradient-to-br from-blue-500 to-purple-600"
-                            />
-                            <StatCard
-                                title="Urgent Tasks"
-                                value={stats.urgent.toString()}
-                                subtitle="Requires immediate attention"
-                                icon={AlertCircle}
-                                color="bg-gradient-to-br from-red-500 to-red-700"
-                            />
-                            <StatCard
-                                title="Completed Today"
-                                value={stats.completedToday.toString()}
-                                subtitle="Tasks finished today"
-                                icon={CheckCircle2}
-                                color="bg-gradient-to-br from-green-500 to-emerald-600"
-                            />
-                            <StatCard
-                                title="Team Efficiency"
-                                value={`${stats.efficiency}%`}
-                                subtitle="On-time completion rate"
-                                icon={Star}
-                                color="bg-gradient-to-br from-purple-500 to-pink-600"
-                            />
-                        </div>
+            {/* Stats Grid */}
+            <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
+                <StatCard icon={Clock} value={stats.active} label="Active Tasks" color="blue" />
+                <StatCard icon={AlertCircle} value={stats.urgent} label="Urgent" color="red" />
+                <StatCard icon={CheckCircle2} value={stats.completedToday} label="Completed Today" color="green" />
+                <StatCard icon={TrendingUp} value={`${stats.efficiency}%`} label="Efficiency" color="purple" />
+            </div>
 
+            {/* Tabs & Filters */}
+            <Card className="border-0 shadow-sm">
+                <CardContent className="p-4">
+                    <div className="flex flex-col lg:flex-row lg:items-center justify-between gap-4">
                         {/* Tabs */}
-                        <div className="mb-6">
-                            <div className="flex space-x-1 bg-gray-100 p-1 rounded-lg w-fit">
-                                <button
-                                    onClick={() => setActiveTab('active')}
-                                    className={`px-4 py-2 rounded-md text-sm font-medium transition-colors ${activeTab === 'active'
-                                        ? 'bg-white text-blue-600 shadow-sm'
-                                        : 'text-gray-600 hover:text-gray-900'
-                                        }`}
-                                >
-                                    <Clock className="w-4 h-4 mr-2 inline" />
-                                    Active Tasks
-                                </button>
-                                <button
-                                    onClick={() => setActiveTab('completed')}
-                                    className={`px-4 py-2 rounded-md text-sm font-medium transition-colors ${activeTab === 'completed'
-                                        ? 'bg-white text-blue-600 shadow-sm'
-                                        : 'text-gray-600 hover:text-gray-900'
-                                        }`}
-                                >
-                                    <CheckCircle2 className="w-4 h-4 mr-2 inline" />
-                                    Completed
-                                </button>
-                                <button
-                                    onClick={() => setActiveTab('all')}
-                                    className={`px-4 py-2 rounded-md text-sm font-medium transition-colors ${activeTab === 'all'
-                                        ? 'bg-white text-blue-600 shadow-sm'
-                                        : 'text-gray-600 hover:text-gray-900'
-                                        }`}
-                                >
-                                    All Tasks
-                                </button>
-                            </div>
+                        <div className="flex items-center gap-1 p-1 bg-gray-100 rounded-lg w-fit">
+                            <button
+                                onClick={() => setActiveTab('active')}
+                                className={`px-4 py-2 rounded-md text-sm font-medium transition-colors ${activeTab === 'active' ? 'bg-white text-blue-600 shadow-sm' : 'text-gray-600 hover:text-gray-900'
+                                    }`}
+                            >
+                                Active
+                            </button>
+                            <button
+                                onClick={() => setActiveTab('completed')}
+                                className={`px-4 py-2 rounded-md text-sm font-medium transition-colors ${activeTab === 'completed' ? 'bg-white text-blue-600 shadow-sm' : 'text-gray-600 hover:text-gray-900'
+                                    }`}
+                            >
+                                Completed
+                            </button>
+                            <button
+                                onClick={() => setActiveTab('all')}
+                                className={`px-4 py-2 rounded-md text-sm font-medium transition-colors ${activeTab === 'all' ? 'bg-white text-blue-600 shadow-sm' : 'text-gray-600 hover:text-gray-900'
+                                    }`}
+                            >
+                                All
+                            </button>
                         </div>
 
-                        {/* Search and Filter */}
-                        <div className="flex flex-col sm:flex-row gap-4 mb-6">
-                            <div className="relative flex-1">
-                                <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400 w-4 h-4" />
-                                <input
+                        {/* Search & Filters */}
+                        <div className="flex flex-col sm:flex-row gap-3">
+                            <div className="relative">
+                                <Search className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400 w-4 h-4" />
+                                <Input
                                     type="text"
                                     placeholder="Search tasks..."
-                                    className="w-full pl-10 pr-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                                    className="pl-9 w-full sm:w-64"
                                     value={searchQuery}
                                     onChange={(e) => setSearchQuery(e.target.value)}
                                 />
                             </div>
-                            <select
-                                className="px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
-                                value={filterStatus}
-                                onChange={(e) => setFilterStatus(e.target.value)}
-                            >
-                                <option value="all">All Status</option>
-                                <option value="pending">Pending</option>
-                                <option value="in-progress">In Progress</option>
-                                <option value="completed">Completed</option>
-                                <option value="scheduled">Scheduled</option>
-                                <option value="urgent">Urgent</option>
-                            </select>
-                            <select
-                                className="px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
-                                value={filterPriority}
-                                onChange={(e) => setFilterPriority(e.target.value)}
-                            >
-                                <option value="all">All Priority</option>
-                                <option value="low">Low</option>
-                                <option value="medium">Medium</option>
-                                <option value="high">High</option>
-                                <option value="critical">Critical</option>
-                            </select>
+                            <Select value={filterStatus} onValueChange={setFilterStatus}>
+                                <SelectTrigger className="w-full sm:w-40">
+                                    <SelectValue placeholder="Status" />
+                                </SelectTrigger>
+                                <SelectContent>
+                                    <SelectItem value="all">All Status</SelectItem>
+                                    <SelectItem value="pending">Pending</SelectItem>
+                                    <SelectItem value="in-progress">In Progress</SelectItem>
+                                    <SelectItem value="completed">Completed</SelectItem>
+                                    <SelectItem value="urgent">Urgent</SelectItem>
+                                </SelectContent>
+                            </Select>
+                            <Select value={filterPriority} onValueChange={setFilterPriority}>
+                                <SelectTrigger className="w-full sm:w-40">
+                                    <SelectValue placeholder="Priority" />
+                                </SelectTrigger>
+                                <SelectContent>
+                                    <SelectItem value="all">All Priority</SelectItem>
+                                    <SelectItem value="low">Low</SelectItem>
+                                    <SelectItem value="medium">Medium</SelectItem>
+                                    <SelectItem value="high">High</SelectItem>
+                                    <SelectItem value="critical">Critical</SelectItem>
+                                </SelectContent>
+                            </Select>
                         </div>
+                    </div>
+                </CardContent>
+            </Card>
 
-                        {/* Tasks Grid */}
-                        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-                            {filteredTasks.map((task) => (
-                                <TaskCard key={task.id} task={task} />
-                            ))}
+            {/* Tasks Grid */}
+            {filteredTasks.length > 0 ? (
+                <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+                    {filteredTasks.map((task) => (
+                        <TaskCard
+                            key={task.id}
+                            task={task}
+                            onClick={() => handleTaskClick(task)}
+                            isSelected={selectedTask?.id === task.id}
+                        />
+                    ))}
+                </div>
+            ) : (
+                <Card className="border-0 shadow-sm">
+                    <CardContent className="py-12">
+                        <div className="text-center">
+                            <ClipboardList className="w-12 h-12 text-gray-300 mx-auto mb-3" />
+                            <h3 className="font-medium text-gray-900 mb-1">No tasks found</h3>
+                            <p className="text-sm text-gray-500">
+                                {searchQuery || filterStatus !== 'all' || filterPriority !== 'all'
+                                    ? 'Try adjusting your filters'
+                                    : 'No tasks have been assigned yet'}
+                            </p>
                         </div>
-
-                        {/* Empty State */}
-                        {filteredTasks.length === 0 && (
-                            <div className="text-center py-12">
-                                <FileText className="w-12 h-12 text-gray-400 mx-auto mb-4" />
-                                <h3 className="text-lg font-medium text-gray-900 mb-2">No tasks found</h3>
-                                <p className="text-gray-500">Try adjusting your search or filter criteria.</p>
-                            </div>
-                        )}
-                    </>
-                )}
-            </div>
+                    </CardContent>
+                </Card>
+            )}
         </div>
     );
 };

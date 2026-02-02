@@ -11,6 +11,17 @@ import {
   FileText,
   Loader2,
   Trash2,
+  RefreshCw,
+  CheckCheck,
+  BellRing,
+  Settings,
+  Filter,
+  Zap,
+  Brain,
+  Upload,
+  AlertTriangle,
+  MessageSquare,
+  ChevronRight
 } from 'lucide-react';
 
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
@@ -22,11 +33,140 @@ import { useUser } from '@/components/providers/UserContext';
 import { useNotifications } from '@/components/providers/NotificationProvider';
 import { useAlert } from '@/components/providers/AlertProvider';
 
-// Helper Icons
-const FileTextIcon = () => <FileText className="h-4 w-4 text-blue-500" />;
-const BotIcon = () => <AlertCircle className="h-4 w-4 text-green-500" />;
-const UpdateIcon = () => <Clock className="h-4 w-4 text-orange-500" />;
+// Compact Stat Card
+const StatCard = ({ icon: Icon, value, label, color = 'blue' }) => {
+  const colorClasses = {
+    blue: 'from-blue-500 to-blue-600',
+    green: 'from-green-500 to-emerald-600',
+    orange: 'from-orange-500 to-amber-600',
+    red: 'from-red-500 to-rose-600',
+    purple: 'from-purple-500 to-indigo-600'
+  };
 
+  return (
+    <div className="bg-white rounded-xl border border-gray-100 p-4 hover:shadow-md transition-all">
+      <div className="flex items-center justify-between">
+        <div className={`p-2 rounded-lg bg-gradient-to-br ${colorClasses[color]}`}>
+          <Icon className="w-5 h-5 text-white" />
+        </div>
+      </div>
+      <div className="mt-3">
+        <p className="text-2xl font-bold text-gray-900">{value}</p>
+        <p className="text-sm text-gray-500">{label}</p>
+      </div>
+    </div>
+  );
+};
+
+// Notification Item Component
+const NotificationItem = ({ notification, onMarkAsRead, onDelete }) => {
+  const getTypeConfig = (type) => {
+    const configs = {
+      report_ready: { icon: FileText, color: 'bg-blue-100 text-blue-600', label: 'Report' },
+      ai_complete: { icon: Brain, color: 'bg-green-100 text-green-600', label: 'AI' },
+      defect_found: { icon: AlertTriangle, color: 'bg-red-100 text-red-600', label: 'Alert' },
+      status_update: { icon: Clock, color: 'bg-orange-100 text-orange-600', label: 'Update' },
+      qc_review: { icon: CheckCheck, color: 'bg-purple-100 text-purple-600', label: 'QC' },
+      upload_complete: { icon: Upload, color: 'bg-indigo-100 text-indigo-600', label: 'Upload' },
+      default: { icon: Bell, color: 'bg-gray-100 text-gray-600', label: 'Info' }
+    };
+    return configs[type] || configs.default;
+  };
+
+  const formatDate = (dateString) => {
+    const date = new Date(dateString);
+    const now = new Date();
+    const diffInMinutes = Math.floor((now - date) / (1000 * 60));
+    const diffInHours = Math.floor(diffInMinutes / 60);
+    const diffInDays = Math.floor(diffInHours / 24);
+
+    if (diffInMinutes < 1) return 'Just now';
+    if (diffInMinutes < 60) return `${diffInMinutes}m ago`;
+    if (diffInHours < 24) return `${diffInHours}h ago`;
+    if (diffInDays === 1) return 'Yesterday';
+    if (diffInDays < 7) return `${diffInDays}d ago`;
+    return date.toLocaleDateString();
+  };
+
+  const config = getTypeConfig(notification.type);
+  const Icon = config.icon;
+
+  return (
+    <div
+      className={`flex items-start gap-3 p-4 rounded-xl transition-all ${!notification.read
+          ? 'bg-blue-50/50 border border-blue-100'
+          : 'bg-gray-50 hover:bg-gray-100'
+        }`}
+    >
+      {/* Icon */}
+      <div className={`p-2 rounded-lg ${config.color}`}>
+        <Icon className="w-4 h-4" />
+      </div>
+
+      {/* Content */}
+      <div className="flex-1 min-w-0">
+        <div className="flex items-start justify-between gap-2">
+          <div className="flex-1 min-w-0">
+            <div className="flex items-center gap-2 mb-1">
+              <h4 className="font-semibold text-gray-900 text-sm truncate">{notification.title}</h4>
+              {!notification.read && (
+                <span className="w-2 h-2 rounded-full bg-blue-500 flex-shrink-0" />
+              )}
+            </div>
+            <p className="text-sm text-gray-600 line-clamp-2">{notification.message}</p>
+          </div>
+          <span className="text-xs text-gray-400 whitespace-nowrap">
+            {formatDate(notification.createdAt)}
+          </span>
+        </div>
+
+        {/* Actions */}
+        <div className="flex items-center gap-2 mt-3">
+          <Badge variant="secondary" className="text-xs">
+            {config.label}
+          </Badge>
+          <div className="flex-1" />
+          {!notification.read && (
+            <Button
+              variant="ghost"
+              size="sm"
+              className="h-7 px-2 text-xs text-blue-600 hover:text-blue-700 hover:bg-blue-50"
+              onClick={() => onMarkAsRead(notification._id)}
+            >
+              <Check className="w-3 h-3 mr-1" />
+              Mark read
+            </Button>
+          )}
+          <Button
+            variant="ghost"
+            size="sm"
+            className="h-7 px-2 text-xs text-red-500 hover:text-red-600 hover:bg-red-50"
+            onClick={() => onDelete(notification._id)}
+          >
+            <Trash2 className="w-3 h-3" />
+          </Button>
+        </div>
+      </div>
+    </div>
+  );
+};
+
+// Toggle Setting Component
+const ToggleSetting = ({ id, label, description, checked, onChange }) => (
+  <div className="flex items-center justify-between py-3">
+    <div className="flex-1 min-w-0 mr-4">
+      <Label htmlFor={id} className="text-sm font-medium text-gray-900 cursor-pointer">
+        {label}
+      </Label>
+      {description && (
+        <p className="text-xs text-gray-500 mt-0.5">{description}</p>
+      )}
+    </div>
+    <Switch id={id} checked={checked} onCheckedChange={onChange} />
+  </div>
+);
+
+// Main Component
 const NotificationPageOperator = () => {
   const { userId } = useUser();
   const { showAlert } = useAlert();
@@ -39,7 +179,9 @@ const NotificationPageOperator = () => {
     deleteNotification,
     fetchNotifications,
   } = useNotifications();
-  
+
+  const [refreshing, setRefreshing] = useState(false);
+  const [filter, setFilter] = useState('all'); // all, unread
   const [preferences, setPreferences] = useState({
     email: true,
     push: true,
@@ -55,6 +197,12 @@ const NotificationPageOperator = () => {
       fetchNotifications(true);
     }
   }, [userId, fetchNotifications]);
+
+  const handleRefresh = async () => {
+    setRefreshing(true);
+    await fetchNotifications(true);
+    setRefreshing(false);
+  };
 
   const handleMarkAsRead = async (notificationId) => {
     try {
@@ -91,11 +239,8 @@ const NotificationPageOperator = () => {
       ...preferences,
       [key]: !preferences[key],
     };
-
     setPreferences(newPreferences);
-
     try {
-      // TODO: Add API call to update preferences
       showAlert('Preferences updated', 'success');
     } catch (err) {
       console.error('Error updating preferences:', err);
@@ -104,213 +249,179 @@ const NotificationPageOperator = () => {
     }
   };
 
-  const getNotificationIcon = (type) => {
-    switch (type) {
-      case 'report_ready':
-        return <FileTextIcon />;
-      case 'ai_complete':
-      case 'defect_found':
-        return <BotIcon />;
-      case 'status_update':
-      case 'qc_review':
-        return <UpdateIcon />;
-      default:
-        return <Info className="h-4 w-4" />;
-    }
-  };
+  const filteredNotifications = filter === 'unread'
+    ? notifications.filter(n => !n.read)
+    : notifications;
 
-  const formatDate = (dateString) => {
-    const date = new Date(dateString);
-    const now = new Date();
-    const diffInHours = Math.floor((now - date) / (1000 * 60 * 60));
-
-    if (diffInHours < 1) return 'Just now';
-    if (diffInHours < 24) return `${diffInHours}h ago`;
-    if (diffInHours < 48) return 'Yesterday';
-    return date.toLocaleDateString();
-  };
+  const todayCount = notifications.filter(n => {
+    const date = new Date(n.createdAt);
+    const today = new Date();
+    return date.toDateString() === today.toDateString();
+  }).length;
 
   return (
-    <div className="space-y-6 p-4 md:p-6">
+    <div className="p-6 max-w-7xl mx-auto space-y-6">
       {/* Header */}
-      <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
+      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
         <div>
-          <h1 className="text-3xl font-bold flex items-center gap-2">
-            Notifications
+          <div className="flex items-center gap-3">
+            <h1 className="text-2xl font-bold text-gray-900">Notifications</h1>
             {unreadCount > 0 && (
-              <Badge variant="destructive" className="ml-2">
-                {unreadCount}
-              </Badge>
+              <Badge className="bg-red-500 hover:bg-red-600">{unreadCount} new</Badge>
             )}
-          </h1>
-          <p className="text-muted-foreground">Manage alerts and view recent updates</p>
+          </div>
+          <p className="text-sm text-gray-500 mt-0.5">Stay updated on your operations</p>
         </div>
-        <Button variant="outline" size="sm" onClick={handleMarkAllAsRead} disabled={unreadCount === 0}>
-          <Check className="h-4 w-4 mr-2" />
-          Mark All as Read
-        </Button>
+        <div className="flex items-center gap-2">
+          <Button
+            onClick={handleMarkAllAsRead}
+            variant="outline"
+            size="sm"
+            disabled={unreadCount === 0}
+            className="gap-2"
+          >
+            <CheckCheck className="w-4 h-4" />
+            Mark all read
+          </Button>
+          <Button onClick={handleRefresh} variant="outline" size="sm" disabled={refreshing}>
+            <RefreshCw className={`w-4 h-4 ${refreshing ? 'animate-spin' : ''}`} />
+          </Button>
+        </div>
       </div>
 
-      <div className="grid gap-6 md:grid-cols-3">
+      {/* Stats */}
+      <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
+        <StatCard icon={Bell} value={notifications.length} label="Total" color="blue" />
+        <StatCard icon={BellRing} value={unreadCount} label="Unread" color="red" />
+        <StatCard icon={Clock} value={todayCount} label="Today" color="orange" />
+        <StatCard icon={CheckCheck} value={notifications.length - unreadCount} label="Read" color="green" />
+      </div>
+
+      {/* Main Content */}
+      <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
         {/* Notifications List */}
-        <div className="md:col-span-2 space-y-4">
-          <Card>
-            <CardHeader>
-              <CardTitle className="flex items-center gap-2">
-                <Bell className="h-5 w-5" />
-                Recent Notifications
-              </CardTitle>
-            </CardHeader>
-            <CardContent className="space-y-4">
-              {isLoading ? (
-                <div className="flex items-center justify-center py-8">
-                  <Loader2 className="h-6 w-6 animate-spin text-primary" />
-                  <span className="ml-3 text-muted-foreground">Loading notifications...</span>
-                </div>
-              ) : notifications.length === 0 ? (
-                <p className="text-muted-foreground text-center py-8">No notifications yet</p>
-              ) : (
-                notifications.map((notification) => (
-                  <div
-                    key={notification._id}
-                    className={`flex items-start gap-3 p-3 rounded-md border transition-colors ${
-                      !notification.read ? 'bg-accent/30 border-primary/20' : 'border-transparent hover:bg-accent/10'
-                    }`}
+        <div className="lg:col-span-2">
+          <Card className="border-0 shadow-sm">
+            <CardHeader className="pb-3">
+              <div className="flex items-center justify-between">
+                <CardTitle className="text-base font-semibold flex items-center gap-2">
+                  <Bell className="w-5 h-5 text-blue-600" />
+                  Recent Notifications
+                </CardTitle>
+                <div className="flex items-center gap-1 p-1 bg-gray-100 rounded-lg">
+                  <button
+                    onClick={() => setFilter('all')}
+                    className={`px-3 py-1 rounded text-xs font-medium transition-colors ${filter === 'all' ? 'bg-white shadow-sm text-gray-900' : 'text-gray-600 hover:text-gray-900'
+                      }`}
                   >
-                    <div className="mt-1">
-                      {getNotificationIcon(notification.type)}
-                    </div>
-                    <div className="flex-1 min-w-0">
-                      <h4 className="font-medium">{notification.title}</h4>
-                      <p className="text-sm text-muted-foreground mt-1">{notification.message}</p>
-                      <div className="flex items-center justify-between mt-2">
-                        <span className="text-xs text-muted-foreground">
-                          {formatDate(notification.createdAt)}
-                        </span>
-                        <div className="flex items-center gap-2">
-                          {!notification.read && (
-                            <Button
-                              variant="ghost"
-                              size="sm"
-                              className="h-auto p-1"
-                              onClick={() => handleMarkAsRead(notification._id)}
-                            >
-                              <Check className="h-3 w-3" />
-                            </Button>
-                          )}
-                          <Button
-                            variant="ghost"
-                            size="sm"
-                            className="h-auto p-1 text-destructive hover:text-destructive"
-                            onClick={() => handleDelete(notification._id)}
-                          >
-                            <Trash2 className="h-3 w-3" />
-                          </Button>
-                        </div>
-                      </div>
-                    </div>
-                  </div>
+                    All
+                  </button>
+                  <button
+                    onClick={() => setFilter('unread')}
+                    className={`px-3 py-1 rounded text-xs font-medium transition-colors ${filter === 'unread' ? 'bg-white shadow-sm text-gray-900' : 'text-gray-600 hover:text-gray-900'
+                      }`}
+                  >
+                    Unread
+                  </button>
+                </div>
+              </div>
+            </CardHeader>
+            <CardContent className="space-y-3 max-h-[600px] overflow-y-auto">
+              {isLoading ? (
+                <div className="flex items-center justify-center py-12">
+                  <Loader2 className="w-8 h-8 animate-spin text-blue-500" />
+                </div>
+              ) : filteredNotifications.length === 0 ? (
+                <div className="text-center py-12">
+                  <Bell className="w-12 h-12 text-gray-300 mx-auto mb-3" />
+                  <h3 className="font-medium text-gray-900 mb-1">
+                    {filter === 'unread' ? 'All caught up!' : 'No notifications'}
+                  </h3>
+                  <p className="text-sm text-gray-500">
+                    {filter === 'unread' ? 'You have no unread notifications' : 'Notifications will appear here'}
+                  </p>
+                </div>
+              ) : (
+                filteredNotifications.map((notification) => (
+                  <NotificationItem
+                    key={notification._id}
+                    notification={notification}
+                    onMarkAsRead={handleMarkAsRead}
+                    onDelete={handleDelete}
+                  />
                 ))
               )}
             </CardContent>
           </Card>
         </div>
 
-        {/* Notification Preferences */}
+        {/* Settings Panel */}
         <div className="space-y-6">
-          <Card>
-            <CardHeader>
-              <CardTitle className="flex items-center gap-2">
-                <Mail className="h-5 w-5" />
-                Notification Settings
+          {/* Delivery Settings */}
+          <Card className="border-0 shadow-sm">
+            <CardHeader className="pb-2">
+              <CardTitle className="text-base font-semibold flex items-center gap-2">
+                <Mail className="w-5 h-5 text-indigo-600" />
+                Delivery
               </CardTitle>
             </CardHeader>
-            <CardContent className="space-y-4">
-              <div className="flex items-center justify-between">
-                <Label htmlFor="email" className="flex flex-col">
-                  <span>Email Notifications</span>
-                  <span className="text-xs text-muted-foreground">Receive emails for alerts</span>
-                </Label>
-                <Switch
-                  id="email"
-                  checked={preferences.email}
-                  onCheckedChange={() => togglePreference('email')}
-                />
-              </div>
-
-              <div className="flex items-center justify-between">
-                <Label htmlFor="push" className="flex flex-col">
-                  <span>Push Notifications</span>
-                  <span className="text-xs text-muted-foreground">Browser notifications</span>
-                </Label>
-                <Switch
-                  id="push"
-                  checked={preferences.push}
-                  onCheckedChange={() => togglePreference('push')}
-                />
-              </div>
+            <CardContent className="divide-y divide-gray-100">
+              <ToggleSetting
+                id="email"
+                label="Email Notifications"
+                description="Get notified via email"
+                checked={preferences.email}
+                onChange={() => togglePreference('email')}
+              />
+              <ToggleSetting
+                id="push"
+                label="Push Notifications"
+                description="Browser alerts"
+                checked={preferences.push}
+                onChange={() => togglePreference('push')}
+              />
             </CardContent>
           </Card>
 
-          <Card>
-            <CardHeader>
-              <CardTitle>Alert Types</CardTitle>
+          {/* Alert Types */}
+          <Card className="border-0 shadow-sm">
+            <CardHeader className="pb-2">
+              <CardTitle className="text-base font-semibold flex items-center gap-2">
+                <Settings className="w-5 h-5 text-purple-600" />
+                Alert Types
+              </CardTitle>
             </CardHeader>
-            <CardContent className="space-y-4">
-              <div className="flex items-center justify-between">
-                <Label htmlFor="report-ready" className="text-sm">
-                  New Reports Ready
-                </Label>
-                <Switch
-                  id="report-ready"
-                  checked={preferences.reportReady}
-                  onCheckedChange={() => togglePreference('reportReady')}
-                />
-              </div>
-
-              <div className="flex items-center justify-between">
-                <Label htmlFor="ai-complete" className="text-sm">
-                  AI Processing Complete
-                </Label>
-                <Switch
-                  id="ai-complete"
-                  checked={preferences.aiComplete}
-                  onCheckedChange={() => togglePreference('aiComplete')}
-                />
-              </div>
-
-              <div className="flex items-center justify-between">
-                <Label htmlFor="status-update" className="text-sm">
-                  Project Status Updates
-                </Label>
-                <Switch
-                  id="status-update"
-                  checked={preferences.statusUpdate}
-                  onCheckedChange={() => togglePreference('statusUpdate')}
-                />
-              </div>
-
-              <div className="flex items-center justify-between">
-                <Label htmlFor="qc-review" className="text-sm">
-                  QC Review Updates
-                </Label>
-                <Switch
-                  id="qc-review"
-                  checked={preferences.qcReview}
-                  onCheckedChange={() => togglePreference('qcReview')}
-                />
-              </div>
-
-              <div className="flex items-center justify-between">
-                <Label htmlFor="defect-found" className="text-sm">
-                  Defect Alerts
-                </Label>
-                <Switch
-                  id="defect-found"
-                  checked={preferences.defectFound}
-                  onCheckedChange={() => togglePreference('defectFound')}
-                />
-              </div>
+            <CardContent className="divide-y divide-gray-100">
+              <ToggleSetting
+                id="report-ready"
+                label="New Reports"
+                checked={preferences.reportReady}
+                onChange={() => togglePreference('reportReady')}
+              />
+              <ToggleSetting
+                id="ai-complete"
+                label="AI Processing"
+                checked={preferences.aiComplete}
+                onChange={() => togglePreference('aiComplete')}
+              />
+              <ToggleSetting
+                id="status-update"
+                label="Status Updates"
+                checked={preferences.statusUpdate}
+                onChange={() => togglePreference('statusUpdate')}
+              />
+              <ToggleSetting
+                id="qc-review"
+                label="QC Reviews"
+                checked={preferences.qcReview}
+                onChange={() => togglePreference('qcReview')}
+              />
+              <ToggleSetting
+                id="defect-found"
+                label="Defect Alerts"
+                checked={preferences.defectFound}
+                onChange={() => togglePreference('defectFound')}
+              />
             </CardContent>
           </Card>
         </div>
@@ -320,4 +431,3 @@ const NotificationPageOperator = () => {
 };
 
 export default NotificationPageOperator;
-

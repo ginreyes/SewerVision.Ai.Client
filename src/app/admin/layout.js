@@ -6,6 +6,7 @@ import { useEffect, useState } from "react";
 import { usePathname, useRouter } from "next/navigation";
 import { api } from "@/lib/helper";
 import AdminSidebar from "@/components/ui/AdminSidebar";
+import { TourGuide, useTourGuide } from "@/components/TourGuide";
 
 export default function AdminLayout({ children }) {
   const [openSidebar, setOpenSidebar] = useState(false);
@@ -13,9 +14,19 @@ export default function AdminLayout({ children }) {
   const router = useRouter();
   const pathname = usePathname();
 
+  // Tour Guide state
+  const { showTour, openTour, closeTour } = useTourGuide('admin');
+
   const handleToggleSidebar = () => {
     setOpenSidebar(prev => !prev);
   };
+
+  // Listen for tour guide trigger from navbar
+  useEffect(() => {
+    const handleOpenTour = () => openTour();
+    window.addEventListener('openTourGuide', handleOpenTour);
+    return () => window.removeEventListener('openTourGuide', handleOpenTour);
+  }, [openTour]);
 
   useEffect(() => {
     // If we already have a role, don't re-fetch unnecessarily
@@ -87,9 +98,17 @@ export default function AdminLayout({ children }) {
         className={`flex-1 transition-all duration-300 ${openSidebar ? "ml-[270px]" : "ml-[90px]"
           }`}
       >
-        <Navbar openSideBar={handleToggleSidebar} />
+        <Navbar openSideBar={handleToggleSidebar} role="admin" />
         <main className="p-4">{children}</main>
       </div>
+
+      {/* Tour Guide Modal */}
+      <TourGuide
+        isOpen={showTour}
+        onClose={closeTour}
+        role="admin"
+      />
     </div>
   );
 }
+
