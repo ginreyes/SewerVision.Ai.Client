@@ -1,6 +1,6 @@
 "use client";
 
-import { memo, useCallback } from "react";
+import { memo, useCallback, useMemo } from "react";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Eye, FileVideo, Target, PencilIcon, Trash2Icon, Building2 } from "lucide-react";
@@ -21,6 +21,100 @@ const ProjectCard = memo((props) => {
   const router = useRouter();
   const { showAlert } = useAlert();
   const { showDelete } = useDialog();
+
+  // Status-based gradient colors
+  const statusGradient = useMemo(() => {
+    const status = project.status?.toLowerCase() || '';
+
+    const gradients = {
+      // Planning - Blue theme
+      'planning': {
+        header: 'from-blue-500 via-blue-600 to-indigo-600',
+        progress: 'from-blue-500 via-blue-600 to-indigo-600',
+        accent: 'blue',
+        videoBg: 'bg-blue-50',
+        videoText: 'text-blue-600',
+        videoTextDark: 'text-blue-900',
+        aiDetectionBg: 'bg-indigo-50',
+        aiDetectionText: 'text-indigo-600',
+        aiDetectionTextDark: 'text-indigo-900',
+      },
+      // In Progress - Green theme
+      'in-progress': {
+        header: 'from-emerald-500 via-green-500 to-teal-600',
+        progress: 'from-emerald-500 via-green-500 to-teal-600',
+        accent: 'green',
+        videoBg: 'bg-emerald-50',
+        videoText: 'text-emerald-600',
+        videoTextDark: 'text-emerald-900',
+        aiDetectionBg: 'bg-teal-50',
+        aiDetectionText: 'text-teal-600',
+        aiDetectionTextDark: 'text-teal-900',
+      },
+      // AI Processing - Purple/Violet theme
+      'ai-processing': {
+        header: 'from-violet-500 via-purple-500 to-fuchsia-600',
+        progress: 'from-violet-500 via-purple-500 to-fuchsia-600',
+        accent: 'purple',
+        videoBg: 'bg-violet-50',
+        videoText: 'text-violet-600',
+        videoTextDark: 'text-violet-900',
+        aiDetectionBg: 'bg-fuchsia-50',
+        aiDetectionText: 'text-fuchsia-600',
+        aiDetectionTextDark: 'text-fuchsia-900',
+      },
+      // Completed - Amber/Gold theme
+      'completed': {
+        header: 'from-amber-500 via-yellow-500 to-orange-500',
+        progress: 'from-amber-500 via-yellow-500 to-orange-500',
+        accent: 'amber',
+        videoBg: 'bg-amber-50',
+        videoText: 'text-amber-600',
+        videoTextDark: 'text-amber-900',
+        aiDetectionBg: 'bg-orange-50',
+        aiDetectionText: 'text-orange-600',
+        aiDetectionTextDark: 'text-orange-900',
+      },
+      // On Hold - Slate/Gray theme
+      'on-hold': {
+        header: 'from-slate-500 via-gray-500 to-zinc-600',
+        progress: 'from-slate-500 via-gray-500 to-zinc-600',
+        accent: 'gray',
+        videoBg: 'bg-slate-50',
+        videoText: 'text-slate-600',
+        videoTextDark: 'text-slate-900',
+        aiDetectionBg: 'bg-zinc-50',
+        aiDetectionText: 'text-zinc-600',
+        aiDetectionTextDark: 'text-zinc-900',
+      },
+      // Review - Cyan/Teal theme
+      'review': {
+        header: 'from-cyan-500 via-sky-500 to-blue-500',
+        progress: 'from-cyan-500 via-sky-500 to-blue-500',
+        accent: 'cyan',
+        videoBg: 'bg-cyan-50',
+        videoText: 'text-cyan-600',
+        videoTextDark: 'text-cyan-900',
+        aiDetectionBg: 'bg-sky-50',
+        aiDetectionText: 'text-sky-600',
+        aiDetectionTextDark: 'text-sky-900',
+      },
+      // Default (fallback) - Rose/Pink theme
+      'default': {
+        header: 'from-rose-500 via-pink-500 to-red-500',
+        progress: 'from-rose-500 via-pink-500 to-red-500',
+        accent: 'rose',
+        videoBg: 'bg-rose-50',
+        videoText: 'text-rose-600',
+        videoTextDark: 'text-rose-900',
+        aiDetectionBg: 'bg-pink-50',
+        aiDetectionText: 'text-pink-600',
+        aiDetectionTextDark: 'text-pink-900',
+      },
+    };
+
+    return gradients[status] || gradients['default'];
+  }, [project.status]);
 
   // Memoize helper functions
   const getInitials = useCallback((name) => {
@@ -85,46 +179,61 @@ const ProjectCard = memo((props) => {
 
   const customerName = getCustomerName();
 
+  // Get actual video count
+  const videoCount = project.videoCount ?? (project.videoUrl ? 1 : 0);
+
   return (
-    <Card 
-      className="flex flex-col h-full overflow-hidden transition-shadow hover:shadow-xl p-0 cursor-pointer"
-      onClick={() => setSelectedProject(project)}
+    <Card
+      className="flex flex-col h-full overflow-hidden transition-all duration-300 hover:shadow-xl hover:-translate-y-1 p-0 cursor-pointer border-0 shadow-md"
+      onClick={() => {
+        router.push(`?selectedProject=${project._id}`, { scroll: false });
+        setSelectedProject(project);
+      }}
     >
-      {/* Header with Pink/Rose Gradient */}
-      <CardHeader className="bg-gradient-to-r from-[#D76A84] via-rose-500 to-pink-600 text-white p-6 h-full">
-        <div className="flex justify-between items-start">
+      {/* Header with Status-based Gradient */}
+      <CardHeader className={`bg-gradient-to-r ${statusGradient.header} text-white p-6 h-full relative overflow-hidden`}>
+        {/* Decorative pattern */}
+        <div className="absolute inset-0 opacity-10">
+          <div className="absolute -right-8 -top-8 w-32 h-32 rounded-full border-4 border-white" />
+          <div className="absolute -right-4 -bottom-12 w-24 h-24 rounded-full border-4 border-white" />
+        </div>
+
+        <div className="flex justify-between items-start relative z-10">
           <div className="flex-1">
-            <CardTitle className="text-white text-xl mb-2">
+            <CardTitle className="text-white text-xl mb-2 font-bold">
               {project.name}
             </CardTitle>
-            <p className="text-white/90 text-sm mb-1">{project.client}</p>
-            <p className="text-white/90 text-sm">{project.location}</p>
+            <p className="text-white/90 text-sm mb-1 flex items-center gap-1">
+              <Building2 className="w-3.5 h-3.5" />
+              {project.client}
+            </p>
+            <p className="text-white/80 text-sm">{project.location}</p>
           </div>
-          <div className="flex gap-2" onClick={(e) => e.stopPropagation()}>
+          <div className="flex gap-1" onClick={(e) => e.stopPropagation()}>
             {!hideActions && (
               <>
                 <Button
                   variant="ghost"
                   size="icon"
-                  className="text-white hover:bg-white/20"
+                  className="text-white hover:bg-white/20 h-8 w-8"
                   onClick={(e) => {
                     e.stopPropagation();
                     router.push(`/admin/project/editProject/${project._id}`);
                   }}
                 >
-                  <PencilIcon size={18} />
+                  <PencilIcon size={16} />
                 </Button>
 
                 <Button
                   variant="ghost"
                   size="icon"
-                  className="text-white hover:bg-white/20"
+                  className="text-white hover:bg-white/20 h-8 w-8"
                   onClick={(e) => {
                     e.stopPropagation();
                     handleDelete(project._id);
                   }}
                 >
-                  <Trash2Icon size={18} />
+                  <Trash2Icon size={16} />
                 </Button>
               </>
             )}
@@ -132,31 +241,32 @@ const ProjectCard = memo((props) => {
               <Button
                 variant="ghost"
                 size="icon"
-                className="text-white hover:bg-white/20"
+                className="text-white hover:bg-white/20 h-8 w-8"
                 onClick={(e) => {
                   e.stopPropagation();
+                  router.push(`?selectedProject=${project._id}`, { scroll: false });
                   setSelectedProject(project);
                 }}
               >
-                <Eye size={18} />
+                <Eye size={16} />
               </Button>
             )}
           </div>
         </div>
       </CardHeader>
 
-      <CardContent className="flex flex-col justify-between flex-grow p-6 space-y-4">
+      <CardContent className="flex flex-col justify-between flex-grow p-5 space-y-4 bg-white">
         <div>
           <div className="flex items-center gap-2 mb-4">
             <span
-              className={`px-3 py-1 rounded-full text-sm font-medium ${getStatusColor(
+              className={`px-3 py-1 rounded-full text-xs font-semibold ${getStatusColor(
                 project.status
               )}`}
             >
               {project.status.replace("-", " ").toUpperCase()}
             </span>
             <span
-              className={`text-sm font-medium ${getPriorityColor(
+              className={`text-xs font-semibold ${getPriorityColor(
                 project.priority
               )}`}
             >
@@ -166,15 +276,15 @@ const ProjectCard = memo((props) => {
 
           {/* Customer Info Section */}
           {customerName && (
-            <div className="bg-gradient-to-r from-rose-50 to-pink-50 p-3 rounded-lg mb-4 border border-rose-100">
+            <div className={`bg-gradient-to-r from-${statusGradient.accent}-50 to-${statusGradient.accent}-50/50 p-3 rounded-xl mb-4 border border-${statusGradient.accent}-100`}>
               <div className="flex items-center gap-3">
                 <div className={`w-9 h-9 rounded-full flex items-center justify-center text-white text-sm font-medium ${getAvatarColor(customerName)}`}>
                   {getInitials(customerName)}
                 </div>
                 <div className="flex-1 min-w-0">
                   <div className="flex items-center gap-1.5">
-                    <Building2 className="h-3.5 w-3.5 text-rose-500" />
-                    <span className="text-xs text-rose-600 font-medium">Customer</span>
+                    <Building2 className={`h-3.5 w-3.5 ${statusGradient.videoText}`} />
+                    <span className={`text-xs ${statusGradient.videoText} font-medium`}>Customer</span>
                   </div>
                   <p className="text-sm font-semibold text-gray-900 truncate">{customerName}</p>
                   {project.customerId?.email && (
@@ -185,82 +295,89 @@ const ProjectCard = memo((props) => {
             </div>
           )}
 
+          {/* Progress Section */}
           <div className="space-y-2 mb-4">
             <div className="flex justify-between items-center text-sm">
-              <span className="text-gray-600">Progress</span>
-              <span className="font-medium text-gray-900">
+              <span className="text-gray-600 font-medium">Progress</span>
+              <span className="font-bold text-gray-900">
                 {project.progress}%
               </span>
             </div>
-            <div className="w-full bg-gray-200 rounded-full h-2">
+            <div className="w-full bg-gray-100 rounded-full h-2.5 overflow-hidden">
               <div
-                className="bg-gradient-to-r from-[#D76A84] via-rose-500 to-pink-600 h-2 rounded-full transition-all duration-300"
+                className={`bg-gradient-to-r ${statusGradient.progress} h-2.5 rounded-full transition-all duration-500 ease-out`}
                 style={{ width: `${project.progress}%` }}
               />
             </div>
           </div>
 
-          <div className="grid grid-cols-2 gap-4 mb-4">
-            <div className="bg-rose-50 p-3 rounded-lg flex items-center gap-2">
-              <FileVideo className="text-rose-600" size={20} />
+          {/* Videos & AI Detections */}
+          <div className="grid grid-cols-2 gap-3 mb-4">
+            <div className={`${statusGradient.videoBg} p-3 rounded-xl flex items-center gap-3 transition-all hover:scale-[1.02]`}>
+              <div className={`w-10 h-10 rounded-lg flex items-center justify-center ${statusGradient.videoText} bg-white shadow-sm`}>
+                <FileVideo size={20} />
+              </div>
               <div>
-                <div className="font-semibold text-rose-900">
-                  {project.videoCount > 0 ? project.videoCount : (project.videoUrl ? 1 : 0)}
+                <div className={`font-bold text-lg ${statusGradient.videoTextDark}`}>
+                  {videoCount}
                 </div>
-                <div className="text-xs text-rose-700">Videos</div>
+                <div className={`text-xs ${statusGradient.videoText}`}>Videos</div>
               </div>
             </div>
-            <div className="bg-pink-50 p-3 rounded-lg flex items-center gap-2">
-              <Target className="text-pink-600" size={20} />
+            <div className={`${statusGradient.aiDetectionBg} p-3 rounded-xl flex items-center gap-3 transition-all hover:scale-[1.02]`}>
+              <div className={`w-10 h-10 rounded-lg flex items-center justify-center ${statusGradient.aiDetectionText} bg-white shadow-sm`}>
+                <Target size={20} />
+              </div>
               <div>
-                <div className="font-semibold text-pink-900">
+                <div className={`font-bold text-lg ${statusGradient.aiDetectionTextDark}`}>
                   {project.aiDetections?.total || 0}
                 </div>
-                <div className="text-xs text-pink-700">AI Detections</div>
+                <div className={`text-xs ${statusGradient.aiDetectionText}`}>AI Detections</div>
               </div>
             </div>
           </div>
 
-          <div className="space-y-1 text-sm">
+          {/* Project Details */}
+          <div className="space-y-2 text-sm bg-gray-50 rounded-xl p-3">
             <div className="flex justify-between">
-              <span className="text-gray-600">Length:</span>
-              <span className="font-medium">{project.totalLength}</span>
+              <span className="text-gray-500">Length:</span>
+              <span className="font-semibold text-gray-800">{project.totalLength}</span>
             </div>
             <div className="flex justify-between">
-              <span className="text-gray-600">Material:</span>
-              <span className="font-medium">{project.pipelineMaterial}</span>
+              <span className="text-gray-500">Material:</span>
+              <span className="font-semibold text-gray-800">{project.pipelineMaterial}</span>
             </div>
             <div className="flex justify-between">
-              <span className="text-gray-600">Work Order:</span>
-              <span className="font-medium">{project.workOrder}</span>
+              <span className="text-gray-500">Work Order:</span>
+              <span className="font-semibold text-gray-800">{project.workOrder}</span>
             </div>
           </div>
         </div>
 
         {/* Footer section - Operator */}
-        <div className="pt-4 border-t border-gray-200 text-sm flex justify-between items-center mt-auto">
+        <div className="pt-4 border-t border-gray-100 text-sm flex justify-between items-center mt-auto">
           <div className="flex items-center gap-3 text-gray-600">
             <div
-              className={`w-8 h-8 rounded-full flex items-center justify-center text-white text-sm font-medium ${getAvatarColor(
+              className={`w-9 h-9 rounded-full flex items-center justify-center text-white text-sm font-medium shadow-sm ${getAvatarColor(
                 project.assignedOperator?.name || "Unknown"
               )}`}
             >
               {getInitials(project.assignedOperator?.name || "UN")}
             </div>
             <div>
-              <p className="text-xs text-gray-500">Operator</p>
-              <span className="font-medium text-gray-700">
+              <p className="text-xs text-gray-400">Operator</p>
+              <span className="font-semibold text-gray-700">
                 {project.assignedOperator?.name || "Unassigned"}
               </span>
             </div>
           </div>
           <div className="text-right">
-            <p className="text-xs text-gray-500">Due Date</p>
-            <p className="font-medium text-gray-700">
+            <p className="text-xs text-gray-400">Due Date</p>
+            <p className="font-semibold text-gray-700">
               {project.estimatedCompletion || project.estimated_completion
                 ? new Date(
-                    project.estimatedCompletion || project.estimated_completion
-                  ).toLocaleDateString()
+                  project.estimatedCompletion || project.estimated_completion
+                ).toLocaleDateString()
                 : "N/A"}
             </p>
           </div>

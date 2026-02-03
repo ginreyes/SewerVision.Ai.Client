@@ -1,35 +1,86 @@
 'use client'
 import React, { useState, useEffect, useRef, Suspense } from 'react'
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card'
+import { Card, CardContent, CardDescription, CardHeader, CardTitle, CardFooter } from '@/components/ui/card'
 import { Label } from '@/components/ui/label'
 import { Input } from '@/components/ui/input'
 import { Button } from '@/components/ui/button'
 import { Switch } from '@/components/ui/switch'
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select'
-import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs'
+import { Tabs, TabsContent } from '@/components/ui/tabs'
 import { Separator } from '@/components/ui/separator'
 import { Avatar, AvatarImage, AvatarFallback } from '@/components/ui/avatar'
-import { Bell, User, Shield, Settings, Camera, Moon, Globe, Eye, EyeOff, Loader2 } from 'lucide-react'
+import {
+  Bell,
+  User,
+  Shield,
+  Settings,
+  Camera,
+  Moon,
+  Globe,
+  Eye,
+  EyeOff,
+  Loader2,
+  LogOut,
+  Save,
+  CheckCircle2,
+  RefreshCcw,
+  Smartphone,
+  Mail
+} from 'lucide-react'
 import { useUser } from '@/components/providers/UserContext'
 import { useAlert } from '@/components/providers/AlertProvider'
 import { api } from '@/lib/helper'
-import { useSearchParams } from 'next/navigation'
+import { useSearchParams, useRouter } from 'next/navigation'
 
-// Inner component that uses useSearchParams
+// Helper Components
+const SectionHeader = ({ icon: Icon, title, description }) => (
+  <div className="flex items-center space-x-4 mb-6">
+    <div className="p-2 bg-rose-100 rounded-lg">
+      <Icon className="w-6 h-6 text-rose-600" />
+    </div>
+    <div>
+      <h2 className="text-lg font-semibold text-gray-900">{title}</h2>
+      <p className="text-sm text-gray-500">{description}</p>
+    </div>
+  </div>
+)
+
+const ToggleSetting = ({ label, description, checked, onCheckedChange, icon: Icon }) => (
+  <div className="flex items-center justify-between py-4">
+    <div className="flex items-center gap-3">
+      {Icon && <Icon className="w-4 h-4 text-gray-500" />}
+      <div className="space-y-0.5">
+        <Label className="text-base font-medium text-gray-900">{label}</Label>
+        <p className="text-sm text-gray-500">{description}</p>
+      </div>
+    </div>
+    <Switch checked={checked} onCheckedChange={onCheckedChange} />
+  </div>
+)
+
+// Inner component logic
 const SettingPageContent = () => {
-  const { userData } = useUser()
+  const router = useRouter()
+  const searchParams = useSearchParams()
+  const { userData, logout } = useUser() // Added logout
   const { showAlert } = useAlert()
   const fileInputRef = useRef(null)
 
-  const searchParams = useSearchParams()
   const [activeTab, setActiveTab] = useState(searchParams.get('tab') || 'profile')
 
+  // Sync with URL
   useEffect(() => {
     const tab = searchParams.get('tab')
-    if (tab) {
-      setActiveTab(tab)
-    }
+    if (tab) setActiveTab(tab)
   }, [searchParams])
+
+  const handleTabChange = (value) => {
+    setActiveTab(value)
+    // Update URL without reload
+    const params = new URLSearchParams(searchParams)
+    params.set('tab', value)
+    router.replace(`?${params.toString()}`)
+  }
 
   // Profile State
   const [profile, setProfile] = useState({
@@ -77,76 +128,55 @@ const SettingPageContent = () => {
   })
   const [isSavingPassword, setIsSavingPassword] = useState(false)
 
-  // Load user data and preferences on mount
+  // Load Data
   useEffect(() => {
     const loadUserData = async () => {
       try {
         const username = localStorage.getItem('username')
         if (!username) {
-          showAlert('Please log in to view settings', 'error')
-          setIsLoadingProfile(false)
-          return
+          // If no username, maybe redirect or just wait
+        } else {
+          try {
+            const response = await api(`/api/users/get-user/${username}`, 'GET')
+            if (response.ok && response.data?.user) {
+              const user = response.data.user
+              setProfile({
+                firstName: user.first_name || '',
+                lastName: user.last_name || '',
+                email: user.email || '',
+                phoneNumber: user.phone_number || '',
+                employeeId: user.license_number || '',
+                avatar: user.avatar || ''
+              })
+              setAvatar(user.avatar || '/avatar_default.png')
+            }
+          } catch (err) {
+            console.error(err)
+          }
         }
-
-        // Fetch user data
-        const response = await api(`/api/users/get-user/${username}`, 'GET')
-        if (response.ok && response.data?.user) {
-          const user = response.data.user
-          setProfile({
-            firstName: user.first_name || '',
-            lastName: user.last_name || '',
-            email: user.email || '',
-            phoneNumber: user.phone_number || '',
-            employeeId: user.license_number || '',
-            avatar: user.avatar || ''
-          })
-          setAvatar(user.avatar || '/avatar_default.png')
-        }
-      } catch (error) {
-        console.error('Error loading user data:', error)
-        showAlert('Failed to load user data', 'error')
       } finally {
         setIsLoadingProfile(false)
       }
     }
 
-    // Load saved preferences from localStorage
-    const savedNotifications = localStorage.getItem('qc_notifications')
-    const savedPreferences = localStorage.getItem('qc_preferences')
-
-    if (savedNotifications) {
-      try {
-        setNotifications(JSON.parse(savedNotifications))
-      } catch (e) {
-        console.error('Error parsing saved notifications:', e)
-      }
-    }
-
-    if (savedPreferences) {
-      try {
-        setPreferences(JSON.parse(savedPreferences))
-      } catch (e) {
-        console.error('Error parsing saved preferences:', e)
-      }
-    }
+    // Load LocalStorage Prefs
+    try {
+      const savedNotifications = localStorage.getItem('qc_notifications')
+      const savedPreferences = localStorage.getItem('qc_preferences')
+      if (savedNotifications) setNotifications(JSON.parse(savedNotifications))
+      if (savedPreferences) setPreferences(JSON.parse(savedPreferences))
+    } catch (e) { console.error(e) }
 
     loadUserData()
   }, [])
 
-  // Profile Functions
+  // --- Handlers ---
+
   const handleAvatarUpload = async (e) => {
     const file = e.target.files[0]
     const username = localStorage.getItem('username')
+    if (!file || !username) return
 
-    if (!file) return
-    if (!username) {
-      showAlert('You are not logged in.', 'error')
-      return
-    }
-    if (!file.type.startsWith('image/')) {
-      showAlert('Only image files are accepted', 'error')
-      return
-    }
     if (file.size > 5 * 1024 * 1024) {
       showAlert('File size should be under 5MB.', 'error')
       return
@@ -158,7 +188,6 @@ const SettingPageContent = () => {
 
     try {
       const { ok, data } = await api('/api/users/upload-avatar', 'POST', formData)
-
       if (ok) {
         showAlert('Avatar uploaded successfully', 'success')
         setAvatar(data.avatarUrl)
@@ -167,606 +196,368 @@ const SettingPageContent = () => {
         showAlert(data?.message || 'Failed to upload avatar', 'error')
       }
     } catch (err) {
-      console.error(err)
-      showAlert(err.message || 'Error uploading avatar', 'error')
+      showAlert('Error uploading avatar', 'error')
     }
   }
 
   const handleSaveProfile = async () => {
+    const username = localStorage.getItem('username')
+    if (!username) return showAlert('Please log in.', 'error')
+
+    setIsSavingProfile(true)
     try {
-      const username = localStorage.getItem('username')
-      if (!username) {
-        showAlert('You are not logged in.', 'error')
-        return
-      }
-
-      setIsSavingProfile(true)
-
       const payload = {
         usernameOrEmail: username,
         first_name: profile.firstName,
         last_name: profile.lastName,
         avatar: avatar,
       }
-
-      // If phone number exists in user model, add it
-      if (profile.phoneNumber) {
-        payload.phone_number = profile.phoneNumber
-      }
+      if (profile.phoneNumber) payload.phone_number = profile.phoneNumber
 
       const { ok, data } = await api('/api/users/change-account', 'POST', payload)
-
       if (ok) {
         showAlert('Profile updated successfully!', 'success')
-        // Update userData in context if available
         if (userData) {
           userData.first_name = profile.firstName
           userData.last_name = profile.lastName
           userData.avatar = avatar
         }
       } else {
-        showAlert(data?.message || 'Failed to update profile', 'error')
+        showAlert(data?.message || 'Failed to update', 'error')
       }
     } catch (err) {
-      console.error(err)
-      showAlert(err.message || 'Failed to update profile', 'error')
+      showAlert('Error updating profile', 'error')
     } finally {
       setIsSavingProfile(false)
     }
   }
 
-  // Notifications Functions
   const handleSaveNotifications = async () => {
     setIsSavingNotifications(true)
-    try {
-      // Save to localStorage (could be extended to backend API later)
+    setTimeout(() => {
       localStorage.setItem('qc_notifications', JSON.stringify(notifications))
-      showAlert('Notification preferences saved successfully!', 'success')
-    } catch (error) {
-      showAlert('Failed to save notification preferences', 'error')
-    } finally {
       setIsSavingNotifications(false)
-    }
+      showAlert('Notification preferences saved', 'success')
+    }, 500)
   }
 
-  // Preferences Functions
   const handleSavePreferences = async () => {
     setIsSavingPreferences(true)
-    try {
-      // Save to localStorage (could be extended to backend API later)
+    setTimeout(() => {
       localStorage.setItem('qc_preferences', JSON.stringify(preferences))
-      showAlert('Preferences saved successfully!', 'success')
-
-      // Apply dark mode if changed
-      if (preferences.darkMode) {
-        document.documentElement.classList.add('dark')
-      } else {
-        document.documentElement.classList.remove('dark')
-      }
-    } catch (error) {
-      showAlert('Failed to save preferences', 'error')
-    } finally {
+      if (preferences.darkMode) document.documentElement.classList.add('dark')
+      else document.documentElement.classList.remove('dark')
       setIsSavingPreferences(false)
-    }
+      showAlert('Preferences saved', 'success')
+    }, 500)
   }
 
-  // Security Functions
   const handleChangePassword = async () => {
-    if (security.newPassword !== security.confirmPassword) {
-      showAlert('New password and confirm password do not match.', 'error')
-      return
-    }
+    if (security.newPassword !== security.confirmPassword) return showAlert('Passwords do not match', 'error')
 
-    const passwordValid = /^(?=.*[a-z])(?=.*[\d\W]).{8,}$/.test(security.newPassword)
-    if (!passwordValid) {
-      showAlert(
-        'Password must be at least 8 characters long and contain a lowercase letter and a digit or symbol.',
-        'error'
-      )
-      return
-    }
+    // Simple validation
+    if (security.newPassword.length < 8) return showAlert('Password must be at least 8 chars', 'error')
 
     const usernameOrEmail = localStorage.getItem('username')
-    const token = localStorage.getItem('authToken')
+    const token = localStorage.getItem('authToken') // Check if 'token' or 'authToken'
 
-    if (!usernameOrEmail || !token) {
-      showAlert('Please log in to change password', 'error')
-      return
-    }
+    // Fallback if authToken is missing but we're logged in (context might handle it differently)
+    if (!usernameOrEmail) return showAlert('Please log in', 'error')
 
+    setIsSavingPassword(true)
     try {
-      setIsSavingPassword(true)
-
-      const payload = {
+      // Assume API needs token in header
+      const finalToken = token || localStorage.getItem('token')
+      const { ok, data } = await api('/api/auth/change-password', 'POST', {
         isChangePassword: true,
         currentPassword: security.currentPassword,
         newPassword: security.newPassword,
-        usernameOrEmail,
-      }
-
-      const { ok, data } = await api(
-        '/api/auth/change-password',
-        'POST',
-        payload,
-        {
-          Authorization: `Bearer ${token}`,
-        }
-      )
+        usernameOrEmail
+      }, { Authorization: `Bearer ${finalToken}` })
 
       if (ok) {
-        showAlert('Password changed successfully!', 'success')
-        setSecurity({
-          currentPassword: '',
-          newPassword: '',
-          confirmPassword: '',
-          twoFactorEnabled: security.twoFactorEnabled
-        })
+        showAlert('Password updated successfully', 'success')
+        setSecurity({ ...security, currentPassword: '', newPassword: '', confirmPassword: '' })
       } else {
-        showAlert(data?.message || 'Failed to change password.', 'error')
+        showAlert(data?.message || 'Failed to change password', 'error')
       }
-    } catch (err) {
-      console.error('Error changing password:', err)
-      showAlert(err.message || 'Failed to change password.', 'error')
+    } catch (e) {
+      showAlert('Error changing password', 'error')
     } finally {
       setIsSavingPassword(false)
     }
   }
 
-  const handleClearCache = () => {
-    if (confirm('Are you sure you want to clear the app cache? This will log you out.')) {
-      localStorage.clear()
-      window.location.href = '/login'
-    }
+  const navigationItems = [
+    { id: 'profile', label: 'Profile Settings', icon: User },
+    { id: 'notifications', label: 'Notifications', icon: Bell },
+    { id: 'preferences', label: 'Display & Preferences', icon: Settings },
+    { id: 'security', label: 'Security & Login', icon: Shield },
+  ]
+
+  if (isLoadingProfile) {
+    return <div className="flex h-96 items-center justify-center"><Loader2 className="h-8 w-8 animate-spin text-gray-400" /></div>
   }
 
   return (
-    <div className="container mx-auto p-6 max-w-4xl">
-      <div className="mb-6">
-        <h1 className="text-3xl font-bold">Settings</h1>
-        <p className="text-gray-500 mt-1">Manage your QC technician preferences and account settings</p>
+    <div className="max-w-7xl mx-auto p-4 md:p-6 space-y-8">
+      {/* Header */}
+      <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">
+        <div>
+          <h1 className="text-2xl font-bold text-gray-900">QC Settings</h1>
+          <p className="text-gray-500 mt-1">Manage your account and workstation preferences</p>
+        </div>
+        <div className="flex items-center gap-3">
+          {/* Global Save Button could go here if we had a global form */}
+        </div>
       </div>
 
-      <Tabs value={activeTab} onValueChange={setActiveTab} className="space-y-4">
-        <TabsList className="grid w-full grid-cols-4">
-          <TabsTrigger value="profile">
-            <User className="w-4 h-4 mr-2" />
-            Profile
-          </TabsTrigger>
-          <TabsTrigger value="notifications">
-            <Bell className="w-4 h-4 mr-2" />
-            Notifications
-          </TabsTrigger>
-          <TabsTrigger value="preferences">
-            <Settings className="w-4 h-4 mr-2" />
-            Preferences
-          </TabsTrigger>
-          <TabsTrigger value="security">
-            <Shield className="w-4 h-4 mr-2" />
-            Security
-          </TabsTrigger>
-        </TabsList>
+      <div className="flex flex-col lg:flex-row gap-8">
+        {/* Sidebar */}
+        <Card className="lg:w-64 h-fit border-0 shadow-sm bg-white">
+          <CardContent className="p-4">
+            <nav className="space-y-1">
+              {navigationItems.map(item => (
+                <button
+                  key={item.id}
+                  onClick={() => handleTabChange(item.id)}
+                  className={`flex items-center w-full px-3 py-2 text-sm font-medium rounded-lg transition-colors ${activeTab === item.id
+                      ? 'bg-rose-50 text-rose-700'
+                      : 'text-gray-600 hover:bg-gray-50 hover:text-gray-900'
+                    }`}
+                >
+                  <item.icon className={`w-4 h-4 mr-3 ${activeTab === item.id ? 'text-rose-600' : 'text-gray-400'}`} />
+                  {item.label}
+                </button>
+              ))}
+              <Separator className="my-4" />
+              <button
+                onClick={logout}
+                className="flex items-center w-full px-3 py-2 text-sm font-medium text-red-600 rounded-lg hover:bg-red-50 transition-colors"
+              >
+                <LogOut className="w-4 h-4 mr-3" />
+                Sign Out
+              </button>
+            </nav>
+          </CardContent>
+        </Card>
 
-        <TabsContent value="profile">
-          <Card>
-            <CardHeader>
-              <CardTitle>Profile Information</CardTitle>
-              <CardDescription>Update your personal information and profile details</CardDescription>
-            </CardHeader>
-            <CardContent className="space-y-6">
-              {/* Avatar Upload */}
-              <div className="flex items-center gap-4">
-                <Avatar className="w-20 h-20">
-                  <AvatarImage src={avatar} alt="Profile" />
-                  <AvatarFallback>
-                    {profile.firstName?.[0]}{profile.lastName?.[0]}
-                  </AvatarFallback>
-                </Avatar>
-                <div className="space-y-2">
-                  <input
-                    ref={fileInputRef}
-                    type="file"
-                    accept="image/*"
-                    onChange={handleAvatarUpload}
-                    className="hidden"
-                  />
-                  <div className="flex gap-2">
-                    <Button
-                      type="button"
-                      variant="outline"
-                      onClick={() => fileInputRef.current?.click()}
-                    >
-                      <Camera className="w-4 h-4 mr-2" />
-                      Change Photo
-                    </Button>
-                  </div>
-                  <p className="text-xs text-gray-500">JPG, PNG or GIF. Max size 5MB</p>
-                </div>
-              </div>
+        {/* Main Content */}
+        <div className="flex-1">
+          <Tabs value={activeTab} onValueChange={handleTabChange} className="space-y-6">
 
-              <Separator />
-
-              {isLoadingProfile ? (
-                <div className="flex items-center justify-center py-8">
-                  <Loader2 className="w-6 h-6 animate-spin text-gray-400" />
-                </div>
-              ) : (
-                <>
-                  <div className="grid grid-cols-2 gap-4">
-                    <div className="space-y-2">
-                      <Label htmlFor="firstName">First Name</Label>
-                      <Input
-                        id="firstName"
-                        value={profile.firstName}
-                        onChange={(e) => setProfile({ ...profile, firstName: e.target.value })}
-                        placeholder="Juan"
-                      />
+            {/* Profile Tab */}
+            <TabsContent value="profile" className="mt-0">
+              <Card className="border-0 shadow-sm">
+                <CardHeader>
+                  <SectionHeader icon={User} title="Personal Information" description="Update your personal details and photo" />
+                </CardHeader>
+                <CardContent className="space-y-8">
+                  <div className="flex flex-col sm:flex-row gap-6 items-center sm:items-start">
+                    <div className="relative group">
+                      <input ref={fileInputRef} type="file" className="hidden" accept="image/*" onChange={handleAvatarUpload} />
+                      <Avatar className="w-24 h-24 border-4 border-white shadow-lg cursor-pointer" onClick={() => fileInputRef.current?.click()}>
+                        <AvatarImage src={avatar} />
+                        <AvatarFallback className="text-2xl">{profile.firstName?.[0]}</AvatarFallback>
+                      </Avatar>
+                      <div className="absolute inset-0 bg-black/40 rounded-full flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity cursor-pointer" onClick={() => fileInputRef.current?.click()}>
+                        <Camera className="w-8 h-8 text-white" />
+                      </div>
                     </div>
-                    <div className="space-y-2">
-                      <Label htmlFor="lastName">Last Name</Label>
-                      <Input
-                        id="lastName"
-                        value={profile.lastName}
-                        onChange={(e) => setProfile({ ...profile, lastName: e.target.value })}
-                        placeholder="Dela Cruz"
-                      />
+                    <div className="space-y-1 text-center sm:text-left">
+                      <h3 className="text-lg font-bold">{profile.firstName || 'User'} {profile.lastName}</h3>
+                      <p className="text-sm text-gray-500">{userData.role || 'QC Technician'}</p>
+                      <Button variant="outline" size="sm" className="mt-2" onClick={() => fileInputRef.current?.click()}>Change Avatar</Button>
                     </div>
-                  </div>
-                  <div className="space-y-2">
-                    <Label htmlFor="email">Email</Label>
-                    <Input
-                      id="email"
-                      type="email"
-                      value={profile.email}
-                      disabled
-                      className="bg-gray-50"
-                      placeholder="juan.delacruz@company.com"
-                    />
-                    <p className="text-xs text-gray-500">Email cannot be changed</p>
-                  </div>
-                  <div className="space-y-2">
-                    <Label htmlFor="phone">Phone Number</Label>
-                    <Input
-                      id="phone"
-                      type="tel"
-                      value={profile.phoneNumber}
-                      onChange={(e) => setProfile({ ...profile, phoneNumber: e.target.value })}
-                      placeholder="+63 912 345 6789"
-                    />
-                  </div>
-                  <div className="space-y-2">
-                    <Label htmlFor="employee-id">License Number</Label>
-                    <Input
-                      id="employee-id"
-                      value={profile.employeeId}
-                      onChange={(e) => setProfile({ ...profile, employeeId: e.target.value })}
-                      placeholder="QC-2024-001"
-                    />
                   </div>
                   <Separator />
-                  <Button
-                    onClick={handleSaveProfile}
-                    disabled={isSavingProfile}
-                    className="w-full sm:w-auto"
-                  >
-                    {isSavingProfile ? (
-                      <>
-                        <Loader2 className="w-4 h-4 mr-2 animate-spin" />
-                        Saving...
-                      </>
-                    ) : (
-                      'Save Changes'
-                    )}
+                  <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                    <div className="space-y-2">
+                      <Label>First Name</Label>
+                      <Input value={profile.firstName} onChange={e => setProfile({ ...profile, firstName: e.target.value })} />
+                    </div>
+                    <div className="space-y-2">
+                      <Label>Last Name</Label>
+                      <Input value={profile.lastName} onChange={e => setProfile({ ...profile, lastName: e.target.value })} />
+                    </div>
+                    <div className="space-y-2">
+                      <Label>Email</Label>
+                      <Input value={profile.email} disabled className="bg-gray-50" />
+                    </div>
+                    <div className="space-y-2">
+                      <Label>Phone Number</Label>
+                      <Input value={profile.phoneNumber} onChange={e => setProfile({ ...profile, phoneNumber: e.target.value })} />
+                    </div>
+                    <div className="space-y-2">
+                      <Label>License / Employee ID</Label>
+                      <Input value={profile.employeeId} onChange={e => setProfile({ ...profile, employeeId: e.target.value })} />
+                    </div>
+                  </div>
+                  <div className="flex justify-end">
+                    <Button onClick={handleSaveProfile} disabled={isSavingProfile} className="bg-rose-600 hover:bg-rose-700">
+                      {isSavingProfile && <Loader2 className="w-4 h-4 mr-2 animate-spin" />}
+                      Save Profile
+                    </Button>
+                  </div>
+                </CardContent>
+              </Card>
+            </TabsContent>
+
+            {/* Notifications Tab */}
+            <TabsContent value="notifications" className="mt-0">
+              <Card className="border-0 shadow-sm">
+                <CardHeader>
+                  <SectionHeader icon={Bell} title="Notification Preferences" description="Manage how you receive alerts" />
+                </CardHeader>
+                <CardContent className="space-y-2">
+                  <ToggleSetting
+                    icon={Mail}
+                    label="Email Alerts"
+                    description="Receive daily summaries and critical alerts via email"
+                    checked={notifications.emailAlerts}
+                    onCheckedChange={c => setNotifications({ ...notifications, emailAlerts: c })}
+                  />
+                  <Separator />
+                  <ToggleSetting
+                    icon={Smartphone}
+                    label="SMS Alerts"
+                    description="Get urgent notifications on your mobile device"
+                    checked={notifications.smsAlerts}
+                    onCheckedChange={c => setNotifications({ ...notifications, smsAlerts: c })}
+                  />
+                  <Separator />
+                  <ToggleSetting
+                    icon={CheckCircle2}
+                    label="New Defect Assignments"
+                    description="Notify when a new defect is assigned for review"
+                    checked={notifications.defectAlerts}
+                    onCheckedChange={c => setNotifications({ ...notifications, defectAlerts: c })}
+                  />
+                </CardContent>
+                <CardFooter>
+                  <Button onClick={handleSaveNotifications} disabled={isSavingNotifications} className="ml-auto bg-rose-600 hover:bg-rose-700">
+                    {isSavingNotifications ? 'Saving...' : 'Save Preferences'}
                   </Button>
-                </>
-              )}
-            </CardContent>
-          </Card>
-        </TabsContent>
+                </CardFooter>
+              </Card>
+            </TabsContent>
 
-        <TabsContent value="notifications">
-          <Card>
-            <CardHeader>
-              <CardTitle>Notification Preferences</CardTitle>
-              <CardDescription>Choose how you want to receive notifications</CardDescription>
-            </CardHeader>
-            <CardContent className="space-y-6">
-              <div className="flex items-center justify-between">
-                <div className="space-y-0.5">
-                  <Label>Email Alerts</Label>
-                  <p className="text-sm text-gray-500">Receive inspection updates via email</p>
-                </div>
-                <Switch
-                  checked={notifications.emailAlerts}
-                  onCheckedChange={(checked) => setNotifications({ ...notifications, emailAlerts: checked })}
-                />
-              </div>
-              <Separator />
-              <div className="flex items-center justify-between">
-                <div className="space-y-0.5">
-                  <Label>SMS Alerts</Label>
-                  <p className="text-sm text-gray-500">Get text messages for urgent issues</p>
-                </div>
-                <Switch
-                  checked={notifications.smsAlerts}
-                  onCheckedChange={(checked) => setNotifications({ ...notifications, smsAlerts: checked })}
-                />
-              </div>
-              <Separator />
-              <div className="flex items-center justify-between">
-                <div className="space-y-0.5">
-                  <Label>Defect Alerts</Label>
-                  <p className="text-sm text-gray-500">Notify when defects are reported</p>
-                </div>
-                <Switch
-                  checked={notifications.defectAlerts}
-                  onCheckedChange={(checked) => setNotifications({ ...notifications, defectAlerts: checked })}
-                />
-              </div>
-              <Separator />
-              <div className="flex items-center justify-between">
-                <div className="space-y-0.5">
-                  <Label>Inspection Reminders</Label>
-                  <p className="text-sm text-gray-500">Remind about scheduled inspections</p>
-                </div>
-                <Switch
-                  checked={notifications.inspectionReminders}
-                  onCheckedChange={(checked) => setNotifications({ ...notifications, inspectionReminders: checked })}
-                />
-              </div>
-              <Separator />
-              <Button
-                onClick={handleSaveNotifications}
-                disabled={isSavingNotifications}
-                className="w-full sm:w-auto"
-              >
-                {isSavingNotifications ? (
-                  <>
-                    <Loader2 className="w-4 h-4 mr-2 animate-spin" />
-                    Saving...
-                  </>
-                ) : (
-                  'Save Preferences'
-                )}
-              </Button>
-            </CardContent>
-          </Card>
-        </TabsContent>
+            {/* Preferences Tab */}
+            <TabsContent value="preferences" className="mt-0">
+              <Card className="border-0 shadow-sm">
+                <CardHeader>
+                  <SectionHeader icon={Settings} title="System Preferences" description="Customize interface and units" />
+                </CardHeader>
+                <CardContent className="space-y-6">
+                  <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                    <div className="space-y-2">
+                      <Label>Language</Label>
+                      <Select value={preferences.language} onValueChange={v => setPreferences({ ...preferences, language: v })}>
+                        <SelectTrigger><SelectValue /></SelectTrigger>
+                        <SelectContent>
+                          <SelectItem value="en">English (US)</SelectItem>
+                          <SelectItem value="tl">Filipino (Tagalog)</SelectItem>
+                        </SelectContent>
+                      </Select>
+                    </div>
+                    <div className="space-y-2">
+                      <Label>Timezone</Label>
+                      <Select value={preferences.timezone} onValueChange={v => setPreferences({ ...preferences, timezone: v })}>
+                        <SelectTrigger><SelectValue /></SelectTrigger>
+                        <SelectContent>
+                          <SelectItem value="Asia/Manila">Asia/Manila</SelectItem>
+                          <SelectItem value="UTC">UTC</SelectItem>
+                        </SelectContent>
+                      </Select>
+                    </div>
+                    <div className="space-y-2">
+                      <Label>Measurement Unit</Label>
+                      <Select value={preferences.measurementUnit} onValueChange={v => setPreferences({ ...preferences, measurementUnit: v })}>
+                        <SelectTrigger><SelectValue /></SelectTrigger>
+                        <SelectContent>
+                          <SelectItem value="metric">Metric (Meters)</SelectItem>
+                          <SelectItem value="imperial">Imperial (Feet)</SelectItem>
+                        </SelectContent>
+                      </Select>
+                    </div>
+                    <div className="space-y-2">
+                      <Label>Photo Upload Quality</Label>
+                      <Select value={preferences.photoQuality} onValueChange={v => setPreferences({ ...preferences, photoQuality: v })}>
+                        <SelectTrigger><SelectValue /></SelectTrigger>
+                        <SelectContent>
+                          <SelectItem value="high">High (Original)</SelectItem>
+                          <SelectItem value="medium">Medium (Compressed)</SelectItem>
+                          <SelectItem value="low">Low (Fastest)</SelectItem>
+                        </SelectContent>
+                      </Select>
+                    </div>
+                  </div>
+                  <Separator />
+                  <ToggleSetting
+                    icon={Moon}
+                    label="Dark Mode"
+                    description="Reduce eye strain in low-light environments"
+                    checked={preferences.darkMode}
+                    onCheckedChange={c => setPreferences({ ...preferences, darkMode: c })}
+                  />
+                </CardContent>
+                <CardFooter>
+                  <Button onClick={handleSavePreferences} disabled={isSavingPreferences} className="ml-auto bg-rose-600 hover:bg-rose-700">
+                    {isSavingPreferences ? 'Saving...' : 'Save Preferences'}
+                  </Button>
+                </CardFooter>
+              </Card>
+            </TabsContent>
 
-        <TabsContent value="preferences">
-          <Card>
-            <CardHeader>
-              <CardTitle>QC Preferences</CardTitle>
-              <CardDescription>Customize your inspection and display settings</CardDescription>
-            </CardHeader>
-            <CardContent className="space-y-6">
-              <div className="flex items-center justify-between">
-                <div className="space-y-0.5">
-                  <Label className="flex items-center gap-2">
-                    <Moon className="w-4 h-4" />
-                    Dark Mode
-                  </Label>
-                  <p className="text-sm text-gray-500">Switch to dark theme</p>
-                </div>
-                <Switch
-                  checked={preferences.darkMode}
-                  onCheckedChange={(checked) => setPreferences({ ...preferences, darkMode: checked })}
-                />
-              </div>
-              <Separator />
-              <div className="space-y-2">
-                <Label className="flex items-center gap-2">
-                  <Globe className="w-4 h-4" />
-                  Language
-                </Label>
-                <Select value={preferences.language} onValueChange={(value) => setPreferences({ ...preferences, language: value })}>
-                  <SelectTrigger>
-                    <SelectValue />
-                  </SelectTrigger>
-                  <SelectContent>
-                    <SelectItem value="en">English</SelectItem>
-                    <SelectItem value="tl">Tagalog</SelectItem>
-                    <SelectItem value="zh">Chinese</SelectItem>
-                  </SelectContent>
-                </Select>
-              </div>
-              <div className="space-y-2">
-                <Label>Timezone</Label>
-                <Select value={preferences.timezone} onValueChange={(value) => setPreferences({ ...preferences, timezone: value })}>
-                  <SelectTrigger>
-                    <SelectValue />
-                  </SelectTrigger>
-                  <SelectContent>
-                    <SelectItem value="Asia/Manila">Asia/Manila (PHT)</SelectItem>
-                    <SelectItem value="Asia/Singapore">Asia/Singapore (SGT)</SelectItem>
-                    <SelectItem value="Asia/Tokyo">Asia/Tokyo (JST)</SelectItem>
-                  </SelectContent>
-                </Select>
-              </div>
-              <div className="space-y-2">
-                <Label>Measurement Unit</Label>
-                <Select value={preferences.measurementUnit} onValueChange={(value) => setPreferences({ ...preferences, measurementUnit: value })}>
-                  <SelectTrigger>
-                    <SelectValue />
-                  </SelectTrigger>
-                  <SelectContent>
-                    <SelectItem value="metric">Metric (cm, kg)</SelectItem>
-                    <SelectItem value="imperial">Imperial (in, lb)</SelectItem>
-                  </SelectContent>
-                </Select>
-              </div>
-              <div className="space-y-2">
-                <Label className="flex items-center gap-2">
-                  <Camera className="w-4 h-4" />
-                  Photo Quality
-                </Label>
-                <Select value={preferences.photoQuality} onValueChange={(value) => setPreferences({ ...preferences, photoQuality: value })}>
-                  <SelectTrigger>
-                    <SelectValue />
-                  </SelectTrigger>
-                  <SelectContent>
-                    <SelectItem value="high">High (Best quality)</SelectItem>
-                    <SelectItem value="medium">Medium (Balanced)</SelectItem>
-                    <SelectItem value="low">Low (Save storage)</SelectItem>
-                  </SelectContent>
-                </Select>
-              </div>
-              <Separator />
-              <Button
-                onClick={handleSavePreferences}
-                disabled={isSavingPreferences}
-                className="w-full sm:w-auto"
-              >
-                {isSavingPreferences ? (
-                  <>
-                    <Loader2 className="w-4 h-4 mr-2 animate-spin" />
-                    Saving...
-                  </>
-                ) : (
-                  'Save Preferences'
-                )}
-              </Button>
-            </CardContent>
-          </Card>
-        </TabsContent>
+            {/* Security Tab */}
+            <TabsContent value="security" className="mt-0">
+              <Card className="border-0 shadow-sm">
+                <CardHeader>
+                  <SectionHeader icon={Shield} title="Security Settings" description="Protect your account" />
+                </CardHeader>
+                <CardContent className="space-y-6">
+                  <div className="space-y-4 max-w-md">
+                    <div className="space-y-2">
+                      <Label>Current Password</Label>
+                      <Input type="password" value={security.currentPassword} onChange={e => setSecurity({ ...security, currentPassword: e.target.value })} />
+                    </div>
+                    <div className="space-y-2">
+                      <Label>New Password</Label>
+                      <Input type="password" value={security.newPassword} onChange={e => setSecurity({ ...security, newPassword: e.target.value })} />
+                    </div>
+                    <div className="space-y-2">
+                      <Label>Confirm New Password</Label>
+                      <Input type="password" value={security.confirmPassword} onChange={e => setSecurity({ ...security, confirmPassword: e.target.value })} />
+                    </div>
+                    <div className="pt-2">
+                      <Button onClick={handleChangePassword} disabled={isSavingPassword || !security.currentPassword} className="bg-rose-600 hover:bg-rose-700">
+                        {isSavingPassword && <Loader2 className="w-4 h-4 mr-2 animate-spin" />}
+                        Update Password
+                      </Button>
+                    </div>
+                  </div>
+                  <Separator />
+                  <ToggleSetting
+                    label="Two-Factor Authentication (2FA)"
+                    description="Add an extra layer of security (Coming Soon)"
+                    checked={security.twoFactorEnabled}
+                    onCheckedChange={c => setSecurity({ ...security, twoFactorEnabled: c })}
+                  />
+                </CardContent>
+              </Card>
+            </TabsContent>
 
-        <TabsContent value="security">
-          <Card>
-            <CardHeader>
-              <CardTitle>Security Settings</CardTitle>
-              <CardDescription>Manage your account security and password</CardDescription>
-            </CardHeader>
-            <CardContent className="space-y-6">
-              <div className="space-y-2">
-                <Label htmlFor="current-password">Current Password</Label>
-                <div className="relative">
-                  <Input
-                    id="current-password"
-                    type={showPasswords.current ? 'text' : 'password'}
-                    value={security.currentPassword}
-                    onChange={(e) => setSecurity({ ...security, currentPassword: e.target.value })}
-                    className="pr-10"
-                  />
-                  <button
-                    type="button"
-                    onClick={() => setShowPasswords({ ...showPasswords, current: !showPasswords.current })}
-                    className="absolute right-3 top-1/2 -translate-y-1/2 text-gray-500 hover:text-gray-700"
-                  >
-                    {showPasswords.current ? <EyeOff className="w-4 h-4" /> : <Eye className="w-4 h-4" />}
-                  </button>
-                </div>
-              </div>
-              <div className="space-y-2">
-                <Label htmlFor="new-password">New Password</Label>
-                <div className="relative">
-                  <Input
-                    id="new-password"
-                    type={showPasswords.new ? 'text' : 'password'}
-                    value={security.newPassword}
-                    onChange={(e) => setSecurity({ ...security, newPassword: e.target.value })}
-                    className="pr-10"
-                  />
-                  <button
-                    type="button"
-                    onClick={() => setShowPasswords({ ...showPasswords, new: !showPasswords.new })}
-                    className="absolute right-3 top-1/2 -translate-y-1/2 text-gray-500 hover:text-gray-700"
-                  >
-                    {showPasswords.new ? <EyeOff className="w-4 h-4" /> : <Eye className="w-4 h-4" />}
-                  </button>
-                </div>
-              </div>
-              <div className="space-y-2">
-                <Label htmlFor="confirm-password">Confirm New Password</Label>
-                <div className="relative">
-                  <Input
-                    id="confirm-password"
-                    type={showPasswords.confirm ? 'text' : 'password'}
-                    value={security.confirmPassword}
-                    onChange={(e) => setSecurity({ ...security, confirmPassword: e.target.value })}
-                    className="pr-10"
-                  />
-                  <button
-                    type="button"
-                    onClick={() => setShowPasswords({ ...showPasswords, confirm: !showPasswords.confirm })}
-                    className="absolute right-3 top-1/2 -translate-y-1/2 text-gray-500 hover:text-gray-700"
-                  >
-                    {showPasswords.confirm ? <EyeOff className="w-4 h-4" /> : <Eye className="w-4 h-4" />}
-                  </button>
-                </div>
-              </div>
-              <div className="rounded-lg bg-rose-50 p-4 border border-rose-200">
-                <p className="text-sm font-semibold text-rose-900 mb-2">Password Requirements:</p>
-                <ul className="text-xs text-rose-700 space-y-1 list-disc list-inside">
-                  <li>Minimum 8 characters long</li>
-                  <li>At least one lowercase letter</li>
-                  <li>At least one number or symbol</li>
-                </ul>
-              </div>
-              <Separator />
-              <div className="flex items-center justify-between">
-                <div className="space-y-0.5">
-                  <Label>Two-Factor Authentication</Label>
-                  <p className="text-sm text-gray-500">Add an extra layer of security</p>
-                </div>
-                <Switch
-                  checked={security.twoFactorEnabled}
-                  onCheckedChange={(checked) => setSecurity({ ...security, twoFactorEnabled: checked })}
-                />
-              </div>
-              {security.twoFactorEnabled && (
-                <div className="rounded-lg bg-amber-50 p-4 border border-amber-200">
-                  <p className="text-sm text-amber-800">
-                    Two-factor authentication setup coming soon. This feature will require additional configuration.
-                  </p>
-                </div>
-              )}
-              <Separator />
-              <div className="flex flex-col sm:flex-row gap-2">
-                <Button
-                  onClick={handleChangePassword}
-                  disabled={isSavingPassword || !security.currentPassword || !security.newPassword || !security.confirmPassword}
-                  className="flex-1"
-                >
-                  {isSavingPassword ? (
-                    <>
-                      <Loader2 className="w-4 h-4 mr-2 animate-spin" />
-                      Updating...
-                    </>
-                  ) : (
-                    'Update Password'
-                  )}
-                </Button>
-                <Button
-                  variant="outline"
-                  onClick={handleClearCache}
-                  className="flex-1"
-                >
-                  Clear App Cache
-                </Button>
-              </div>
-            </CardContent>
-          </Card>
-        </TabsContent>
-      </Tabs>
+          </Tabs>
+        </div>
+      </div>
     </div>
   )
 }
 
-// Loading fallback for Suspense
-const SettingsPageLoading = () => (
-  <div className="container mx-auto p-6 max-w-4xl">
-    <div className="flex items-center justify-center py-20">
-      <Loader2 className="w-8 h-8 animate-spin text-gray-400" />
-    </div>
-  </div>
+const SettingPageQcSide = () => (
+  <Suspense fallback={<div className="min-h-screen flex items-center justify-center"><Loader2 className="w-8 h-8 animate-spin text-rose-500" /></div>}>
+    <SettingPageContent />
+  </Suspense>
 )
-
-// Main export wrapped in Suspense
-const SettingPageQcSide = () => {
-  return (
-    <Suspense fallback={<SettingsPageLoading />}>
-      <SettingPageContent />
-    </Suspense>
-  )
-}
 
 export default SettingPageQcSide

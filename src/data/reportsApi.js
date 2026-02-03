@@ -42,6 +42,26 @@ export const reportsApi = {
   },
 
   /**
+   * Get projects available for reporting
+   */
+  async getProjectsForReport(userId) {
+    try {
+      // Get all projects the user has access to
+      // Using limit=100 to ensure we get a good list for the dropdown
+      const response = await api('/api/projects/get-all-projects?limit=100', 'GET');
+
+      if (!response.ok) {
+        throw new Error(response.data?.message || 'Failed to fetch projects');
+      }
+
+      return response.data?.data || [];
+    } catch (error) {
+      console.error('Get Projects API Error:', error);
+      throw error;
+    }
+  },
+
+  /**
    * Get report by ID
    */
   async getReportById(reportId) {
@@ -124,7 +144,7 @@ export const reportsApi = {
         throw new Error(response.data?.message || 'Failed to fetch templates');
       }
 
-      return response.data;
+      return response.data?.data || [];
     } catch (error) {
       console.error('Get Templates API Error:', error);
       throw error;

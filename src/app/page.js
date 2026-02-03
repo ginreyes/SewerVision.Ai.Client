@@ -3,6 +3,7 @@ import { useEffect } from "react";
 import { useRouter } from "next/navigation";
 import Link from "next/link";
 import Login from "./login/page";
+import LandingFooter from "@/components/ui/LandingFooter";
 import { FaCamera, FaBrain, FaChartLine, FaShieldAlt, FaClock, FaUsers, FaArrowRight, FaStar } from "react-icons/fa";
 
 export default function Home() {
@@ -182,6 +183,8 @@ export default function Home() {
       <div className="absolute top-1/4 left-1/4 w-4 h-4 bg-rose-400 rounded-full animate-ping opacity-20"></div>
       <div className="absolute bottom-1/4 right-1/4 w-3 h-3 bg-pink-500 rounded-full animate-ping opacity-20 animation-delay-2000"></div>
       <div className="absolute top-1/2 right-1/3 w-2 h-2 bg-red-400 rounded-full animate-ping opacity-20 animation-delay-4000"></div>
+
+      <LandingFooter />
 
       {/* Custom Animations */}
       <style jsx>{`
