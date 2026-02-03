@@ -461,17 +461,12 @@ function SettingsPageContent() {
           <Button variant="outline" className="text-gray-600 gap-2" onClick={fetchSettings}>
             <RefreshCcw className="w-4 h-4" /> Refresh
           </Button>
-          <Button onClick={() => {
-            // Redirect to active tab's save handler or generic save
-            if (activeTab === 'profile') {
-              if (isEditingProfile) handleSaveProfile();
-            } else {
-              saveSettings(activeTab);
-            }
-          }} disabled={saving} className="bg-blue-600 hover:bg-blue-700">
-            {saving ? <Loader2 className="w-4 h-4 mr-2 animate-spin" /> : <Save className="w-4 h-4 mr-2" />}
-            Save Changes
-          </Button>
+          {activeTab !== 'profile' && (
+            <Button onClick={() => saveSettings(activeTab)} disabled={saving} className="bg-blue-600 hover:bg-blue-700">
+              {saving ? <Loader2 className="w-4 h-4 mr-2 animate-spin" /> : <Save className="w-4 h-4 mr-2" />}
+              Save Changes
+            </Button>
+          )}
         </div>
       </div>
 

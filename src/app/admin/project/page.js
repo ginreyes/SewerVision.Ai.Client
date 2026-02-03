@@ -103,13 +103,37 @@ const SewerVisionInspectionModuleContent = () => {
 
 
   useEffect(() => {
-    if (selectedProjectId && projects.length > 0) {
-      const found = projects.find((p) => p._id === selectedProjectId);
-      if (found) {
-        setSelectedProject(found);
+    const fetchProjectById = async () => {
+      if (selectedProjectId) {
+        // If we already have the correct project selected, do nothing
+        if (selectedProject && selectedProject._id === selectedProjectId) {
+          return;
+        }
+
+        // First try to find in current list
+        if (projects.length > 0) {
+          const found = projects.find((p) => p._id === selectedProjectId);
+          if (found) {
+            setSelectedProject(found);
+            return;
+          }
+        }
+
+        // If not found in list, fetch directly
+        try {
+          const { data } = await api(`/api/projects/get-project/${selectedProjectId}`, 'GET');
+          if (data?.data) {
+            setSelectedProject(data.data);
+          }
+        } catch (error) {
+          console.error('Error fetching deep-linked project:', error);
+          showAlert('Failed to load project from URL', 'error');
+        }
       }
-    }
-  }, [selectedProjectId, projects]);
+    };
+
+    fetchProjectById();
+  }, [selectedProjectId, projects, selectedProject]);
 
   return (
     <div className="min-h-screen">

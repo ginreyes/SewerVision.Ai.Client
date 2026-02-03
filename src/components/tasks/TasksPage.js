@@ -36,6 +36,7 @@ import { useUser } from '@/components/providers/UserContext';
 import { useAlert } from '@/components/providers/AlertProvider';
 import qcApi from '@/data/qcApi';
 import operatorApi from '@/data/operatorApi';
+import taskApi from '@/data/taskApi';
 import { useRouter } from 'next/navigation';
 
 // Compact Stat Card
@@ -181,8 +182,8 @@ const TaskCard = ({ task, onClick, isSelected }) => {
                 <div className="mt-3 pt-3 border-t border-gray-100">
                     <div className="flex items-center justify-between">
                         <span className={`inline-flex items-center gap-1 px-2 py-0.5 rounded text-xs font-medium ${task.aiProcessing === 'completed' ? 'bg-green-50 text-green-700' :
-                                task.aiProcessing === 'processing' ? 'bg-yellow-50 text-yellow-700' :
-                                    'bg-gray-50 text-gray-600'
+                            task.aiProcessing === 'processing' ? 'bg-yellow-50 text-yellow-700' :
+                                'bg-gray-50 text-gray-600'
                             }`}>
                             <Brain className="w-3 h-3" />
                             AI {task.aiProcessing}
@@ -222,7 +223,7 @@ const TasksPage = ({ role = 'admin' }) => {
         if (userId && role) {
             fetchTasks();
         }
-    }, [userId, role, filterStatus]);
+    }, [userId, role, filterStatus, filterPriority, searchQuery]);
 
     const fetchTasks = async () => {
         try {
@@ -269,8 +270,33 @@ const TasksPage = ({ role = 'admin' }) => {
                     setStats({ active: 0, urgent: 0, completedToday: 0, efficiency: 94 });
                 }
             } else {
-                setTasks(getMockTasks());
-                setStats({ active: 5, urgent: 1, completedToday: 3, efficiency: 94 });
+                // Admin role - Fetch real tasks
+                const tasksList = await taskApi.getTasks({
+                    status: filterStatus !== 'all' ? filterStatus : undefined,
+                    priority: filterPriority !== 'all' ? filterPriority : undefined,
+                    search: searchQuery
+                });
+
+                // Map API response to UI format if needed (though backend returns similar structure now)
+                const formattedTasks = tasksList.map(t => ({
+                    id: t._id,
+                    ...t,
+                    startTime: t.startTime || t.createdAt,
+                    // Ensure numeric progress
+                    progress: t.progress || 0
+                }));
+
+                setTasks(formattedTasks);
+
+                // Fetch real stats
+                try {
+                    const statsData = await taskApi.getStats();
+                    setStats(statsData);
+                } catch (statsError) {
+                    console.error("Error fetching stats:", statsError);
+                    // Fallback stats calculation if API fails
+                    calculateStats(formattedTasks);
+                }
             }
         } catch (error) {
             console.error('Error fetching tasks:', error);
@@ -372,8 +398,31 @@ const TasksPage = ({ role = 'admin' }) => {
         }
     ];
 
-    const handleAddTask = (newTask) => {
-        setTasks(prevTasks => [newTask, ...prevTasks]);
+    const handleAddTask = async (newTaskData) => {
+        try {
+            // If admin, create real task
+            if (role === 'admin') {
+                const createdTask = await taskApi.createTask({
+                    ...newTaskData,
+                    createdBy: userId
+                });
+
+                // Refresh list or add to local state
+                const formattedTask = {
+                    id: createdTask._id,
+                    ...createdTask,
+                    startTime: createdTask.startTime || createdTask.createdAt
+                };
+
+                setTasks(prevTasks => [formattedTask, ...prevTasks]);
+                showAlert('Task created successfully', 'success');
+            } else {
+                setTasks(prevTasks => [newTaskData, ...prevTasks]);
+            }
+        } catch (error) {
+            console.error('Error creating task:', error);
+            showAlert('Failed to create task', 'error');
+        }
     };
 
     const handleTaskClick = (task) => {

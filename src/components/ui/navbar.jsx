@@ -168,7 +168,7 @@ const Navbar = (props) => {
       localStorage.removeItem('authToken');
       localStorage.removeItem('role');
       localStorage.removeItem('username');
-      router.push('/');
+      router.push('/login');
     }
   };
 

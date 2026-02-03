@@ -1,9 +1,9 @@
 'use client'
 import React, { useState, useEffect } from 'react'
-import { 
-  FileText, 
-  Download, 
-  Eye, 
+import {
+  FileText,
+  Download,
+  Eye,
   Search,
   Filter,
   Plus,
@@ -62,7 +62,7 @@ const QualityReportPage = () => {
     projectId: '',
     templateId: ''
   })
-  
+
   // Analytics date range state
   const [analyticsDateRange, setAnalyticsDateRange] = useState('30days')
 
@@ -150,7 +150,7 @@ const QualityReportPage = () => {
     try {
       await reportsApi.createReport({
         projectId: newReportForm.projectId,
-        templateId: (newReportForm.templateId && newReportForm.templateId !== '') ? newReportForm.templateId : undefined,
+        templateId: (newReportForm.templateId && newReportForm.templateId !== '' && newReportForm.templateId !== 'no_template') ? newReportForm.templateId : undefined,
         qcTechnicianId: userId
       })
       showAlert('Report created successfully', 'success')
@@ -210,75 +210,75 @@ const QualityReportPage = () => {
       : report.qcTechnician || 'N/A'
 
     return (
-    <Card className="hover:shadow-md transition-all cursor-pointer">
-      <CardContent className="pt-6">
-        <div className="flex items-start justify-between mb-4">
-          <div className="flex-1">
-            <h3 className="font-bold text-gray-900 mb-1">{projectName}</h3>
-            <p className="text-sm text-gray-600">{report.reportType || 'PACP Condition Assessment'}</p>
-          </div>
-          <div className="flex flex-col gap-2 items-end">
-            <Badge variant={getStatusVariant(report.status)}>
-              {report.status?.replace('_', ' ') || report.status}
-            </Badge>
-            {report.overallGrade && (
-              <Badge className={getGradeColor(report.overallGrade)}>
-                {report.overallGrade}
+      <Card className="hover:shadow-md transition-all cursor-pointer">
+        <CardContent className="pt-6">
+          <div className="flex items-start justify-between mb-4">
+            <div className="flex-1">
+              <h3 className="font-bold text-gray-900 mb-1">{projectName}</h3>
+              <p className="text-sm text-gray-600">{report.reportType || 'PACP Condition Assessment'}</p>
+            </div>
+            <div className="flex flex-col gap-2 items-end">
+              <Badge variant={getStatusVariant(report.status)}>
+                {report.status?.replace('_', ' ') || report.status}
               </Badge>
-            )}
+              {report.overallGrade && (
+                <Badge className={getGradeColor(report.overallGrade)}>
+                  {report.overallGrade}
+                </Badge>
+              )}
+            </div>
           </div>
-        </div>
 
-        <div className="grid grid-cols-2 gap-4 text-sm mb-4">
-          <div>
-            <span className="text-gray-600">Operator:</span>
-            <p className="font-medium text-gray-900">{operatorName}</p>
+          <div className="grid grid-cols-2 gap-4 text-sm mb-4">
+            <div>
+              <span className="text-gray-600">Operator:</span>
+              <p className="font-medium text-gray-900">{operatorName}</p>
+            </div>
+            <div>
+              <span className="text-gray-600">QC Tech:</span>
+              <p className="font-medium text-gray-900">{qcTechName}</p>
+            </div>
+            <div>
+              <span className="text-gray-600">Length:</span>
+              <p className="font-medium text-gray-900">{report.footage || report.pipeLength || 'N/A'}</p>
+            </div>
+            <div>
+              <span className="text-gray-600">Defects:</span>
+              <p className="font-medium text-gray-900">{report.totalDefects || report.aiDetections || 0} total</p>
+            </div>
           </div>
-          <div>
-            <span className="text-gray-600">QC Tech:</span>
-            <p className="font-medium text-gray-900">{qcTechName}</p>
-          </div>
-          <div>
-            <span className="text-gray-600">Length:</span>
-            <p className="font-medium text-gray-900">{report.footage || report.pipeLength || 'N/A'}</p>
-          </div>
-          <div>
-            <span className="text-gray-600">Defects:</span>
-            <p className="font-medium text-gray-900">{report.totalDefects || report.aiDetections || 0} total</p>
-          </div>
-        </div>
 
-        <div className="flex items-center justify-between pt-4 border-t">
-          <div className="flex items-center gap-4 text-xs text-gray-600">
-            <span>Created: {new Date(report.createdAt || report.createdDate || Date.now()).toLocaleDateString()}</span>
-            <span>Confidence: {report.confidence || 0}%</span>
+          <div className="flex items-center justify-between pt-4 border-t">
+            <div className="flex items-center gap-4 text-xs text-gray-600">
+              <span>Created: {new Date(report.createdAt || report.createdDate || Date.now()).toLocaleDateString()}</span>
+              <span>Confidence: {report.confidence || 0}%</span>
+            </div>
+            <div className="flex gap-2">
+              <Button
+                variant="ghost"
+                size="icon"
+                onClick={() => handleViewReport(report)}
+              >
+                <Eye className="h-4 w-4" />
+              </Button>
+              <Button
+                variant="ghost"
+                size="icon"
+                onClick={() => handleDownloadReport(report)}
+              >
+                <Download className="h-4 w-4" />
+              </Button>
+              <Button
+                variant="ghost"
+                size="icon"
+                onClick={() => handleShareReport(report)}
+              >
+                <Share2 className="h-4 w-4" />
+              </Button>
+            </div>
           </div>
-          <div className="flex gap-2">
-            <Button 
-              variant="ghost" 
-              size="icon"
-              onClick={() => handleViewReport(report)}
-            >
-              <Eye className="h-4 w-4" />
-            </Button>
-            <Button 
-              variant="ghost" 
-              size="icon"
-              onClick={() => handleDownloadReport(report)}
-            >
-              <Download className="h-4 w-4" />
-            </Button>
-            <Button 
-              variant="ghost" 
-              size="icon"
-              onClick={() => handleShareReport(report)}
-            >
-              <Share2 className="h-4 w-4" />
-            </Button>
-          </div>
-        </div>
-      </CardContent>
-    </Card>
+        </CardContent>
+      </Card>
     )
   }
 
@@ -297,14 +297,14 @@ const QualityReportPage = () => {
             </div>
           </div>
           <div className="flex gap-2">
-            <Button 
+            <Button
               variant="outline"
               onClick={() => router.push('/qc-technician/reports/detailed')}
             >
               <FileText className="h-4 w-4 mr-2" />
               Detailed 2-Day Report
             </Button>
-            <Button 
+            <Button
               className="bg-gradient-to-r from-[#D76A84] to-rose-500"
               onClick={() => setIsNewReportModalOpen(true)}
             >
@@ -342,9 +342,9 @@ const QualityReportPage = () => {
                   <div className="flex items-center gap-4 flex-1">
                     <div className="relative flex-1 max-w-md">
                       <Search className="h-4 w-4 absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400" />
-                      <Input 
-                        type="text" 
-                        placeholder="Search reports..." 
+                      <Input
+                        type="text"
+                        placeholder="Search reports..."
                         className="pl-10"
                         value={searchTerm}
                         onChange={(e) => setSearchTerm(e.target.value)}
@@ -477,7 +477,7 @@ const QualityReportPage = () => {
                     <CardTitle>Report Templates</CardTitle>
                     <CardDescription>Pre-configured templates for consistent reporting</CardDescription>
                   </div>
-                  <Button 
+                  <Button
                     className="bg-gradient-to-r from-[#D76A84] to-rose-500"
                     onClick={() => setIsTemplateModalOpen(true)}
                   >
@@ -526,7 +526,7 @@ const QualityReportPage = () => {
                           ))}
                         </div>
                       </div>
-                      
+
                       <div className="flex items-center justify-between pt-4 border-t">
                         <span className="text-xs text-gray-500">
                           Last used: {template.lastUsed ? new Date(template.lastUsed).toLocaleDateString() : 'Never'}
@@ -680,8 +680,8 @@ const QualityReportPage = () => {
           <div className="space-y-4 py-4">
             <div className="space-y-2">
               <Label htmlFor="project">Project *</Label>
-              <Select 
-                value={newReportForm.projectId || ''} 
+              <Select
+                value={newReportForm.projectId || ''}
                 onValueChange={(value) => setNewReportForm({ ...newReportForm, projectId: value || '' })}
               >
                 <SelectTrigger id="project">
@@ -708,15 +708,15 @@ const QualityReportPage = () => {
 
             <div className="space-y-2">
               <Label htmlFor="template">Template (Optional)</Label>
-              <Select 
-                value={newReportForm.templateId || ''} 
+              <Select
+                value={newReportForm.templateId || ''}
                 onValueChange={(value) => setNewReportForm({ ...newReportForm, templateId: value || '' })}
               >
                 <SelectTrigger id="template">
                   <SelectValue placeholder="Select a template (optional)" />
                 </SelectTrigger>
                 <SelectContent>
-                  <SelectItem value="">None</SelectItem>
+                  <SelectItem value="no_template">None</SelectItem>
                   {reportTemplates.filter(template => template && (template._id || template.id)).map((template) => {
                     const templateId = String(template._id?.toString() || template.id?.toString() || template._id || template.id || '');
                     if (!templateId || templateId === 'undefined' || templateId === 'null') {
@@ -739,7 +739,7 @@ const QualityReportPage = () => {
             }}>
               Cancel
             </Button>
-            <Button 
+            <Button
               className="bg-gradient-to-r from-[#D76A84] to-rose-500"
               onClick={handleCreateReport}
               disabled={!newReportForm.projectId}
@@ -802,7 +802,7 @@ const QualityReportPage = () => {
             }}>
               Cancel
             </Button>
-            <Button 
+            <Button
               className="bg-gradient-to-r from-[#D76A84] to-rose-500"
               onClick={handleCreateTemplate}
               disabled={!newTemplateForm.name}
