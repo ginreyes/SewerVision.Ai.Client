@@ -13,10 +13,7 @@ import {
     Pin,
     Clock,
     MapPin,
-    Calendar,
     User as UserIcon,
-    Trash2,
-    Edit3,
     Loader2,
     BookOpen
 } from 'lucide-react';
@@ -222,8 +219,8 @@ const NotesPage = () => {
                                 key={tab.id}
                                 onClick={() => setActiveTab(tab.id)}
                                 className={`px-4 py-2 rounded-lg text-sm font-medium transition-all duration-200 flex items-center gap-2 ${activeTab === tab.id
-                                        ? 'bg-gray-100 text-gray-900 mobile-hover:bg-gray-200'
-                                        : 'text-gray-500 hover:text-gray-700 hover:bg-gray-50'
+                                    ? 'bg-gray-100 text-gray-900 mobile-hover:bg-gray-200'
+                                    : 'text-gray-500 hover:text-gray-700 hover:bg-gray-50'
                                     }`}
                             >
                                 <tab.icon className={`w-4 h-4 ${activeTab === tab.id ? 'text-blue-600' : ''}`} />

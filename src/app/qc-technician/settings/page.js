@@ -1,38 +1,73 @@
-'use client'
-import React, { useState, useEffect, useRef, Suspense } from 'react'
-import { Card, CardContent, CardDescription, CardHeader, CardTitle, CardFooter } from '@/components/ui/card'
-import { Label } from '@/components/ui/label'
-import { Input } from '@/components/ui/input'
-import { Button } from '@/components/ui/button'
-import { Switch } from '@/components/ui/switch'
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select'
-import { Tabs, TabsContent } from '@/components/ui/tabs'
-import { Separator } from '@/components/ui/separator'
-import { Avatar, AvatarImage, AvatarFallback } from '@/components/ui/avatar'
+'use client';
+
+import React, { useState, useEffect, useRef, Suspense } from 'react';
+import { useRouter, useSearchParams } from 'next/navigation';
 import {
-  Bell,
   User,
-  Shield,
-  Settings,
-  Camera,
-  Moon,
+  Lock,
+  Bell,
   Globe,
+  HardDrive,
+  Cpu,
+  Save,
+  Loader2,
+  Camera,
+  Mail,
+  Phone,
+  Building,
+  MapPin,
+  Shield,
   Eye,
   EyeOff,
-  Loader2,
   LogOut,
-  Save,
+  Upload,
   CheckCircle2,
-  RefreshCcw,
-  Smartphone,
-  Mail
-} from 'lucide-react'
-import { useUser } from '@/components/providers/UserContext'
-import { useAlert } from '@/components/providers/AlertProvider'
-import { api } from '@/lib/helper'
-import { useSearchParams, useRouter } from 'next/navigation'
+  AlertCircle,
+  Pencil,
+  X,
+  FileCheck,
+  ClipboardCheck,
+  BarChart,
+  History
+} from 'lucide-react';
+import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
+import { Button } from '@/components/ui/button';
+import { Input } from '@/components/ui/input';
+import { Label } from '@/components/ui/label';
+import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
+import { Switch } from '@/components/ui/switch';
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
+import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
+import { Badge } from '@/components/ui/badge';
+import { Separator } from '@/components/ui/separator';
+import { Progress } from '@/components/ui/progress';
+import { useUser } from '@/components/providers/UserContext';
+import { useAlert } from '@/components/providers/AlertProvider';
+import { api } from '@/lib/helper';
 
-// Helper Components
+// --- Components ---
+
+const ProfileStats = ({ stats }) => (
+  <div className="grid grid-cols-2 gap-4 py-4">
+    <div className="text-center p-3 bg-rose-50 rounded-lg">
+      <div className="text-2xl font-bold text-rose-600">{stats.reviews}</div>
+      <div className="text-xs text-rose-600 font-medium">Reviews</div>
+    </div>
+    <div className="text-center p-3 bg-green-50 rounded-lg">
+      <div className="text-2xl font-bold text-green-600">{stats.reports}</div>
+      <div className="text-xs text-green-600 font-medium">Reports</div>
+    </div>
+    <div className="text-center p-3 bg-purple-50 rounded-lg">
+      <div className="text-2xl font-bold text-purple-600">{stats.accuracy}%</div>
+      <div className="text-xs text-purple-600 font-medium">Accuracy</div>
+    </div>
+    <div className="text-center p-3 bg-orange-50 rounded-lg">
+      <div className="text-2xl font-bold text-orange-600">{stats.hours}</div>
+      <div className="text-xs text-orange-600 font-medium">Hours</div>
+    </div>
+  </div>
+);
+
 const SectionHeader = ({ icon: Icon, title, description }) => (
   <div className="flex items-center space-x-4 mb-6">
     <div className="p-2 bg-rose-100 rounded-lg">
@@ -43,290 +78,312 @@ const SectionHeader = ({ icon: Icon, title, description }) => (
       <p className="text-sm text-gray-500">{description}</p>
     </div>
   </div>
-)
+);
 
-const ToggleSetting = ({ label, description, checked, onCheckedChange, icon: Icon }) => (
+const ToggleSetting = ({ label, description, checked, onCheckedChange }) => (
   <div className="flex items-center justify-between py-4">
-    <div className="flex items-center gap-3">
-      {Icon && <Icon className="w-4 h-4 text-gray-500" />}
-      <div className="space-y-0.5">
-        <Label className="text-base font-medium text-gray-900">{label}</Label>
-        <p className="text-sm text-gray-500">{description}</p>
-      </div>
+    <div className="space-y-0.5">
+      <Label className="text-base font-medium text-gray-900">{label}</Label>
+      <p className="text-sm text-gray-500">{description}</p>
     </div>
-    <Switch checked={checked} onCheckedChange={onCheckedChange} />
+    <Switch checked={checked} onCheckedChange={onCheckedChange} className="data-[state=checked]:bg-rose-600" />
   </div>
-)
+);
 
-// Inner component logic
-const SettingPageContent = () => {
-  const router = useRouter()
-  const searchParams = useSearchParams()
-  const { userData, logout } = useUser() // Added logout
-  const { showAlert } = useAlert()
-  const fileInputRef = useRef(null)
+function QCSettingsContent() {
+  const router = useRouter();
+  const searchParams = useSearchParams();
+  const { userData, logout, updateUserData } = useUser();
+  const { showAlert } = useAlert();
 
-  const [activeTab, setActiveTab] = useState(searchParams.get('tab') || 'profile')
+  const [activeTab, setActiveTab] = useState('profile');
+  const [loading, setLoading] = useState(false);
+  const [saving, setSaving] = useState(false);
+  const [isEditingProfile, setIsEditingProfile] = useState(false);
 
-  // Sync with URL
-  useEffect(() => {
-    const tab = searchParams.get('tab')
-    if (tab) setActiveTab(tab)
-  }, [searchParams])
-
-  const handleTabChange = (value) => {
-    setActiveTab(value)
-    // Update URL without reload
-    const params = new URLSearchParams(searchParams)
-    params.set('tab', value)
-    router.replace(`?${params.toString()}`)
-  }
-
-  // Profile State
+  // Profile Form State
   const [profile, setProfile] = useState({
     firstName: '',
     lastName: '',
     email: '',
-    phoneNumber: '',
-    employeeId: '',
-    avatar: ''
-  })
-  const [avatar, setAvatar] = useState('/avatar_default.png')
-  const [isSavingProfile, setIsSavingProfile] = useState(false)
-  const [isLoadingProfile, setIsLoadingProfile] = useState(true)
+    phone: '',
+    department: '',
+    role: 'QC Technician',
+    avatar: null
+  });
 
-  // Notifications State
-  const [notifications, setNotifications] = useState({
-    emailAlerts: true,
-    smsAlerts: false,
-    defectAlerts: true,
-    inspectionReminders: true
-  })
-  const [isSavingNotifications, setIsSavingNotifications] = useState(false)
-
-  // Preferences State
-  const [preferences, setPreferences] = useState({
-    darkMode: false,
-    language: 'en',
-    timezone: 'Asia/Manila',
-    measurementUnit: 'metric',
-    photoQuality: 'high'
-  })
-  const [isSavingPreferences, setIsSavingPreferences] = useState(false)
-
-  // Security State
-  const [security, setSecurity] = useState({
+  // Password Form State
+  const [passwordForm, setPasswordForm] = useState({
     currentPassword: '',
     newPassword: '',
-    confirmPassword: '',
-    twoFactorEnabled: false
-  })
-  const [showPasswords, setShowPasswords] = useState({
+    confirmPassword: ''
+  });
+  const [showPassword, setShowPassword] = useState({
     current: false,
     new: false,
     confirm: false
-  })
-  const [isSavingPassword, setIsSavingPassword] = useState(false)
+  });
 
-  // Load Data
+  // Settings State
+  const [settings, setSettings] = useState({
+    // Review Workflow
+    autoSave: true,
+    smartLabeling: true,
+    preloadVideos: true,
+    autoSubmit: false,
+
+    // Video & Playback
+    playbackQuality: '1080p',
+    playbackSpeed: '1.0x',
+    showAiOverlays: true,
+    loopVideo: false,
+
+    // Notifications
+    soundEnabled: true,
+    emailAlerts: true,
+    pushNotifications: true,
+    notifyReviewAssigned: true,
+    notifyReportDeadline: true,
+    notifySystemUpdates: true,
+
+    // Preferences
+    theme: 'system',
+    language: 'en',
+    units: 'imperial'
+  });
+
+  // Stats (Mock data for now, could be fetched)
+  const stats = {
+    reviews: 342,
+    reports: 189,
+    accuracy: 99.2,
+    hours: 410
+  };
+
+  const fileInputRef = useRef(null);
+
   useEffect(() => {
-    const loadUserData = async () => {
-      try {
-        const username = localStorage.getItem('username')
-        if (!username) {
-          // If no username, maybe redirect or just wait
-        } else {
-          try {
-            const response = await api(`/api/users/get-user/${username}`, 'GET')
-            if (response.ok && response.data?.user) {
-              const user = response.data.user
-              setProfile({
-                firstName: user.first_name || '',
-                lastName: user.last_name || '',
-                email: user.email || '',
-                phoneNumber: user.phone_number || '',
-                employeeId: user.license_number || '',
-                avatar: user.avatar || ''
-              })
-              setAvatar(user.avatar || '/avatar_default.png')
-            }
-          } catch (err) {
-            console.error(err)
-          }
-        }
-      } finally {
-        setIsLoadingProfile(false)
-      }
+    const tab = searchParams.get('tab');
+    if (tab) setActiveTab(tab);
+  }, [searchParams]);
+
+  // Load User Data
+  useEffect(() => {
+    if (userData) {
+      setProfile({
+        firstName: userData.first_name || '',
+        lastName: userData.last_name || '',
+        email: userData.email || '',
+        phone: userData.phone_number || '',
+        department: userData.department || '',
+        role: userData.role || 'QC Technician',
+        avatar: userData.avatar || null
+      });
     }
+  }, [userData]);
 
-    // Load LocalStorage Prefs
-    try {
-      const savedNotifications = localStorage.getItem('qc_notifications')
-      const savedPreferences = localStorage.getItem('qc_preferences')
-      if (savedNotifications) setNotifications(JSON.parse(savedNotifications))
-      if (savedPreferences) setPreferences(JSON.parse(savedPreferences))
-    } catch (e) { console.error(e) }
+  // Handle Tab Change
+  const handleTabChange = (value) => {
+    setActiveTab(value);
+    const params = new URLSearchParams(searchParams);
+    params.set('tab', value);
+    router.push(`?${params.toString()}`, { scroll: false });
+  };
 
-    loadUserData()
-  }, [])
+  // Handle Profile Input Change
+  const handleProfileChange = (e) => {
+    const { name, value } = e.target;
+    setProfile(prev => ({ ...prev, [name]: value }));
+  };
 
-  // --- Handlers ---
-
-  const handleAvatarUpload = async (e) => {
-    const file = e.target.files[0]
-    const username = localStorage.getItem('username')
-    if (!file || !username) return
-
-    if (file.size > 5 * 1024 * 1024) {
-      showAlert('File size should be under 5MB.', 'error')
-      return
-    }
-
-    const formData = new FormData()
-    formData.append('avatar', file)
-    formData.append('username', username)
-
-    try {
-      const { ok, data } = await api('/api/users/upload-avatar', 'POST', formData)
-      if (ok) {
-        showAlert('Avatar uploaded successfully', 'success')
-        setAvatar(data.avatarUrl)
-        setProfile(prev => ({ ...prev, avatar: data.avatarUrl }))
-      } else {
-        showAlert(data?.message || 'Failed to upload avatar', 'error')
-      }
-    } catch (err) {
-      showAlert('Error uploading avatar', 'error')
-    }
-  }
-
+  // Handle Save Profile
   const handleSaveProfile = async () => {
-    const username = localStorage.getItem('username')
-    if (!username) return showAlert('Please log in.', 'error')
-
-    setIsSavingProfile(true)
     try {
-      const payload = {
-        usernameOrEmail: username,
-        first_name: profile.firstName,
-        last_name: profile.lastName,
-        avatar: avatar,
-      }
-      if (profile.phoneNumber) payload.phone_number = profile.phoneNumber
+      setSaving(true);
+      const username = localStorage.getItem('username');
 
-      const { ok, data } = await api('/api/users/change-account', 'POST', payload)
-      if (ok) {
-        showAlert('Profile updated successfully!', 'success')
-        if (userData) {
-          userData.first_name = profile.firstName
-          userData.last_name = profile.lastName
-          userData.avatar = avatar
+      if (!username) throw new Error('User not identified');
+
+      const response = await api(`/api/users/profile/${username}`, 'PATCH', {
+        firstName: profile.firstName,
+        lastName: profile.lastName,
+        phone: profile.phone,
+        department: profile.department
+      });
+
+      if (response.ok) {
+        // Update context if needed
+        if (updateUserData && response.data?.data) {
+          updateUserData(response.data.data);
         }
+        showAlert('Profile updated successfully', 'success');
+        setIsEditingProfile(false);
       } else {
-        showAlert(data?.message || 'Failed to update', 'error')
+        throw new Error(response.message || 'Failed to update profile');
       }
-    } catch (err) {
-      showAlert('Error updating profile', 'error')
+    } catch (error) {
+      console.error('Error updating profile:', error);
+      showAlert(error.message || 'Failed to update profile', 'error');
     } finally {
-      setIsSavingProfile(false)
+      setSaving(false);
     }
-  }
+  };
 
-  const handleSaveNotifications = async () => {
-    setIsSavingNotifications(true)
-    setTimeout(() => {
-      localStorage.setItem('qc_notifications', JSON.stringify(notifications))
-      setIsSavingNotifications(false)
-      showAlert('Notification preferences saved', 'success')
-    }, 500)
-  }
+  // Handle Avatar Upload
+  const handleAvatarClick = () => {
+    fileInputRef.current?.click();
+  };
 
-  const handleSavePreferences = async () => {
-    setIsSavingPreferences(true)
-    setTimeout(() => {
-      localStorage.setItem('qc_preferences', JSON.stringify(preferences))
-      if (preferences.darkMode) document.documentElement.classList.add('dark')
-      else document.documentElement.classList.remove('dark')
-      setIsSavingPreferences(false)
-      showAlert('Preferences saved', 'success')
-    }, 500)
-  }
+  const handleAvatarFileChange = async (e) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
 
-  const handleChangePassword = async () => {
-    if (security.newPassword !== security.confirmPassword) return showAlert('Passwords do not match', 'error')
+    if (file.size > 5 * 1024 * 1024) { // 5MB limit
+      showAlert('Image size must be less than 5MB', 'error');
+      return;
+    }
 
-    // Simple validation
-    if (security.newPassword.length < 8) return showAlert('Password must be at least 8 chars', 'error')
-
-    const usernameOrEmail = localStorage.getItem('username')
-    const token = localStorage.getItem('authToken') // Check if 'token' or 'authToken'
-
-    // Fallback if authToken is missing but we're logged in (context might handle it differently)
-    if (!usernameOrEmail) return showAlert('Please log in', 'error')
-
-    setIsSavingPassword(true)
     try {
-      // Assume API needs token in header
-      const finalToken = token || localStorage.getItem('token')
-      const { ok, data } = await api('/api/auth/change-password', 'POST', {
-        isChangePassword: true,
-        currentPassword: security.currentPassword,
-        newPassword: security.newPassword,
-        usernameOrEmail
-      }, { Authorization: `Bearer ${finalToken}` })
+      setLoading(true);
+      const username = localStorage.getItem('username');
+      if (!username) throw new Error("No username found");
 
-      if (ok) {
-        showAlert('Password updated successfully', 'success')
-        setSecurity({ ...security, currentPassword: '', newPassword: '', confirmPassword: '' })
+      const formData = new FormData();
+      formData.append('avatar', file);
+      formData.append('username', username);
+
+      const token = localStorage.getItem('token');
+      // Adjust URL to your backend
+      const backendUrl = process.env.NEXT_PUBLIC_BACKEND_URL || 'http://localhost:5000';
+
+
+      const res = await fetch(`${backendUrl}/api/users/upload-avatar`, {
+        method: 'POST',
+        headers: {
+          'Authorization': `Bearer ${token}`
+        },
+        body: formData
+      });
+
+      const data = await res.json();
+
+      if (res.ok) {
+        setProfile(prev => ({ ...prev, avatar: data.avatarUrl }));
+        if (updateUserData) {
+          updateUserData({ ...userData, avatar: data.avatarUrl });
+        }
+        showAlert('Avatar uploaded successfully', 'success');
       } else {
-        showAlert(data?.message || 'Failed to change password', 'error')
+        throw new Error(data.message || 'Failed to upload avatar');
+      }
+    } catch (error) {
+      console.error('Avatar upload error:', error);
+      showAlert(error.message, 'error');
+    } finally {
+      setLoading(false);
+      // Reset file input
+      if (fileInputRef.current) fileInputRef.current.value = '';
+    }
+  };
+
+  // Handle Password Change
+  const handlePasswordChange = async (e) => {
+    e.preventDefault();
+    if (passwordForm.newPassword !== passwordForm.confirmPassword) {
+      showAlert('New passwords do not match', 'error');
+      return;
+    }
+
+    try {
+      setSaving(true);
+      const response = await api('/api/auth/change-password', 'POST', {
+        currentPassword: passwordForm.currentPassword,
+        newPassword: passwordForm.newPassword
+      });
+
+      if (response.ok) {
+        showAlert('Password changed successfully', 'success');
+        setPasswordForm({ currentPassword: '', newPassword: '', confirmPassword: '' });
+      } else {
+        throw new Error(response.message || 'Failed to change password');
+      }
+    } catch (error) {
+      console.error('Password change error:', error);
+      showAlert(error.message, 'error');
+    } finally {
+      setSaving(false);
+    }
+  };
+
+  // Generic Settings Handler
+  const updateSetting = (key, value) => {
+    setSettings(prev => ({ ...prev, [key]: value }));
+  };
+
+  const handleSaveSettings = async () => {
+    try {
+      setSaving(true);
+      // Using qc section specifically
+      const response = await api('/api/settings/section/qc', 'PATCH', {
+        qc: settings
+      });
+
+      if (response.ok) {
+        showAlert('Settings saved', 'success');
+      } else {
+        // Fallback to local
+        localStorage.setItem('qc_settings', JSON.stringify(settings));
+        showAlert('Settings saved (Local)', 'success');
       }
     } catch (e) {
-      showAlert('Error changing password', 'error')
+      showAlert('Failed to save settings', 'error');
     } finally {
-      setIsSavingPassword(false)
+      setSaving(false);
     }
   }
 
-  const navigationItems = [
-    { id: 'profile', label: 'Profile Settings', icon: User },
-    { id: 'notifications', label: 'Notifications', icon: Bell },
-    { id: 'preferences', label: 'Display & Preferences', icon: Settings },
-    { id: 'security', label: 'Security & Login', icon: Shield },
-  ]
-
-  if (isLoadingProfile) {
-    return <div className="flex h-96 items-center justify-center"><Loader2 className="h-8 w-8 animate-spin text-gray-400" /></div>
-  }
 
   return (
-    <div className="max-w-7xl mx-auto p-4 md:p-6 space-y-8">
+    <div className="max-w-7xl mx-auto p-6 space-y-8">
       {/* Header */}
       <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">
         <div>
           <h1 className="text-2xl font-bold text-gray-900">QC Settings</h1>
-          <p className="text-gray-500 mt-1">Manage your account and workstation preferences</p>
+          <p className="text-gray-500 mt-1">Manage your account preferences and review configurations</p>
         </div>
         <div className="flex items-center gap-3">
-          {/* Global Save Button could go here if we had a global form */}
+          <Button variant="outline" className="text-gray-600" onClick={() => router.back()}>
+            Cancel
+          </Button>
+          <Button onClick={handleSaveSettings} disabled={saving} className="bg-rose-600 hover:bg-rose-700">
+            {saving ? <Loader2 className="w-4 h-4 mr-2 animate-spin" /> : <Save className="w-4 h-4 mr-2" />}
+            Save Changes
+          </Button>
         </div>
       </div>
 
       <div className="flex flex-col lg:flex-row gap-8">
-        {/* Sidebar */}
+        {/* Sidebar Navigation */}
         <Card className="lg:w-64 h-fit border-0 shadow-sm bg-white">
           <CardContent className="p-4">
             <nav className="space-y-1">
-              {navigationItems.map(item => (
+              {[
+                { id: 'profile', label: 'Profile', icon: User },
+                { id: 'workflow', label: 'Review Workflow', icon: ClipboardCheck },
+                { id: 'video', label: 'Video & Playback', icon: FileCheck },
+                { id: 'notifications', label: 'Notifications', icon: Bell },
+                { id: 'preferences', label: 'Preferences', icon: Globe },
+              ].map((item) => (
                 <button
                   key={item.id}
                   onClick={() => handleTabChange(item.id)}
                   className={`flex items-center w-full px-3 py-2 text-sm font-medium rounded-lg transition-colors ${activeTab === item.id
-                      ? 'bg-rose-50 text-rose-700'
-                      : 'text-gray-600 hover:bg-gray-50 hover:text-gray-900'
+                    ? 'bg-rose-50 text-rose-700'
+                    : 'text-gray-600 hover:bg-gray-50 hover:text-gray-900'
                     }`}
                 >
-                  <item.icon className={`w-4 h-4 mr-3 ${activeTab === item.id ? 'text-rose-600' : 'text-gray-400'}`} />
+                  <item.icon className={`w-4 h-4 mr-3 ${activeTab === item.id ? 'text-rose-600' : 'text-gray-400'
+                    }`} />
                   {item.label}
                 </button>
               ))}
@@ -342,207 +399,450 @@ const SettingPageContent = () => {
           </CardContent>
         </Card>
 
-        {/* Main Content */}
+        {/* Main Content Area */}
         <div className="flex-1">
           <Tabs value={activeTab} onValueChange={handleTabChange} className="space-y-6">
 
-            {/* Profile Tab */}
-            <TabsContent value="profile" className="mt-0">
+            {/* --- Profile Tab --- */}
+            <TabsContent value="profile" className="space-y-6 mt-0">
+              {/* Profile Card */}
               <Card className="border-0 shadow-sm">
                 <CardHeader>
-                  <SectionHeader icon={User} title="Personal Information" description="Update your personal details and photo" />
+                  <div className="flex items-center justify-between">
+                    <div>
+                      <CardTitle>Personal Information</CardTitle>
+                      <CardDescription>Manage your public profile and contact info</CardDescription>
+                    </div>
+                    <Button
+                      variant={isEditingProfile ? "ghost" : "outline"}
+                      size="sm"
+                      onClick={() => {
+                        if (isEditingProfile) {
+                          handleSaveProfile();
+                        } else {
+                          setIsEditingProfile(true);
+                        }
+                      }}
+                      className={isEditingProfile ? "text-green-600 hover:text-green-700 bg-green-50" : ""}
+                    >
+                      {isEditingProfile ? (
+                        <>
+                          {saving ? <Loader2 className="w-4 h-4 mr-2 animate-spin" /> : <Save className="w-4 h-4 mr-2" />}
+                          Save Profile
+                        </>
+                      ) : (
+                        <>
+                          <Pencil className="w-4 h-4 mr-2" />
+                          Edit Profile
+                        </>
+                      )}
+                    </Button>
+                  </div>
                 </CardHeader>
                 <CardContent className="space-y-8">
-                  <div className="flex flex-col sm:flex-row gap-6 items-center sm:items-start">
+                  <div className="flex flex-col items-center sm:flex-row gap-6">
                     <div className="relative group">
-                      <input ref={fileInputRef} type="file" className="hidden" accept="image/*" onChange={handleAvatarUpload} />
-                      <Avatar className="w-24 h-24 border-4 border-white shadow-lg cursor-pointer" onClick={() => fileInputRef.current?.click()}>
-                        <AvatarImage src={avatar} />
-                        <AvatarFallback className="text-2xl">{profile.firstName?.[0]}</AvatarFallback>
+                      <input
+                        type="file"
+                        ref={fileInputRef}
+                        className="hidden"
+                        accept="image/*"
+                        onChange={handleAvatarFileChange}
+                      />
+                      <Avatar className="w-24 h-24 border-4 border-white shadow-lg cursor-pointer" onClick={handleAvatarClick}>
+                        <AvatarImage src={profile.avatar} />
+                        <AvatarFallback className="bg-rose-100 text-rose-600 text-2xl">
+                          {profile.firstName?.[0]}{profile.lastName?.[0]}
+                        </AvatarFallback>
                       </Avatar>
-                      <div className="absolute inset-0 bg-black/40 rounded-full flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity cursor-pointer" onClick={() => fileInputRef.current?.click()}>
+                      <div
+                        className="absolute inset-0 bg-black/40 rounded-full flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity cursor-pointer"
+                        onClick={handleAvatarClick}
+                      >
                         <Camera className="w-8 h-8 text-white" />
                       </div>
+                      <div className="absolute -bottom-2 -right-2 bg-white p-1.5 rounded-full shadow-md border border-gray-100 pointer-events-none">
+                        {loading ? <Loader2 className="w-4 h-4 text-rose-600 animate-spin" /> : <Upload className="w-4 h-4 text-gray-600" />}
+                      </div>
                     </div>
-                    <div className="space-y-1 text-center sm:text-left">
-                      <h3 className="text-lg font-bold">{profile.firstName || 'User'} {profile.lastName}</h3>
-                      <p className="text-sm text-gray-500">{userData.role || 'QC Technician'}</p>
-                      <Button variant="outline" size="sm" className="mt-2" onClick={() => fileInputRef.current?.click()}>Change Avatar</Button>
+
+                    <div className="flex-1 text-center sm:text-left">
+                      <h3 className="text-xl font-bold text-gray-900">
+                        {profile.firstName} {profile.lastName}
+                      </h3>
+                      <p className="text-sm text-gray-500">{profile.role} • {profile.department || 'Quality Control'}</p>
+
+                      <div className="flex items-center justify-center sm:justify-start gap-2 mt-3">
+                        <Badge variant="secondary" className="bg-rose-50 text-rose-700 hover:bg-rose-100">
+                          PACP Certified
+                        </Badge>
+                        <Badge variant="outline" className="text-gray-600">
+                          ID: {userData?._id?.slice(-6).toUpperCase() || 'UNKNOWN'}
+                        </Badge>
+                      </div>
+                    </div>
+
+                    <div className="w-full sm:w-auto">
+                      <Button variant="outline" className="w-full sm:w-auto mt-2 sm:mt-0" onClick={handleAvatarClick} disabled={loading}>
+                        Change Avatar
+                      </Button>
                     </div>
                   </div>
+
                   <Separator />
+
                   <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
                     <div className="space-y-2">
                       <Label>First Name</Label>
-                      <Input value={profile.firstName} onChange={e => setProfile({ ...profile, firstName: e.target.value })} />
+                      <div className="relative">
+                        <User className="absolute left-3 top-2.5 h-4 w-4 text-gray-400" />
+                        <Input
+                          name="firstName"
+                          value={profile.firstName}
+                          onChange={handleProfileChange}
+                          className="pl-9"
+                          disabled={!isEditingProfile}
+                        />
+                      </div>
                     </div>
                     <div className="space-y-2">
                       <Label>Last Name</Label>
-                      <Input value={profile.lastName} onChange={e => setProfile({ ...profile, lastName: e.target.value })} />
+                      <div className="relative">
+                        <User className="absolute left-3 top-2.5 h-4 w-4 text-gray-400" />
+                        <Input
+                          name="lastName"
+                          value={profile.lastName}
+                          onChange={handleProfileChange}
+                          className="pl-9"
+                          disabled={!isEditingProfile}
+                        />
+                      </div>
                     </div>
                     <div className="space-y-2">
-                      <Label>Email</Label>
-                      <Input value={profile.email} disabled className="bg-gray-50" />
+                      <Label>Email Address</Label>
+                      <div className="relative">
+                        <Mail className="absolute left-3 top-2.5 h-4 w-4 text-gray-400" />
+                        <Input
+                          name="email"
+                          value={profile.email}
+                          className="pl-9 bg-gray-50"
+                          disabled
+                          title="Contact admin to change email"
+                        />
+                      </div>
                     </div>
                     <div className="space-y-2">
                       <Label>Phone Number</Label>
-                      <Input value={profile.phoneNumber} onChange={e => setProfile({ ...profile, phoneNumber: e.target.value })} />
+                      <div className="relative">
+                        <Phone className="absolute left-3 top-2.5 h-4 w-4 text-gray-400" />
+                        <Input
+                          name="phone"
+                          value={profile.phone}
+                          onChange={handleProfileChange}
+                          className="pl-9"
+                          placeholder="+1 (555) 000-0000"
+                          disabled={!isEditingProfile}
+                        />
+                      </div>
                     </div>
                     <div className="space-y-2">
-                      <Label>License / Employee ID</Label>
-                      <Input value={profile.employeeId} onChange={e => setProfile({ ...profile, employeeId: e.target.value })} />
+                      <Label>Department</Label>
+                      <div className="relative">
+                        <Building className="absolute left-3 top-2.5 h-4 w-4 text-gray-400" />
+                        <Input
+                          name="department"
+                          value={profile.department}
+                          onChange={handleProfileChange}
+                          className="pl-9"
+                          placeholder="e.g. Quality Control"
+                          disabled={!isEditingProfile}
+                        />
+                      </div>
                     </div>
                   </div>
-                  <div className="flex justify-end">
-                    <Button onClick={handleSaveProfile} disabled={isSavingProfile} className="bg-rose-600 hover:bg-rose-700">
-                      {isSavingProfile && <Loader2 className="w-4 h-4 mr-2 animate-spin" />}
-                      Save Profile
-                    </Button>
-                  </div>
+
+                  {isEditingProfile && (
+                    <div className="flex justify-end pt-4">
+                      <Button variant="ghost" onClick={() => setIsEditingProfile(false)} className="mr-2">Cancel</Button>
+                      <Button onClick={handleSaveProfile} disabled={saving} className="bg-rose-600">
+                        {saving && <Loader2 className="w-4 h-4 mr-2 animate-spin" />}
+                        Save Changes
+                      </Button>
+                    </div>
+                  )}
+
+                  <ProfileStats stats={stats} />
                 </CardContent>
               </Card>
-            </TabsContent>
 
-            {/* Notifications Tab */}
-            <TabsContent value="notifications" className="mt-0">
+              {/* Security Card */}
               <Card className="border-0 shadow-sm">
                 <CardHeader>
-                  <SectionHeader icon={Bell} title="Notification Preferences" description="Manage how you receive alerts" />
+                  <CardTitle>Security</CardTitle>
+                  <CardDescription>Update your password and security preferences</CardDescription>
                 </CardHeader>
-                <CardContent className="space-y-2">
-                  <ToggleSetting
-                    icon={Mail}
-                    label="Email Alerts"
-                    description="Receive daily summaries and critical alerts via email"
-                    checked={notifications.emailAlerts}
-                    onCheckedChange={c => setNotifications({ ...notifications, emailAlerts: c })}
-                  />
-                  <Separator />
-                  <ToggleSetting
-                    icon={Smartphone}
-                    label="SMS Alerts"
-                    description="Get urgent notifications on your mobile device"
-                    checked={notifications.smsAlerts}
-                    onCheckedChange={c => setNotifications({ ...notifications, smsAlerts: c })}
-                  />
-                  <Separator />
-                  <ToggleSetting
-                    icon={CheckCircle2}
-                    label="New Defect Assignments"
-                    description="Notify when a new defect is assigned for review"
-                    checked={notifications.defectAlerts}
-                    onCheckedChange={c => setNotifications({ ...notifications, defectAlerts: c })}
-                  />
+                <CardContent>
+                  <form onSubmit={handlePasswordChange} className="space-y-4 max-w-md">
+                    <div className="space-y-2">
+                      <Label>Current Password</Label>
+                      <div className="relative">
+                        <Lock className="absolute left-3 top-2.5 h-4 w-4 text-gray-400" />
+                        <Input
+                          type={showPassword.current ? 'text' : 'password'}
+                          className="pl-9 pr-10"
+                          value={passwordForm.currentPassword}
+                          onChange={(e) => setPasswordForm(prev => ({ ...prev, currentPassword: e.target.value }))}
+                        />
+                        <button
+                          type="button"
+                          onClick={() => setShowPassword(prev => ({ ...prev, current: !prev.current }))}
+                          className="absolute right-3 top-2.5 text-gray-400 hover:text-gray-600"
+                        >
+                          {showPassword.current ? <EyeOff className="w-4 h-4" /> : <Eye className="w-4 h-4" />}
+                        </button>
+                      </div>
+                    </div>
+                    <div className="space-y-2">
+                      <Label>New Password</Label>
+                      <div className="relative">
+                        <Lock className="absolute left-3 top-2.5 h-4 w-4 text-gray-400" />
+                        <Input
+                          type={showPassword.new ? 'text' : 'password'}
+                          className="pl-9 pr-10"
+                          value={passwordForm.newPassword}
+                          onChange={(e) => setPasswordForm(prev => ({ ...prev, newPassword: e.target.value }))}
+                        />
+                        <button
+                          type="button"
+                          onClick={() => setShowPassword(prev => ({ ...prev, new: !prev.new }))}
+                          className="absolute right-3 top-2.5 text-gray-400 hover:text-gray-600"
+                        >
+                          {showPassword.new ? <EyeOff className="w-4 h-4" /> : <Eye className="w-4 h-4" />}
+                        </button>
+                      </div>
+                    </div>
+                    <div className="space-y-2">
+                      <Label>Confirm New Password</Label>
+                      <div className="relative">
+                        <CheckCircle2 className="absolute left-3 top-2.5 h-4 w-4 text-gray-400" />
+                        <Input
+                          type={showPassword.confirm ? 'text' : 'password'}
+                          className="pl-9 pr-10"
+                          value={passwordForm.confirmPassword}
+                          onChange={(e) => setPasswordForm(prev => ({ ...prev, confirmPassword: e.target.value }))}
+                        />
+                        <button
+                          type="button"
+                          onClick={() => setShowPassword(prev => ({ ...prev, confirm: !prev.confirm }))}
+                          className="absolute right-3 top-2.5 text-gray-400 hover:text-gray-600"
+                        >
+                          {showPassword.confirm ? <EyeOff className="w-4 h-4" /> : <Eye className="w-4 h-4" />}
+                        </button>
+                      </div>
+                    </div>
+                    <Button type="submit" disabled={saving || !passwordForm.currentPassword || !passwordForm.newPassword} className="bg-rose-600 hover:bg-rose-700">
+                      {saving && <Loader2 className="w-4 h-4 mr-2 animate-spin" />}
+                      Update Password
+                    </Button>
+                  </form>
                 </CardContent>
-                <CardFooter>
-                  <Button onClick={handleSaveNotifications} disabled={isSavingNotifications} className="ml-auto bg-rose-600 hover:bg-rose-700">
-                    {isSavingNotifications ? 'Saving...' : 'Save Preferences'}
-                  </Button>
-                </CardFooter>
               </Card>
             </TabsContent>
 
-            {/* Preferences Tab */}
-            <TabsContent value="preferences" className="mt-0">
+            {/* --- Workflow Tab --- */}
+            <TabsContent value="workflow" className="space-y-6 mt-0">
               <Card className="border-0 shadow-sm">
                 <CardHeader>
-                  <SectionHeader icon={Settings} title="System Preferences" description="Customize interface and units" />
+                  <SectionHeader
+                    icon={ClipboardCheck}
+                    title="Review Workflow"
+                    description="Configure how you inspect and review data"
+                  />
+                </CardHeader>
+                <CardContent className="divide-y divide-gray-100">
+                  <ToggleSetting
+                    label="Auto-Save Progress"
+                    description="Automatically save changes while you annotate videos"
+                    checked={settings.autoSave}
+                    onCheckedChange={(c) => updateSetting('autoSave', c)}
+                  />
+                  <ToggleSetting
+                    label="Smart Labeling Suggestions"
+                    description="Enable AI to suggest labels for detected defects"
+                    checked={settings.smartLabeling}
+                    onCheckedChange={(c) => updateSetting('smartLabeling', c)}
+                  />
+                  <ToggleSetting
+                    label="Preload Next Video"
+                    description="Buffer the next video in queue for seamless transitioning"
+                    checked={settings.preloadVideos}
+                    onCheckedChange={(c) => updateSetting('preloadVideos', c)}
+                  />
+                  <ToggleSetting
+                    label="Auto-Submit Reports"
+                    description="Automatically submit reports when all checks pass"
+                    checked={settings.autoSubmit}
+                    onCheckedChange={(c) => updateSetting('autoSubmit', c)}
+                  />
+                </CardContent>
+              </Card>
+            </TabsContent>
+
+            {/* --- Video & Playback Tab --- */}
+            <TabsContent value="video" className="space-y-6 mt-0">
+              <Card className="border-0 shadow-sm">
+                <CardHeader>
+                  <SectionHeader
+                    icon={FileCheck}
+                    title="Video Playback"
+                    description="Adjust playback quality and review tools"
+                  />
+                </CardHeader>
+                <CardContent className="space-y-6">
+                  <div className="space-y-3">
+                    <Label className="text-base">Default Playback Quality</Label>
+                    <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
+                      {['720p', '1080p', '4K'].map((quality) => (
+                        <div
+                          key={quality}
+                          onClick={() => updateSetting('playbackQuality', quality)}
+                          className={`cursor-pointer rounded-xl border-2 p-4 text-center transition-all ${settings.playbackQuality === quality
+                            ? 'border-rose-500 bg-rose-50 text-rose-700'
+                            : 'border-gray-100 hover:border-gray-200'
+                            }`}
+                        >
+                          <div className="font-bold">{quality}</div>
+                          <div className="text-xs text-gray-500 mt-1">
+                            {quality === '4K' ? 'Detailed' : quality === '720p' ? 'Fast Loading' : 'Standard'}
+                          </div>
+                        </div>
+                      ))}
+                    </div>
+                  </div>
+
+                  <Separator />
+
+                  <ToggleSetting
+                    label="Show AI Overlays"
+                    description="Display bounding boxes and confidence scores"
+                    checked={settings.showAiOverlays}
+                    onCheckedChange={(c) => updateSetting('showAiOverlays', c)}
+                  />
+
+                  <ToggleSetting
+                    label="Loop Video on Review"
+                    description="Automatically replay video segment during review"
+                    checked={settings.loopVideo}
+                    onCheckedChange={(c) => updateSetting('loopVideo', c)}
+                  />
+                </CardContent>
+              </Card>
+            </TabsContent>
+
+            {/* --- Notifications Tab --- */}
+            <TabsContent value="notifications" className="space-y-6 mt-0">
+              <Card className="border-0 shadow-sm">
+                <CardHeader>
+                  <SectionHeader
+                    icon={Bell}
+                    title="Notification Preferences"
+                    description="Manage how and when you want to be notified"
+                  />
+                </CardHeader>
+                <CardContent className="divide-y divide-gray-100">
+                  <ToggleSetting
+                    label="Sound Alerts"
+                    description="Play sound for high-priority alerts"
+                    checked={settings.soundEnabled}
+                    onCheckedChange={(c) => updateSetting('soundEnabled', c)}
+                  />
+                  <ToggleSetting
+                    label="Email Notifications"
+                    description="Receive daily summaries and critical alerts via email"
+                    checked={settings.emailAlerts}
+                    onCheckedChange={(c) => updateSetting('emailAlerts', c)}
+                  />
+                  <ToggleSetting
+                    label="New Assignment"
+                    description="Notify when a new project is assigned to you"
+                    checked={settings.notifyReviewAssigned}
+                    onCheckedChange={(c) => updateSetting('notifyReviewAssigned', c)}
+                  />
+                  <ToggleSetting
+                    label="Report Deadlines"
+                    description="Alerts for approaching report submission deadlines"
+                    checked={settings.notifyReportDeadline}
+                    onCheckedChange={(c) => updateSetting('notifyReportDeadline', c)}
+                  />
+                </CardContent>
+              </Card>
+            </TabsContent>
+
+            {/* --- Preferences Tab --- */}
+            <TabsContent value="preferences" className="space-y-6 mt-0">
+              <Card className="border-0 shadow-sm">
+                <CardHeader>
+                  <SectionHeader
+                    icon={Globe}
+                    title="System Preferences"
+                    description="Customize language and display settings"
+                  />
                 </CardHeader>
                 <CardContent className="space-y-6">
                   <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
                     <div className="space-y-2">
                       <Label>Language</Label>
-                      <Select value={preferences.language} onValueChange={v => setPreferences({ ...preferences, language: v })}>
-                        <SelectTrigger><SelectValue /></SelectTrigger>
+                      <Select
+                        value={settings.language}
+                        onValueChange={(v) => updateSetting('language', v)}
+                      >
+                        <SelectTrigger>
+                          <SelectValue placeholder="Select Language" />
+                        </SelectTrigger>
                         <SelectContent>
                           <SelectItem value="en">English (US)</SelectItem>
-                          <SelectItem value="tl">Filipino (Tagalog)</SelectItem>
+                          <SelectItem value="es">Español</SelectItem>
+                          <SelectItem value="fr">Français</SelectItem>
+                          <SelectItem value="de">Deutsch</SelectItem>
                         </SelectContent>
                       </Select>
                     </div>
                     <div className="space-y-2">
-                      <Label>Timezone</Label>
-                      <Select value={preferences.timezone} onValueChange={v => setPreferences({ ...preferences, timezone: v })}>
-                        <SelectTrigger><SelectValue /></SelectTrigger>
+                      <Label>Measurement Units</Label>
+                      <Select
+                        value={settings.units}
+                        onValueChange={(v) => updateSetting('units', v)}
+                      >
+                        <SelectTrigger>
+                          <SelectValue placeholder="Select Units" />
+                        </SelectTrigger>
                         <SelectContent>
-                          <SelectItem value="Asia/Manila">Asia/Manila</SelectItem>
-                          <SelectItem value="UTC">UTC</SelectItem>
-                        </SelectContent>
-                      </Select>
-                    </div>
-                    <div className="space-y-2">
-                      <Label>Measurement Unit</Label>
-                      <Select value={preferences.measurementUnit} onValueChange={v => setPreferences({ ...preferences, measurementUnit: v })}>
-                        <SelectTrigger><SelectValue /></SelectTrigger>
-                        <SelectContent>
-                          <SelectItem value="metric">Metric (Meters)</SelectItem>
-                          <SelectItem value="imperial">Imperial (Feet)</SelectItem>
-                        </SelectContent>
-                      </Select>
-                    </div>
-                    <div className="space-y-2">
-                      <Label>Photo Upload Quality</Label>
-                      <Select value={preferences.photoQuality} onValueChange={v => setPreferences({ ...preferences, photoQuality: v })}>
-                        <SelectTrigger><SelectValue /></SelectTrigger>
-                        <SelectContent>
-                          <SelectItem value="high">High (Original)</SelectItem>
-                          <SelectItem value="medium">Medium (Compressed)</SelectItem>
-                          <SelectItem value="low">Low (Fastest)</SelectItem>
+                          <SelectItem value="imperial">Imperial (ft/in)</SelectItem>
+                          <SelectItem value="metric">Metric (m/cm)</SelectItem>
                         </SelectContent>
                       </Select>
                     </div>
                   </div>
-                  <Separator />
-                  <ToggleSetting
-                    icon={Moon}
-                    label="Dark Mode"
-                    description="Reduce eye strain in low-light environments"
-                    checked={preferences.darkMode}
-                    onCheckedChange={c => setPreferences({ ...preferences, darkMode: c })}
-                  />
-                </CardContent>
-                <CardFooter>
-                  <Button onClick={handleSavePreferences} disabled={isSavingPreferences} className="ml-auto bg-rose-600 hover:bg-rose-700">
-                    {isSavingPreferences ? 'Saving...' : 'Save Preferences'}
-                  </Button>
-                </CardFooter>
-              </Card>
-            </TabsContent>
 
-            {/* Security Tab */}
-            <TabsContent value="security" className="mt-0">
-              <Card className="border-0 shadow-sm">
-                <CardHeader>
-                  <SectionHeader icon={Shield} title="Security Settings" description="Protect your account" />
-                </CardHeader>
-                <CardContent className="space-y-6">
-                  <div className="space-y-4 max-w-md">
-                    <div className="space-y-2">
-                      <Label>Current Password</Label>
-                      <Input type="password" value={security.currentPassword} onChange={e => setSecurity({ ...security, currentPassword: e.target.value })} />
-                    </div>
-                    <div className="space-y-2">
-                      <Label>New Password</Label>
-                      <Input type="password" value={security.newPassword} onChange={e => setSecurity({ ...security, newPassword: e.target.value })} />
-                    </div>
-                    <div className="space-y-2">
-                      <Label>Confirm New Password</Label>
-                      <Input type="password" value={security.confirmPassword} onChange={e => setSecurity({ ...security, confirmPassword: e.target.value })} />
-                    </div>
-                    <div className="pt-2">
-                      <Button onClick={handleChangePassword} disabled={isSavingPassword || !security.currentPassword} className="bg-rose-600 hover:bg-rose-700">
-                        {isSavingPassword && <Loader2 className="w-4 h-4 mr-2 animate-spin" />}
-                        Update Password
-                      </Button>
+                  <Separator />
+
+                  <div className="space-y-3">
+                    <Label>Theme</Label>
+                    <div className="grid grid-cols-3 gap-3">
+                      {['light', 'dark', 'system'].map((theme) => (
+                        <div
+                          key={theme}
+                          onClick={() => updateSetting('theme', theme)}
+                          className={`cursor-pointer rounded-xl border-2 p-3 text-center transition-all ${settings.theme === theme
+                            ? 'border-rose-500 bg-rose-50 text-rose-700'
+                            : 'border-gray-100 hover:border-gray-200'
+                            }`}
+                        >
+                          <div className="capitalize font-medium">{theme}</div>
+                        </div>
+                      ))}
                     </div>
                   </div>
-                  <Separator />
-                  <ToggleSetting
-                    label="Two-Factor Authentication (2FA)"
-                    description="Add an extra layer of security (Coming Soon)"
-                    checked={security.twoFactorEnabled}
-                    onCheckedChange={c => setSecurity({ ...security, twoFactorEnabled: c })}
-                  />
                 </CardContent>
               </Card>
             </TabsContent>
@@ -551,13 +851,13 @@ const SettingPageContent = () => {
         </div>
       </div>
     </div>
-  )
+  );
 }
 
 const SettingPageQcSide = () => (
   <Suspense fallback={<div className="min-h-screen flex items-center justify-center"><Loader2 className="w-8 h-8 animate-spin text-rose-500" /></div>}>
-    <SettingPageContent />
+    <QCSettingsContent />
   </Suspense>
-)
+);
 
-export default SettingPageQcSide
+export default SettingPageQcSide;
