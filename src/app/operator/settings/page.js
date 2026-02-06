@@ -8,21 +8,17 @@ import {
   Bell,
   Globe,
   HardDrive,
-  Cpu,
   Save,
   Loader2,
   Camera,
   Mail,
   Phone,
   Building,
-  MapPin,
-  Shield,
   Eye,
   EyeOff,
   LogOut,
   Upload,
   CheckCircle2,
-  AlertCircle,
   Pencil,
   X
 } from 'lucide-react';
@@ -36,7 +32,6 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
 import { Badge } from '@/components/ui/badge';
 import { Separator } from '@/components/ui/separator';
-import { Progress } from '@/components/ui/progress';
 import { useUser } from '@/components/providers/UserContext';
 import { useAlert } from '@/components/providers/AlertProvider';
 import { api } from '@/lib/helper';
@@ -173,10 +168,13 @@ function OperatorSettingsContent() {
         phone: userData.phone_number || '',
         department: userData.department || '',
         role: userData.role || 'Operator',
-        avatar: userData.avatar || null
+        avatar: userData?.avatar || '/avatar_default.png'
       });
     }
-  }, [userData]);
+  }, [userData, updateUserData]);
+
+
+
 
   // Handle Tab Change
   const handleTabChange = (value) => {
@@ -251,6 +249,7 @@ function OperatorSettingsContent() {
       const token = localStorage.getItem('token');
       // Adjust URL to your backend
       const backendUrl = process.env.NEXT_PUBLIC_BACKEND_URL || 'http://localhost:5000';
+      
       const res = await fetch(`${backendUrl}/api/users/upload-avatar`, {
         method: 'POST',
         headers: {
@@ -262,7 +261,8 @@ function OperatorSettingsContent() {
       const data = await res.json();
 
       if (res.ok) {
-        setProfile(prev => ({ ...prev, avatar: data.avatarUrl }));
+        const avatarUrlWithBust = `${data.avatarUrl}${data.avatarUrl.includes('?') ? '&' : '?'}t=${Date.now()}`;
+        setProfile(prev => ({ ...prev, avatar: avatarUrlWithBust }));
         if (updateUserData) {
           updateUserData({ ...userData, avatar: data.avatarUrl });
         }

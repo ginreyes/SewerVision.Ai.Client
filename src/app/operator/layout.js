@@ -8,7 +8,6 @@ import { TourGuide, useTourGuide } from "@/components/TourGuide";
 
 export default function OperatorLayout({ children }) {
   const [openSidebar, setOpenSidebar] = useState(false);
-  const [username, setUsername] = useState(null);
   const [role, setRole] = useState(null);
 
   // Tour Guide state

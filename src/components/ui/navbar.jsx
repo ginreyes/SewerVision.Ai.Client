@@ -6,6 +6,7 @@ import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
+import { UserAvatar } from '@/components/ui/UserAvatar';
 import { AiOutlineLogout } from 'react-icons/ai';
 import { RxAvatar } from 'react-icons/rx';
 import { FiSearch, FiClock, FiFile, FiUsers, FiSettings } from 'react-icons/fi';
@@ -36,12 +37,29 @@ const Navbar = (props) => {
   const [recentSearches, setRecentSearches] = useState([]);
   const [searchHistory, setSearchHistory] = useState([]);
   const [loading, setLoading] = useState(false);
+  const [userAvatarUrl, setUserAvatarUrl] = useState(null);
 
   const { userData, logout } = useUser();
   const router = useRouter();
   const searchInputRef = useRef(null);
   const searchContainerRef = useRef(null);
   const debounceTimer = useRef(null);
+
+
+  const userDisplayName = userData ? `${userData.first_name || ''} ${userData.last_name || ''}`.trim() || userData.username : 'David Flores';
+  const userInitials = userDisplayName ? userDisplayName.charAt(0).toUpperCase() : 'U';
+  const userRole = userData?.role || role || 'Admin';
+
+
+  useEffect(() => {
+    if (userData) {
+      setUserAvatarUrl(userData.avatar || null);
+    } 
+    else {
+      setUserAvatarUrl(null);
+    }
+  }, [userData, role]);
+ 
 
   useEffect(() => {
     const savedHistory = localStorage.getItem('searchHistory');
@@ -179,10 +197,7 @@ const Navbar = (props) => {
     router.push(settingsPath);
   };
 
-  const userDisplayName = userData ? `${userData.first_name || ''} ${userData.last_name || ''}`.trim() || userData.username : 'David Flores';
-  const userInitials = userDisplayName ? userDisplayName.charAt(0).toUpperCase() : 'U';
-  const userRole = userData?.role || role || 'Admin';
-  const userAvatar = userData?.avatar || "/avatar_default.png";
+
 
   return (
     <nav className="border-b p-4 ">
@@ -304,10 +319,12 @@ const Navbar = (props) => {
             <PopoverTrigger asChild>
               <button className="focus:outline-none group">
                 <div className="relative">
-                  <Avatar className="w-10 h-10 ring-2 ring-transparent group-hover:ring-rose-200 transition-all duration-200">
-                    <AvatarImage src={userAvatar} alt="User" />
-                    <AvatarFallback className="bg-gradient-to-br from-rose-400 to-pink-500 text-white font-semibold">{userInitials}</AvatarFallback>
-                  </Avatar>
+                  <UserAvatar 
+                    src={userAvatarUrl} 
+                    fallback={userInitials}
+                    size="md"
+                    className="ring-2 ring-transparent group-hover:ring-rose-200 transition-all duration-200"
+                  />
                   <span className="absolute bottom-0 right-0 w-3 h-3 bg-green-500 border-2 border-white rounded-full"></span>
                 </div>
               </button>
@@ -316,10 +333,12 @@ const Navbar = (props) => {
               {/* User Info Header */}
               <div className="bg-gradient-to-r from-rose-500 via-pink-500 to-purple-500 p-4 text-white">
                 <div className="flex items-center gap-3">
-                  <Avatar className="w-12 h-12 ring-2 ring-white/30">
-                    <AvatarImage src={userAvatar} alt="User" />
-                    <AvatarFallback className="bg-white/20 text-white font-semibold">{userInitials}</AvatarFallback>
-                  </Avatar>
+                  <UserAvatar 
+                    src={userAvatarUrl} 
+                    fallback={userInitials}
+                    size="lg"
+                    className="ring-2 ring-white/30"
+                  />
                   <div className="flex-1 min-w-0">
                     <p className="font-semibold truncate">{userDisplayName}</p>
                     <p className="text-white/80 text-sm truncate">{userRole}</p>
@@ -349,17 +368,7 @@ const Navbar = (props) => {
                   </Button>
                 </Link>
 
-                {(userRole === 'operator' || userData?.role === 'operator') && (
-                  <Link href="/operator/settings">
-                    <Button variant="ghost" className="w-full justify-start p-3 h-auto rounded-lg hover:bg-gray-50 group">
-                      <FiSettings className="w-5 h-5 mr-3 text-gray-500 group-hover:text-cyan-500 transition-colors" />
-                      <div className="text-left">
-                        <p className="font-medium text-gray-700">Operator Settings</p>
-                        <p className="text-xs text-gray-400">Manage operator config</p>
-                      </div>
-                    </Button>
-                  </Link>
-                )}
+               
 
                 <Button
                   variant="ghost"

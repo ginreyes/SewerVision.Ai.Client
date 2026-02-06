@@ -60,9 +60,9 @@ export default function AdminLayout({ children }) {
           localStorage.removeItem("role");
           router.push("/login");
         }
-      } catch (error) {
+      } 
+      catch (error) {
         console.error("Failed to fetch role", error);
-        // Auth failed: Clear session and redirect
         localStorage.removeItem("authToken");
         localStorage.removeItem("username");
         router.push("/login");
@@ -70,9 +70,7 @@ export default function AdminLayout({ children }) {
     };
 
     fetchUserRole();
-    // Removed pathname and router from dependencies to prevent infinite loops
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, []); // Run ONCE on mount
+  }, []); 
 
   // Secondary effect to handle route protection AFTER role is loaded
   useEffect(() => {

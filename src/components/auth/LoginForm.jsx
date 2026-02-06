@@ -16,6 +16,7 @@ import { FaEye, FaEyeSlash, FaUser, FaLock, FaArrowRight } from "react-icons/fa"
 import { useForm } from "react-hook-form";
 import { useRouter } from "next/navigation";
 import { useAlert } from "@/components/providers/AlertProvider";
+import { useUser } from "@/components/providers/UserContext"; 
 import { api } from "@/lib/helper";
 
 const LoginForm = ({ className }) => {
@@ -25,6 +26,8 @@ const LoginForm = ({ className }) => {
 
     const router = useRouter();
     const { showAlert } = useAlert();
+    const { refetchUser } = useUser(); 
+    
 
     const {
         register,
@@ -80,6 +83,8 @@ const LoginForm = ({ className }) => {
             localStorage.setItem("authToken", token);
             localStorage.setItem("username", data.usernameOrEmail);
             localStorage.setItem("role", normalizedRole);
+
+            await refetchUser();
 
             showAlert("Login successful!", "success");
 

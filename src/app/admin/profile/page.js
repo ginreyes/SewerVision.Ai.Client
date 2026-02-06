@@ -200,6 +200,7 @@ const AccountSettings = () => {
   useEffect(() => {
     const getUser = async () => {
       const username = localStorage.getItem("username");
+      
       if (!username) return;
   
       try {

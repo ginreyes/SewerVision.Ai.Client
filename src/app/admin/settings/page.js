@@ -37,6 +37,7 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Switch } from '@/components/ui/switch';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
+import { UserAvatar } from '@/components/ui/UserAvatar';
 import { Badge } from '@/components/ui/badge';
 import { Separator } from '@/components/ui/separator';
 import { Slider } from '@/components/ui/slider';
@@ -80,13 +81,15 @@ const ToggleSetting = ({ label, description, checked, onCheckedChange }) => (
 function SettingsPageContent() {
   const router = useRouter();
   const searchParams = useSearchParams();
-  const { userData, logout, updateUserData, userId } = useUser();
+  const { userData, logout, updateUserData, refetchUser, userId } = useUser();
   const { showAlert } = useAlert();
 
   const [activeTab, setActiveTab] = useState(searchParams.get('tab') || 'profile');
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
   const [isEditingProfile, setIsEditingProfile] = useState(false);
+  
+
 
   // Profile Form State
   const [profile, setProfile] = useState({
@@ -95,10 +98,11 @@ function SettingsPageContent() {
     email: '',
     phone: '',
     department: '',
-    role: 'Admin',
+    role: 'admin',
     avatar: null
   });
 
+  console.log('User data in SettingsPageContent:', userData);
   // Password Form State
   const [passwordForm, setPasswordForm] = useState({
     currentPassword: '',
@@ -183,7 +187,7 @@ function SettingsPageContent() {
     }
   }, [searchParams]);
 
-  // Load User Data
+  // Keep profile in sync with UserContext (single source of truth for smooth updates)
   useEffect(() => {
     if (userData) {
       setProfile({
@@ -207,7 +211,7 @@ function SettingsPageContent() {
     setLoading(true);
     try {
       const response = await settingsApi.getSettings();
-      const settings = response.data || {}; // Ensure settings is an object
+      const settings = response.data || {};
 
       if (settings.aiModels) {
         setSelectedModels(settings.aiModels.selectedModels || {});
@@ -278,20 +282,30 @@ function SettingsPageContent() {
   const handleSaveProfile = async () => {
     try {
       setSaving(true);
-      const username = localStorage.getItem('username');
+      const username = userData?.username || localStorage.getItem('username');
       if (!username) throw new Error('User not identified');
 
-      const response = await api(`/api/users/profile/${username}`, 'PATCH', {
+      const payload = {
         firstName: profile.firstName,
         lastName: profile.lastName,
         phone: profile.phone,
         department: profile.department
-      });
+      };
+
+      const response = await api(`/api/users/profile/${username}`, 'PATCH', payload);
 
       if (response.ok) {
-        if (updateUserData && response.data?.data) {
-          updateUserData(response.data.data);
+        const updated = response.data?.data;
+        if (updated && updateUserData) {
+          updateUserData({
+            first_name: updated.first_name ?? profile.firstName,
+            last_name: updated.last_name ?? profile.lastName,
+            phone_number: updated.phone_number ?? profile.phone,
+            department: updated.department ?? profile.department,
+            ...updated
+          });
         }
+        refetchUser?.();
         showAlert('Profile updated successfully', 'success');
         setIsEditingProfile(false);
       } else {
@@ -309,6 +323,7 @@ function SettingsPageContent() {
     fileInputRef.current?.click();
   };
 
+  // Avatar upload – same implementation as operator settings (username only, no auth)
   const handleAvatarFileChange = async (e) => {
     const file = e.target.files?.[0];
     if (!file) return;
@@ -318,38 +333,38 @@ function SettingsPageContent() {
       return;
     }
 
+    const username = localStorage.getItem('username');
+    if (!username) {
+      showAlert('No username found', 'error');
+      return;
+    }
+
     try {
       setSaving(true);
-      const username = localStorage.getItem('username');
-      if (!username) throw new Error("No username found");
-
       const formData = new FormData();
       formData.append('avatar', file);
       formData.append('username', username);
 
-      const token = localStorage.getItem('token');
       const backendUrl = process.env.NEXT_PUBLIC_BACKEND_URL || 'http://localhost:5000';
       const res = await fetch(`${backendUrl}/api/users/upload-avatar`, {
         method: 'POST',
-        headers: {
-          'Authorization': `Bearer ${token}`
-        },
-        body: formData
+        body: formData,
       });
 
       const data = await res.json();
+
       if (res.ok) {
-        setProfile(prev => ({ ...prev, avatar: data.avatarUrl }));
-        if (updateUserData) {
-          updateUserData({ ...userData, avatar: data.avatarUrl });
-        }
+        const avatarUrlWithBust = `${data.avatarUrl}${data.avatarUrl.includes('?') ? '&' : '?'}t=${Date.now()}`;
+        setProfile(prev => ({ ...prev, avatar: avatarUrlWithBust }));
+        if (updateUserData) updateUserData({ ...userData, avatar: data.avatarUrl });
+        refetchUser?.();
         showAlert('Avatar uploaded successfully', 'success');
       } else {
         throw new Error(data.message || 'Failed to upload avatar');
       }
     } catch (error) {
       console.error('Avatar upload error:', error);
-      showAlert(error.message, 'error');
+      showAlert(error.message || 'Failed to upload avatar', 'error');
     } finally {
       setSaving(false);
       if (fileInputRef.current) fileInputRef.current.value = '';
@@ -439,15 +454,10 @@ function SettingsPageContent() {
     setSelectedModels(prev => ({ ...prev, [key]: !prev[key] }));
   };
 
-  const handleFileUpload = (e) => {
-    const file = e.target.files[0];
-    if (file) {
-      setUploadedModel(file);
-      showAlert(`Model file "${file.name}" selected. Click Deploy to apply.`, 'info');
-    }
-  };
 
   const toggleSecretKey = () => setAwsConfig(prev => ({ ...prev, showSecret: !prev.showSecret }));
+
+
 
   return (
     <div className="max-w-7xl mx-auto p-6 space-y-8">
@@ -552,15 +562,17 @@ function SettingsPageContent() {
                 <CardContent className="space-y-8">
                   {/* Avatar Upload */}
                   <div className="flex flex-col items-center sm:flex-row gap-6">
-                    <div className="relative group">
+                    <div className="relative group w-24 h-24">
                       <input type="file" ref={fileInputRef} className="hidden" accept="image/*" onChange={handleAvatarFileChange} />
-                      <Avatar className="w-24 h-24 border-4 border-white shadow-lg cursor-pointer" onClick={handleAvatarClick}>
-                        <AvatarImage src={profile.avatar} />
-                        <AvatarFallback className="bg-blue-100 text-blue-600 text-2xl">
-                          {profile.firstName?.[0]}{profile.lastName?.[0]}
-                        </AvatarFallback>
-                      </Avatar>
-                      <div className="absolute inset-0 bg-black/40 rounded-full flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity cursor-pointer" onClick={handleAvatarClick}>
+                      <div className="cursor-pointer w-24 h-24 rounded-full overflow-hidden" onClick={handleAvatarClick}>
+                        <UserAvatar
+                          src={profile.avatar || (userId || userData?._id ? `${process.env.NEXT_PUBLIC_BACKEND_URL || 'http://localhost:5000'}/api/users/avatar/${userId || userData?._id}` : null)}
+                          fallback={(profile.firstName?.[0] || '') + (profile.lastName?.[0] || '') || 'U'}
+                          size="xl"
+                          className="w-24 h-24 border-4 border-white shadow-lg bg-blue-100 text-blue-600 text-2xl"
+                        />
+                      </div>
+                      <div className="absolute inset-0 rounded-full bg-black/40 flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity cursor-pointer" onClick={handleAvatarClick}>
                         <Camera className="w-8 h-8 text-white" />
                       </div>
                     </div>
