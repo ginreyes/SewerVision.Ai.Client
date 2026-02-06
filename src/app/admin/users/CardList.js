@@ -85,18 +85,20 @@ const CardList = () => {
   ];
 
   return (
-    <div className="p-4 max-w-7xl mx-auto grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
+    <div className="max-w-7xl mx-auto grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4 mb-4">
       {stats.map((stat, idx) => (
-        <Card key={idx} className="h-full">
-          <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-            <CardTitle className="text-sm font-medium">{stat.label}</CardTitle>
-            {stat.icon}
+        <Card key={idx} className="border border-gray-100 shadow-sm hover:shadow-md transition-shadow">
+          <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-3 pt-4">
+            <CardTitle className="text-xs font-semibold text-gray-600 uppercase tracking-wide">{stat.label}</CardTitle>
+            <div className="p-2 bg-gray-50 rounded-lg">
+              {stat.icon}
+            </div>
           </CardHeader>
-          <CardContent>
-            <div className={`text-2xl font-bold ${stat.color}`}>
+          <CardContent className="pb-4">
+            <div className={`text-3xl font-bold ${stat.color}`}>
               {stat.value}
             </div>
-            <p className="text-xs text-muted-foreground mt-1">
+            <p className="text-xs text-gray-500 mt-1.5">
               {stat.description}
             </p>
           </CardContent>

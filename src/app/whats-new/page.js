@@ -17,6 +17,7 @@ import { Dialog, DialogContent } from "@/components/ui/dialog";
 import Image from "next/image";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { whatsNewData } from "@/data/whatsNewData";
+import UserRoleHierarchy from "@/components/diagrams/UserRoleHierarchy";
 
 const WhatsNew = () => {
     // Default to the first version (latest)
@@ -31,6 +32,7 @@ const WhatsNew = () => {
             case 'ui': return 'bg-purple-100 text-purple-700 border-purple-200';
             case 'improvement': return 'bg-blue-100 text-blue-700 border-blue-200';
             case 'security': return 'bg-amber-100 text-amber-700 border-amber-200';
+            case 'planned': return 'bg-gradient-to-r from-blue-100 to-purple-100 text-blue-700 border-blue-300';
             default: return 'bg-gray-100 text-gray-700 border-gray-200';
         }
     };
@@ -42,6 +44,7 @@ const WhatsNew = () => {
             case 'ui': return '🎨 UI';
             case 'improvement': return '⚡ Better';
             case 'security': return '🛡️ Security';
+            case 'planned': return '🎯 Planned';
             default: return 'Update';
         }
     };
@@ -153,10 +156,10 @@ const WhatsNew = () => {
                                                                 <span className={`px-3 py-1.5 rounded-lg text-xs font-bold uppercase border ${getBadgeStyle(item.type)}`}>
                                                                     {getBadgeLabel(item.type)}
                                                                 </span>
-                                                                {item.image && (
+                                                                {(item.image || item.type === 'planned') && (
                                                                     <div className="flex items-center gap-2 text-xs text-gray-400 group-hover:text-rose-500 transition-colors bg-gray-50 px-2 py-1 rounded-full group-hover:bg-rose-50">
                                                                         <FaImage className="w-3.5 h-3.5" />
-                                                                        <span className="font-medium">Preview</span>
+                                                                        <span className="font-medium">{item.type === 'planned' ? 'Diagram' : 'Preview'}</span>
                                                                     </div>
                                                                 )}
                                                             </div>
@@ -202,12 +205,25 @@ const WhatsNew = () => {
             <Dialog open={isDialogOpen} onOpenChange={setIsDialogOpen}>
                 <DialogContent className="max-w-6xl p-0 gap-0 overflow-hidden border-0 bg-white shadow-2xl rounded-2xl">
                     <div className="flex flex-col md:flex-row h-[85vh] md:h-[70vh]">
-                        {/* Left Side - Image */}
+                        {/* Left Side - Image or Diagram */}
                         <div className="w-full md:w-3/5 bg-gray-50 relative flex items-center justify-center p-8 border-b md:border-b-0 md:border-r border-gray-200">
                             {/* Background Pattern */}
                             <div className="absolute inset-0 opacity-5 bg-[radial-gradient(#e5e7eb_1px,transparent_1px)] [background-size:16px_16px]"></div>
 
-                            {selectedItem?.image ? (
+                            {selectedItem?.type === 'planned' ? (
+                                // Show diagram for planned features
+                                <div 
+                                    className="w-full h-full cursor-zoom-in group"
+                                    onClick={() => setSelectedItem(prev => ({ ...prev, isZoomed: true }))}
+                                >
+                                    <UserRoleHierarchy />
+                                    <div className="absolute inset-0 bg-black/0 group-hover:bg-black/5 transition-colors flex items-center justify-center pointer-events-none">
+                                        <div className="bg-white/90 text-gray-800 text-xs font-bold px-3 py-1.5 rounded-full shadow-lg opacity-0 group-hover:opacity-100 transform translate-y-2 group-hover:translate-y-0 transition-all flex items-center gap-2">
+                                            <FaImage className="w-3 h-3" /> Click to Zoom
+                                        </div>
+                                    </div>
+                                </div>
+                            ) : selectedItem?.image ? (
                                 <div
                                     className="relative w-full h-full shadow-lg rounded-lg overflow-hidden bg-white cursor-zoom-in group"
                                     onClick={() => setSelectedItem(prev => ({ ...prev, isZoomed: true }))}
@@ -283,8 +299,8 @@ const WhatsNew = () => {
                 </DialogContent>
             </Dialog>
 
-            {/* Full Screen Image Zoom Overlay */}
-            {selectedItem?.isZoomed && selectedItem.image && (
+            {/* Full Screen Zoom Overlay (Image or Diagram) */}
+            {selectedItem?.isZoomed && (
                 <div
                     className="fixed inset-0 z-[9999] bg-black/95 flex items-center justify-center p-4 md:p-10 animate-in fade-in duration-200"
                     onClick={() => setSelectedItem(prev => ({ ...prev, isZoomed: false }))}
@@ -300,13 +316,16 @@ const WhatsNew = () => {
                     </button>
 
                     <div className="relative w-full h-full max-w-7xl max-h-[90vh]" onClick={e => e.stopPropagation()}>
-                        <Image
-                            src={selectedItem.image}
-                            alt={selectedItem.title}
-                            fill
-                            className="object-contain"
-                            priority
-                        />
+                       { selectedItem.image ? (
+                            // Zoomed Image
+                            <Image
+                                src={selectedItem.image}
+                                alt={selectedItem.title}
+                                fill
+                                className="object-contain"
+                                priority
+                            />
+                        ) : null}
                     </div>
                 </div>
             )}

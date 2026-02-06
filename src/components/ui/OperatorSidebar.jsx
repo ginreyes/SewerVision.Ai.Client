@@ -13,6 +13,7 @@ import {
   Settings,
   SearchX,
   Bell,
+  Calendar,
 } from 'lucide-react';
 
 const OperatorSidebar = ({ isOpen, role }) => {
@@ -29,6 +30,7 @@ const OperatorSidebar = ({ isOpen, role }) => {
     { label: "Dashboard", icon: LayoutDashboard, path: "/operator/dashboard" },
     { label: "Operations", icon: SearchX, path: "/operator/operations" },
     { label: "Task", icon: Search, path: "/operator/task" },
+    { label: "Calendar", icon: Calendar, path: "/operator/calendar" },
     { label: "Equipment", icon: Monitor, path: "/operator/equipement" },
     { label: "Maintenance", icon: Wrench, path: "/operator/maintenance" },
     { label: "Logs", icon: BookOpen, path: "/operator/logs" },
