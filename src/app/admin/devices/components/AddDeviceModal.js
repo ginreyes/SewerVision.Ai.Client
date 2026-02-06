@@ -9,7 +9,8 @@ import {
   Settings,
   CheckCircle,
   AlertCircle,
-  Loader
+  Loader,
+  Camera
 } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
@@ -62,6 +63,8 @@ const AddDeviceModal = (props) => {
       confidenceThreshold: [85]
     }
   })
+  const [deviceImage, setDeviceImage] = useState(null)
+  const [imagePreview, setImagePreview] = useState(null)
   const [isSubmitting, setIsSubmitting] = useState(false)
   const [errors, setErrors] = useState({})
   const [operators, setOperators] = useState([]) // ✅ Fixed: was {}, now []
@@ -153,6 +156,23 @@ const AddDeviceModal = (props) => {
     setCurrentStep(prev => prev - 1)
   }
 
+  const handleImageChange = (e) => {
+    const file = e.target.files[0]
+    if (file) {
+      if (file.size > 10 * 1024 * 1024) { // 10MB limit
+        setErrors({ ...errors, image: 'Image must be less than 10MB' })
+        return
+      }
+      if (!file.type.startsWith('image/')) {
+        setErrors({ ...errors, image: 'Please select a valid image file' })
+        return
+      }
+      setDeviceImage(file)
+      setImagePreview(URL.createObjectURL(file))
+      setErrors({ ...errors, image: '' })
+    }
+  }
+
   const handleSubmit = async () => {
     if (!validateStep(currentStep)) return
   
@@ -169,12 +189,25 @@ const AddDeviceModal = (props) => {
         }
       }
   
-  
       const { data, error } = await api('/api/devices/create-device', 'POST', payload)
       if (error) throw error
+
+      const deviceId = data?._id || data?.id
+  
+      // Upload device image if selected
+      if (deviceImage && deviceId) {
+        const formData = new FormData()
+        formData.append('image', deviceImage)
+        
+        try {
+          await api(`/api/devices/${deviceId}/upload-image`, 'POST', formData)
+        } catch (imageError) {
+          console.error('Error uploading device image:', imageError)
+        }
+      }
   
       const createdDevice = {
-        id: data?.id || Date.now(),
+        id: deviceId || Date.now(),
         ...payload,
         status: 'offline',
         dateAdded: new Date().toISOString(),
@@ -187,6 +220,7 @@ const AddDeviceModal = (props) => {
 
       onClose()
   
+      // Reset form
       setDeviceData({
         name: '',
         type: '',
@@ -216,6 +250,8 @@ const AddDeviceModal = (props) => {
           confidenceThreshold: [85]
         }
       })
+      setDeviceImage(null)
+      setImagePreview(null)
       setCurrentStep(1)
     } catch (error) {
       console.error('Error adding device:', error)
@@ -234,7 +270,7 @@ const AddDeviceModal = (props) => {
 
   const selectedDeviceType = deviceTypes[deviceData.category]?.find(type => type.id === deviceData.type)
   const Icon = selectedDeviceType?.icon || Settings
-  const progress = (currentStep / 4) * 100
+  const progress = (currentStep / 5) * 100
 
   return (
     <Dialog open={isOpen} onOpenChange={onClose}>
@@ -256,7 +292,7 @@ const AddDeviceModal = (props) => {
         {/* Progress Bar */}
         <div className="space-y-2 pb-4 border-b">
           <div className="flex items-center justify-between text-sm text-muted-foreground">
-            <span>Step {currentStep} of 4</span>
+            <span>Step {currentStep} of 5</span>
             <span>{Math.round(progress)}%</span>
           </div>
           <Progress value={progress} className="w-full" />
@@ -631,8 +667,71 @@ const AddDeviceModal = (props) => {
             </div>
           )}
 
-          {/* Step 4: AI Settings */}
+          {/* Step 4: Device Image */}
           {currentStep === 4 && (
+            <div className="space-y-6">
+              <h3 className="text-lg font-medium mb-4">Device Image</h3>
+              
+              <Card>
+                <CardContent className="p-6">
+                  <div className="space-y-4">
+                    <div className="text-center">
+                      {imagePreview ? (
+                        <div className="relative inline-block">
+                          <img 
+                            src={imagePreview} 
+                            alt="Device preview" 
+                            className="w-64 h-64 object-cover rounded-lg border-2 border-gray-200"
+                          />
+                          <Button
+                            variant="destructive"
+                            size="icon"
+                            className="absolute top-2 right-2"
+                            onClick={() => {
+                              setDeviceImage(null)
+                              setImagePreview(null)
+                            }}
+                          >
+                            <AlertCircle className="w-4 h-4" />
+                          </Button>
+                        </div>
+                      ) : (
+                        <div className="w-64 h-64 mx-auto border-2 border-dashed border-gray-300 rounded-lg flex items-center justify-center bg-gray-50">
+                          <div className="text-center">
+                            <Camera className="w-12 h-12 text-gray-400 mx-auto mb-2" />
+                            <p className="text-sm text-gray-500">No image selected</p>
+                          </div>
+                        </div>
+                      )}
+                    </div>
+                    
+                    <div className="space-y-2">
+                      <Label htmlFor="device-image">Upload Device Image (Optional)</Label>
+                      <Input
+                        id="device-image"
+                        type="file"
+                        accept="image/*"
+                        onChange={handleImageChange}
+                        className="cursor-pointer"
+                      />
+                      {errors.image && (
+                        <Alert variant="destructive">
+                          <AlertCircle className="h-4 w-4" />
+                          <AlertDescription>{errors.image}</AlertDescription>
+                        </Alert>
+                      )}
+                      <p className="text-xs text-gray-500">
+                        Recommended: Square image, max 10MB, JPG or PNG format
+                      </p>
+                    </div>
+                  </div>
+                </CardContent>
+              </Card>
+            </div>
+          )}
+
+          {/* Step 5: AI Settings */}
+          {currentStep === 5 && (
             <div className="space-y-6">
               <h3 className="text-lg font-medium mb-4">AI & Quality Settings</h3>
               
@@ -744,7 +843,7 @@ const AddDeviceModal = (props) => {
               Cancel
             </Button>
             
-            {currentStep < 4 ? (
+            {currentStep < 5 ? (
               <Button 
                 onClick={handleNext}
                 variant='rose'

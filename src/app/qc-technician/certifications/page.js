@@ -183,158 +183,164 @@ Verification URL: ${cert.verificationUrl}
   }
 
   return (
-    <div className="min-h-screen p-6">
-      <div className="max-w-7xl mx-auto">
-        {/* Header */}
-        <div className="mb-8 flex flex-col sm:flex-row sm:items-center sm:justify-between">
-          <div className="flex items-center gap-3 mb-4 sm:mb-0">
-            <Award className="w-8 h-8 text-rose-600" />
-            <h1 className="text-3xl font-bold text-gray-900">My Certifications</h1>
+    <div className="p-6 max-w-7xl mx-auto">
+      {/* Header */}
+      <div className="mb-6">
+        <div className="flex items-center justify-between mb-2">
+          <div className="flex items-center gap-3">
+            <div className="p-2 bg-rose-100 rounded-lg">
+              <Award className="w-6 h-6 text-rose-600" />
+            </div>
+            <div>
+              <h1 className="text-2xl font-bold text-gray-900">My Certifications</h1>
+              <p className="text-sm text-gray-500">Manage and track your professional certifications</p>
+            </div>
           </div>
-          <Button onClick={() => setIsAddModalOpen(true)} className="flex items-center gap-2">
+          <Button 
+            onClick={() => setIsAddModalOpen(true)} 
+            className="flex items-center gap-2"
+          >
             <Plus className="w-4 h-4" />
             Add Certification
           </Button>
         </div>
+      </div>
 
-        <p className="text-gray-600 mb-6">Manage and track your professional certifications</p>
-
-        {/* Stats Cards */}
-        <div className="grid grid-cols-1 md:grid-cols-4 gap-4 mb-6">
-          <Card>
-            <CardHeader className="pb-3">
-              <div className="flex items-center justify-between">
-                <div>
-                  <CardDescription>Total</CardDescription>
-                  <CardTitle className="text-2xl">{stats.total}</CardTitle>
-                </div>
-                <FileCheck className="w-8 h-8 text-rose-500" />
-              </div>
-            </CardHeader>
-          </Card>
-          <Card>
-            <CardHeader className="pb-3">
-              <div className="flex items-center justify-between">
-                <div>
-                  <CardDescription>Active</CardDescription>
-                  <CardTitle className="text-2xl text-green-600">{stats.active}</CardTitle>
-                </div>
-                <CheckCircle className="w-8 h-8 text-green-500" />
-              </div>
-            </CardHeader>
-          </Card>
-          <Card>
-            <CardHeader className="pb-3">
-              <div className="flex items-center justify-between">
-                <div>
-                  <CardDescription>Expiring Soon</CardDescription>
-                  <CardTitle className="text-2xl text-yellow-600">{stats.expiring}</CardTitle>
-                </div>
-                <Clock className="w-8 h-8 text-yellow-500" />
-              </div>
-            </CardHeader>
-          </Card>
-          <Card>
-            <CardHeader className="pb-3">
-              <div className="flex items-center justify-between">
-                <div>
-                  <CardDescription>Expired</CardDescription>
-                  <CardTitle className="text-2xl text-red-600">{stats.expired}</CardTitle>
-                </div>
-                <AlertCircle className="w-8 h-8 text-red-500" />
-              </div>
-            </CardHeader>
-          </Card>
+      {/* Stats Cards - Compact like dashboard */}
+      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4 mb-6">
+        <div className="bg-white rounded-xl border border-gray-100 p-4 hover:shadow-md transition-all">
+          <div className="flex items-center justify-between">
+            <div className="p-2 rounded-lg bg-gradient-to-br from-blue-500 to-blue-600">
+              <FileCheck className="w-5 h-5 text-white" />
+            </div>
+          </div>
+          <div className="mt-3">
+            <p className="text-2xl font-bold text-gray-900">{stats.total}</p>
+            <p className="text-sm text-gray-500">Total</p>
+          </div>
         </div>
+        <div className="bg-white rounded-xl border border-gray-100 p-4 hover:shadow-md transition-all">
+          <div className="flex items-center justify-between">
+            <div className="p-2 rounded-lg bg-gradient-to-br from-green-500 to-emerald-600">
+              <CheckCircle className="w-5 h-5 text-white" />
+            </div>
+          </div>
+          <div className="mt-3">
+            <p className="text-2xl font-bold text-gray-900">{stats.active}</p>
+            <p className="text-sm text-gray-500">Active</p>
+          </div>
+        </div>
+        <div className="bg-white rounded-xl border border-gray-100 p-4 hover:shadow-md transition-all">
+          <div className="flex items-center justify-between">
+            <div className="p-2 rounded-lg bg-gradient-to-br from-orange-500 to-amber-600">
+              <Clock className="w-5 h-5 text-white" />
+            </div>
+          </div>
+          <div className="mt-3">
+            <p className="text-2xl font-bold text-gray-900">{stats.expiring}</p>
+            <p className="text-sm text-gray-500">Expiring Soon</p>
+          </div>
+        </div>
+        <div className="bg-white rounded-xl border border-gray-100 p-4 hover:shadow-md transition-all">
+          <div className="flex items-center justify-between">
+            <div className="p-2 rounded-lg bg-gradient-to-br from-red-500 to-rose-600">
+              <AlertCircle className="w-5 h-5 text-white" />
+            </div>
+          </div>
+          <div className="mt-3">
+            <p className="text-2xl font-bold text-gray-900">{stats.expired}</p>
+            <p className="text-sm text-gray-500">Expired</p>
+          </div>
+        </div>
+      </div>
 
-        {/* Filter Tabs */}
-        <Card className="mb-6">
-          <CardContent className="pt-6">
-            <Tabs value={filter} onValueChange={setFilter} className="w-full">
-              <TabsList className="grid w-full grid-cols-4">
-                <TabsTrigger value="all">All Certifications</TabsTrigger>
-                <TabsTrigger value="active">Active</TabsTrigger>
-                <TabsTrigger value="expiring">Expiring Soon</TabsTrigger>
-                <TabsTrigger value="expired">Expired</TabsTrigger>
-              </TabsList>
-            </Tabs>
-          </CardContent>
-        </Card>
+      {/* Filter Tabs */}
+      <Card className="mb-6">
+        <CardContent className="pt-6">
+          <Tabs value={filter} onValueChange={setFilter} className="w-full">
+            <TabsList className="grid w-full grid-cols-4">
+              <TabsTrigger value="all">All Certifications</TabsTrigger>
+              <TabsTrigger value="active">Active</TabsTrigger>
+              <TabsTrigger value="expiring">Expiring Soon</TabsTrigger>
+              <TabsTrigger value="expired">Expired</TabsTrigger>
+            </TabsList>
+          </Tabs>
+        </CardContent>
+      </Card>
 
-        {/* Certifications List */}
-        <div className="space-y-4">
-          {filteredCertifications.map(cert => (
-            <Card key={cert._id} className="hover:shadow-md transition-shadow">
-              <CardContent className="pt-6">
-                <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">
-                  <div className="flex-1">
-                    <div className="flex items-start gap-3 mb-3">
-                      <div className="p-2 bg-rose-50 rounded-lg">
-                        <Award className="w-6 h-6 text-rose-600" />
-                      </div>
-                      <div className="flex-1">
-                        <h3 className="text-lg font-semibold text-gray-900 mb-1">{cert.name}</h3>
-                        <p className="text-sm text-gray-600">{cert.issuer}</p>
-                      </div>
-                      <Badge variant={getStatusVariant(cert.status)} className="flex items-center gap-1.5">
-                        {getStatusIcon(cert.status)}
-                        {cert.status.charAt(0).toUpperCase() + cert.status.slice(1)}
-                      </Badge>
+      {/* Certifications List */}
+      <div className="space-y-4">
+        {filteredCertifications.map(cert => (
+          <Card key={cert._id} className="hover:shadow-md transition-shadow">
+            <CardContent className="pt-6">
+              <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">
+                <div className="flex-1">
+                  <div className="flex items-start gap-3 mb-3">
+                    <div className="p-2 bg-rose-50 rounded-lg">
+                      <Award className="w-5 h-5 text-rose-600" />
                     </div>
-
-                    <div className="grid grid-cols-1 md:grid-cols-3 gap-4 text-sm mb-3">
-                      <div className="flex items-center gap-2 text-gray-600">
-                        <Calendar className="w-4 h-4" />
-                        <span>Issued: {new Date(cert.issueDate).toLocaleDateString()}</span>
-                      </div>
-                      <div className="flex items-center gap-2 text-gray-600">
-                        <Calendar className="w-4 h-4" />
-                        <span>Expires: {new Date(cert.expiryDate).toLocaleDateString()}</span>
-                      </div>
-                      <div className="text-gray-600">
-                        <span className="font-medium">ID:</span> {cert.credentialId}
-                      </div>
+                    <div className="flex-1">
+                      <h3 className="text-base font-semibold text-gray-900 mb-1">{cert.name}</h3>
+                      <p className="text-sm text-gray-600">{cert.issuer}</p>
                     </div>
+                    <Badge variant={getStatusVariant(cert.status)} className="flex items-center gap-1.5">
+                      {getStatusIcon(cert.status)}
+                      {cert.status.charAt(0).toUpperCase() + cert.status.slice(1)}
+                    </Badge>
+                  </div>
 
-                    <div>
-                      <Badge variant="outline">{cert.category}</Badge>
+                  <div className="grid grid-cols-1 md:grid-cols-3 gap-4 text-sm mb-3">
+                    <div className="flex items-center gap-2 text-gray-600">
+                      <Calendar className="w-4 h-4" />
+                      <span>Issued: {new Date(cert.issueDate).toLocaleDateString()}</span>
+                    </div>
+                    <div className="flex items-center gap-2 text-gray-600">
+                      <Calendar className="w-4 h-4" />
+                      <span>Expires: {new Date(cert.expiryDate).toLocaleDateString()}</span>
+                    </div>
+                    <div className="text-gray-600">
+                      <span className="font-medium">ID:</span> {cert.credentialId}
                     </div>
                   </div>
 
-                  <div className="flex gap-2">
-                    <Button
-                      variant="outline"
-                      size="icon"
-                      onClick={() => handleViewCertificate(cert)}
-                      title="View Certificate"
-                    >
-                      <Eye className="w-4 h-4" />
-                    </Button>
-                    <Button
-                      variant="outline"
-                      size="icon"
-                      onClick={() => handleDownloadCertificate(cert)}
-                      title="Download Certificate"
-                    >
-                      <Download className="w-4 h-4" />
-                    </Button>
+                  <div>
+                    <Badge variant="outline">{cert.category}</Badge>
                   </div>
                 </div>
-              </CardContent>
-            </Card>
-          ))}
-        </div>
 
-        {filteredCertifications.length === 0 && (
-          <Card>
-            <CardContent className="p-12 text-center">
-              <Award className="w-16 h-16 text-gray-300 mx-auto mb-4" />
-              <CardTitle className="mb-2">No certifications found</CardTitle>
-              <CardDescription>No certifications match the selected filter.</CardDescription>
+                <div className="flex gap-2">
+                  <Button
+                    variant="outline"
+                    size="icon"
+                    onClick={() => handleViewCertificate(cert)}
+                    title="View Certificate"
+                  >
+                    <Eye className="w-4 h-4" />
+                  </Button>
+                  <Button
+                    variant="outline"
+                    size="icon"
+                    onClick={() => handleDownloadCertificate(cert)}
+                    title="Download Certificate"
+                  >
+                    <Download className="w-4 h-4" />
+                  </Button>
+                </div>
+              </div>
             </CardContent>
           </Card>
-        )}
+        ))}
       </div>
+
+      {filteredCertifications.length === 0 && (
+        <Card>
+          <CardContent className="p-12 text-center">
+            <Award className="w-16 h-16 text-gray-300 mx-auto mb-4" />
+            <CardTitle className="mb-2">No certifications found</CardTitle>
+            <CardDescription>No certifications match the selected filter.</CardDescription>
+          </CardContent>
+        </Card>
+      )}
 
       {/* View Certificate Dialog */}
       <Dialog open={isViewModalOpen} onOpenChange={setIsViewModalOpen}>

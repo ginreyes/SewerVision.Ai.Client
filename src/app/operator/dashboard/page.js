@@ -24,7 +24,9 @@ import {
   TrendingUp,
   CheckCircle2,
   ChevronRight,
-  MoreVertical
+  MoreVertical,
+  Calendar as CalendarIcon,
+  Wrench
 } from 'lucide-react'
 
 import Chart from 'chart.js/auto'
@@ -159,6 +161,11 @@ export default function OperatorDashboardContent() {
     { day: 'Fri', efficiency: 0, output: 0 },
     { day: 'Sat', efficiency: 0, output: 0 },
     { day: 'Sun', efficiency: 0, output: 0 },
+  ])
+  const [todayEvents, setTodayEvents] = useState([
+    { id: 1, title: 'Downtown Sewer Inspection', time: '9:00 AM', location: 'Main St & 5th Ave', type: 'inspection' },
+    { id: 2, title: 'Equipment Maintenance', time: '2:00 PM', location: 'Maintenance Bay', type: 'maintenance' },
+    { id: 3, title: 'Team Meeting', time: '4:30 PM', location: 'Conference Room', type: 'meeting' }
   ])
 
   // Modal state
@@ -424,6 +431,80 @@ export default function OperatorDashboardContent() {
                 <div className="text-center py-6 text-gray-500">
                   <Server className="w-8 h-8 mx-auto mb-2 opacity-50" />
                   <p className="text-sm">No equipment online</p>
+                </div>
+              )}
+            </CardContent>
+          </Card>
+
+          {/* Today's Schedule */}
+          <Card className="border-0 shadow-sm">
+            <CardHeader className="pb-3">
+              <div className="flex items-center justify-between">
+                <div className="flex items-center gap-2">
+                  <CalendarIcon className="w-5 h-5 text-blue-600" />
+                  <CardTitle className="text-base font-semibold">Today's Schedule</CardTitle>
+                </div>
+                <Button 
+                  variant="ghost" 
+                  size="sm" 
+                  className="text-blue-600 h-auto py-1"
+                  onClick={() => window.location.href = '/operator/calendar'}
+                >
+                  View All
+                </Button>
+              </div>
+            </CardHeader>
+            <CardContent className="space-y-2">
+              {todayEvents.length > 0 ? (
+                todayEvents.map((event) => (
+                  <div
+                    key={event.id}
+                    className="flex items-start gap-3 p-3 rounded-lg hover:bg-gray-50 transition-colors cursor-pointer border border-gray-100"
+                    onClick={() => window.location.href = '/operator/calendar'}
+                  >
+                    <div className={`p-2 rounded-lg ${
+                      event.type === 'inspection' ? 'bg-blue-100' :
+                      event.type === 'maintenance' ? 'bg-orange-100' :
+                      'bg-purple-100'
+                    }`}>
+                      {event.type === 'inspection' ? (
+                        <Camera className={`w-4 h-4 ${event.type === 'inspection' ? 'text-blue-600' : ''}`} />
+                      ) : event.type === 'maintenance' ? (
+                        <Wrench className="w-4 h-4 text-orange-600" />
+                      ) : (
+                        <Clock className="w-4 h-4 text-purple-600" />
+                      )}
+                    </div>
+                    <div className="flex-1 min-w-0">
+                      <p className="text-sm font-medium text-gray-900 truncate">{event.title}</p>
+                      <div className="flex items-center gap-3 mt-1">
+                        <span className="text-xs text-gray-600 flex items-center gap-1">
+                          <Clock className="w-3 h-3" />
+                          {event.time}
+                        </span>
+                        {event.location && (
+                          <span className="text-xs text-gray-500 flex items-center gap-1 truncate">
+                            <MapPin className="w-3 h-3" />
+                            {event.location}
+                          </span>
+                        )}
+                      </div>
+                    </div>
+                    <ChevronRight className="w-4 h-4 text-gray-400 flex-shrink-0" />
+                  </div>
+                ))
+              ) : (
+                <div className="text-center py-6 text-gray-500">
+                  <CalendarIcon className="w-8 h-8 mx-auto mb-2 opacity-50" />
+                  <p className="text-sm">No events scheduled today</p>
+                  <Button 
+                    variant="ghost" 
+                    size="sm" 
+                    className="text-blue-600 mt-2"
+                    onClick={() => window.location.href = '/operator/calendar'}
+                  >
+                    Add Event
+                  </Button>
                 </div>
               )}
             </CardContent>

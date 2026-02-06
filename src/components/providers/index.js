@@ -4,7 +4,7 @@ import { useEffect } from "react";
 import { AlertProvider } from "./AlertProvider";
 import { DialogProvider } from "./DialogProvider";
 import { UserProvider } from "./UserContext";
-import { useRouter } from "next/navigation";
+import { useRouter, usePathname } from "next/navigation";
 import NotificationProvider from "./NotificationProvider";
 import { QueryProvider } from "./QueryProvider";
 
@@ -13,12 +13,17 @@ import { QueryProvider } from "./QueryProvider";
 export function AppProviders({ children }) {
 
   const router = useRouter()
+  const pathname = usePathname()
+  
   useEffect(() => {
     const role = localStorage.getItem("role");
-    if (role) {
+    
+    // Only redirect to dashboard if user is on root path, login path, or register path
+    // Don't redirect if they're already on a valid page within their role
+    if (role && (pathname === '/' || pathname === '/login' || pathname === '/register')) {
       router.push(`/${role}/dashboard`);
     }
-  }, [router])
+  }, [router, pathname])
 
   return (
     <QueryProvider>

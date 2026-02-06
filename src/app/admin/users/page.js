@@ -8,6 +8,18 @@ import { useDialog } from "@/components/providers/DialogProvider";
 import SewerTable from "@/components/ui/SewerTable";
 import { useRouter } from "next/navigation";
 import CardList from "./CardList";
+import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
+import { Button } from "@/components/ui/button";
+import {
+  Users,
+  FileText,
+  Download,
+  Mail,
+  Power,
+  Trash2,
+  Shield,
+  Activity
+} from "lucide-react";
 
 const UserPage = () => {
   const [users, setUsers] = useState([]);
@@ -85,6 +97,8 @@ const UserPage = () => {
 
   const [emailModalOpen, setEmailModalOpen] = useState(false);
   const [selectedUserForEmail, setSelectedUserForEmail] = useState(null);
+  const [selectedUsers, setSelectedUsers] = useState([]);
+  const [activeTab, setActiveTab] = useState("users");
 
   const handleDisable = async (item) => {
     const userId = item.user.user_id;
@@ -197,26 +211,258 @@ const UserPage = () => {
     setFilters((prev) => ({ ...prev, [key]: val }));
   };
 
-  return (
-    <div className="">
-      <CardList />
+  // Bulk actions
+  const handleBulkDisable = async () => {
+    if (selectedUsers.length === 0) {
+      showAlert("Please select users first", "warning");
+      return;
+    }
 
-      <SewerTable
-        data={tableData}
-        columns={columns}
-        filters={filterOptions}
-        search={search}
-        onSearch={setSearch}
-        onFilterChange={handleFilterChange}
-        loading={loading}
-        ButtonPlacement={<AddUserModal fetchUser={fetchUsers} />}
-        onDelete={handleDelete}
-        onDisable={handleDisable}
-        onEmail={handleOpenEmailModal}
-        onView={(item) => {
-          router.push(`/admin/users/${item.user.user_id}`);
-        }}
-      />
+    showDelete({
+      title: "Disable Selected Users",
+      description: `Are you sure you want to disable ${selectedUsers.length} user(s)?`,
+      onConfirm: async () => {
+        try {
+          await Promise.all(
+            selectedUsers.map((userId) =>
+              api('/api/users/change-info', 'PUT', {
+                user_id: userId,
+                active: false
+              })
+            )
+          );
+          showAlert(`Successfully disabled ${selectedUsers.length} user(s)`, "success");
+          setSelectedUsers([]);
+          fetchUsers();
+        } catch (err) {
+          showAlert("Failed to disable users", "error");
+        }
+      },
+      onCancel: () => showAlert("Cancelled", "info"),
+    });
+  };
+
+  const handleBulkDelete = async () => {
+    if (selectedUsers.length === 0) {
+      showAlert("Please select users first", "warning");
+      return;
+    }
+
+    showDelete({
+      title: "Delete Selected Users",
+      description: `Are you sure you want to delete ${selectedUsers.length} user(s)? This action cannot be undone.`,
+      onConfirm: async () => {
+        try {
+          await Promise.all(
+            selectedUsers.map((userId) =>
+              api("/api/users/delete-account", "DELETE", { user_id: userId })
+            )
+          );
+          showAlert(`Successfully deleted ${selectedUsers.length} user(s)`, "success");
+          setSelectedUsers([]);
+          fetchUsers();
+        } catch (err) {
+          showAlert("Failed to delete users", "error");
+        }
+      },
+      onCancel: () => showAlert("Cancelled", "info"),
+    });
+  };
+
+  const handleBulkEmail = () => {
+    if (selectedUsers.length === 0) {
+      showAlert("Please select users first", "warning");
+      return;
+    }
+    showAlert(`Bulk email feature for ${selectedUsers.length} user(s) - Coming soon!`, "info");
+  };
+
+  const handleExportSelected = () => {
+    if (selectedUsers.length === 0) {
+      showAlert("Please select users first", "warning");
+      return;
+    }
+
+    const selectedData = users.filter(u => selectedUsers.includes(u.user_id || u._id));
+    const csvContent = [
+      ["Name", "Email", "Role", "Status", "Plan"],
+      ...selectedData.map(u => [u.name, u.email, u.role, u.status, u.plan])
+    ].map(row => row.join(",")).join("\n");
+
+    const blob = new Blob([csvContent], { type: 'text/csv' });
+    const url = URL.createObjectURL(blob);
+    const link = document.createElement('a');
+    link.href = url;
+    link.download = `selected_users_${new Date().toISOString().split('T')[0]}.csv`;
+    link.click();
+
+    showAlert(`Exported ${selectedUsers.length} user(s)`, "success");
+  };
+
+  return (
+    <div className="max-w-7xl mx-auto bg-gray-100">
+      {/* Clean Header */}
+      <div className="bg-white border-b border-gray-200">
+        <div className="max-w-7xl mx-auto px-6 py-6">
+          <div className="flex items-center justify-between">
+            <div className="flex items-center gap-4">
+              <div className="w-12 h-12 bg-rose-100 rounded-xl flex items-center justify-center">
+                <Shield className="w-6 h-6 text-rose-600" />
+              </div>
+              <div>
+                <h1 className="text-2xl font-bold text-gray-900">User Management</h1>
+                <p className="text-sm text-gray-500">
+                  Manage users, roles, and permissions across your organization
+                </p>
+              </div>
+            </div>
+            <div className="flex items-center gap-3">
+              <AddUserModal fetchUser={fetchUsers} />
+            </div>
+          </div>
+        </div>
+      </div>
+
+      {/* Stats Cards */}
+      <div className="max-w-7xl mx-auto px-6 py-6">
+        <CardList />
+      </div>
+
+      {/* Main Content with Tabs */}
+      <div className="max-w-7xl mx-auto px-6 pb-6">
+        <div className="bg-white rounded-xl shadow-sm border border-gray-100">
+          <Tabs value={activeTab} onValueChange={setActiveTab} className="w-full">
+            <div className="border-b border-gray-100 px-6 pt-4">
+              <TabsList className="bg-gray-50/50 p-1">
+                <TabsTrigger value="users" className="gap-2 data-[state=active]:bg-white data-[state=active]:text-rose-600">
+                  <Users className="w-4 h-4" />
+                  User Management
+                </TabsTrigger>
+                <TabsTrigger value="audit" className="gap-2 data-[state=active]:bg-white data-[state=active]:text-rose-600">
+                  <Activity className="w-4 h-4" />
+                  Audit Logs
+                </TabsTrigger>
+              </TabsList>
+            </div>
+
+            {/* User Management Tab */}
+            <TabsContent value="users" className="p-0 m-0">
+              {/* Bulk Actions Bar */}
+              {selectedUsers.length > 0 && (
+                <div className="bg-blue-50 border-b border-blue-200 px-6 py-4">
+                  <div className="flex items-center justify-between">
+                    <div className="flex items-center gap-3">
+                      <div className="flex items-center gap-2">
+                        <div className="w-8 h-8 bg-blue-600 text-white rounded-lg flex items-center justify-center text-sm font-bold">
+                          {selectedUsers.length}
+                        </div>
+                        <span className="text-sm font-semibold text-gray-900">
+                          {selectedUsers.length === 1 ? 'user' : 'users'} selected
+                        </span>
+                      </div>
+                    </div>
+                    <div className="flex items-center gap-2">
+                      <Button
+                        size="sm"
+                        variant="outline"
+                        onClick={handleExportSelected}
+                        className="gap-2 h-9 text-xs bg-white hover:bg-gray-50"
+                      >
+                        <Download className="w-4 h-4" />
+                        Export
+                      </Button>
+                      <Button
+                        size="sm"
+                        variant="outline"
+                        onClick={handleBulkEmail}
+                        className="gap-2 h-9 text-xs bg-white hover:bg-gray-50"
+                      >
+                        <Mail className="w-4 h-4" />
+                        Email All
+                      </Button>
+                      <Button
+                        size="sm"
+                        variant="outline"
+                        onClick={handleBulkDisable}
+                        className="gap-2 h-9 text-xs bg-white hover:bg-gray-50"
+                      >
+                        <Power className="w-4 h-4" />
+                        Disable
+                      </Button>
+                      <Button
+                        size="sm"
+                        variant="destructive"
+                        onClick={handleBulkDelete}
+                        className="gap-2 h-9 text-xs"
+                      >
+                        <Trash2 className="w-4 h-4" />
+                        Delete
+                      </Button>
+                      <Button
+                        size="sm"
+                        variant="ghost"
+                        onClick={() => setSelectedUsers([])}
+                        className="h-9 text-xs"
+                      >
+                        Clear
+                      </Button>
+                    </div>
+                  </div>
+                </div>
+              )}
+
+              <SewerTable
+                data={tableData}
+                columns={columns}
+                filters={filterOptions}
+                search={search}
+                onSearch={setSearch}
+                onFilterChange={handleFilterChange}
+                loading={loading}
+                ButtonPlacement={null}
+                onDelete={handleDelete}
+                onDisable={handleDisable}
+                onEmail={handleOpenEmailModal}
+                onView={(item) => {
+                  router.push(`/admin/users/${item.user.user_id}`);
+                }}
+                selectedRows={selectedUsers}
+                onSelectionChange={setSelectedUsers}
+              />
+            </TabsContent>
+
+            {/* Audit Logs Tab */}
+            <TabsContent value="audit" className="p-6">
+              <div className="text-center py-16">
+                <div className="inline-flex items-center justify-center w-16 h-16 rounded-xl bg-purple-100 mb-4">
+                  <Activity className="w-8 h-8 text-purple-600" />
+                </div>
+                <h3 className="text-xl font-bold text-gray-900 mb-2">
+                  Audit Logs Coming Soon
+                </h3>
+                <p className="text-sm text-gray-600 max-w-md mx-auto mb-6">
+                  Track all user management activities including logins, role changes,
+                  account modifications, and system access. Full audit trail will be available here.
+                </p>
+                <div className="flex items-center justify-center gap-4 text-xs text-gray-500">
+                  <div className="flex items-center gap-2">
+                    <div className="w-2 h-2 bg-green-500 rounded-full"></div>
+                    <span>User Actions</span>
+                  </div>
+                  <div className="flex items-center gap-2">
+                    <div className="w-2 h-2 bg-blue-500 rounded-full"></div>
+                    <span>System Events</span>
+                  </div>
+                  <div className="flex items-center gap-2">
+                    <div className="w-2 h-2 bg-amber-500 rounded-full"></div>
+                    <span>Security Alerts</span>
+                  </div>
+                </div>
+              </div>
+            </TabsContent>
+          </Tabs>
+        </div>
+      </div>
 
       <SendEmailModal
         isOpen={emailModalOpen}

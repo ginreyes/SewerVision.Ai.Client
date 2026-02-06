@@ -7,7 +7,7 @@ import { useEffect, useState } from "react";
 import { TourGuide, useTourGuide } from "@/components/TourGuide";
 
 export default function QcTechLayout({ children }) {
-  const [openSidebar, setOpenSidebar] = useState(false);
+  const [openSidebar, setOpenSidebar] = useState(true);
   const [username, setUsername] = useState(null);
   const [role, setRole] = useState(null);
 

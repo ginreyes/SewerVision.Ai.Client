@@ -40,6 +40,7 @@ import {
 const AddUserModal = ({ fetchUser }) => {
   const [open, setOpen] = useState(false)
   const [step, setStep] = useState(1)
+  const [isSubmitting, setIsSubmitting] = useState(false)
   const [formData, setFormData] = useState({
     username: "",
     email: "",
@@ -69,7 +70,7 @@ const AddUserModal = ({ fetchUser }) => {
       value: 'admin',
       label: 'Admin',
       description: 'Full system access and management capabilities',
-      color: 'from-red-500 to-rose-600',
+      color: 'text-red-600',
       bgColor: 'bg-red-50',
       borderColor: 'border-red-200',
       icon: ShieldCheck
@@ -78,7 +79,7 @@ const AddUserModal = ({ fetchUser }) => {
       value: 'customer',
       label: 'Customer',
       description: 'Client account with project viewing access',
-      color: 'from-emerald-500 to-green-600',
+      color: 'text-emerald-600',
       bgColor: 'bg-emerald-50',
       borderColor: 'border-emerald-200',
       icon: Building2
@@ -87,7 +88,7 @@ const AddUserModal = ({ fetchUser }) => {
       value: 'qc-technician',
       label: 'QC Technician',
       description: 'Quality control, inspections and technical reports',
-      color: 'from-violet-500 to-purple-600',
+      color: 'text-violet-600',
       bgColor: 'bg-violet-50',
       borderColor: 'border-violet-200',
       icon: Wrench
@@ -96,7 +97,7 @@ const AddUserModal = ({ fetchUser }) => {
       value: 'operator',
       label: 'Operator',
       description: 'Equipment operation, field work and maintenance',
-      color: 'from-orange-500 to-amber-600',
+      color: 'text-orange-600',
       bgColor: 'bg-orange-50',
       borderColor: 'border-orange-200',
       icon: UserPlus
@@ -141,48 +142,90 @@ const AddUserModal = ({ fetchUser }) => {
   const handleSubmit = async (e) => {
     e.preventDefault()
 
+    // Validate required fields
+    if (!formData.username || !formData.email || !formData.first_name || !formData.last_name || !formData.role) {
+      showAlert("Please fill in all required fields", "warning")
+      return
+    }
+
+    // Validate email format
+    const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/
+    if (!emailRegex.test(formData.email)) {
+      showAlert("Please enter a valid email address", "warning")
+      return
+    }
+
+    // Validate role-specific required fields
+    if (formData.role === 'qc-technician') {
+      if (!formData.certification || !formData.license_number || !formData.experience_years) {
+        showAlert("Please fill in all QC Technician required fields", "warning")
+        return
+      }
+    } else if (formData.role === 'operator') {
+      if (!formData.certification || !formData.shift_preference || !formData.equipment_experience) {
+        showAlert("Please fill in all Operator required fields", "warning")
+        return
+      }
+    } else if (formData.role === 'customer') {
+      if (!formData.company_name || !formData.industry || !formData.phone_number || !formData.address) {
+        showAlert("Please fill in all Customer required fields", "warning")
+        return
+      }
+    }
+
+    setIsSubmitting(true)
+
     try {
       const payload = {
-        username: formData.username,
-        email: formData.email,
-        first_name: formData.first_name,
-        last_name: formData.last_name,
+        username: formData.username.trim(),
+        email: formData.email.trim().toLowerCase(),
+        first_name: formData.first_name.trim(),
+        last_name: formData.last_name.trim(),
         role: formData.role,
       }
 
       // Add role-specific fields based on role
       if (formData.role === 'qc-technician') {
-        payload.certification = formData.certification
-        payload.license_number = formData.license_number
-        payload.experience_years = formData.experience_years
+        payload.certification = formData.certification.trim()
+        payload.license_number = formData.license_number.trim()
+        payload.experience_years = parseInt(formData.experience_years) || 0
       } else if (formData.role === 'operator') {
-        payload.certification = formData.certification
+        payload.certification = formData.certification.trim()
         payload.shift_preference = formData.shift_preference
-        payload.equipment_experience = formData.equipment_experience
+        payload.equipment_experience = formData.equipment_experience.trim()
       } else if (formData.role === 'customer') {
-        payload.company_name = formData.company_name
-        payload.industry = formData.industry
-        payload.phone_number = formData.phone_number
-        payload.address = formData.address
+        payload.company_name = formData.company_name.trim()
+        payload.industry = formData.industry.trim()
+        payload.phone_number = formData.phone_number.trim()
+        payload.address = formData.address.trim()
         payload.account_type = formData.account_type
-        payload.company_size = formData.company_size
-        payload.tax_id = formData.tax_id
-        payload.billing_contact = formData.billing_contact
+        if (formData.company_size) payload.company_size = formData.company_size
+        if (formData.tax_id) payload.tax_id = formData.tax_id.trim()
+        if (formData.billing_contact) payload.billing_contact = formData.billing_contact.trim()
       }
+
+      console.log('Creating user with payload:', payload)
 
       const { ok, data } = await api("/api/users/create-user", "POST", payload)
 
       if (!ok) {
-        throw new Error(data?.message || "Failed to create user")
+        throw new Error(data?.message || data?.error || "Failed to create user")
       }
 
-      // Reset form
+      // Success!
       resetAndClose()
-      showAlert("User created successfully! Account credentials sent via email.", "success")
-      fetchUser()
+      showAlert("✅ User created successfully! Account credentials sent via email.", "success")
+      
+      // Refresh user list
+      if (fetchUser) {
+        await fetchUser()
+      }
     } catch (error) {
-      console.error(error)
-      showAlert(`User creation failed: ${error.message}`, "error")
+      console.error('User creation error:', error)
+      const errorMessage = error.message || error.toString() || "An unexpected error occurred"
+      showAlert(`❌ User creation failed: ${errorMessage}`, "error")
+    } finally {
+      setIsSubmitting(false)
     }
   }
 
@@ -457,15 +500,15 @@ const AddUserModal = ({ fetchUser }) => {
           <UserPlus className="w-4 h-4" /> Add New User
         </Button>
       </DialogTrigger>
-      <DialogContent className="sm:max-w-[700px] max-h-[90vh] overflow-y-auto p-0 border-0 shadow-2xl bg-white/95 backdrop-blur-sm">
-        <DialogHeader className="p-6 pb-2 border-b bg-white sticky top-0 z-10">
-          <DialogTitle className="text-2xl font-bold flex items-center gap-2">
+      <DialogContent className="sm:max-w-[750px] max-h-[90vh] overflow-y-auto p-0 border border-gray-200 shadow-xl bg-white">
+        <DialogHeader className="px-6 py-5 border-b border-gray-200 bg-white sticky top-0 z-10">
+          <DialogTitle className="text-xl font-bold flex items-center gap-3">
             {step === 1 ? (
               <>
-                <div className="p-2 bg-rose-100 rounded-lg">
-                  <UserPlus className="w-6 h-6 text-rose-600" />
+                <div className="w-10 h-10 bg-rose-100 rounded-xl flex items-center justify-center">
+                  <UserPlus className="w-5 h-5 text-rose-600" />
                 </div>
-                Create New User
+                <span>Create New User</span>
               </>
             ) : (
               <div className="flex items-center gap-3 w-full">
@@ -473,13 +516,13 @@ const AddUserModal = ({ fetchUser }) => {
                   variant="ghost"
                   size="icon"
                   onClick={handleBack}
-                  className="rounded-full hover:bg-gray-100 -ml-2"
+                  className="rounded-lg hover:bg-gray-100"
                 >
                   <ArrowLeft className="w-5 h-5" />
                 </Button>
-                <div className="flex items-center gap-2">
-                  <div className={`p-1.5 rounded-md ${selectedRole?.bgColor}`}>
-                    {selectedRole && <selectedRole.icon className={`w-5 h-5 ${selectedRole.color.split(' ')[1] || 'text-gray-600'}`} />}
+                <div className="flex items-center gap-3">
+                  <div className={`w-10 h-10 rounded-xl flex items-center justify-center ${selectedRole?.bgColor}`}>
+                    {selectedRole && <selectedRole.icon className={`w-5 h-5 ${selectedRole.color}`} />}
                   </div>
                   <span>{selectedRole?.label} Registration</span>
                 </div>
@@ -491,45 +534,63 @@ const AddUserModal = ({ fetchUser }) => {
         <div className="p-6">
           {step === 1 ? (
             // Step 1: Role Selection
-            <div className="space-y-6">
+            <div className="space-y-4">
+              <p className="text-sm text-gray-600">Select a user role to continue with registration</p>
               <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                 {roles.map((role) => (
-                  <div
+                  <button
                     key={role.value}
+                    type="button"
                     className={`
-                    relative group cursor-pointer rounded-xl border-2 p-5 transition-all duration-300
-                    hover:border-rose-200 hover:shadow-lg hover:-translate-y-1
-                    ${role.bgColor} ${role.borderColor}
-                  `}
+                      relative group text-left rounded-xl border-2 p-6 transition-all duration-200
+                      hover:border-rose-300 hover:shadow-md
+                      ${role.bgColor} ${role.borderColor}
+                      focus:outline-none focus:ring-2 focus:ring-rose-500 focus:ring-offset-2
+                    `}
                     onClick={() => handleRoleSelect(role.value)}
                   >
-                    <div className="flex items-start justify-between mb-3">
-                      <div className={`p-3 rounded-xl bg-white shadow-sm ring-1 ring-black/5`}>
-                        <role.icon className={`w-6 h-6 bg-gradient-to-br ${role.color} bg-clip-text text-transparent`} />
+                    <div className="flex items-start justify-between mb-4">
+                      <div className={`w-12 h-12 rounded-xl bg-white shadow-sm border border-gray-100 flex items-center justify-center`}>
+                        <role.icon className={`w-6 h-6 ${role.color}`} />
                       </div>
-                      {/* Hover indicator */}
                       <div className="opacity-0 group-hover:opacity-100 transition-opacity">
-                        <CheckCircle2 className="w-6 h-6 text-rose-500" />
+                        <div className="w-6 h-6 rounded-full bg-rose-100 flex items-center justify-center">
+                          <CheckCircle2 className="w-4 h-4 text-rose-600" />
+                        </div>
                       </div>
                     </div>
 
                     <div>
-                      <h3 className="font-bold text-gray-900 mb-1">{role.label}</h3>
+                      <h3 className="font-bold text-gray-900 mb-2 text-lg">{role.label}</h3>
                       <p className="text-sm text-gray-600 leading-relaxed">{role.description}</p>
                     </div>
-                  </div>
+                  </button>
                 ))}
               </div>
             </div>
           ) : (
             // Step 2: User Details Form
-            <form onSubmit={handleSubmit} className="space-y-6 animate-in slide-in-from-right-4 duration-300">
+            <form onSubmit={handleSubmit} className="space-y-6">
+              {/* Progress Indicator */}
+              <div className="flex items-center gap-2 text-xs text-gray-500">
+                <div className="flex items-center gap-2">
+                  <div className="w-6 h-6 rounded-full bg-rose-600 text-white flex items-center justify-center font-semibold">1</div>
+                  <span className="text-gray-400">Select Role</span>
+                </div>
+                <div className="w-8 h-0.5 bg-gray-300"></div>
+                <div className="flex items-center gap-2">
+                  <div className="w-6 h-6 rounded-full bg-rose-600 text-white flex items-center justify-center font-semibold">2</div>
+                  <span className="font-semibold text-gray-900">User Details</span>
+                </div>
+              </div>
 
               {/* Basic Information Section */}
               <div className="space-y-4">
-                <div className="flex items-center gap-2 pb-2 border-b border-gray-100">
-                  <User className="w-5 h-5 text-rose-500" />
-                  <h3 className="font-bold text-gray-900">Basic Information</h3>
+                <div className="flex items-center gap-3 pb-3 border-b border-gray-200">
+                  <div className="w-8 h-8 bg-rose-100 rounded-lg flex items-center justify-center">
+                    <User className="w-4 h-4 text-rose-600" />
+                  </div>
+                  <h3 className="font-semibold text-gray-900">Basic Information</h3>
                 </div>
 
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-5">
@@ -590,16 +651,53 @@ const AddUserModal = ({ fetchUser }) => {
               {/* Role Specific Fields */}
               {getRoleSpecificFields()}
 
-              <div className="flex justify-end gap-3 pt-4 border-t border-gray-100">
-                <Button type="button" variant="outline" onClick={resetAndClose}>
+              {/* Info Box */}
+              <div className="bg-blue-50 border border-blue-200 rounded-lg p-4">
+                <div className="flex items-start gap-3">
+                  <div className="w-5 h-5 rounded-full bg-blue-500 flex items-center justify-center flex-shrink-0 mt-0.5">
+                    <svg className="w-3 h-3 text-white" fill="currentColor" viewBox="0 0 20 20">
+                      <path fillRule="evenodd" d="M18 10a8 8 0 11-16 0 8 8 0 0116 0zm-7-4a1 1 0 11-2 0 1 1 0 012 0zM9 9a1 1 0 000 2v3a1 1 0 001 1h1a1 1 0 100-2v-3a1 1 0 00-1-1H9z" clipRule="evenodd" />
+                    </svg>
+                  </div>
+                  <div className="flex-1">
+                    <p className="text-sm font-semibold text-blue-900 mb-1">Account Creation Notice</p>
+                    <p className="text-xs text-blue-700 leading-relaxed">
+                      A temporary password will be automatically generated and sent to the user's email address. 
+                      The user will be prompted to change their password upon first login.
+                    </p>
+                  </div>
+                </div>
+              </div>
+
+              <div className="flex justify-end gap-3 pt-6 border-t border-gray-200">
+                <Button 
+                  type="button" 
+                  variant="outline" 
+                  onClick={resetAndClose} 
+                  className="px-6"
+                  disabled={isSubmitting}
+                >
                   Cancel
                 </Button>
                 <Button
                   type="submit"
-                  variant="rose" // Using your custom rose variant
-                  className="bg-gradient-to-r from-rose-500 to-pink-600 hover:from-rose-600 hover:to-pink-700 text-white shadow-md transition-all hover:scale-[1.02]"
+                  className="px-6 bg-rose-600 hover:bg-rose-700 text-white disabled:opacity-50 disabled:cursor-not-allowed"
+                  disabled={isSubmitting}
                 >
-                  Create Account
+                  {isSubmitting ? (
+                    <>
+                      <svg className="animate-spin -ml-1 mr-2 h-4 w-4 text-white" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
+                        <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"></circle>
+                        <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
+                      </svg>
+                      Creating...
+                    </>
+                  ) : (
+                    <>
+                      <UserPlus className="w-4 h-4 mr-2" />
+                      Create Account
+                    </>
+                  )}
                 </Button>
               </div>
             </form>

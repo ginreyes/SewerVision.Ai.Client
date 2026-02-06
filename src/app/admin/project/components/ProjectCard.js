@@ -390,3 +390,4 @@ const ProjectCard = memo((props) => {
 ProjectCard.displayName = 'ProjectCard';
 
 export default ProjectCard;
+export default ProjectCard;

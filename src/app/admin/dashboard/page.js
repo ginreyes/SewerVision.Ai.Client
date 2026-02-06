@@ -1,15 +1,15 @@
 'use client'
 import React, { useState, useEffect, useRef, useMemo, useCallback } from 'react'
 import { useRouter } from 'next/navigation'
-import { 
-  Upload, 
-  Edit3, 
-  Share2, 
-  Eye, 
-  CheckCircle, 
-  Clock, 
-  AlertTriangle, 
-  FileText, 
+import {
+  Upload,
+  Edit3,
+  Share2,
+  Eye,
+  CheckCircle,
+  Clock,
+  AlertTriangle,
+  FileText,
   Activity,
   BarChart3,
   Zap,
@@ -33,7 +33,7 @@ const loadChart = async () => {
 const AdminDashboard = () => {
   const router = useRouter()
   const [activeTab, setActiveTab] = useState('overview')
-  
+
   // Chart refs
   const pieChartRef = useRef(null)
   const workflowChartRef = useRef(null)
@@ -41,7 +41,7 @@ const AdminDashboard = () => {
   const accuracyChartRef = useRef(null)
   const defectTrendChartRef = useRef(null)
   const aiPerformanceChartRef = useRef(null)
-  
+
   // Chart instances
   const pieChartInstance = useRef(null)
   const workflowChartInstance = useRef(null)
@@ -52,7 +52,7 @@ const AdminDashboard = () => {
 
   const COLORS = ['#3B82F6', '#8B5CF6', '#F59E0B', '#10B981']
   const [ChartLoaded, setChartLoaded] = useState(false);
-  
+
   // Data state
   const [projectStats, setProjectStats] = useState({
     totalProjects: 0,
@@ -76,9 +76,9 @@ const AdminDashboard = () => {
     try {
       setLoading(true);
       setError(null);
-      
+
       const data = await dashboardApi.getDashboardStats();
-      
+
       setProjectStats(data.projectStats);
       setRecentProjects(data.recentProjects || []);
       setAiDetections(data.aiDetections || []);
@@ -110,9 +110,9 @@ const AdminDashboard = () => {
   // Auto-refresh dashboard every 10 seconds when there are projects in AI processing
   useEffect(() => {
     const hasProcessingProjects = projectStats.aiProcessing > 0;
-    
+
     if (!hasProcessingProjects) return; // Don't poll if nothing is processing
-    
+
     const interval = setInterval(() => {
       fetchDashboardData();
     }, 10000); // Refresh every 10 seconds
@@ -143,7 +143,7 @@ const AdminDashboard = () => {
     if (!ChartLoaded || !window.Chart) return;
 
     const Chart = window.Chart;
-    
+
     if (pieChartInstance.current) pieChartInstance.current.destroy()
     if (workflowChartInstance.current) workflowChartInstance.current.destroy()
     if (productivityChartInstance.current) productivityChartInstance.current.destroy()
@@ -178,7 +178,7 @@ const AdminDashboard = () => {
               },
               tooltip: {
                 callbacks: {
-                  label: function(context) {
+                  label: function (context) {
                     return context.label + ': ' + context.parsed + ' detected'
                   }
                 }
@@ -443,7 +443,7 @@ const AdminDashboard = () => {
   }, [])
 
   const getStatusColor = useCallback((status) => {
-    switch(status) {
+    switch (status) {
       case 'completed': return 'bg-green-100 text-green-800'
       case 'ai-processing': return 'bg-blue-100 text-blue-800'
       case 'qc-review': return 'bg-yellow-100 text-yellow-800'
@@ -453,7 +453,7 @@ const AdminDashboard = () => {
   }, []);
 
   const getStatusIcon = useCallback((status) => {
-    switch(status) {
+    switch (status) {
       case 'completed': return <CheckCircle className="w-4 h-4" />
       case 'ai-processing': return <Brain className="w-4 h-4" />
       case 'qc-review': return <Eye className="w-4 h-4" />
@@ -463,7 +463,7 @@ const AdminDashboard = () => {
   }, []);
 
   return (
-    <div className="max-w-7xl mx-auto bg-gray-50">
+    <div className="max-w-7xl mx-auto bg-gray-100">
       {/* Header */}
       <header className="bg-white shadow-sm border-b border-gray-200">
         <div className="px-6 py-4">
@@ -510,11 +510,10 @@ const AdminDashboard = () => {
               <button
                 key={tab.id}
                 onClick={() => setActiveTab(tab.id)}
-                className={`flex items-center space-x-2 px-1 py-4 border-b-2 font-medium text-sm ${
-                  activeTab === tab.id
-                    ? 'border-blue-500 text-blue-600'
-                    : 'border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300'
-                }`}
+                className={`flex items-center space-x-2 px-1 py-4 border-b-2 font-medium text-sm ${activeTab === tab.id
+                  ? 'border-blue-500 text-blue-600'
+                  : 'border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300'
+                  }`}
               >
                 <tab.icon className="w-4 h-4" />
                 <span>{tab.label}</span>
@@ -660,7 +659,7 @@ const AdminDashboard = () => {
               <div className="p-6 border-b border-gray-200">
                 <div className="flex items-center justify-between">
                   <h3 className="text-lg font-semibold text-gray-900">Recent Projects</h3>
-                  <button 
+                  <button
                     onClick={() => router.push('/admin/project')}
                     className="text-sm text-blue-600 hover:text-blue-800 font-medium"
                   >
@@ -703,8 +702,8 @@ const AdminDashboard = () => {
                             </td>
                             <td className="py-4">
                               <div className="w-24 bg-gray-200 rounded-full h-2">
-                                <div 
-                                  className="bg-blue-600 h-2 rounded-full" 
+                                <div
+                                  className="bg-blue-600 h-2 rounded-full"
                                   style={{ width: `${project.progress || 0}%` }}
                                 ></div>
                               </div>
@@ -719,14 +718,14 @@ const AdminDashboard = () => {
                             <td className="py-4 text-gray-600 text-sm">{project.date || 'N/A'}</td>
                             <td className="py-4">
                               <div className="flex items-center space-x-2">
-                                <button 
+                                <button
                                   onClick={() => router.push(`/admin/project?selectedProject=${project.id}`)}
                                   className="p-1 text-gray-400 hover:text-gray-600"
                                   title="View Project"
                                 >
                                   <Eye className="w-4 h-4" />
                                 </button>
-                                <button 
+                                <button
                                   onClick={() => router.push(`/admin/project/editProject/${project.id}`)}
                                   className="p-1 text-gray-400 hover:text-gray-600"
                                   title="Edit Project"
@@ -758,7 +757,7 @@ const AdminDashboard = () => {
                 <span>Train Model</span>
               </button>
             </div>
-            
+
             {/* AI Performance Chart */}
             <div className="bg-white rounded-xl shadow-sm p-6 border border-gray-100">
               <div className="flex items-center justify-between mb-6">
@@ -769,7 +768,7 @@ const AdminDashboard = () => {
                 <canvas ref={aiPerformanceChartRef}></canvas>
               </div>
             </div>
-            
+
             <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
               <div className="bg-white rounded-xl shadow-sm p-6 border border-gray-100">
                 <h3 className="text-lg font-semibold text-gray-900 mb-4">Model Training Progress</h3>
@@ -791,7 +790,7 @@ const AdminDashboard = () => {
                   </div>
                 </div>
               </div>
-              
+
               <div className="bg-white rounded-xl shadow-sm p-6 border border-gray-100">
                 <h3 className="text-lg font-semibold text-gray-900 mb-4">Confidence Thresholds</h3>
                 <div className="space-y-4">
@@ -800,8 +799,8 @@ const AdminDashboard = () => {
                       <span className="text-gray-700">{detection.type}</span>
                       <div className="flex items-center space-x-2">
                         <div className="w-24 bg-gray-200 rounded-full h-2">
-                          <div 
-                            className="bg-blue-600 h-2 rounded-full" 
+                          <div
+                            className="bg-blue-600 h-2 rounded-full"
                             style={{ width: `${detection.confidence}%` }}
                           ></div>
                         </div>
@@ -820,7 +819,7 @@ const AdminDashboard = () => {
           <div className="space-y-6">
             <div className="flex items-center justify-between">
               <h2 className="text-2xl font-bold text-gray-900">QC Review Queue</h2>
-              <button 
+              <button
                 onClick={() => router.push('/admin/task')}
                 className="flex items-center space-x-2 bg-amber-600 text-white px-4 py-2 rounded-lg hover:bg-amber-700 transition-colors"
               >
@@ -934,7 +933,7 @@ const AdminDashboard = () => {
           <div className="space-y-6">
             <div className="flex items-center justify-between">
               <h2 className="text-2xl font-bold text-gray-900">Reports & Analytics</h2>
-              <button 
+              <button
                 onClick={() => router.push('/admin/report')}
                 className="flex items-center space-x-2 bg-green-600 text-white px-4 py-2 rounded-lg hover:bg-green-700 transition-colors"
               >

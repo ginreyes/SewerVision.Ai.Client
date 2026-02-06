@@ -1,11 +1,11 @@
-import React, { useState } from 'react';
+import React, { useState, useRef } from 'react';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from "@/components/ui/dialog";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
 import { Label } from "@/components/ui/label";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
-import { Loader2, Tag, Pin, AlertTriangle, FileText, CheckCircle, Settings, Eye } from "lucide-react";
+import { Loader2, Tag, Pin, AlertTriangle, FileText, CheckCircle, Settings, Eye, Bold, Italic, List, ListOrdered, Link, Code } from "lucide-react";
 
 export default function AddNoteModal({ isOpen, onClose, onSave, loading }) {
     const [formData, setFormData] = useState({
@@ -14,8 +14,12 @@ export default function AddNoteModal({ isOpen, onClose, onSave, loading }) {
         category: 'general',
         priority: 'medium',
         tags: '',
-        isPinned: false
+        isPinned: false,
+        location: '',
+        metadata: {}
     });
+
+    const textareaRef = useRef(null);
 
     const categories = [
         { value: 'general', label: 'General', icon: FileText },
@@ -31,8 +35,43 @@ export default function AddNoteModal({ isOpen, onClose, onSave, loading }) {
             ...formData,
             tags: formData.tags.split(',').map(t => t.trim()).filter(Boolean)
         });
-        setFormData({ title: '', content: '', category: 'general', priority: 'medium', tags: '', isPinned: false });
+        setFormData({ 
+            title: '', 
+            content: '', 
+            category: 'general', 
+            priority: 'medium', 
+            tags: '', 
+            isPinned: false,
+            location: '',
+            metadata: {}
+        });
     };
+
+    const insertFormatting = (prefix, suffix = '') => {
+        const textarea = textareaRef.current;
+        if (!textarea) return;
+
+        const start = textarea.selectionStart;
+        const end = textarea.selectionEnd;
+        const selectedText = formData.content.substring(start, end) || 'text';
+        const newText = formData.content.substring(0, start) + prefix + selectedText + suffix + formData.content.substring(end);
+        
+        setFormData({ ...formData, content: newText });
+        
+        setTimeout(() => {
+            textarea.focus();
+            textarea.setSelectionRange(start + prefix.length, start + prefix.length + selectedText.length);
+        }, 0);
+    };
+
+    const formatButtons = [
+        { icon: Bold, label: 'Bold', action: () => insertFormatting('**', '**') },
+        { icon: Italic, label: 'Italic', action: () => insertFormatting('_', '_') },
+        { icon: Code, label: 'Code', action: () => insertFormatting('`', '`') },
+        { icon: List, label: 'Bullet List', action: () => insertFormatting('• ', '') },
+        { icon: ListOrdered, label: 'Numbered List', action: () => insertFormatting('1. ', '') },
+        { icon: Link, label: 'Link', action: () => insertFormatting('[', '](url)') },
+    ];
 
     return (
         <Dialog open={isOpen} onOpenChange={onClose}>
@@ -106,15 +145,53 @@ export default function AddNoteModal({ isOpen, onClose, onSave, loading }) {
                             </div>
                         </div>
 
-                        {/* Content */}
+                        {/* Rich Text Content */}
                         <div className="space-y-2">
                             <Label className="text-sm font-semibold text-gray-700">Description</Label>
-                            <Textarea
-                                placeholder="Enter detailed observations, findings, or notes..."
-                                value={formData.content}
-                                onChange={(e) => setFormData({ ...formData, content: e.target.value })}
-                                required
-                                className="min-h-[120px] border-gray-200 focus:border-blue-500 focus:ring-blue-500/20 rounded-xl resize-none p-4"
+                            <div className="border border-gray-200 rounded-xl overflow-hidden focus-within:border-blue-500 focus-within:ring-2 focus-within:ring-blue-500/20 transition-all">
+                                {/* Formatting Toolbar */}
+                                <div className="flex items-center gap-1 p-2 bg-gray-50 border-b border-gray-200">
+                                    {formatButtons.map((btn, idx) => (
+                                        <button
+                                            key={idx}
+                                            type="button"
+                                            onClick={btn.action}
+                                            className="p-2 hover:bg-white rounded-lg transition-colors group"
+                                            title={btn.label}
+                                        >
+                                            <btn.icon className="w-4 h-4 text-gray-600 group-hover:text-blue-600" />
+                                        </button>
+                                    ))}
+                                    <div className="ml-auto text-xs text-gray-500 px-2">
+                                        Supports Markdown
+                                    </div>
+                                </div>
+                                <Textarea
+                                    ref={textareaRef}
+                                    placeholder="Enter detailed observations, findings, or notes...
+
+You can use:
+• **Bold text** for emphasis
+• _Italic text_ for highlights
+• `Code` for technical terms
+• Bullet points and numbered lists
+• [Links](url) for references"
+                                    value={formData.content}
+                                    onChange={(e) => setFormData({ ...formData, content: e.target.value })}
+                                    required
+                                    className="min-h-[180px] border-0 focus:ring-0 rounded-none resize-none p-4"
+                                />
+                            </div>
+                        </div>
+
+                        {/* Location/Context Input */}
+                        <div className="space-y-2">
+                            <Label className="text-sm font-semibold text-gray-700">Location/Context (Optional)</Label>
+                            <Input
+                                placeholder="e.g., Manhole 45, Station 12, Sector A"
+                                value={formData.location}
+                                onChange={(e) => setFormData({ ...formData, location: e.target.value })}
+                                className="h-11 border-gray-200 focus:border-blue-500 focus:ring-blue-500/20 rounded-xl"
                             />
                         </div>
 
