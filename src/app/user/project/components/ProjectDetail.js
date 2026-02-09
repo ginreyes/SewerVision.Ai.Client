@@ -43,7 +43,7 @@ import AddObservation from './AddObersavation';
 import ObservationsPanel from './ObservationsPanel';
 import { useUser } from '@/components/providers/UserContext';
 import { useAlert } from '@/components/providers/AlertProvider';
-import { api, getCookie } from '@/lib/helper';
+import { api } from '@/lib/helper';
 import { useRouter } from 'next/navigation';
 import { getVideoUrl } from '@/lib/getVideoUrl';
 
@@ -168,7 +168,7 @@ const ProjectDetail = ({ project, setSelectedProject }) => {
     if (currentPath.includes('/qc-technician')) {
       router.replace(`/qc-technician/project`);
     } else {
-      router.replace(`/admin/project`);
+      router.replace(`/user/project`);
     }
   };
 
@@ -313,10 +313,9 @@ const ProjectDetail = ({ project, setSelectedProject }) => {
       const { ok } = await api(`/api/videos/${videoToDelete._id}`, 'DELETE');
       if (ok) {
         showAlert('Video deleted successfully', 'success');
-        const nextList = projectVideos.filter(v => v._id !== videoToDelete._id);
-        setProjectVideos(nextList);
+        setProjectVideos(prev => prev.filter(v => v._id !== videoToDelete._id));
         if (selectedVideo?._id === videoToDelete._id) {
-          setSelectedVideo(nextList.length > 0 ? nextList[0] : null);
+          setSelectedVideo(projectVideos.length > 1 ? projectVideos.find(v => v._id !== videoToDelete._id) : null);
         }
         setIsDeleteVideoOpen(false);
         setVideoToDelete(null);
@@ -399,8 +398,8 @@ const ProjectDetail = ({ project, setSelectedProject }) => {
         setUploadProgress(0);
       });
 
-      // Get auth token (cookie or localStorage for XHR)
-      const token = typeof window !== 'undefined' ? (getCookie('authToken') || localStorage.getItem('authToken')) : null;
+      // Get auth token
+      const token = typeof window !== 'undefined' ? localStorage.getItem('authToken') : null;
       const apiUrl = process.env.NEXT_PUBLIC_BACKEND_URL || 'http://localhost:5000';
 
       xhr.open('POST', `${apiUrl}/api/videos/upload`);
@@ -881,7 +880,7 @@ const ProjectDetail = ({ project, setSelectedProject }) => {
 
               {/* Settings Button - Navigates to edit project */}
               <Button
-                onClick={() => router.push(`/admin/project/editProject/${project._id}`)}
+                onClick={() => router.push(`/user/project/editProject/${project._id}`)}
                 variant="ghost"
                 size="icon"
                 className="hover:bg-gray-100 rounded-xl"

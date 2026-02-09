@@ -97,10 +97,12 @@ export default function EditProjectPage() {
   const { project_id } = useParams();
 
   const router = useRouter();
-  const { userId } = useUser();
+  const { userId, userData } = useUser();
   const { showAlert } = useAlert();
 
   const user_id = userId;
+  const isUserRole = userData?.role === "user";
+  const projectsPath = isUserRole ? "/user/project" : "/admin/project";
 
   // Loading and error states
   const [loading, setLoading] = useState(false);
@@ -175,7 +177,7 @@ export default function EditProjectPage() {
 
       if (!ok || !data) {
         showAlert("Failed to fetch project data", "error");
-        router.push("/admin/project");
+        router.push(projectsPath);
         return;
       }
 
@@ -231,25 +233,31 @@ export default function EditProjectPage() {
     } catch (error) {
       showAlert("Failed to load project", "error");
       console.error("Error fetching project:", error);
-      router.push("/admin/project");
+      router.push(projectsPath);
     } finally {
       setFetchingProject(false);
     }
-  }, [project_id, showAlert, router]);
+  }, [project_id, showAlert, router, projectsPath]);
 
-  // Fetch users
+  // Fetch users; when user role, restrict to managedMembers
   const fetchUsers = useCallback(async () => {
     try {
       setLoadingUsers(true);
       const { ok, data } = await api("/api/users/get-all-user", "GET");
 
       if (ok && data?.users) {
-        const operatorUsers = data.users.filter(
-          (user) => user.role === "Operator"
+        let operatorUsers = data.users.filter(
+          (u) => u.role === "Operator" || u.role === "operator"
         );
-        const qcUsers = data.users.filter(
-          (user) => user.role === "Qc-Technician"
+        let qcUsers = data.users.filter(
+          (u) => u.role === "Qc-Technician" || u.role === "qc-technician"
         );
+
+        if (isUserRole && Array.isArray(userData?.managedMembers) && userData.managedMembers.length > 0) {
+          const managedIds = new Set(userData.managedMembers.map((id) => String(id)));
+          operatorUsers = operatorUsers.filter((u) => u._id && managedIds.has(String(u._id)));
+          qcUsers = qcUsers.filter((u) => u._id && managedIds.has(String(u._id)));
+        }
 
         setOperators(operatorUsers);
         setQcTechnicians(qcUsers);
@@ -260,7 +268,7 @@ export default function EditProjectPage() {
     } finally {
       setLoadingUsers(false);
     }
-  }, [showAlert]);
+  }, [showAlert, isUserRole, userData?.managedMembers]);
 
   useEffect(() => {
     fetchProject();
@@ -490,14 +498,14 @@ export default function EditProjectPage() {
       }
   
       showAlert("Project updated successfully", "success");
-      router.push("/admin/project");
+      router.push(projectsPath);
     } catch (error) {
       showAlert(error.message || "Failed to update project", "error");
       console.error("Error updating project:", error);
     } finally {
       setSaving(false);
     }
-  }, [formData, validateForm, videoFile, user_id, project_id, showAlert, router]);
+  }, [formData, validateForm, videoFile, user_id, project_id, showAlert, router, projectsPath]);
   
   
 
@@ -551,7 +559,7 @@ export default function EditProjectPage() {
             <div className="flex items-center gap-4">
               <Button
                 variant="outline"
-                onClick={() => router.push("/admin/project")}
+                onClick={() => router.push(projectsPath)}
                 className="flex items-center gap-2 h-10"
               >
                 <ArrowLeft className="h-4 w-4" />
@@ -773,16 +781,31 @@ export default function EditProjectPage() {
               </div>
             </div>
 
-            {/* Team Assignment */}
+            {/* Lead Assignment (admin) / Team Assignment QC & Operator (user) */}
             <div className="bg-white rounded-lg shadow-sm p-6">
               <div className="flex items-center gap-3 mb-6">
                 <div className="p-2 bg-purple-100 rounded-lg">
                   <Users className="h-5 w-5 text-purple-600" />
                 </div>
                 <h2 className="text-xl font-bold text-gray-900">
-                  Team Assignment
+                  {isUserRole ? "Team Assignment (QC & Operator)" : "Lead Assignment"}
                 </h2>
               </div>
+
+              {isUserRole && userData && (
+                <div className="flex items-center gap-3 mb-6 px-4 py-3 bg-purple-50 border border-purple-100 rounded-xl">
+                  <Users className="h-5 w-5 text-purple-600 flex-shrink-0" />
+                  <p className="text-sm text-gray-700">
+                    <span className="font-medium text-purple-800">Project manager:</span>{" "}
+                    {userData.first_name || userData.last_name
+                      ? `${userData.first_name || ""} ${userData.last_name || ""}`.trim()
+                      : userData.username || "You"}
+                    {userData.email && (
+                      <span className="text-gray-500 ml-1">({userData.email})</span>
+                    )}
+                  </p>
+                </div>
+              )}
 
               <div className="space-y-6">
                 {/* Operator */}

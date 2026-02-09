@@ -1,5 +1,5 @@
 "use client";
-import { api } from "@/lib/helper";
+import { api, getCookie, deleteCookie } from "@/lib/helper";
 import { createContext, useContext, useState, useEffect, useCallback } from "react";
 import { useRouter } from "next/navigation";
 
@@ -12,7 +12,7 @@ export const UserProvider = ({ children }) => {
   const router = useRouter();
 
   const fetchUser = useCallback(async () => {
-    const username = localStorage.getItem("username");
+    const username = getCookie("username");
     if (!username) {
       setLoading(false);
       return;
@@ -58,10 +58,10 @@ export const UserProvider = ({ children }) => {
 
   // Logout function
   const logout = useCallback(() => {
-    localStorage.removeItem("token");
-    localStorage.removeItem("username");
-    localStorage.removeItem("role");
-    localStorage.removeItem("authToken");
+    deleteCookie("authToken");
+    deleteCookie("username");
+    deleteCookie("role");
+    deleteCookie("rememberedUsername");
     setUserId(null);
     setUserData(null);
     router.push("/login");

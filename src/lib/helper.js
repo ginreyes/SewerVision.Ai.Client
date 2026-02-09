@@ -1,16 +1,42 @@
 const API = process.env.NEXT_PUBLIC_BACKEND_URL || "http://localhost:5000";
 
-// Helper function to safely access localStorage (client-side only)
+// Simple cookie helpers (client-side only)
+export const getCookie = (name) => {
+  if (typeof document === "undefined") return null;
+  const match = document.cookie.match(
+    new RegExp('(?:^|; )' + name.replace(/[$()*+./?[\\\]^{|}-]/g, '\\$&') + '=([^;]*)')
+  );
+  return match ? decodeURIComponent(match[1]) : null;
+};
+
+export const setCookie = (name, value, options = {}) => {
+  if (typeof document === "undefined") return;
+  const {
+    days = 1,
+    path = "/",
+    sameSite = "Lax",
+    secure = window.location.protocol === "https:",
+  } = options;
+
+  const maxAge = days * 24 * 60 * 60;
+  let cookie = `${encodeURIComponent(name)}=${encodeURIComponent(value)}; Path=${path}; Max-Age=${maxAge}; SameSite=${sameSite}`;
+  if (secure) cookie += "; Secure";
+  document.cookie = cookie;
+};
+
+export const deleteCookie = (name) => {
+  if (typeof document === "undefined") return;
+  document.cookie = `${encodeURIComponent(name)}=; Path=/; Max-Age=0`;
+};
+
+// Helper function to access auth token from cookies (no localStorage)
 const getAuthToken = () => {
-  if (typeof window !== 'undefined' && window.localStorage) {
-    try {
-      return localStorage.getItem('authToken');
-    } catch (error) {
-      console.warn('Failed to access localStorage:', error);
-      return null;
-    }
+  try {
+    return getCookie("authToken");
+  } catch (error) {
+    console.warn("Failed to read auth token cookie:", error);
+    return null;
   }
-  return null;
 };
 
 export const api = async (path, method = "GET", body = null, headers = {}) => {

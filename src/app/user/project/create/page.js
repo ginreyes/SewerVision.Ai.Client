@@ -47,8 +47,8 @@ const steps = [
   },
   {
     id: 3,
-    title: "Assign Team Members",
-    description: "Assign operator and QC technician",
+    title: "Team Lead & Assignment",
+    description: "Team lead and assign operator and QC technician",
     icon: Users,
     color: "bg-purple-500"
   },
@@ -100,7 +100,7 @@ const InputField = memo(({ label, name, value, onChange, required = false, type 
 
 InputField.displayName = 'InputField';
 
-export default function CreateProjectPage({ backUrl = "/admin/project", returnTo }) {
+export default function CreateProjectPage({ backUrl = "/user/project", returnTo }) {
   const [currentStep, setCurrentStep] = useState(1);
   const [loading, setLoading] = useState(false);
   const [errors, setErrors] = useState({});
@@ -177,6 +177,7 @@ export default function CreateProjectPage({ backUrl = "/admin/project", returnTo
     try {
       setLoadingCustomers(true);
       const response = await api("/api/users/get-customers", "GET");
+      console.log("Fetched customers:", response);
       const data = response.data.data.customers
       setCustomers(data)
     }
@@ -578,56 +579,46 @@ export default function CreateProjectPage({ backUrl = "/admin/project", returnTo
               <div className="inline-flex p-3 bg-purple-100 rounded-xl mb-4">
                 <Users className="h-8 w-8 text-purple-500" />
               </div>
-              <h3 className="text-xl font-bold text-gray-900 mb-2">
-                {isUserRole ? "Assign Team Members" : "Team Lead & Assignment"}
-              </h3>
+              <h3 className="text-xl font-bold text-gray-900 mb-2">Team Lead & Assignment</h3>
               <p className="text-gray-600">
                 {isUserRole
-                  ? "Select the operator and QC technician who will work on this project."
+                  ? "You're the Team Lead. Assign an operator and QC technician for this project."
                   : "Assign team lead (creator), operator and QC technician to this project"}
               </p>
             </div>
 
-            {/* For user role: compact "You're the project manager" note; for admin: full Team Lead card */}
-            {isUserRole ? (
-              <div className="max-w-5xl mx-auto flex items-center gap-3 px-4 py-3 bg-purple-50 border border-purple-100 rounded-xl">
-                <User className="h-5 w-5 text-purple-600 flex-shrink-0" />
-                <p className="text-sm text-gray-700">
-                  <span className="font-medium text-purple-800">Project manager:</span> {teamLeadName}
-                  {userData?.email && <span className="text-gray-500 ml-1">({userData.email})</span>}
-                </p>
-              </div>
-            ) : (
-              <div className="bg-white rounded-2xl border-2 border-purple-100 shadow-sm overflow-hidden max-w-5xl mx-auto">
-                <div className="bg-gradient-to-r from-purple-500 to-purple-600 px-6 py-4">
-                  <div className="flex items-center gap-3">
-                    <div className="p-2 bg-white/20 rounded-lg">
-                      <User className="h-5 w-5 text-white" />
-                    </div>
-                    <div>
-                      <h4 className="font-semibold text-white">Team Lead</h4>
-                      <p className="text-purple-100 text-sm">Project creator</p>
-                    </div>
+            {/* Team Lead (read-only): current user when role is user, or project creator for admin */}
+            <div className="bg-white rounded-2xl border-2 border-purple-100 shadow-sm overflow-hidden max-w-5xl mx-auto">
+              <div className="bg-gradient-to-r from-purple-500 to-purple-600 px-6 py-4">
+                <div className="flex items-center gap-3">
+                  <div className="p-2 bg-white/20 rounded-lg">
+                    <User className="h-5 w-5 text-white" />
                   </div>
-                </div>
-                <div className="p-6">
-                  <div className="flex items-center gap-3">
-                    <div className="w-12 h-12 bg-purple-100 rounded-full flex items-center justify-center flex-shrink-0">
-                      <User className="h-6 w-6 text-purple-600" />
-                    </div>
-                    <div>
-                      <p className="font-semibold text-gray-900">{teamLeadName}</p>
-                      {userData?.email && (
-                        <p className="text-sm text-gray-500 flex items-center gap-1">
-                          <Mail className="h-3 w-3" />
-                          {userData.email}
-                        </p>
-                      )}
-                    </div>
+                  <div>
+                    <h4 className="font-semibold text-white">Team Lead</h4>
+                    <p className="text-purple-100 text-sm">
+                      {isUserRole ? "You (project manager)" : "Project creator"}
+                    </p>
                   </div>
                 </div>
               </div>
-            )}
+              <div className="p-6">
+                <div className="flex items-center gap-3">
+                  <div className="w-12 h-12 bg-purple-100 rounded-full flex items-center justify-center flex-shrink-0">
+                    <User className="h-6 w-6 text-purple-600" />
+                  </div>
+                  <div>
+                    <p className="font-semibold text-gray-900">{teamLeadName}</p>
+                    {userData?.email && (
+                      <p className="text-sm text-gray-500 flex items-center gap-1">
+                        <Mail className="h-3 w-3" />
+                        {userData.email}
+                      </p>
+                    )}
+                  </div>
+                </div>
+              </div>
+            </div>
 
             {loadingUsers ? (
               <div className="flex flex-col items-center justify-center py-12">

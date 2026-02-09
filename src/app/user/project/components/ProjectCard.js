@@ -266,7 +266,7 @@ const ProjectCard = memo((props) => {
                   className="text-white hover:bg-white/20 h-8 w-8"
                   onClick={(e) => {
                     e.stopPropagation();
-                    router.push(`/admin/project/editProject/${project._id}`);
+                    router.push(`/user/project/editProject/${project._id}`);
                   }}
                 >
                   <PencilIcon size={16} />

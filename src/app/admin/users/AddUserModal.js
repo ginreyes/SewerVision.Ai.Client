@@ -1,6 +1,6 @@
 "use client"
 
-import React, { useState } from "react"
+import React, { useState, useEffect } from "react"
 import {
   Dialog,
   DialogTrigger,
@@ -62,7 +62,11 @@ const AddUserModal = ({ fetchUser }) => {
     company_size: "",
     tax_id: "",
     billing_contact: "",
+    managedMembers: [],
   })
+  const [operatorOptions, setOperatorOptions] = useState([])
+  const [qcOptions, setQcOptions] = useState([])
+  const [loadingMembers, setLoadingMembers] = useState(false)
   const { showAlert } = useAlert()
 
   const roles = [
@@ -74,6 +78,15 @@ const AddUserModal = ({ fetchUser }) => {
       bgColor: 'bg-red-50',
       borderColor: 'border-red-200',
       icon: ShieldCheck
+    },
+    {
+      value: 'user',
+      label: 'Management User',
+      description: 'Oversees operators and QC teams, manages projects and tasks',
+      color: 'text-blue-600',
+      bgColor: 'bg-blue-50',
+      borderColor: 'border-blue-200',
+      icon: User
     },
     {
       value: 'customer',
@@ -127,6 +140,7 @@ const AddUserModal = ({ fetchUser }) => {
       company_size: "",
       tax_id: "",
       billing_contact: "",
+      managedMembers: [],
     }))
     setStep(2)
   }
@@ -171,6 +185,11 @@ const AddUserModal = ({ fetchUser }) => {
         showAlert("Please fill in all Customer required fields", "warning")
         return
       }
+    } else if (formData.role === 'user') {
+      if (!formData.managedMembers || formData.managedMembers.length === 0) {
+        showAlert("Please select at least one Operator or QC Technician to assign to this management user.", "warning")
+        return
+      }
     }
 
     setIsSubmitting(true)
@@ -202,6 +221,10 @@ const AddUserModal = ({ fetchUser }) => {
         if (formData.company_size) payload.company_size = formData.company_size
         if (formData.tax_id) payload.tax_id = formData.tax_id.trim()
         if (formData.billing_contact) payload.billing_contact = formData.billing_contact.trim()
+      } else if (formData.role === 'user') {
+        if (Array.isArray(formData.managedMembers) && formData.managedMembers.length > 0) {
+          payload.managedMembers = formData.managedMembers
+        }
       }
 
       console.log('Creating user with payload:', payload)
@@ -249,12 +272,59 @@ const AddUserModal = ({ fetchUser }) => {
       company_size: "",
       tax_id: "",
       billing_contact: "",
+      managedMembers: [],
     })
     setStep(1)
     setOpen(false)
   }
 
   const selectedRole = roles.find(r => r.value === formData.role)
+
+  const toggleManagedMember = (id) => {
+    setFormData((prev) => {
+      const exists = prev.managedMembers.includes(id)
+      return {
+        ...prev,
+        managedMembers: exists
+          ? prev.managedMembers.filter((m) => m !== id)
+          : [...prev.managedMembers, id],
+      }
+    })
+  }
+
+  useEffect(() => {
+    if (!open || formData.role !== 'user') return
+
+    const fetchMembers = async () => {
+      try {
+        setLoadingMembers(true)
+        const [operatorsRes, qcRes] = await Promise.all([
+          api("/api/users/get-all-user?role=operator&limit=500", "GET"),
+          api("/api/users/get-all-user?role=qc-technician&limit=500", "GET"),
+        ])
+
+        if (operatorsRes.ok && Array.isArray(operatorsRes.data?.users)) {
+          setOperatorOptions(operatorsRes.data.users)
+        } else {
+          setOperatorOptions([])
+        }
+
+        if (qcRes.ok && Array.isArray(qcRes.data?.users)) {
+          setQcOptions(qcRes.data.users)
+        } else {
+          setQcOptions([])
+        }
+      } catch (err) {
+        console.error("Failed to load team members:", err)
+        setOperatorOptions([])
+        setQcOptions([])
+      } finally {
+        setLoadingMembers(false)
+      }
+    }
+
+    fetchMembers()
+  }, [open, formData.role])
 
   const getRoleSpecificFields = () => {
     switch (formData.role) {
@@ -485,6 +555,116 @@ const AddUserModal = ({ fetchUser }) => {
                 </div>
               </div>
             </div>
+          </div>
+        )
+
+      case "user":
+        return (
+          <div className="space-y-4">
+            <div className="bg-blue-50/50 p-4 rounded-xl border border-blue-100 space-y-3">
+              <div className="flex items-center gap-2">
+                <ShieldCheck className="w-5 h-5 text-blue-600" />
+                <h4 className="font-semibold text-blue-900">Team Members</h4>
+              </div>
+              <p className="text-xs text-blue-700">
+                Select which Operators and QC Technicians this management user will oversee.
+                They will see these members&apos; tasks, projects, and performance.
+              </p>
+            </div>
+
+            {loadingMembers ? (
+              <div className="bg-white border border-gray-200 rounded-xl p-4 text-xs text-gray-500">
+                Loading operators and QC technicians...
+              </div>
+            ) : (
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                <div className="bg-orange-50/60 border border-orange-100 rounded-xl p-3 space-y-2">
+                  <div className="flex items-center justify-between mb-1">
+                    <div className="flex items-center gap-2">
+                      <UserPlus className="w-4 h-4 text-orange-600" />
+                      <h5 className="font-semibold text-orange-900 text-xs">Operators</h5>
+                    </div>
+                    <span className="text-[11px] text-orange-700">
+                      {operatorOptions.length} available
+                    </span>
+                  </div>
+                  <div className="max-h-40 overflow-auto space-y-1 pr-1">
+                    {operatorOptions.length === 0 ? (
+                      <p className="text-[11px] text-gray-500">
+                        No operators found. Create operator accounts first.
+                      </p>
+                    ) : (
+                      operatorOptions.map((op) => {
+                        const id = op.user_id || op._id
+                        const checked = formData.managedMembers.includes(id)
+                        return (
+                          <label
+                            key={id}
+                            className="flex items-center gap-2 text-[11px] cursor-pointer px-2 py-1 rounded-lg hover:bg-white/60"
+                          >
+                            <input
+                              type="checkbox"
+                              checked={checked}
+                              onChange={() => toggleManagedMember(id)}
+                              className="h-3 w-3 rounded border-gray-300"
+                            />
+                            <span className="flex flex-col">
+                              <span className="font-medium text-gray-900">
+                                {op.name || op.username}
+                              </span>
+                              <span className="text-[10px] text-gray-500">{op.email}</span>
+                            </span>
+                          </label>
+                        )
+                      })
+                    )}
+                  </div>
+                </div>
+
+                <div className="bg-violet-50/60 border border-violet-100 rounded-xl p-3 space-y-2">
+                  <div className="flex items-center justify-between mb-1">
+                    <div className="flex items-center gap-2">
+                      <Wrench className="w-4 h-4 text-violet-600" />
+                      <h5 className="font-semibold text-violet-900 text-xs">QC Technicians</h5>
+                    </div>
+                    <span className="text-[11px] text-violet-700">
+                      {qcOptions.length} available
+                    </span>
+                  </div>
+                  <div className="max-h-40 overflow-auto space-y-1 pr-1">
+                    {qcOptions.length === 0 ? (
+                      <p className="text-[11px] text-gray-500">
+                        No QC technicians found. Create QC accounts first.
+                      </p>
+                    ) : (
+                      qcOptions.map((qc) => {
+                        const id = qc.user_id || qc._id
+                        const checked = formData.managedMembers.includes(id)
+                        return (
+                          <label
+                            key={id}
+                            className="flex items-center gap-2 text-[11px] cursor-pointer px-2 py-1 rounded-lg hover:bg-white/60"
+                          >
+                            <input
+                              type="checkbox"
+                              checked={checked}
+                              onChange={() => toggleManagedMember(id)}
+                              className="h-3 w-3 rounded border-gray-300"
+                            />
+                            <span className="flex flex-col">
+                              <span className="font-medium text-gray-900">
+                                {qc.name || qc.username}
+                              </span>
+                              <span className="text-[10px] text-gray-500">{qc.email}</span>
+                            </span>
+                          </label>
+                        )
+                      })
+                    )}
+                  </div>
+                </div>
+              </div>
+            )}
           </div>
         )
 

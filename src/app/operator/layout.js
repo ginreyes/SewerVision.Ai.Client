@@ -2,7 +2,7 @@
 
 import OperatorSidebar from "@/components/ui/OperatorSidebar";
 import Navbar from "@/components/ui/navbar";
-import { api } from "@/lib/helper";
+import { api, getCookie, deleteCookie } from "@/lib/helper";
 import { useEffect, useState } from "react";
 import { TourGuide, useTourGuide } from "@/components/TourGuide";
 
@@ -27,13 +27,18 @@ export default function OperatorLayout({ children }) {
   useEffect(() => {
     const fetchUserRole = async () => {
       try {
-        const storedUsername = localStorage.getItem('username')
-        const { data, error } = await api(`/api/users/role/${storedUsername}`, 'GET')
+        const storedUsername = getCookie('username');
+        const token = getCookie('authToken');
+        if (!storedUsername || !token) return;
+
+        const { data, error } = await api(`/api/users/role/${storedUsername}`, 'GET');
         if (!error) {
-          setRole(data.role)
-        }
-        else {
-          setRole(role)
+          setRole(data.role);
+        } else {
+          console.error("Error fetching user role:", error);
+          deleteCookie("authToken");
+          deleteCookie("username");
+          deleteCookie("role");
         }
       } catch (error) {
         console.error("Error fetching user role:", error);

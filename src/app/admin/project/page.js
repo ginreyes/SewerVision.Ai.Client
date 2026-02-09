@@ -43,7 +43,6 @@ const SewerVisionInspectionModuleContent = () => {
         "GET"
       );
       const { data, totalPages } = response.data;
-      console.log('Fetched Projects:', data);
 
       setProjects(data);
       setTotalPages(totalPages);
@@ -105,7 +104,6 @@ const SewerVisionInspectionModuleContent = () => {
   useEffect(() => {
     const fetchProjectById = async () => {
       if (selectedProjectId) {
-        // If we already have the correct project selected, do nothing
         if (selectedProject && selectedProject._id === selectedProjectId) {
           return;
         }
