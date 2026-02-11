@@ -121,7 +121,6 @@ export default function CreateProjectPage({ backUrl = "/user/project", returnTo 
   // Project Details - Step 1
   const [name, setName] = useState("");
   const [location, setLocation] = useState("");
-  const [client, setClient] = useState("");
   const [workOrder, setWorkOrder] = useState("");
   const [priority, setPriority] = useState("medium");
 
@@ -230,7 +229,6 @@ export default function CreateProjectPage({ backUrl = "/user/project", returnTo 
   const fieldSetters = {
     name: setName,
     location: setLocation,
-    client: setClient,
     customerId: setCustomerId,
     workOrder: setWorkOrder,
     priority: setPriority,
@@ -255,7 +253,6 @@ export default function CreateProjectPage({ backUrl = "/user/project", returnTo 
   const fieldValues = {
     name,
     location,
-    client,
     customerId,
     workOrder,
     priority,
@@ -291,11 +288,15 @@ export default function CreateProjectPage({ backUrl = "/user/project", returnTo 
   }, [errors]);
 
   const getFormData = useCallback(() => {
+    const sel = customers.find((c) => c._id === customerId);
+    const clientFromCustomer = sel
+      ? [sel.first_name, sel.last_name].filter(Boolean).join(" ").trim() || sel.email || ""
+      : "";
     const base = {
       userId,
       name,
       location,
-      client,
+      client: clientFromCustomer,
       customerId,
       totalLength,
       pipelineMaterial,
@@ -323,7 +324,7 @@ export default function CreateProjectPage({ backUrl = "/user/project", returnTo 
       },
     };
     return base;
-  }, [name, location, client, customerId, totalLength, pipelineMaterial, pipelineShape, workOrder, priority,
+  }, [name, location, customers, customerId, totalLength, pipelineMaterial, pipelineShape, workOrder, priority,
     operatorUserId, operatorName, operatorEmail,
     qcUserId, qcName, qcEmail,
     recordingDate, upstreamMH, downstreamMH, metadataShape, metadataMaterial, remarks, userId, userData?.role]);
@@ -334,7 +335,6 @@ export default function CreateProjectPage({ backUrl = "/user/project", returnTo 
     switch (step) {
       case 1:
         if (!name) newErrors.name = "Project name is required";
-        if (!client) newErrors.client = "Client is required";
         if (!customerId) newErrors.customerId = "Customer must be selected";
         if (!location) newErrors.location = "Location is required";
         if (!workOrder) newErrors.workOrder = "Work order is required";
@@ -359,7 +359,7 @@ export default function CreateProjectPage({ backUrl = "/user/project", returnTo 
 
     setErrors(newErrors);
     return Object.keys(newErrors).length === 0;
-  }, [name, client, location, workOrder, totalLength, pipelineMaterial, pipelineShape,
+  }, [name, location, workOrder, totalLength, pipelineMaterial, pipelineShape,
     operatorUserId, qcUserId, recordingDate, upstreamMH, downstreamMH, metadataMaterial, metadataShape, customerId]);
 
   const nextStep = useCallback(() => {
@@ -477,16 +477,6 @@ export default function CreateProjectPage({ backUrl = "/user/project", returnTo 
                   </span>
                 )}
               </div>
-
-              <InputField
-                label="Client (Organization Name)"
-                name="client"
-                value={fieldValues.client}
-                onChange={handleFieldChange}
-                required
-                error={errors.client}
-                placeholder="Enter client organization name"
-              />
 
               <InputField
                 label="Location"

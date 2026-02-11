@@ -6,10 +6,13 @@ import ProjectDetail from "./components/ProjectDetail";
 import ProjectCard from "./components/ProjectCard";
 import { api } from "@/lib/helper";
 import { useAlert } from "@/components/providers/AlertProvider";
+import { useUser } from "@/components/providers/UserContext";
 import debounce from "lodash/debounce";
 import { useRouter, useSearchParams, usePathname } from "next/navigation";
 
-const SewerVisionInspectionModuleContent = () => {
+const OperatorModulePage = () => {
+  const { userId } = useUser();
+
   const [projects, setProjects] = useState([]);
   const [selectedProject, setSelectedProject] = useState(null);
   const [searchTerm, setSearchTerm] = useState("");
@@ -19,9 +22,9 @@ const SewerVisionInspectionModuleContent = () => {
   const searchParams = useSearchParams();
   const pathname = usePathname();
   const router = useRouter();
-  const selectedProjectId = searchParams.get('selectedProject');
+  const selectedProjectId = searchParams.get("selectedProject");
 
-  const isOperatorRoute = pathname?.startsWith('/operator');
+  const isOperatorRoute = pathname?.startsWith("/operator");
 
   const [page, setPage] = useState(1);
   const [limit] = useState(6);
@@ -34,6 +37,11 @@ const SewerVisionInspectionModuleContent = () => {
     status = "all",
     pageNumber = 1
   ) => {
+    // For operator routes, only load once we know who the operator is
+    if (isOperatorRoute && !userId) {
+      return;
+    }
+
     try {
       const query = new URLSearchParams({
         page: pageNumber.toString(),
@@ -42,11 +50,18 @@ const SewerVisionInspectionModuleContent = () => {
         status: status === "all" ? "" : status,
       });
 
+      // Restrict to the logged-in operator's own projects
+      if (isOperatorRoute && userId) {
+        query.append("assignedOperatorId", userId);
+      }
+
       const response = await api(
-        `/api/projects/get-all-projects?${query}`,
+        `/api/projects/get-all-projects?${query.toString()}`,
         "GET"
       );
       const { data, totalPages } = response.data;
+
+      console.log("Fetched Projects:", data);
 
       setProjects(data);
       setTotalPages(totalPages);
@@ -97,12 +112,12 @@ const SewerVisionInspectionModuleContent = () => {
   };
 
   const AddProject = () => {
-    router.push("/admin/project/createProject");
+    router.push("/operator/project/createProject");
   };
 
   useEffect(() => {
     handleLoadData(searchTerm, statusFilter, page);
-  }, [page]);
+  }, [page, userId, isOperatorRoute]);
 
 
   useEffect(() => {
@@ -146,7 +161,7 @@ const SewerVisionInspectionModuleContent = () => {
   const handleBackToProjects = () => {
     navigatingBackRef.current = true;
     setSelectedProject(null);
-    router.replace('/admin/project');
+    router.replace('/operator/project');
   };
 
   return (
@@ -169,10 +184,10 @@ const SewerVisionInspectionModuleContent = () => {
               <div className="flex items-center justify-between">
                 <div>
                   <h1 className="text-3xl font-bold text-gray-900">
-                    SewerVision.ai Inspection Projects
+                    Inspection Projects
                   </h1>
                   <p className="text-gray-600 mt-2">
-                    AI-powered pipeline inspection with PACP certified workflow
+                    Manage and monitor all your inspection projects
                   </p>
                 </div>
                 {!isOperatorRoute && (
@@ -224,6 +239,7 @@ const SewerVisionInspectionModuleContent = () => {
                   getStatusColor={getStatusColor}
                   getPriorityColor={getPriorityColor}
                   loadData={handleLoadData}
+                  hideActions
                 />
               ))}
             </div>
@@ -268,7 +284,7 @@ const ProjectPageLoading = () => (
 const SewerVisionInspectionModule = () => {
   return (
     <Suspense fallback={<ProjectPageLoading />}>
-      <SewerVisionInspectionModuleContent />
+      <OperatorModulePage />
     </Suspense>
   );
 };

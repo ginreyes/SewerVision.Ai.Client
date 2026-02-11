@@ -7,7 +7,7 @@ import { useEffect, useState } from "react";
 import { TourGuide, useTourGuide } from "@/components/TourGuide";
 
 export default function OperatorLayout({ children }) {
-  const [openSidebar, setOpenSidebar] = useState(false);
+  const [openSidebar, setOpenSidebar] = useState(true);
   const [role, setRole] = useState(null);
 
   // Tour Guide state

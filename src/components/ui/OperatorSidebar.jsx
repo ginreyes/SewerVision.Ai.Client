@@ -1,6 +1,9 @@
-import React, { useState } from 'react';
+ 'use client';
+
+import React from 'react';
 import Image from 'next/image';
 import Link from 'next/link';
+import { usePathname } from 'next/navigation';
 
 // Import Lucide icons
 import {
@@ -17,17 +20,14 @@ import {
 } from 'lucide-react';
 
 const OperatorSidebar = ({ isOpen, role }) => {
-  const [activeItem, setActiveItem] = useState("Dashboard");
+  const pathname = usePathname();
 
-  const handleItemClick = (item) => {
-    setActiveItem(item);
-  };
-
-  const activeStyle = "bg-[#826AF91A] text-[#2D99FF] font-semibold";
+  const activeStyle = "bg-[#826AF91A] text-[#2D99FF] font-semibold shadow-sm";
   const inactiveStyle = "text-gray-700";
 
   const operator = [
     { label: "Dashboard", icon: LayoutDashboard, path: "/operator/dashboard" },
+    { label: "Projects", icon: Monitor, path: "/operator/project" },
     { label: "Operations", icon: SearchX, path: "/operator/operations" },
     { label: "Task", icon: Search, path: "/operator/task" },
     { label: "Calendar", icon: Calendar, path: "/operator/calendar" },
@@ -46,7 +46,12 @@ const OperatorSidebar = ({ isOpen, role }) => {
       {/* Logo and Title */}
       <div className={`flex items-center gap-2 mb-6 transition-all duration-300 ${isOpen ? 'justify-start' : 'justify-center'}`}>
         <Image src="/logo.png" alt="Logo" width={32} height={30} />
-        {isOpen && <span className="text-lg font-bold">SewerVersion</span>}
+        {isOpen && (
+          <div className="flex flex-col">
+            <span className="text-lg font-bold">SewerVision</span>
+            <span className="text-[11px] text-gray-500 tracking-wide">Operator Console</span>
+          </div>
+        )}
       </div>
 
       {/* Sidebar Items */}
@@ -61,12 +66,12 @@ const OperatorSidebar = ({ isOpen, role }) => {
         ) : (
           sidebarItems.map((item, index) => {
             const Icon = item.icon;
+            const isActive = pathname.startsWith(item.path);
             return (
               <Link key={item.label} href={item.path}>
                 <div
-                  className={`flex items-center space-x-3 h-[56px] px-4 rounded-2xl cursor-pointer transition-all duration-200 transform hover:scale-105
-                    ${activeItem === item.label ? activeStyle : `${inactiveStyle} hover:bg-gray-300 hover:shadow-sm`}`}
-                  onClick={() => handleItemClick(item.label)}
+                  className={`flex items-center space-x-3 h-[56px] px-4 rounded-2xl cursor-pointer transition-all duration-200 transform hover:scale-[1.02]
+                    ${isActive ? activeStyle : `${inactiveStyle} hover:bg-gray-300 hover:shadow-sm`}`}
                   style={{
                     animationName: 'slideIn',
                     animationDuration: '0.3s',
@@ -119,3 +124,4 @@ const OperatorSidebar = ({ isOpen, role }) => {
 };
 
 export default OperatorSidebar;
+

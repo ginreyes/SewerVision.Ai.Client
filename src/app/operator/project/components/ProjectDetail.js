@@ -15,12 +15,8 @@ import {
   Plus,
   Edit3,
   PlayCircle,
-  X,
-  RefreshCw,
   Loader2,
-  Video,
   Trash2,
-  User,
   Clock,
   Film,
   FileVideo,
@@ -30,8 +26,8 @@ import {
   Ruler,
   Calendar,
   CheckCircle2,
-  AlertCircle,
   Zap,
+  AlertCircle,
 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from '@/components/ui/dialog';
@@ -174,7 +170,7 @@ const ProjectDetail = ({ project, setSelectedProject, onBack }) => {
     if (currentPath.includes('/qc-technician')) {
       router.replace(`/qc-technician/project`);
     } else if (currentPath.includes('/operator')) {
-      router.replace(`/operator/projects`);
+      router.replace(`/operator/project`);
     } else {
       router.replace(`/admin/project`);
     }
@@ -1111,6 +1107,14 @@ const ProjectDetail = ({ project, setSelectedProject, onBack }) => {
                   </button>
                 </div>
               </div>
+
+              {/* Progress bar (project progress) */}
+              <div className="w-full bg-gray-200 rounded-full h-2">
+                <div
+                  className="bg-blue-600 h-2 rounded-full"
+                  style={{ width: `${project?.progress || 0}%` }}
+                />
+              </div>
             </div>
 
             {/* Observations Section */}
@@ -1625,7 +1629,7 @@ const ProjectDetail = ({ project, setSelectedProject, onBack }) => {
             </DialogTitle>
             <DialogDescription>
               Reprocessing will send this project&apos;s video back through the AI pipeline.
-              This can take some time depending on video length and system load, but
+              This can take several minutes depending on video length and system load, but
               you can safely continue working while it runs.
             </DialogDescription>
           </DialogHeader>
@@ -1634,7 +1638,7 @@ const ProjectDetail = ({ project, setSelectedProject, onBack }) => {
             <ul className="list-disc list-inside space-y-1 text-xs text-gray-600">
               <li>Existing AI detections may be updated with the latest model.</li>
               <li>New detections can appear if the model finds additional issues.</li>
-              <li>Project metrics and progress will refresh as processing completes.</li>
+              <li>Project status will reflect active AI processing.</li>
             </ul>
           </div>
           <DialogFooter className="mt-4">

@@ -205,53 +205,8 @@ const WhatsNew = () => {
             <Dialog open={isDialogOpen} onOpenChange={setIsDialogOpen}>
                 <DialogContent className="max-w-6xl p-0 gap-0 overflow-hidden border-0 bg-white shadow-2xl rounded-2xl">
                     <div className="flex flex-col md:flex-row h-[85vh] md:h-[70vh]">
-                        {/* Left Side - Image or Diagram */}
-                        <div className="w-full md:w-3/5 bg-gray-50 relative flex items-center justify-center p-8 border-b md:border-b-0 md:border-r border-gray-200">
-                            {/* Background Pattern */}
-                            <div className="absolute inset-0 opacity-5 bg-[radial-gradient(#e5e7eb_1px,transparent_1px)] [background-size:16px_16px]"></div>
-
-                            {selectedItem?.type === 'planned' ? (
-                                // Show diagram for planned features
-                                <div 
-                                    className="w-full h-full cursor-zoom-in group"
-                                    onClick={() => setSelectedItem(prev => ({ ...prev, isZoomed: true }))}
-                                >
-                                    <UserRoleHierarchy />
-                                    <div className="absolute inset-0 bg-black/0 group-hover:bg-black/5 transition-colors flex items-center justify-center pointer-events-none">
-                                        <div className="bg-white/90 text-gray-800 text-xs font-bold px-3 py-1.5 rounded-full shadow-lg opacity-0 group-hover:opacity-100 transform translate-y-2 group-hover:translate-y-0 transition-all flex items-center gap-2">
-                                            <FaImage className="w-3 h-3" /> Click to Zoom
-                                        </div>
-                                    </div>
-                                </div>
-                            ) : selectedItem?.image ? (
-                                <div
-                                    className="relative w-full h-full shadow-lg rounded-lg overflow-hidden bg-white cursor-zoom-in group"
-                                    onClick={() => setSelectedItem(prev => ({ ...prev, isZoomed: true }))}
-                                >
-                                    <Image
-                                        src={selectedItem.image}
-                                        alt={selectedItem.title}
-                                        fill
-                                        className="object-cover transition-transform duration-500 group-hover:scale-105"
-                                    />
-                                    <div className="absolute inset-0 bg-black/0 group-hover:bg-black/10 transition-colors flex items-center justify-center">
-                                        <div className="bg-white/90 text-gray-800 text-xs font-bold px-3 py-1.5 rounded-full shadow-lg opacity-0 group-hover:opacity-100 transform translate-y-2 group-hover:translate-y-0 transition-all flex items-center gap-2">
-                                            <FaImage className="w-3 h-3" /> Click to Zoom
-                                        </div>
-                                    </div>
-                                </div>
-                            ) : (
-                                <div className="text-gray-400 text-center z-10">
-                                    <div className="w-24 h-24 bg-gray-100 rounded-full flex items-center justify-center mx-auto mb-4">
-                                        <FaImage className="w-10 h-10 opacity-30" />
-                                    </div>
-                                    <p className="text-sm font-medium">No preview available</p>
-                                </div>
-                            )}
-                        </div>
-
-                        {/* Right Side - Details */}
-                        <div className="w-full md:w-2/5 bg-white p-8 overflow-y-auto relative">
+                        {/* Left Side - Information / How SewerVision.ai Works */}
+                        <div className="w-full md:w-2/5 bg-white p-8 overflow-y-auto relative border-b md:border-b-0 md:border-r border-gray-200">
                             {selectedItem && (
                                 <div className="space-y-6 pt-4">
                                     <div>
@@ -272,7 +227,7 @@ const WhatsNew = () => {
                                     {selectedItem.details && selectedItem.details.length > 0 && (
                                         <div className="bg-gray-50 rounded-xl p-5 border border-gray-100">
                                             <h3 className="text-xs font-bold text-gray-500 uppercase tracking-wider mb-4 flex items-center gap-2">
-                                                <FaCog className="w-3 h-3" /> Key Features
+                                                <FaCog className="w-3 h-3" /> Key Details
                                             </h3>
                                             <ul className="space-y-3">
                                                 {selectedItem.details.map((detail, idx) => (
@@ -287,13 +242,127 @@ const WhatsNew = () => {
                                         </div>
                                     )}
 
-                                    <div className="pt-6 border-t border-gray-200 mt-auto">
+                                    <div className="pt-6 border-t border-gray-200 mt-auto space-y-2">
                                         <p className="text-xs text-gray-400 font-medium">
                                             Included in <span className="text-rose-500">Release {currentVersion.id}</span>
+                                        </p>
+                                        <p className="text-xs text-gray-400">
+                                            Learn how SewerVision.ai processes inspection data step‑by‑step on the right.
                                         </p>
                                     </div>
                                 </div>
                             )}
+                        </div>
+
+                        {/* Right Side - AI Processing Visualization */}
+                        <div className="w-full md:w-3/5 bg-gray-50 relative flex items-center justify-center p-8">
+                            {/* Background Pattern */}
+                            <div className="absolute inset-0 opacity-5 bg-[radial-gradient(#e5e7eb_1px,transparent_1px)] [background-size:16px_16px]"></div>
+
+                            <div className="relative w-full max-w-2xl space-y-6 z-10">
+                                <div className="flex items-center justify-between">
+                                    <div>
+                                        <p className="text-xs font-semibold text-rose-500 uppercase tracking-[0.2em]">
+                                            SewerVision.ai
+                                        </p>
+                                        <h3 className="text-xl font-bold text-gray-900 mt-1">
+                                            Live AI Processing Pipeline
+                                        </h3>
+                                    </div>
+                                    <div className="px-3 py-1 rounded-full text-xs font-semibold bg-emerald-50 text-emerald-600 border border-emerald-100 flex items-center gap-1">
+                                        <span className="w-2 h-2 rounded-full bg-emerald-500 animate-pulse"></span>
+                                        Running
+                                    </div>
+                                </div>
+
+                                {/* Simulated CCTV frame + overlays */}
+                                <div className="relative bg-black/90 rounded-2xl overflow-hidden border border-gray-800 shadow-2xl">
+                                    <div className="h-52 md:h-64 w-full bg-gradient-to-br from-slate-900 via-slate-800 to-slate-900 relative">
+                                        {/* "Video" grid */}
+                                        <div className="absolute inset-0 opacity-20 bg-[linear-gradient(transparent,_transparent_calc(100%-1px),#0f172a_calc(100%-1px)),linear-gradient(90deg,transparent,_transparent_calc(100%-1px),#0f172a_calc(100%-1px))] [background-size:32px_32px]"></div>
+
+                                        {/* Flow line */}
+                                        <div className="absolute left-4 right-4 top-1/2 h-1 bg-slate-700/60 rounded-full overflow-hidden">
+                                            <div className="h-full w-1/2 bg-gradient-to-r from-rose-500 via-amber-400 to-emerald-400 animate-[ping_2.8s_linear_infinite]"></div>
+                                        </div>
+
+                                        {/* Detections */}
+                                        <div className="absolute inset-6 flex items-center justify-between">
+                                            <div className="space-y-3">
+                                                <div className="inline-flex items-center gap-2 bg-black/50 px-3 py-1.5 rounded-full border border-rose-500/40">
+                                                    <span className="w-2 h-2 rounded-full bg-rose-400 animate-pulse"></span>
+                                                    <span className="text-xs text-rose-100 font-semibold uppercase tracking-wide">
+                                                        Defect Heatmap
+                                                    </span>
+                                                </div>
+                                                <div className="space-y-1 text-xs text-slate-200/90">
+                                                    <p>AI is scanning frames for cracks, joints, and infiltration.</p>
+                                                    <p className="text-slate-400">Confidence threshold: 0.92</p>
+                                                </div>
+                                            </div>
+
+                                            <div className="w-40 bg-black/40 border border-slate-700 rounded-xl p-3 space-y-2">
+                                                <p className="text-[10px] text-slate-400 uppercase tracking-[0.18em]">
+                                                    Realtime Metrics
+                                                </p>
+                                                <div className="space-y-1.5 text-xs text-slate-100">
+                                                    <div className="flex justify-between">
+                                                        <span>Frames / sec</span>
+                                                        <span className="font-semibold text-emerald-300">28</span>
+                                                    </div>
+                                                    <div className="flex justify-between">
+                                                        <span>Detections</span>
+                                                        <span className="font-semibold text-amber-300">7</span>
+                                                    </div>
+                                                    <div className="flex justify-between">
+                                                        <span>Confidence</span>
+                                                        <span className="font-semibold text-sky-300">95%</span>
+                                                    </div>
+                                                </div>
+                                            </div>
+                                        </div>
+                                    </div>
+
+                                    {/* Timeline / progress bar */}
+                                    <div className="bg-slate-950/90 border-t border-slate-800 px-4 py-3 flex items-center gap-4">
+                                        <div className="flex-1">
+                                            <div className="flex justify-between text-[11px] text-slate-400 mb-1">
+                                                <span>AI Analysis</span>
+                                                <span>76%</span>
+                                            </div>
+                                            <div className="h-1.5 rounded-full bg-slate-800 overflow-hidden">
+                                                <div className="h-full w-3/4 bg-gradient-to-r from-rose-500 via-amber-400 to-emerald-400 animate-[ping_3s_ease-in-out_infinite]"></div>
+                                            </div>
+                                        </div>
+                                        <div className="text-[11px] text-slate-400 flex flex-col items-end">
+                                            <span>00:12 / 00:16</span>
+                                            <span className="mt-0.5 text-emerald-300 font-medium">Generating report…</span>
+                                        </div>
+                                    </div>
+                                </div>
+
+                                {/* Pipeline steps */}
+                                <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
+                                    {[
+                                        { label: "Capture", desc: "CCTV stream ingested", color: "from-sky-500/20 to-sky-400/10", dot: "bg-sky-400" },
+                                        { label: "Analyse", desc: "AI locates defects", color: "from-rose-500/20 to-rose-400/10", dot: "bg-rose-400" },
+                                        { label: "Report", desc: "PACP-ready output", color: "from-emerald-500/20 to-emerald-400/10", dot: "bg-emerald-400" }
+                                    ].map((step, idx) => (
+                                        <div
+                                            key={idx}
+                                            className={`relative rounded-xl border border-gray-100 bg-gradient-to-br ${step.color} px-4 py-3 flex flex-col gap-1`}
+                                        >
+                                            <div className="flex items-center gap-2">
+                                                <span className={`w-2 h-2 rounded-full ${step.dot} animate-pulse`}></span>
+                                                <span className="text-xs font-semibold text-gray-800 uppercase tracking-wide">
+                                                    {step.label}
+                                                </span>
+                                            </div>
+                                            <p className="text-xs text-gray-600">{step.desc}</p>
+                                        </div>
+                                    ))}
+                                </div>
+                            </div>
                         </div>
                     </div>
                 </DialogContent>
