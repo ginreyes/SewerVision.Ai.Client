@@ -10,20 +10,30 @@ import {
     FaUserTag,
     FaEllipsisH,
     FaImage,
-    FaTimes
+    FaTimes,
+    FaChevronLeft,
+    FaChevronRight
 } from "react-icons/fa";
 import Link from "next/link";
-import { Dialog, DialogContent } from "@/components/ui/dialog";
+import { Dialog, DialogContent, DialogTitle } from "@/components/ui/dialog";
 import Image from "next/image";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { whatsNewData } from "@/data/whatsNewData";
-import UserRoleHierarchy from "@/components/diagrams/UserRoleHierarchy";
 
 const WhatsNew = () => {
     // Default to the first version (latest)
     const [activeVersion, setActiveVersion] = useState(whatsNewData[0]?.id || "");
     const [selectedItem, setSelectedItem] = useState(null);
     const [isDialogOpen, setIsDialogOpen] = useState(false);
+    const [selectedImageIndex, setSelectedImageIndex] = useState(0);
+
+
+    const getImageList = (item) => {
+        if (!item) return [];
+        if (item.images && Array.isArray(item.images) && item.images.length > 0) return item.images;
+        if (item.image) return [item.image];
+        return [];
+    };
 
     const getBadgeStyle = (type) => {
         switch (type) {
@@ -51,6 +61,7 @@ const WhatsNew = () => {
 
     const roleConfig = {
         admin: { icon: FaUserShield, label: 'Admin', color: 'text-red-600' },
+        user: { icon: FaUserTag, label: 'User (Team Lead)', color: 'text-emerald-600' },
         qc: { icon: FaCog, label: 'QC Tech', color: 'text-purple-600' },
         operator: { icon: FaTools, label: 'Operator', color: 'text-orange-600' },
         customer: { icon: FaUserTag, label: 'Customer', color: 'text-green-600' },
@@ -61,6 +72,7 @@ const WhatsNew = () => {
 
     const handleCardClick = (item) => {
         setSelectedItem(item);
+        setSelectedImageIndex(0);
         setIsDialogOpen(true);
     };
 
@@ -156,7 +168,7 @@ const WhatsNew = () => {
                                                                 <span className={`px-3 py-1.5 rounded-lg text-xs font-bold uppercase border ${getBadgeStyle(item.type)}`}>
                                                                     {getBadgeLabel(item.type)}
                                                                 </span>
-                                                                {(item.image || item.type === 'planned') && (
+                                                                {(item.image || (item.images && item.images.length) || item.type === 'planned') && (
                                                                     <div className="flex items-center gap-2 text-xs text-gray-400 group-hover:text-rose-500 transition-colors bg-gray-50 px-2 py-1 rounded-full group-hover:bg-rose-50">
                                                                         <FaImage className="w-3.5 h-3.5" />
                                                                         <span className="font-medium">{item.type === 'planned' ? 'Diagram' : 'Preview'}</span>
@@ -174,8 +186,13 @@ const WhatsNew = () => {
                                                 </div>
                                             ) : (
                                                 <div className="text-center py-20 flex flex-col items-center justify-center opacity-60">
-                                                    <div className="w-20 h-20 bg-gray-50 rounded-full flex items-center justify-center mb-4">
-                                                        <config.icon className={`w-8 h-8 ${config.color} opacity-50`} />
+                                                    <div className="relative w-20 h-20 rounded-full overflow-hidden bg-gray-50 mb-4">
+                                                        <Image
+                                                            src="/background_pictures/no_updates_illustration.jpg"
+                                                            alt="No updates"
+                                                            fill
+                                                            className="object-contain"
+                                                        />
                                                     </div>
                                                     <p className="text-gray-500 font-medium">No updates for {config.label} in this version</p>
                                                 </div>
@@ -204,6 +221,10 @@ const WhatsNew = () => {
             {/* Enhanced Dialog */}
             <Dialog open={isDialogOpen} onOpenChange={setIsDialogOpen}>
                 <DialogContent className="max-w-6xl p-0 gap-0 overflow-hidden border-0 bg-white shadow-2xl rounded-2xl">
+                    {/* Accessible title for screen readers */}
+                    <DialogTitle className="sr-only">
+                        What&apos;s New update details
+                    </DialogTitle>
                     <div className="flex flex-col md:flex-row h-[85vh] md:h-[70vh]">
                         {/* Left Side - Information / How SewerVision.ai Works */}
                         <div className="w-full md:w-2/5 bg-white p-8 overflow-y-auto relative border-b md:border-b-0 md:border-r border-gray-200">
@@ -254,114 +275,88 @@ const WhatsNew = () => {
                             )}
                         </div>
 
-                        {/* Right Side - AI Processing Visualization */}
+                        {/* Right Side - Update Screenshot / Preview */}
                         <div className="w-full md:w-3/5 bg-gray-50 relative flex items-center justify-center p-8">
                             {/* Background Pattern */}
-                            <div className="absolute inset-0 opacity-5 bg-[radial-gradient(#e5e7eb_1px,transparent_1px)] [background-size:16px_16px]"></div>
+                            <div className="absolute inset-0 opacity-5 bg-[radial-gradient(#e5e7eb_1px,transparent_1px)] [background-size:16px_16px]" />
 
-                            <div className="relative w-full max-w-2xl space-y-6 z-10">
-                                <div className="flex items-center justify-between">
+                            <div className="relative w-full max-w-2xl space-y-4 z-10">
+                                <div className="flex items-center justify-between mb-2">
                                     <div>
                                         <p className="text-xs font-semibold text-rose-500 uppercase tracking-[0.2em]">
-                                            SewerVision.ai
+                                            Visual Preview
                                         </p>
                                         <h3 className="text-xl font-bold text-gray-900 mt-1">
-                                            Live AI Processing Pipeline
+                                            {selectedItem?.title || "Update Screenshot"}
                                         </h3>
-                                    </div>
-                                    <div className="px-3 py-1 rounded-full text-xs font-semibold bg-emerald-50 text-emerald-600 border border-emerald-100 flex items-center gap-1">
-                                        <span className="w-2 h-2 rounded-full bg-emerald-500 animate-pulse"></span>
-                                        Running
-                                    </div>
-                                </div>
-
-                                {/* Simulated CCTV frame + overlays */}
-                                <div className="relative bg-black/90 rounded-2xl overflow-hidden border border-gray-800 shadow-2xl">
-                                    <div className="h-52 md:h-64 w-full bg-gradient-to-br from-slate-900 via-slate-800 to-slate-900 relative">
-                                        {/* "Video" grid */}
-                                        <div className="absolute inset-0 opacity-20 bg-[linear-gradient(transparent,_transparent_calc(100%-1px),#0f172a_calc(100%-1px)),linear-gradient(90deg,transparent,_transparent_calc(100%-1px),#0f172a_calc(100%-1px))] [background-size:32px_32px]"></div>
-
-                                        {/* Flow line */}
-                                        <div className="absolute left-4 right-4 top-1/2 h-1 bg-slate-700/60 rounded-full overflow-hidden">
-                                            <div className="h-full w-1/2 bg-gradient-to-r from-rose-500 via-amber-400 to-emerald-400 animate-[ping_2.8s_linear_infinite]"></div>
-                                        </div>
-
-                                        {/* Detections */}
-                                        <div className="absolute inset-6 flex items-center justify-between">
-                                            <div className="space-y-3">
-                                                <div className="inline-flex items-center gap-2 bg-black/50 px-3 py-1.5 rounded-full border border-rose-500/40">
-                                                    <span className="w-2 h-2 rounded-full bg-rose-400 animate-pulse"></span>
-                                                    <span className="text-xs text-rose-100 font-semibold uppercase tracking-wide">
-                                                        Defect Heatmap
-                                                    </span>
-                                                </div>
-                                                <div className="space-y-1 text-xs text-slate-200/90">
-                                                    <p>AI is scanning frames for cracks, joints, and infiltration.</p>
-                                                    <p className="text-slate-400">Confidence threshold: 0.92</p>
-                                                </div>
-                                            </div>
-
-                                            <div className="w-40 bg-black/40 border border-slate-700 rounded-xl p-3 space-y-2">
-                                                <p className="text-[10px] text-slate-400 uppercase tracking-[0.18em]">
-                                                    Realtime Metrics
-                                                </p>
-                                                <div className="space-y-1.5 text-xs text-slate-100">
-                                                    <div className="flex justify-between">
-                                                        <span>Frames / sec</span>
-                                                        <span className="font-semibold text-emerald-300">28</span>
-                                                    </div>
-                                                    <div className="flex justify-between">
-                                                        <span>Detections</span>
-                                                        <span className="font-semibold text-amber-300">7</span>
-                                                    </div>
-                                                    <div className="flex justify-between">
-                                                        <span>Confidence</span>
-                                                        <span className="font-semibold text-sky-300">95%</span>
-                                                    </div>
-                                                </div>
-                                            </div>
-                                        </div>
-                                    </div>
-
-                                    {/* Timeline / progress bar */}
-                                    <div className="bg-slate-950/90 border-t border-slate-800 px-4 py-3 flex items-center gap-4">
-                                        <div className="flex-1">
-                                            <div className="flex justify-between text-[11px] text-slate-400 mb-1">
-                                                <span>AI Analysis</span>
-                                                <span>76%</span>
-                                            </div>
-                                            <div className="h-1.5 rounded-full bg-slate-800 overflow-hidden">
-                                                <div className="h-full w-3/4 bg-gradient-to-r from-rose-500 via-amber-400 to-emerald-400 animate-[ping_3s_ease-in-out_infinite]"></div>
-                                            </div>
-                                        </div>
-                                        <div className="text-[11px] text-slate-400 flex flex-col items-end">
-                                            <span>00:12 / 00:16</span>
-                                            <span className="mt-0.5 text-emerald-300 font-medium">Generating report…</span>
-                                        </div>
+                                        <p className="text-xs text-gray-500 mt-1">
+                                            Click the image to open a full-screen zoom.
+                                        </p>
                                     </div>
                                 </div>
 
-                                {/* Pipeline steps */}
-                                <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
-                                    {[
-                                        { label: "Capture", desc: "CCTV stream ingested", color: "from-sky-500/20 to-sky-400/10", dot: "bg-sky-400" },
-                                        { label: "Analyse", desc: "AI locates defects", color: "from-rose-500/20 to-rose-400/10", dot: "bg-rose-400" },
-                                        { label: "Report", desc: "PACP-ready output", color: "from-emerald-500/20 to-emerald-400/10", dot: "bg-emerald-400" }
-                                    ].map((step, idx) => (
-                                        <div
-                                            key={idx}
-                                            className={`relative rounded-xl border border-gray-100 bg-gradient-to-br ${step.color} px-4 py-3 flex flex-col gap-1`}
-                                        >
-                                            <div className="flex items-center gap-2">
-                                                <span className={`w-2 h-2 rounded-full ${step.dot} animate-pulse`}></span>
-                                                <span className="text-xs font-semibold text-gray-800 uppercase tracking-wide">
-                                                    {step.label}
-                                                </span>
-                                            </div>
-                                            <p className="text-xs text-gray-600">{step.desc}</p>
+                                {(() => {
+                                    const imageList = getImageList(selectedItem);
+                                    if (imageList.length === 0) return null;
+                                    const currentSrc = imageList[selectedImageIndex] ?? imageList[0];
+                                    const hasMultiple = imageList.length > 1;
+                                    return (
+                                        <div className="space-y-3">
+                                            <button
+                                                type="button"
+                                                className="w-full rounded-2xl overflow-hidden border border-gray-200 bg-white shadow-lg group focus:outline-none focus:ring-2 focus:ring-rose-400"
+                                                onClick={() =>
+                                                    setSelectedItem((prev) =>
+                                                        prev ? { ...prev, isZoomed: true } : prev
+                                                    )
+                                                }
+                                            >
+                                                <div className="relative w-full h-60 md:h-72 bg-gray-100">
+                                                    <Image
+                                                        src={currentSrc}
+                                                        alt={`${selectedItem?.title || "Update screenshot"} ${hasMultiple ? `(${selectedImageIndex + 1}/${imageList.length})` : ""}`}
+                                                        fill
+                                                        className="object-contain bg-gray-900/5"
+                                                        sizes="(min-width: 1024px) 640px, 100vw"
+                                                    />
+                                                    <div className="absolute bottom-3 right-3 px-3 py-1.5 rounded-full bg-black/60 text-xs text-white flex items-center gap-1">
+                                                        <FaImage className="w-3.5 h-3.5" />
+                                                        <span className="font-medium">Click to zoom</span>
+                                                        {hasMultiple && (
+                                                            <span className="opacity-90">({selectedImageIndex + 1}/{imageList.length})</span>
+                                                        )}
+                                                    </div>
+                                                </div>
+                                            </button>
+                                            {hasMultiple && (
+                                                <div className="flex items-center gap-2 overflow-x-auto pb-1">
+                                                    {imageList.map((src, idx) => (
+                                                        <button
+                                                            key={idx}
+                                                            type="button"
+                                                            onClick={(e) => { e.stopPropagation(); setSelectedImageIndex(idx); }}
+                                                            className={`flex-shrink-0 w-14 h-14 rounded-lg overflow-hidden border-2 transition-all ${idx === selectedImageIndex ? "border-rose-500 ring-2 ring-rose-200" : "border-gray-200 hover:border-gray-300"}`}
+                                                        >
+                                                            <Image src={src} alt="" width={56} height={56} className="object-cover w-full h-full" />
+                                                        </button>
+                                                    ))}
+                                                </div>
+                                            )}
                                         </div>
-                                    ))}
-                                </div>
+                                    );
+                                })()}
+                                {getImageList(selectedItem).length === 0 ? (
+                                    <div className="text-center py-20 flex flex-col items-center justify-center">
+                                        <div className="relative w-full h-48 bg-gray-100 rounded-lg overflow-hidden">
+                                            <Image
+                                                src={'/background_pictures/improvement_pictures.jpg'}
+                                                alt="No preview available"
+                                                fill
+                                                className="object-contain"
+                                            />
+                                        </div>
+                                    </div>
+                                ) : null}
                             </div>
                         </div>
                     </div>
@@ -384,17 +379,63 @@ const WhatsNew = () => {
                         <FaTimes className="w-6 h-6" />
                     </button>
 
-                    <div className="relative w-full h-full max-w-7xl max-h-[90vh]" onClick={e => e.stopPropagation()}>
-                       { selectedItem.image ? (
-                            // Zoomed Image
-                            <Image
-                                src={selectedItem.image}
-                                alt={selectedItem.title}
-                                fill
-                                className="object-contain"
-                                priority
-                            />
-                        ) : null}
+                    <div className="relative w-full h-full max-w-7xl max-h-[90vh] flex items-center justify-center" onClick={e => e.stopPropagation()}>
+                        {(() => {
+                            const imageList = getImageList(selectedItem);
+                            const src = imageList[selectedImageIndex] ?? imageList[0];
+                            if (!src) return null;
+                            const hasMultiple = imageList.length > 1;
+                            return (
+                                <>
+                                    {hasMultiple && (
+                                        <button
+                                            type="button"
+                                            className="absolute left-4 top-1/2 -translate-y-1/2 z-50 text-white/70 hover:text-white bg-white/10 hover:bg-white/20 rounded-full p-3 transition-all"
+                                            onClick={(e) => {
+                                                e.stopPropagation();
+                                                setSelectedImageIndex((i) => (i - 1 + imageList.length) % imageList.length);
+                                            }}
+                                        >
+                                            <FaChevronLeft className="w-6 h-6" />
+                                        </button>
+                                    )}
+                                    <div className="relative w-full h-full">
+                                        <Image
+                                            src={src}
+                                            alt={selectedItem?.title || "Update screenshot"}
+                                            fill
+                                            className="object-contain"
+                                            priority
+                                        />
+                                    </div>
+                                    {hasMultiple && (
+                                        <button
+                                            type="button"
+                                            className="absolute right-4 top-1/2 -translate-y-1/2 z-50 text-white/70 hover:text-white bg-white/10 hover:bg-white/20 rounded-full p-3 transition-all"
+                                            onClick={(e) => {
+                                                e.stopPropagation();
+                                                setSelectedImageIndex((i) => (i + 1) % imageList.length);
+                                            }}
+                                        >
+                                            <FaChevronRight className="w-6 h-6" />
+                                        </button>
+                                    )}
+                                    {hasMultiple && (
+                                        <div className="absolute bottom-4 left-1/2 -translate-x-1/2 flex gap-2 z-50">
+                                            {imageList.map((_, idx) => (
+                                                <button
+                                                    key={idx}
+                                                    type="button"
+                                                    onClick={(e) => { e.stopPropagation(); setSelectedImageIndex(idx); }}
+                                                    className={`w-2.5 h-2.5 rounded-full transition-all ${idx === selectedImageIndex ? "bg-white scale-125" : "bg-white/40 hover:bg-white/60"}`}
+                                                    aria-label={`Image ${idx + 1}`}
+                                                />
+                                            ))}
+                                        </div>
+                                    )}
+                                </>
+                            );
+                        })()}
                     </div>
                 </div>
             )}

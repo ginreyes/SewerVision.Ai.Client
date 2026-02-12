@@ -30,7 +30,6 @@ import {
   Ruler,
   Calendar,
   CheckCircle2,
-  AlertCircle,
   Zap,
 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
@@ -42,6 +41,7 @@ import { Badge } from '@/components/ui/badge';
 import AddObservation from './AddObersavation';
 import ObservationsPanel from './ObservationsPanel';
 import { AiProcessingModal } from '@/components/project/AiProcessingModal';
+import { ReprocessModal } from '@/components/project/ReprocessModal';
 import { useUser } from '@/components/providers/UserContext';
 import { useAlert } from '@/components/providers/AlertProvider';
 import { api, getCookie } from '@/lib/helper';
@@ -1615,41 +1615,11 @@ const ProjectDetail = ({ project, setSelectedProject, onBack }) => {
         </div>
       )}
 
-      {/* Reprocess confirmation dialog */}
-      <Dialog open={isReprocessConfirmOpen} onOpenChange={setIsReprocessConfirmOpen}>
-        <DialogContent>
-          <DialogHeader>
-            <DialogTitle className="flex items-center gap-2">
-              <AlertCircle className="w-5 h-5 text-amber-500" />
-              Reprocess AI for this project?
-            </DialogTitle>
-            <DialogDescription>
-              Reprocessing will send this project&apos;s video back through the AI pipeline.
-              This can take some time depending on video length and system load, but
-              you can safely continue working while it runs.
-            </DialogDescription>
-          </DialogHeader>
-          <div className="mt-2 space-y-2 text-sm text-gray-600">
-            <p className="font-medium">What will happen:</p>
-            <ul className="list-disc list-inside space-y-1 text-xs text-gray-600">
-              <li>Existing AI detections may be updated with the latest model.</li>
-              <li>New detections can appear if the model finds additional issues.</li>
-              <li>Project metrics and progress will refresh as processing completes.</li>
-            </ul>
-          </div>
-          <DialogFooter className="mt-4">
-            <Button variant="outline" onClick={() => setIsReprocessConfirmOpen(false)}>
-              Cancel
-            </Button>
-            <Button
-              onClick={startReprocessFlow}
-              className="bg-gradient-to-r from-violet-600 to-purple-700 text-white"
-            >
-              Yes, start AI reprocess
-            </Button>
-          </DialogFooter>
-        </DialogContent>
-      </Dialog>
+      <ReprocessModal
+        open={isReprocessConfirmOpen}
+        onOpenChange={setIsReprocessConfirmOpen}
+        onConfirm={startReprocessFlow}
+      />
 
       <AiProcessingModal
         open={isAiInfoOpen}

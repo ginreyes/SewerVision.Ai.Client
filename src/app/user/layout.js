@@ -5,6 +5,7 @@ import Navbar from "@/components/ui/navbar";
 import UserSidebar from "@/components/ui/UserSidebar";
 import { api } from "@/lib/helper";
 import { useUser } from "@/components/providers/UserContext";
+import { TourGuide, useTourGuide } from "@/components/TourGuide";
 
 export default function UserLayout({ children }) {
   const [openSidebar, setOpenSidebar] = useState(true);
@@ -12,9 +13,19 @@ export default function UserLayout({ children }) {
   const [userRoleMeta, setUserRoleMeta] = useState(null);
   const { userData } = useUser();
 
+  // Tour Guide state for User (Team Lead) role
+  const { showTour, openTour, closeTour } = useTourGuide("user");
+
   const handleToggleSidebar = () => {
     setOpenSidebar((prev) => !prev);
   };
+
+  // Allow navbar or other components to trigger the tour via a custom event
+  useEffect(() => {
+    const handleOpenTour = () => openTour();
+    window.addEventListener("openTourGuide", handleOpenTour);
+    return () => window.removeEventListener("openTourGuide", handleOpenTour);
+  }, [openTour]);
 
   // Load extended role metadata for management users
   useEffect(() => {
@@ -62,6 +73,9 @@ export default function UserLayout({ children }) {
           <main className="p-4">{children}</main>
         </div>
       </div>
+
+      {/* Tour Guide Modal for User role */}
+      <TourGuide isOpen={showTour} onClose={closeTour} role="user" />
     </>
   );
 }

@@ -239,7 +239,10 @@ const SewerTable = (props) => {
                   const isChecked = selectedRows.includes(rowId);
 
                   return (
-                    <tr key={rowId} className="border-t border-gray-100 hover:bg-gray-50 dark:hover:bg-zinc-800 transition-colors">
+                    <tr
+                      key={rowId}
+                      className="border-t border-gray-100 hover:bg-gray-50 dark:hover:bg-zinc-800 transition-colors"
+                    >
                       <td className="p-3">
                         <input
                           type="checkbox"

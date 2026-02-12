@@ -157,20 +157,20 @@ const ProjectCard = memo((props) => {
 
   const handleDelete = async (project_id) => {
     showDelete({
-      title: "Delete Projects",
+      title: "Request project deletion",
       description:
-        "Are you sure it will be deleted to our system but you can create another one ?",
+        "This will send a delete request to the admin. The project will only be permanently removed after admin approval, and the assigned team plus customer will be notified.",
       onConfirm: async () => {
         try {
-          const { ok } = await api(`/api/projects/delete-project/${project_id}`, "DELETE");
-          if (!ok) {
-            showAlert('Project Deletion Failed', 'error');
+          const response = await api(`/api/projects/request-delete/${project_id}`, "POST", {});
+          if (!response.ok) {
+            showAlert('Delete request failed', 'error');
           } else {
-            showAlert("Project deleted", "success");
+            showAlert("Delete request submitted for admin approval", "success");
             loadData?.();
           }
         } catch (error) {
-          showAlert("Failed to delete project", "error");
+          showAlert("Failed to request project deletion", "error");
         }
       },
       onCancel: () => showAlert("Cancelled", "info"),
@@ -230,16 +230,21 @@ const ProjectCard = memo((props) => {
   // Get actual video count
   const videoCount = project.videoCount ?? (project.videoUrl ? 1 : 0);
 
+  const isPendingDelete = project.deleteStatus === "pending";
+  const headerGradient = isPendingDelete
+    ? "from-gray-300 via-gray-400 to-gray-500"
+    : statusGradient.header;
+
   return (
     <Card
-      className="flex flex-col h-full overflow-hidden transition-all duration-300 hover:shadow-xl hover:-translate-y-1 p-0 cursor-pointer border-0 shadow-md"
+      className={`flex flex-col h-full overflow-hidden transition-all duration-300 hover:shadow-xl hover:-translate-y-1 p-0 cursor-pointer border-0 shadow-md ${isPendingDelete ? "bg-gray-50" : ""}`}
       onClick={() => {
         router.push(`?selectedProject=${project._id}`, { scroll: false });
         setSelectedProject(project);
       }}
     >
       {/* Header with Status-based Gradient */}
-      <CardHeader className={`bg-gradient-to-r ${statusGradient.header} text-white p-6 h-full relative overflow-hidden`}>
+      <CardHeader className={`bg-gradient-to-r ${headerGradient} text-white p-6 h-full relative overflow-hidden`}>
         {/* Decorative pattern */}
         <div className="absolute inset-0 opacity-10">
           <div className="absolute -right-8 -top-8 w-32 h-32 rounded-full border-4 border-white" />
@@ -305,7 +310,7 @@ const ProjectCard = memo((props) => {
 
       <CardContent className="flex flex-col justify-between flex-grow p-5 space-y-4 bg-white">
         <div>
-          <div className="flex flex-wrap items-center gap-2 mb-4">
+          <div className="flex flex-wrap items-center gap-2 mb-2">
             <span
               className={`px-3 py-1 rounded-full text-xs font-semibold ${getStatusColor(
                 project.status
@@ -326,27 +331,10 @@ const ProjectCard = memo((props) => {
               </span>
             )}
           </div>
-          {project.deleteStatus === "pending" && !hideActions && (
-            <div className="flex gap-2 mb-4" onClick={(e) => e.stopPropagation()}>
-              <Button
-                size="sm"
-                variant="default"
-                className="gap-1 bg-green-600 hover:bg-green-700"
-                onClick={(e) => handleApproveDelete(e, project._id)}
-              >
-                <Check className="w-3.5 h-3.5" />
-                Approve delete
-              </Button>
-              <Button
-                size="sm"
-                variant="outline"
-                className="gap-1"
-                onClick={(e) => handleRejectDelete(e, project._id)}
-              >
-                <X className="w-3.5 h-3.5" />
-                Reject
-              </Button>
-            </div>
+          {project.deleteStatus === "pending" && (
+            <p className="mb-4 text-xs text-gray-600 bg-gray-100 border border-gray-200 rounded-lg px-3 py-2">
+              This project is pending deletion and will be permanently removed after an admin approves the request.
+            </p>
           )}
 
           {/* Customer Info Section */}
