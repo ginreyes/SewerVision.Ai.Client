@@ -47,6 +47,53 @@ export const qcApi = {
   },
 
   /**
+   * Get project by ID (for QC console)
+   */
+  async getProject(projectId) {
+    const response = await api(`/api/projects/get-project/${projectId}`, 'GET');
+    if (!response.ok) {
+      throw new Error(response.data?.error || response.data?.message || 'Failed to fetch project');
+    }
+    return response.data?.data ?? null;
+  },
+
+  /**
+   * Get project videos
+   */
+  async getProjectVideos(projectId) {
+    const response = await api(`/api/videos/project/${projectId}`, 'GET');
+    if (!response.ok) {
+      throw new Error(response.data?.error || 'Failed to fetch project videos');
+    }
+    return response.data?.data ?? [];
+  },
+
+  /**
+   * Create manual detection
+   */
+  async createManualDetection(projectId, payload) {
+    const response = await api(`/api/qc-technicians/projects/${projectId}/detections`, 'POST', payload);
+    if (!response.ok) {
+      throw new Error(response.data?.error || 'Failed to create detection');
+    }
+    return response.data?.data;
+  },
+
+  /**
+   * Complete QC assignment
+   */
+  async completeAssignment(projectId) {
+    const response = await api(`/api/qc-technicians/assignments/${projectId}`, 'PATCH', {
+      status: 'completed',
+      completedAt: new Date().toISOString(),
+    });
+    if (!response.ok) {
+      throw new Error(response.data?.error || 'Failed to complete assignment');
+    }
+    return response.data;
+  },
+
+  /**
    * Get project detections
    */
   async getProjectDetections(projectId, qcStatus = 'all') {
@@ -159,6 +206,19 @@ export const qcApi = {
     
     if (!response.ok) {
       throw new Error(response.data?.error || 'Failed to create certification');
+    }
+    
+    return response.data.data;
+  },
+
+  /**
+   * Update certification
+   */
+  async updateCertification(certificationId, certificationData) {
+    const response = await api(`/api/qc-technicians/certificates/${certificationId}`, 'PATCH', certificationData);
+    
+    if (!response.ok) {
+      throw new Error(response.data?.error || 'Failed to update certification');
     }
     
     return response.data.data;

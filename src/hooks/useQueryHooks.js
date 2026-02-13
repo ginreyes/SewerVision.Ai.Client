@@ -51,6 +51,7 @@ export const queryKeys = {
     projects: ['projects'],
     project: (projectId) => ['projects', projectId],
     projectMedia: (projectId) => ['projects', projectId, 'media'],
+    projectVideos: (projectId) => ['projects', projectId, 'videos'],
 };
 
 /**
@@ -191,6 +192,30 @@ export function useQCAssignment(assignmentId, options = {}) {
 }
 
 /**
+ * Hook for fetching a single project (by ID)
+ */
+export function useProject(projectId, options = {}) {
+    return useQuery({
+        queryKey: queryKeys.project(projectId),
+        queryFn: () => qcApi.getProject(projectId),
+        enabled: !!projectId,
+        ...options,
+    });
+}
+
+/**
+ * Hook for fetching project videos
+ */
+export function useProjectVideos(projectId, options = {}) {
+    return useQuery({
+        queryKey: queryKeys.projectVideos(projectId),
+        queryFn: () => qcApi.getProjectVideos(projectId),
+        enabled: !!projectId,
+        ...options,
+    });
+}
+
+/**
  * Hook for fetching project detections
  */
 export function useProjectDetections(projectId, qcStatus = 'all', options = {}) {
@@ -236,10 +261,39 @@ export function useReviewDetection() {
         mutationFn: ({ detectionId, reviewData }) =>
             qcApi.reviewDetection(detectionId, reviewData),
         onSuccess: (data, variables) => {
-            // Invalidate related queries
             queryClient.invalidateQueries({ queryKey: ['qc', 'detection', variables.detectionId] });
             queryClient.invalidateQueries({ queryKey: ['qc', 'detections'] });
             queryClient.invalidateQueries({ queryKey: ['qc', 'dashboard'] });
+        },
+    });
+}
+
+/**
+ * Hook for creating a manual detection
+ */
+export function useCreateManualDetection() {
+    const queryClient = useQueryClient();
+
+    return useMutation({
+        mutationFn: ({ projectId, payload }) => qcApi.createManualDetection(projectId, payload),
+        onSuccess: (data, variables) => {
+            queryClient.invalidateQueries({ queryKey: queryKeys.qcDetections(variables.projectId) });
+            queryClient.invalidateQueries({ queryKey: ['qc', 'detections'] });
+        },
+    });
+}
+
+/**
+ * Hook for completing a QC assignment
+ */
+export function useCompleteQCAssignment() {
+    const queryClient = useQueryClient();
+
+    return useMutation({
+        mutationFn: (projectId) => qcApi.completeAssignment(projectId),
+        onSuccess: (data, variables) => {
+            queryClient.invalidateQueries({ queryKey: ['qc', 'assignments'] });
+            queryClient.invalidateQueries({ queryKey: queryKeys.project(variables) });
         },
     });
 }
@@ -499,8 +553,12 @@ export default {
     useQCDashboardStats,
     useQCAssignments,
     useQCAssignment,
+    useProject,
+    useProjectVideos,
     useProjectDetections,
     useDetection,
+    useCreateManualDetection,
+    useCompleteQCAssignment,
     useDetectionComments,
     useReviewDetection,
     useStartQCSession,
