@@ -10,20 +10,30 @@ import {
     FaUserTag,
     FaEllipsisH,
     FaImage,
-    FaTimes
+    FaTimes,
+    FaChevronLeft,
+    FaChevronRight
 } from "react-icons/fa";
 import Link from "next/link";
-import { Dialog, DialogContent } from "@/components/ui/dialog";
+import { Dialog, DialogContent, DialogTitle } from "@/components/ui/dialog";
 import Image from "next/image";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { whatsNewData } from "@/data/whatsNewData";
-import UserRoleHierarchy from "@/components/diagrams/UserRoleHierarchy";
 
 const WhatsNew = () => {
     // Default to the first version (latest)
     const [activeVersion, setActiveVersion] = useState(whatsNewData[0]?.id || "");
     const [selectedItem, setSelectedItem] = useState(null);
     const [isDialogOpen, setIsDialogOpen] = useState(false);
+    const [selectedImageIndex, setSelectedImageIndex] = useState(0);
+
+
+    const getImageList = (item) => {
+        if (!item) return [];
+        if (item.images && Array.isArray(item.images) && item.images.length > 0) return item.images;
+        if (item.image) return [item.image];
+        return [];
+    };
 
     const getBadgeStyle = (type) => {
         switch (type) {
@@ -51,6 +61,7 @@ const WhatsNew = () => {
 
     const roleConfig = {
         admin: { icon: FaUserShield, label: 'Admin', color: 'text-red-600' },
+        user: { icon: FaUserTag, label: 'User (Team Lead)', color: 'text-emerald-600' },
         qc: { icon: FaCog, label: 'QC Tech', color: 'text-purple-600' },
         operator: { icon: FaTools, label: 'Operator', color: 'text-orange-600' },
         customer: { icon: FaUserTag, label: 'Customer', color: 'text-green-600' },
@@ -61,6 +72,7 @@ const WhatsNew = () => {
 
     const handleCardClick = (item) => {
         setSelectedItem(item);
+        setSelectedImageIndex(0);
         setIsDialogOpen(true);
     };
 
@@ -156,7 +168,7 @@ const WhatsNew = () => {
                                                                 <span className={`px-3 py-1.5 rounded-lg text-xs font-bold uppercase border ${getBadgeStyle(item.type)}`}>
                                                                     {getBadgeLabel(item.type)}
                                                                 </span>
-                                                                {(item.image || item.type === 'planned') && (
+                                                                {(item.image || (item.images && item.images.length) || item.type === 'planned') && (
                                                                     <div className="flex items-center gap-2 text-xs text-gray-400 group-hover:text-rose-500 transition-colors bg-gray-50 px-2 py-1 rounded-full group-hover:bg-rose-50">
                                                                         <FaImage className="w-3.5 h-3.5" />
                                                                         <span className="font-medium">{item.type === 'planned' ? 'Diagram' : 'Preview'}</span>
@@ -174,8 +186,13 @@ const WhatsNew = () => {
                                                 </div>
                                             ) : (
                                                 <div className="text-center py-20 flex flex-col items-center justify-center opacity-60">
-                                                    <div className="w-20 h-20 bg-gray-50 rounded-full flex items-center justify-center mb-4">
-                                                        <config.icon className={`w-8 h-8 ${config.color} opacity-50`} />
+                                                    <div className="relative w-20 h-20 rounded-full overflow-hidden bg-gray-50 mb-4">
+                                                        <Image
+                                                            src="/background_pictures/no_updates_illustration.jpg"
+                                                            alt="No updates"
+                                                            fill
+                                                            className="object-contain"
+                                                        />
                                                     </div>
                                                     <p className="text-gray-500 font-medium">No updates for {config.label} in this version</p>
                                                 </div>
@@ -204,54 +221,13 @@ const WhatsNew = () => {
             {/* Enhanced Dialog */}
             <Dialog open={isDialogOpen} onOpenChange={setIsDialogOpen}>
                 <DialogContent className="max-w-6xl p-0 gap-0 overflow-hidden border-0 bg-white shadow-2xl rounded-2xl">
+                    {/* Accessible title for screen readers */}
+                    <DialogTitle className="sr-only">
+                        What&apos;s New update details
+                    </DialogTitle>
                     <div className="flex flex-col md:flex-row h-[85vh] md:h-[70vh]">
-                        {/* Left Side - Image or Diagram */}
-                        <div className="w-full md:w-3/5 bg-gray-50 relative flex items-center justify-center p-8 border-b md:border-b-0 md:border-r border-gray-200">
-                            {/* Background Pattern */}
-                            <div className="absolute inset-0 opacity-5 bg-[radial-gradient(#e5e7eb_1px,transparent_1px)] [background-size:16px_16px]"></div>
-
-                            {selectedItem?.type === 'planned' ? (
-                                // Show diagram for planned features
-                                <div 
-                                    className="w-full h-full cursor-zoom-in group"
-                                    onClick={() => setSelectedItem(prev => ({ ...prev, isZoomed: true }))}
-                                >
-                                    <UserRoleHierarchy />
-                                    <div className="absolute inset-0 bg-black/0 group-hover:bg-black/5 transition-colors flex items-center justify-center pointer-events-none">
-                                        <div className="bg-white/90 text-gray-800 text-xs font-bold px-3 py-1.5 rounded-full shadow-lg opacity-0 group-hover:opacity-100 transform translate-y-2 group-hover:translate-y-0 transition-all flex items-center gap-2">
-                                            <FaImage className="w-3 h-3" /> Click to Zoom
-                                        </div>
-                                    </div>
-                                </div>
-                            ) : selectedItem?.image ? (
-                                <div
-                                    className="relative w-full h-full shadow-lg rounded-lg overflow-hidden bg-white cursor-zoom-in group"
-                                    onClick={() => setSelectedItem(prev => ({ ...prev, isZoomed: true }))}
-                                >
-                                    <Image
-                                        src={selectedItem.image}
-                                        alt={selectedItem.title}
-                                        fill
-                                        className="object-cover transition-transform duration-500 group-hover:scale-105"
-                                    />
-                                    <div className="absolute inset-0 bg-black/0 group-hover:bg-black/10 transition-colors flex items-center justify-center">
-                                        <div className="bg-white/90 text-gray-800 text-xs font-bold px-3 py-1.5 rounded-full shadow-lg opacity-0 group-hover:opacity-100 transform translate-y-2 group-hover:translate-y-0 transition-all flex items-center gap-2">
-                                            <FaImage className="w-3 h-3" /> Click to Zoom
-                                        </div>
-                                    </div>
-                                </div>
-                            ) : (
-                                <div className="text-gray-400 text-center z-10">
-                                    <div className="w-24 h-24 bg-gray-100 rounded-full flex items-center justify-center mx-auto mb-4">
-                                        <FaImage className="w-10 h-10 opacity-30" />
-                                    </div>
-                                    <p className="text-sm font-medium">No preview available</p>
-                                </div>
-                            )}
-                        </div>
-
-                        {/* Right Side - Details */}
-                        <div className="w-full md:w-2/5 bg-white p-8 overflow-y-auto relative">
+                        {/* Left Side - Information / How SewerVision.ai Works */}
+                        <div className="w-full md:w-2/5 bg-white p-8 overflow-y-auto relative border-b md:border-b-0 md:border-r border-gray-200">
                             {selectedItem && (
                                 <div className="space-y-6 pt-4">
                                     <div>
@@ -272,7 +248,7 @@ const WhatsNew = () => {
                                     {selectedItem.details && selectedItem.details.length > 0 && (
                                         <div className="bg-gray-50 rounded-xl p-5 border border-gray-100">
                                             <h3 className="text-xs font-bold text-gray-500 uppercase tracking-wider mb-4 flex items-center gap-2">
-                                                <FaCog className="w-3 h-3" /> Key Features
+                                                <FaCog className="w-3 h-3" /> Key Details
                                             </h3>
                                             <ul className="space-y-3">
                                                 {selectedItem.details.map((detail, idx) => (
@@ -287,13 +263,101 @@ const WhatsNew = () => {
                                         </div>
                                     )}
 
-                                    <div className="pt-6 border-t border-gray-200 mt-auto">
+                                    <div className="pt-6 border-t border-gray-200 mt-auto space-y-2">
                                         <p className="text-xs text-gray-400 font-medium">
                                             Included in <span className="text-rose-500">Release {currentVersion.id}</span>
+                                        </p>
+                                        <p className="text-xs text-gray-400">
+                                            Learn how SewerVision.ai processes inspection data step‑by‑step on the right.
                                         </p>
                                     </div>
                                 </div>
                             )}
+                        </div>
+
+                        {/* Right Side - Update Screenshot / Preview */}
+                        <div className="w-full md:w-3/5 bg-gray-50 relative flex items-center justify-center p-8">
+                            {/* Background Pattern */}
+                            <div className="absolute inset-0 opacity-5 bg-[radial-gradient(#e5e7eb_1px,transparent_1px)] [background-size:16px_16px]" />
+
+                            <div className="relative w-full max-w-2xl space-y-4 z-10">
+                                <div className="flex items-center justify-between mb-2">
+                                    <div>
+                                        <p className="text-xs font-semibold text-rose-500 uppercase tracking-[0.2em]">
+                                            Visual Preview
+                                        </p>
+                                        <h3 className="text-xl font-bold text-gray-900 mt-1">
+                                            {selectedItem?.title || "Update Screenshot"}
+                                        </h3>
+                                        <p className="text-xs text-gray-500 mt-1">
+                                            Click the image to open a full-screen zoom.
+                                        </p>
+                                    </div>
+                                </div>
+
+                                {(() => {
+                                    const imageList = getImageList(selectedItem);
+                                    if (imageList.length === 0) return null;
+                                    const currentSrc = imageList[selectedImageIndex] ?? imageList[0];
+                                    const hasMultiple = imageList.length > 1;
+                                    return (
+                                        <div className="space-y-3">
+                                            <button
+                                                type="button"
+                                                className="w-full rounded-2xl overflow-hidden border border-gray-200 bg-white shadow-lg group focus:outline-none focus:ring-2 focus:ring-rose-400"
+                                                onClick={() =>
+                                                    setSelectedItem((prev) =>
+                                                        prev ? { ...prev, isZoomed: true } : prev
+                                                    )
+                                                }
+                                            >
+                                                <div className="relative w-full h-60 md:h-72 bg-gray-100">
+                                                    <Image
+                                                        src={currentSrc}
+                                                        alt={`${selectedItem?.title || "Update screenshot"} ${hasMultiple ? `(${selectedImageIndex + 1}/${imageList.length})` : ""}`}
+                                                        fill
+                                                        className="object-contain bg-gray-900/5"
+                                                        sizes="(min-width: 1024px) 640px, 100vw"
+                                                    />
+                                                    <div className="absolute bottom-3 right-3 px-3 py-1.5 rounded-full bg-black/60 text-xs text-white flex items-center gap-1">
+                                                        <FaImage className="w-3.5 h-3.5" />
+                                                        <span className="font-medium">Click to zoom</span>
+                                                        {hasMultiple && (
+                                                            <span className="opacity-90">({selectedImageIndex + 1}/{imageList.length})</span>
+                                                        )}
+                                                    </div>
+                                                </div>
+                                            </button>
+                                            {hasMultiple && (
+                                                <div className="flex items-center gap-2 overflow-x-auto pb-1">
+                                                    {imageList.map((src, idx) => (
+                                                        <button
+                                                            key={idx}
+                                                            type="button"
+                                                            onClick={(e) => { e.stopPropagation(); setSelectedImageIndex(idx); }}
+                                                            className={`flex-shrink-0 w-14 h-14 rounded-lg overflow-hidden border-2 transition-all ${idx === selectedImageIndex ? "border-rose-500 ring-2 ring-rose-200" : "border-gray-200 hover:border-gray-300"}`}
+                                                        >
+                                                            <Image src={src} alt="" width={56} height={56} className="object-cover w-full h-full" />
+                                                        </button>
+                                                    ))}
+                                                </div>
+                                            )}
+                                        </div>
+                                    );
+                                })()}
+                                {getImageList(selectedItem).length === 0 ? (
+                                    <div className="text-center py-20 flex flex-col items-center justify-center">
+                                        <div className="relative w-full h-48 bg-gray-100 rounded-lg overflow-hidden">
+                                            <Image
+                                                src={'/background_pictures/improvement_pictures.jpg'}
+                                                alt="No preview available"
+                                                fill
+                                                className="object-contain"
+                                            />
+                                        </div>
+                                    </div>
+                                ) : null}
+                            </div>
                         </div>
                     </div>
                 </DialogContent>
@@ -315,17 +379,63 @@ const WhatsNew = () => {
                         <FaTimes className="w-6 h-6" />
                     </button>
 
-                    <div className="relative w-full h-full max-w-7xl max-h-[90vh]" onClick={e => e.stopPropagation()}>
-                       { selectedItem.image ? (
-                            // Zoomed Image
-                            <Image
-                                src={selectedItem.image}
-                                alt={selectedItem.title}
-                                fill
-                                className="object-contain"
-                                priority
-                            />
-                        ) : null}
+                    <div className="relative w-full h-full max-w-7xl max-h-[90vh] flex items-center justify-center" onClick={e => e.stopPropagation()}>
+                        {(() => {
+                            const imageList = getImageList(selectedItem);
+                            const src = imageList[selectedImageIndex] ?? imageList[0];
+                            if (!src) return null;
+                            const hasMultiple = imageList.length > 1;
+                            return (
+                                <>
+                                    {hasMultiple && (
+                                        <button
+                                            type="button"
+                                            className="absolute left-4 top-1/2 -translate-y-1/2 z-50 text-white/70 hover:text-white bg-white/10 hover:bg-white/20 rounded-full p-3 transition-all"
+                                            onClick={(e) => {
+                                                e.stopPropagation();
+                                                setSelectedImageIndex((i) => (i - 1 + imageList.length) % imageList.length);
+                                            }}
+                                        >
+                                            <FaChevronLeft className="w-6 h-6" />
+                                        </button>
+                                    )}
+                                    <div className="relative w-full h-full">
+                                        <Image
+                                            src={src}
+                                            alt={selectedItem?.title || "Update screenshot"}
+                                            fill
+                                            className="object-contain"
+                                            priority
+                                        />
+                                    </div>
+                                    {hasMultiple && (
+                                        <button
+                                            type="button"
+                                            className="absolute right-4 top-1/2 -translate-y-1/2 z-50 text-white/70 hover:text-white bg-white/10 hover:bg-white/20 rounded-full p-3 transition-all"
+                                            onClick={(e) => {
+                                                e.stopPropagation();
+                                                setSelectedImageIndex((i) => (i + 1) % imageList.length);
+                                            }}
+                                        >
+                                            <FaChevronRight className="w-6 h-6" />
+                                        </button>
+                                    )}
+                                    {hasMultiple && (
+                                        <div className="absolute bottom-4 left-1/2 -translate-x-1/2 flex gap-2 z-50">
+                                            {imageList.map((_, idx) => (
+                                                <button
+                                                    key={idx}
+                                                    type="button"
+                                                    onClick={(e) => { e.stopPropagation(); setSelectedImageIndex(idx); }}
+                                                    className={`w-2.5 h-2.5 rounded-full transition-all ${idx === selectedImageIndex ? "bg-white scale-125" : "bg-white/40 hover:bg-white/60"}`}
+                                                    aria-label={`Image ${idx + 1}`}
+                                                />
+                                            ))}
+                                        </div>
+                                    )}
+                                </>
+                            );
+                        })()}
                     </div>
                 </div>
             )}

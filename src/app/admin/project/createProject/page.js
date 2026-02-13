@@ -47,8 +47,8 @@ const steps = [
   },
   {
     id: 3,
-    title: "Team Assignment",
-    description: "Assign operators and QC",
+    title: "Assign Team Members",
+    description: "Assign operator and QC technician",
     icon: Users,
     color: "bg-purple-500"
   },
@@ -100,19 +100,22 @@ const InputField = memo(({ label, name, value, onChange, required = false, type 
 
 InputField.displayName = 'InputField';
 
-export default function CreateProjectPage() {
+export default function CreateProjectPage({ backUrl = "/admin/project", returnTo }) {
   const [currentStep, setCurrentStep] = useState(1);
   const [loading, setLoading] = useState(false);
   const [errors, setErrors] = useState({});
   const [videoFile, setVideoFile] = useState(null);
   const { showAlert } = useAlert();
   const router = useRouter();
-  const { userId } = useUser() || {}
+  const { userId, userData } = useUser() || {}
+  const redirectAfterCreate = returnTo ?? (userData?.role === "user" ? "/user/project" : "/admin/project");
 
-  // User data states
+  // User data states (operators & QC for user role; leads = users with role "user" for admin)
   const [operators, setOperators] = useState([]);
   const [qcTechnicians, setQcTechnicians] = useState([]);
+  const [leads, setLeads] = useState([]);
   const [loadingUsers, setLoadingUsers] = useState(false);
+  const [leadUserId, setLeadUserId] = useState("");
   const [customers, setCustomers] = useState([]);
   const [loadingCustomers, setLoadingCustomers] = useState(false);
   const [customerId, setCustomerId] = useState("");
@@ -120,7 +123,6 @@ export default function CreateProjectPage() {
   // Project Details - Step 1
   const [name, setName] = useState("");
   const [location, setLocation] = useState("");
-  const [client, setClient] = useState("");
   const [workOrder, setWorkOrder] = useState("");
   const [priority, setPriority] = useState("medium");
 
@@ -145,18 +147,26 @@ export default function CreateProjectPage() {
   const [metadataShape, setMetadataShape] = useState("");
   const [remarks, setRemarks] = useState("");
 
-  // Fetch users with specific roles
+  // Fetch users with specific roles; when current user is "user" role, restrict to managedMembers
   const fetchUsers = useCallback(async () => {
     try {
       setLoadingUsers(true);
       const { ok, data } = await api("/api/users/get-all-user", "GET");
 
       if (ok && data?.users) {
-        const operatorUsers = data.users.filter(user => user.role === 'operator');
-        const qcUsers = data.users.filter(user => user.role === 'qc-technician');
+        let operatorUsers = data.users.filter((u) => u.role === "operator");
+        let qcUsers = data.users.filter((u) => u.role === "qc-technician");
+        const leadUsers = data.users.filter((u) => u.role === "user" || u.role === "User");
+
+        if (userData?.role === "user" && Array.isArray(userData.managedMembers) && userData.managedMembers.length > 0) {
+          const managedIds = new Set(userData.managedMembers.map((id) => String(id)));
+          operatorUsers = operatorUsers.filter((u) => u._id && managedIds.has(String(u._id)));
+          qcUsers = qcUsers.filter((u) => u._id && managedIds.has(String(u._id)));
+        }
 
         setOperators(operatorUsers);
         setQcTechnicians(qcUsers);
+        setLeads(leadUsers);
       }
     } catch (error) {
       showAlert("Failed to fetch users", "error");
@@ -164,7 +174,7 @@ export default function CreateProjectPage() {
     } finally {
       setLoadingUsers(false);
     }
-  }, [showAlert]);
+  }, [showAlert, userData?.role, userData?.managedMembers]);
 
   const fetchCustomers = useCallback(async () => {
     try {
@@ -222,7 +232,6 @@ export default function CreateProjectPage() {
   const fieldSetters = {
     name: setName,
     location: setLocation,
-    client: setClient,
     customerId: setCustomerId,
     workOrder: setWorkOrder,
     priority: setPriority,
@@ -247,7 +256,6 @@ export default function CreateProjectPage() {
   const fieldValues = {
     name,
     location,
-    client,
     customerId,
     workOrder,
     priority,
@@ -282,39 +290,48 @@ export default function CreateProjectPage() {
     }
   }, [errors]);
 
-  const getFormData = useCallback(() => ({
-    userId,
-    name,
-    location,
-    client,
-    customerId,
-    totalLength,
-    pipelineMaterial,
-    pipelineShape,
-    workOrder,
-    priority,
-    assignedOperator: {
-      userId: operatorUserId,
-      name: operatorName,
-      email: operatorEmail
-    },
-    qcTechnician: {
-      userId: qcUserId,
-      name: qcName,
-      email: qcEmail
-    },
-    metadata: {
-      recordingDate,
-      upstreamMH,
-      downstreamMH,
-      shape: metadataShape,
-      material: metadataMaterial,
-      remarks,
-    },
-  }), [name, location, client, customerId, totalLength, pipelineMaterial, pipelineShape, workOrder, priority,
+  const getFormData = useCallback(() => {
+    const sel = customers.find((c) => c._id === customerId);
+    const clientFromCustomer = sel
+      ? [sel.first_name, sel.last_name].filter(Boolean).join(" ").trim() || sel.email || ""
+      : "";
+    const base = {
+      userId,
+      name,
+      location,
+      client: clientFromCustomer,
+      customerId,
+      totalLength,
+      pipelineMaterial,
+      pipelineShape,
+      workOrder,
+      priority,
+      ...(userData?.role === "user" && userId ? { managerId: userId } : userData?.role !== "user" && leadUserId ? { managerId: leadUserId } : {}),
+      assignedOperator: userData?.role === "user" ? {
+        userId: operatorUserId,
+        name: operatorName,
+        email: operatorEmail
+      } : { userId: "", name: "", email: "" },
+      qcTechnician: userData?.role === "user" ? {
+        userId: qcUserId,
+        name: qcName,
+        email: qcEmail
+      } : { userId: "", name: "", email: "" },
+      metadata: {
+        recordingDate,
+        upstreamMH,
+        downstreamMH,
+        shape: metadataShape,
+        material: metadataMaterial,
+        remarks,
+      },
+    };
+    return base;
+  }, [name, location, customers, customerId, totalLength, pipelineMaterial, pipelineShape, workOrder, priority,
     operatorUserId, operatorName, operatorEmail,
     qcUserId, qcName, qcEmail,
-    recordingDate, upstreamMH, downstreamMH, metadataShape, metadataMaterial, remarks, userId]);
+    leadUserId,
+    recordingDate, upstreamMH, downstreamMH, metadataShape, metadataMaterial, remarks, userId, userData?.role]);
 
   const validateStep = useCallback((step) => {
     const newErrors = {};
@@ -322,7 +339,6 @@ export default function CreateProjectPage() {
     switch (step) {
       case 1:
         if (!name) newErrors.name = "Project name is required";
-        if (!client) newErrors.client = "Client is required";
         if (!customerId) newErrors.customerId = "Customer must be selected";
         if (!location) newErrors.location = "Location is required";
         if (!workOrder) newErrors.workOrder = "Work order is required";
@@ -333,8 +349,12 @@ export default function CreateProjectPage() {
         if (!pipelineShape) newErrors.pipelineShape = "Pipeline shape is required";
         break;
       case 3:
-        if (!operatorUserId) newErrors["assignedOperator.userId"] = "Please select an operator";
-        if (!qcUserId) newErrors["qcTechnician.userId"] = "Please select a QC technician";
+        if (userData?.role === "user") {
+          if (!operatorUserId) newErrors["assignedOperator.userId"] = "Please select an operator";
+          if (!qcUserId) newErrors["qcTechnician.userId"] = "Please select a QC technician";
+        } else {
+          if (!leadUserId) newErrors.managerId = "Please select an assigned lead";
+        }
         break;
       case 4:
         if (!recordingDate) newErrors["metadata.recordingDate"] = "Recording date is required";
@@ -347,8 +367,8 @@ export default function CreateProjectPage() {
 
     setErrors(newErrors);
     return Object.keys(newErrors).length === 0;
-  }, [name, client, location, workOrder, totalLength, pipelineMaterial, pipelineShape,
-    operatorUserId, qcUserId, recordingDate, upstreamMH, downstreamMH, metadataMaterial, metadataShape, customerId]);
+  }, [name, location, workOrder, totalLength, pipelineMaterial, pipelineShape,
+    operatorUserId, qcUserId, leadUserId, userData?.role, recordingDate, upstreamMH, downstreamMH, metadataMaterial, metadataShape, customerId]);
 
   const nextStep = useCallback(() => {
     if (validateStep(currentStep)) {
@@ -386,14 +406,14 @@ export default function CreateProjectPage() {
 
       showAlert("Project created successfully", "success");
       setCurrentStep(1);
-      router.push("/admin/project");
+      router.push(redirectAfterCreate);
 
     } catch (error) {
       showAlert(error.message || "Failed to create project", "error");
     } finally {
       setLoading(false);
     }
-  }, [currentStep, getFormData, showAlert, validateStep, videoFile, router]);
+  }, [currentStep, getFormData, showAlert, validateStep, videoFile, router, redirectAfterCreate]);
 
 
   const renderStepContent = () => {
@@ -465,16 +485,6 @@ export default function CreateProjectPage() {
                   </span>
                 )}
               </div>
-
-              <InputField
-                label="Client (Organization Name)"
-                name="client"
-                value={fieldValues.client}
-                onChange={handleFieldChange}
-                required
-                error={errors.client}
-                placeholder="Enter client organization name"
-              />
 
               <InputField
                 label="Location"
@@ -557,24 +567,45 @@ export default function CreateProjectPage() {
         );
 
       case 3:
+        const isUserRole = userData?.role === "user";
+        const teamLeadName = userData?.first_name || userData?.last_name
+          ? `${userData.first_name || ""} ${userData.last_name || ""}`.trim()
+          : userData?.username || "You";
         return (
           <div className="space-y-8">
             <div className="text-center pb-4">
               <div className="inline-flex p-3 bg-purple-100 rounded-xl mb-4">
                 <Users className="h-8 w-8 text-purple-500" />
               </div>
-              <h3 className="text-xl font-bold text-gray-900 mb-2">Team Assignment</h3>
-              <p className="text-gray-600">Assign operators and quality control technicians to this project</p>
+              <h3 className="text-xl font-bold text-gray-900 mb-2">
+                {isUserRole ? "Assign Team Members" : "Lead Assignment"}
+              </h3>
+              <p className="text-gray-600">
+                {isUserRole
+                  ? "Select the operator and QC technician who will work on this project."
+                  : "Assign a lead (user) to this project."}
+              </p>
             </div>
+
+            {/* For user role: compact "You're the project manager" note; for admin: full Team Lead card */}
+            {isUserRole ? (
+              <div className="max-w-5xl mx-auto flex items-center gap-3 px-4 py-3 bg-purple-50 border border-purple-100 rounded-xl">
+                <User className="h-5 w-5 text-purple-600 flex-shrink-0" />
+                <p className="text-sm text-gray-700">
+                  <span className="font-medium text-purple-800">Project manager:</span> {teamLeadName}
+                  {userData?.email && <span className="text-gray-500 ml-1">({userData.email})</span>}
+                </p>
+              </div>
+            ) : null}
 
             {loadingUsers ? (
               <div className="flex flex-col items-center justify-center py-12">
                 <Loader2 className="h-10 w-10 animate-spin text-purple-500 mb-4" />
                 <p className="text-gray-600 font-medium">Loading team members...</p>
               </div>
-            ) : (
+            ) : isUserRole ? (
               <div className="grid grid-cols-1 lg:grid-cols-2 gap-8 max-w-5xl mx-auto">
-                {/* Operator Selection Card */}
+                {/* Operator Selection Card (user role only) */}
                 <div className="bg-white rounded-2xl border-2 border-blue-100 shadow-sm overflow-hidden">
                   <div className="bg-gradient-to-r from-blue-500 to-blue-600 px-6 py-4">
                     <div className="flex items-center gap-3">
@@ -762,6 +793,66 @@ export default function CreateProjectPage() {
                   </div>
                 </div>
               </div>
+            ) : (
+              /* Admin: Assigned Lead (user role only) */
+              <div className="max-w-2xl mx-auto">
+                <div className="bg-white rounded-2xl border-2 border-purple-100 shadow-sm overflow-hidden">
+                  <div className="bg-gradient-to-r from-purple-500 to-purple-600 px-6 py-4">
+                    <div className="flex items-center gap-3">
+                      <div className="p-2 bg-white/20 rounded-lg">
+                        <UserCheck className="h-5 w-5 text-white" />
+                      </div>
+                      <div>
+                        <h4 className="font-semibold text-white">Assigned Lead</h4>
+                        <p className="text-purple-100 text-sm">Select a user (lead) for this project</p>
+                      </div>
+                    </div>
+                  </div>
+                  <div className="p-6 space-y-4">
+                    <div className="space-y-2">
+                      <Label className="text-sm font-medium text-gray-700">
+                        Select Lead (user) <span className="text-red-500">*</span>
+                      </Label>
+                      <Select
+                        value={leadUserId}
+                        onValueChange={setLeadUserId}
+                      >
+                        <SelectTrigger className={`h-12 ${errors.managerId ? 'border-red-500 ring-1 ring-red-500' : 'border-gray-200'}`}>
+                          <SelectValue placeholder="Choose an assigned lead..." />
+                        </SelectTrigger>
+                        <SelectContent>
+                          {leads.length === 0 ? (
+                            <div className="px-4 py-6 text-center">
+                              <Users className="h-8 w-8 text-gray-300 mx-auto mb-2" />
+                              <p className="text-gray-500 text-sm">No users (lead) available</p>
+                            </div>
+                          ) : (
+                            leads.map((lead) => (
+                              <SelectItem key={lead.user_id} value={lead.user_id}>
+                                <div className="flex items-center gap-3 py-1">
+                                  <div className="w-8 h-8 bg-purple-100 rounded-full flex items-center justify-center flex-shrink-0">
+                                    <User className="h-4 w-4 text-purple-600" />
+                                  </div>
+                                  <div className="text-left">
+                                    <p className="font-medium text-gray-900">{lead.name}</p>
+                                    <p className="text-xs text-gray-500">{lead.email}</p>
+                                  </div>
+                                </div>
+                              </SelectItem>
+                            ))
+                          )}
+                        </SelectContent>
+                      </Select>
+                      {errors.managerId && (
+                        <p className="text-red-500 text-sm flex items-center gap-1">
+                          <AlertTriangle className="h-3 w-3" />
+                          {errors.managerId}
+                        </p>
+                      )}
+                    </div>
+                  </div>
+                </div>
+              </div>
             )}
 
             {/* Refresh button */}
@@ -920,8 +1011,8 @@ export default function CreateProjectPage() {
   };
 
   const handleBack = () => {
-    router.push('/admin/project')
-  }
+    router.push(backUrl);
+  };
 
   return (
     <div className="max-w-7xl mx-auto h-auto bg-gray-100 border-gray-200 shadow-2xl">

@@ -97,10 +97,12 @@ export default function EditProjectPage() {
   const { project_id } = useParams();
 
   const router = useRouter();
-  const { userId } = useUser();
+  const { userId, userData } = useUser();
   const { showAlert } = useAlert();
 
   const user_id = userId;
+  const isUserRole = userData?.role === "user";
+  const projectsPath = isUserRole ? "/user/project" : "/admin/project";
 
   // Loading and error states
   const [loading, setLoading] = useState(false);
@@ -111,15 +113,19 @@ export default function EditProjectPage() {
   // Original project data for reset functionality
   const [originalProject, setOriginalProject] = useState(null);
 
-  // User data states
+  // User data states (operators & QC for user role; leads = users with role "user" for admin)
   const [operators, setOperators] = useState([]);
   const [qcTechnicians, setQcTechnicians] = useState([]);
+  const [leads, setLeads] = useState([]);
   const [loadingUsers, setLoadingUsers] = useState(false);
+  const [customers, setCustomers] = useState([]);
+  const [loadingCustomers, setLoadingCustomers] = useState(false);
 
   // Form states
   const [formData, setFormData] = useState({
     name: "",
     location: "",
+    customerId: "",
     client: "",
     workOrder: "",
     priority: "medium",
@@ -131,6 +137,7 @@ export default function EditProjectPage() {
     pipelineShape: "",
     videoCount: 0,
     confidence: 0,
+    managerId: "",
     assignedOperator: {
       userId: "",
       name: "",
@@ -175,18 +182,22 @@ export default function EditProjectPage() {
 
       if (!ok || !data) {
         showAlert("Failed to fetch project data", "error");
-        router.push("/admin/project");
+        router.push(projectsPath);
         return;
       }
 
       const project = data.data || data;
       setOriginalProject(project);
 
+      const managerIdVal = project.managerId?._id?.toString?.() || project.managerId?.toString?.() || project.managerId || "";
+
+      const customerIdVal = project.customerId?._id?.toString?.() || project.customerId?.toString?.() || project.customerId || "";
 
       // Initialize form with project data
       setFormData({
         name: project.name || "",
         location: project.location || "",
+        customerId: customerIdVal,
         client: project.client || "",
         workOrder: project.workOrder || "",
         priority: project.priority || "medium",
@@ -200,6 +211,7 @@ export default function EditProjectPage() {
         pipelineShape: project.pipelineShape || "",
         videoCount: project.videoCount || 0,
         confidence: project.confidence || 0,
+        managerId: managerIdVal,
         assignedOperator: {
           userId: project.assignedOperator?.userId || "",
           name: project.assignedOperator?.name || "",
@@ -231,28 +243,38 @@ export default function EditProjectPage() {
     } catch (error) {
       showAlert("Failed to load project", "error");
       console.error("Error fetching project:", error);
-      router.push("/admin/project");
+      router.push(projectsPath);
     } finally {
       setFetchingProject(false);
     }
-  }, [project_id, showAlert, router]);
+  }, [project_id, showAlert, router, projectsPath]);
 
-  // Fetch users
+  // Fetch users; when user role, restrict to managedMembers
   const fetchUsers = useCallback(async () => {
     try {
       setLoadingUsers(true);
       const { ok, data } = await api("/api/users/get-all-user", "GET");
 
       if (ok && data?.users) {
-        const operatorUsers = data.users.filter(
-          (user) => user.role === "Operator"
+        let operatorUsers = data.users.filter(
+          (u) => u.role === "Operator" || u.role === "operator"
         );
-        const qcUsers = data.users.filter(
-          (user) => user.role === "Qc-Technician"
+        let qcUsers = data.users.filter(
+          (u) => u.role === "Qc-Technician" || u.role === "qc-technician"
         );
+        const leadUsers = data.users.filter(
+          (u) => u.role === "user" || u.role === "User"
+        );
+
+        if (isUserRole && Array.isArray(userData?.managedMembers) && userData.managedMembers.length > 0) {
+          const managedIds = new Set(userData.managedMembers.map((id) => String(id)));
+          operatorUsers = operatorUsers.filter((u) => u._id && managedIds.has(String(u._id)));
+          qcUsers = qcUsers.filter((u) => u._id && managedIds.has(String(u._id)));
+        }
 
         setOperators(operatorUsers);
         setQcTechnicians(qcUsers);
+        setLeads(leadUsers);
       }
     } catch (error) {
       showAlert("Failed to fetch users", "error");
@@ -260,12 +282,27 @@ export default function EditProjectPage() {
     } finally {
       setLoadingUsers(false);
     }
+  }, [showAlert, isUserRole, userData?.managedMembers]);
+
+  const fetchCustomers = useCallback(async () => {
+    try {
+      setLoadingCustomers(true);
+      const response = await api("/api/users/get-customers", "GET");
+      const data = response?.data?.data?.customers;
+      if (Array.isArray(data)) setCustomers(data);
+    } catch (error) {
+      showAlert("Failed to fetch customers", "error");
+      console.error("Error fetching customers:", error);
+    } finally {
+      setLoadingCustomers(false);
+    }
   }, [showAlert]);
 
   useEffect(() => {
     fetchProject();
     fetchUsers();
-  }, [fetchProject, fetchUsers]);
+    fetchCustomers();
+  }, [fetchProject, fetchUsers, fetchCustomers]);
 
   // Handle field changes
   const handleFieldChange = useCallback(
@@ -346,6 +383,11 @@ export default function EditProjectPage() {
     [qcTechnicians]
   );
 
+  // Handle lead selection (admin: user role only)
+  const handleLeadSelect = useCallback((userId) => {
+    setFormData((prev) => ({ ...prev, managerId: userId || "" }));
+  }, []);
+
   // Auto-calculate AI detections total
   useEffect(() => {
     const total =
@@ -373,7 +415,7 @@ export default function EditProjectPage() {
     const newErrors = {};
 
     if (!formData.name.trim()) newErrors.name = "Project name is required";
-    if (!formData.client.trim()) newErrors.client = "Client is required";
+    if (!formData.customerId) newErrors.customerId = "Customer must be selected";
     if (!formData.location.trim()) newErrors.location = "Location is required";
     if (!formData.workOrder.trim())
       newErrors.workOrder = "Work order is required";
@@ -383,10 +425,15 @@ export default function EditProjectPage() {
       newErrors.pipelineMaterial = "Pipeline material is required";
     if (!formData.pipelineShape)
       newErrors.pipelineShape = "Pipeline shape is required";
-    if (!formData.assignedOperator.userId)
-      newErrors["assignedOperator.userId"] = "Please select an operator";
-    if (!formData.qcTechnician.userId)
-      newErrors["qcTechnician.userId"] = "Please select a QC technician";
+    if (!isUserRole) {
+      if (!formData.managerId)
+        newErrors.managerId = "Please select an assigned lead";
+    } else {
+      if (!formData.assignedOperator.userId)
+        newErrors["assignedOperator.userId"] = "Please select an operator";
+      if (!formData.qcTechnician.userId)
+        newErrors["qcTechnician.userId"] = "Please select a QC technician";
+    }
     if (!formData.metadata.recordingDate)
       newErrors["metadata.recordingDate"] = "Recording date is required";
     if (!formData.metadata.upstreamMH.trim())
@@ -404,6 +451,7 @@ export default function EditProjectPage() {
       setFormData({
         name: originalProject.name || "",
         location: originalProject.location || "",
+        customerId: originalProject.customerId?._id?.toString?.() || originalProject.customerId?.toString?.() || originalProject.customerId || "",
         client: originalProject.client || "",
         workOrder: originalProject.workOrder || "",
         priority: originalProject.priority || "medium",
@@ -446,6 +494,7 @@ export default function EditProjectPage() {
           roots: originalProject.aiDetections?.roots || 0,
           total: originalProject.aiDetections?.total || 0,
         },
+        managerId: originalProject.managerId?._id?.toString?.() || originalProject.managerId?.toString?.() || originalProject.managerId || "",
       });
       setVideoFile(null);
       setErrors({});
@@ -461,13 +510,19 @@ export default function EditProjectPage() {
       setSaving(true);
 
 
+      const sel = customers.find((c) => c._id === formData.customerId);
+      const clientFromCustomer = sel
+        ? [sel.first_name, sel.last_name].filter(Boolean).join(" ").trim() || sel.email || formData.client
+        : formData.client;
+
       const correctedFormData = {
         ...formData,
-        progress: Number(formData.progress), // <-- ensure this is a number
-        confidence: Number(formData.confidence), // same for confidence if needed
+        client: clientFromCustomer,
+        progress: Number(formData.progress),
+        confidence: Number(formData.confidence),
       };
       console.log("[handleSave] progress before submit:", correctedFormData.progress);
-  
+
       const form = new FormData();
       form.append("userId", user_id);
       form.append("projectData", JSON.stringify(correctedFormData));
@@ -490,14 +545,14 @@ export default function EditProjectPage() {
       }
   
       showAlert("Project updated successfully", "success");
-      router.push("/admin/project");
+      router.push(projectsPath);
     } catch (error) {
       showAlert(error.message || "Failed to update project", "error");
       console.error("Error updating project:", error);
     } finally {
       setSaving(false);
     }
-  }, [formData, validateForm, videoFile, user_id, project_id, showAlert, router]);
+  }, [formData, validateForm, videoFile, user_id, project_id, showAlert, router, projectsPath, customers]);
   
   
 
@@ -551,7 +606,7 @@ export default function EditProjectPage() {
             <div className="flex items-center gap-4">
               <Button
                 variant="outline"
-                onClick={() => router.push("/admin/project")}
+                onClick={() => router.push(projectsPath)}
                 className="flex items-center gap-2 h-10"
               >
                 <ArrowLeft className="h-4 w-4" />
@@ -636,15 +691,56 @@ export default function EditProjectPage() {
                   error={errors.name}
                   placeholder="Enter project name"
                 />
-                <InputField
-                  label="Client"
-                  name="client"
-                  value={formData.client}
-                  onChange={handleFieldChange}
-                  required
-                  error={errors.client}
-                  placeholder="Enter client name"
-                />
+                <div className="space-y-2">
+                  <Label className="text-sm font-medium text-gray-700">
+                    Customer
+                    <span className="text-red-500 ml-1">*</span>
+                  </Label>
+                  <Select
+                    value={formData.customerId}
+                    onValueChange={(value) => handleFieldChange("customerId", value)}
+                  >
+                    <SelectTrigger
+                      className={`h-10 ${
+                        errors.customerId ? "border-red-500" : ""
+                      }`}
+                    >
+                      <SelectValue placeholder="Select a customer..." />
+                    </SelectTrigger>
+                    <SelectContent>
+                      {loadingCustomers ? (
+                        <SelectItem value="loading" disabled>
+                          Loading customers...
+                        </SelectItem>
+                      ) : customers.length === 0 ? (
+                        <SelectItem value="none" disabled>
+                          No customers available
+                        </SelectItem>
+                      ) : (
+                        customers.map((customer) => (
+                          <SelectItem
+                            key={customer._id}
+                            value={customer._id}
+                          >
+                            <div className="flex items-center gap-2">
+                              <span className="font-medium">
+                                {customer.first_name} {customer.last_name}
+                              </span>
+                              <span className="text-xs text-gray-500">
+                                ({customer.email})
+                              </span>
+                            </div>
+                          </SelectItem>
+                        ))
+                      )}
+                    </SelectContent>
+                  </Select>
+                  {errors.customerId && (
+                    <span className="text-red-500 text-sm">
+                      {errors.customerId}
+                    </span>
+                  )}
+                </div>
                 <InputField
                   label="Location"
                   name="location"
@@ -773,178 +869,246 @@ export default function EditProjectPage() {
               </div>
             </div>
 
-            {/* Team Assignment */}
+            {/* Lead Assignment (admin: user only) / Team Assignment QC & Operator (user role) */}
             <div className="bg-white rounded-lg shadow-sm p-6">
               <div className="flex items-center gap-3 mb-6">
                 <div className="p-2 bg-purple-100 rounded-lg">
                   <Users className="h-5 w-5 text-purple-600" />
                 </div>
                 <h2 className="text-xl font-bold text-gray-900">
-                  Team Assignment
+                  {isUserRole ? "Team Assignment (QC & Operator)" : "Lead Assignment"}
                 </h2>
               </div>
 
+              {isUserRole && userData && (
+                <div className="flex items-center gap-3 mb-6 px-4 py-3 bg-purple-50 border border-purple-100 rounded-xl">
+                  <Users className="h-5 w-5 text-purple-600 flex-shrink-0" />
+                  <p className="text-sm text-gray-700">
+                    <span className="font-medium text-purple-800">Project manager:</span>{" "}
+                    {userData.first_name || userData.last_name
+                      ? `${userData.first_name || ""} ${userData.last_name || ""}`.trim()
+                      : userData.username || "You"}
+                    {userData.email && (
+                      <span className="text-gray-500 ml-1">({userData.email})</span>
+                    )}
+                  </p>
+                </div>
+              )}
+
               <div className="space-y-6">
-                {/* Operator */}
-                <div className="border border-blue-200 rounded-lg p-4 bg-blue-50">
-                  <h4 className="font-semibold text-gray-900 mb-4">
-                    Assigned Operator
-                  </h4>
-                  <div className="space-y-4">
-                    <div className="space-y-2">
-                      <Label className="text-sm font-medium text-gray-700">
-                        Select Operator *
-                      </Label>
-                      <Select
-                        value={formData.assignedOperator.userId}
-                        onValueChange={handleOperatorSelect}
-                      >
-                        <SelectTrigger
-                          className={`h-10 ${
-                            errors["assignedOperator.userId"]
-                              ? "border-red-500"
-                              : ""
-                          }`}
+                {!isUserRole ? (
+                  /* Admin: Assigned Lead (user role only) */
+                  <div className="border border-purple-200 rounded-lg p-4 bg-purple-50">
+                    <h4 className="font-semibold text-gray-900 mb-4">
+                      Assigned Lead
+                    </h4>
+                    <div className="space-y-4">
+                      <div className="space-y-2">
+                        <Label className="text-sm font-medium text-gray-700">
+                          Select Lead (user) *
+                        </Label>
+                        <Select
+                          value={formData.managerId}
+                          onValueChange={handleLeadSelect}
                         >
-                          <SelectValue placeholder="Choose an operator..." />
-                        </SelectTrigger>
-                        <SelectContent>
-                          {operators.map((operator) => (
-                            <SelectItem
-                              key={operator.user_id}
-                              value={operator.user_id}
-                            >
-                              <div className="flex items-center gap-3">
-                                <UserCheck className="h-4 w-4 text-blue-600" />
-                                <div>
-                                  <div className="font-medium">
-                                    {operator.name}
-                                  </div>
-                                  <div className="text-xs text-gray-500">
-                                    {operator.email}
-                                  </div>
-                                </div>
+                          <SelectTrigger
+                            className={`h-10 ${
+                              errors.managerId ? "border-red-500" : ""
+                            }`}
+                          >
+                            <SelectValue placeholder="Choose an assigned lead..." />
+                          </SelectTrigger>
+                          <SelectContent>
+                            {leads.length === 0 ? (
+                              <div className="px-4 py-6 text-center text-gray-500 text-sm">
+                                No users (lead) available
                               </div>
-                            </SelectItem>
-                          ))}
-                        </SelectContent>
-                      </Select>
-                      {errors["assignedOperator.userId"] && (
-                        <span className="text-red-500 text-sm">
-                          {errors["assignedOperator.userId"]}
-                        </span>
-                      )}
-                    </div>
-
-                    {formData.assignedOperator.userId && (
-                      <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                        <InputField
-                          label="Name"
-                          name="assignedOperator.name"
-                          value={formData.assignedOperator.name}
-                          onChange={handleFieldChange}
-                          disabled
-                        />
-                        <InputField
-                          label="Email"
-                          name="assignedOperator.email"
-                          value={formData.assignedOperator.email}
-                          onChange={handleFieldChange}
-                          disabled
-                        />
-                        <div className="md:col-span-2">
-                          <InputField
-                            label="Certification"
-                            name="assignedOperator.certification"
-                            value={formData.assignedOperator.certification}
-                            onChange={handleFieldChange}
-                            placeholder="Enter certification details"
-                          />
-                        </div>
+                            ) : (
+                              leads.map((lead) => (
+                                <SelectItem
+                                  key={lead.user_id}
+                                  value={lead.user_id}
+                                >
+                                  <div className="flex items-center gap-3">
+                                    <UserCheck className="h-4 w-4 text-purple-600" />
+                                    <div>
+                                      <div className="font-medium">{lead.name}</div>
+                                      <div className="text-xs text-gray-500">{lead.email}</div>
+                                    </div>
+                                  </div>
+                                </SelectItem>
+                              ))
+                            )}
+                          </SelectContent>
+                        </Select>
+                        {errors.managerId && (
+                          <span className="text-red-500 text-sm">
+                            {errors.managerId}
+                          </span>
+                        )}
                       </div>
-                    )}
+                    </div>
                   </div>
-                </div>
-                {/* QC-technician */}
-                <div className="border border-blue-200 rounded-lg p-4 bg-blue-50">
-                  <h4 className="font-semibold text-gray-900 mb-4">
-                    Assigned Qc-Technician
-                  </h4>
-                  <div className="space-y-4">
-                    <div className="space-y-2">
-                      <Label className="text-sm font-medium text-gray-700">
-                        Select Qc-Technician
-                      </Label>
-                      <Select
-                        value={formData.qcTechnician.userId}
-                        onValueChange={handleQcSelect}
-                      >
-                        <SelectTrigger
-                          className={`h-10 ${
-                            errors["assignedOperator.userId"]
-                              ? "border-red-500"
-                              : ""
-                          }`}
-                        >
-                          <SelectValue placeholder="Choose an operator..." />
-                        </SelectTrigger>
-                        <SelectContent>
-                          {qcTechnicians.map((qcTechnicians) => (
-                            <SelectItem
-                              key={qcTechnicians.user_id}
-                              value={qcTechnicians.user_id}
+                ) : (
+                  <>
+                    {/* User role: Operator */}
+                    <div className="border border-blue-200 rounded-lg p-4 bg-blue-50">
+                      <h4 className="font-semibold text-gray-900 mb-4">
+                        Assigned Operator
+                      </h4>
+                      <div className="space-y-4">
+                        <div className="space-y-2">
+                          <Label className="text-sm font-medium text-gray-700">
+                            Select Operator *
+                          </Label>
+                          <Select
+                            value={formData.assignedOperator.userId}
+                            onValueChange={handleOperatorSelect}
+                          >
+                            <SelectTrigger
+                              className={`h-10 ${
+                                errors["assignedOperator.userId"]
+                                  ? "border-red-500"
+                                  : ""
+                              }`}
                             >
-                              <div className="flex items-center gap-3">
-                                <UserCheck className="h-4 w-4 text-blue-600" />
-                                <div>
-                                  <div className="font-medium">
-                                    {qcTechnicians.name}
+                              <SelectValue placeholder="Choose an operator..." />
+                            </SelectTrigger>
+                            <SelectContent>
+                              {operators.map((operator) => (
+                                <SelectItem
+                                  key={operator.user_id}
+                                  value={operator.user_id}
+                                >
+                                  <div className="flex items-center gap-3">
+                                    <UserCheck className="h-4 w-4 text-blue-600" />
+                                    <div>
+                                      <div className="font-medium">
+                                        {operator.name}
+                                      </div>
+                                      <div className="text-xs text-gray-500">
+                                        {operator.email}
+                                      </div>
+                                    </div>
                                   </div>
-                                  <div className="text-xs text-gray-500">
-                                    {qcTechnicians.email}
-                                  </div>
-                                </div>
-                              </div>
-                            </SelectItem>
-                          ))}
-                        </SelectContent>
-                      </Select>
-                      {errors["qcTechnicians.userId"] && (
-                        <span className="text-red-500 text-sm">
-                          {errors["qcTechnicians.userId"]}
-                        </span>
-                      )}
-                    </div>
-
-                    {formData.qcTechnician.userId && (
-                      <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                        <InputField
-                          label="Name"
-                          name="assignedOperator.name"
-                          value={formData.qcTechnician.name}
-                          onChange={handleFieldChange}
-                          disabled
-                        />
-                        <InputField
-                          label="Email"
-                          name="assignedOperator.email"
-                          value={formData.qcTechnician.email}
-                          onChange={handleFieldChange}
-                          disabled
-                        />
-                        <div className="md:col-span-2">
-                          <InputField
-                            label="Certification"
-                            name="assignedOperator.certification"
-                            value={formData.qcTechnician.certification}
-                            onChange={handleFieldChange}
-                            placeholder="Enter certification details"
-                          />
+                                </SelectItem>
+                              ))}
+                            </SelectContent>
+                          </Select>
+                          {errors["assignedOperator.userId"] && (
+                            <span className="text-red-500 text-sm">
+                              {errors["assignedOperator.userId"]}
+                            </span>
+                          )}
                         </div>
+
+                        {formData.assignedOperator.userId && (
+                          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                            <InputField
+                              label="Name"
+                              name="assignedOperator.name"
+                              value={formData.assignedOperator.name}
+                              onChange={handleFieldChange}
+                              disabled
+                            />
+                            <InputField
+                              label="Email"
+                              name="assignedOperator.email"
+                              value={formData.assignedOperator.email}
+                              onChange={handleFieldChange}
+                              disabled
+                            />
+                            <div className="md:col-span-2">
+                              <InputField
+                                label="Certification"
+                                name="assignedOperator.certification"
+                                value={formData.assignedOperator.certification}
+                                onChange={handleFieldChange}
+                                placeholder="Enter certification details"
+                              />
+                            </div>
+                          </div>
+                        )}
                       </div>
-                    )}
-                  </div>
-                </div>
+                    </div>
+                    {/* User role: QC-technician */}
+                    <div className="border border-blue-200 rounded-lg p-4 bg-blue-50">
+                      <h4 className="font-semibold text-gray-900 mb-4">
+                        Assigned Qc-Technician
+                      </h4>
+                      <div className="space-y-4">
+                        <div className="space-y-2">
+                          <Label className="text-sm font-medium text-gray-700">
+                            Select Qc-Technician
+                          </Label>
+                          <Select
+                            value={formData.qcTechnician.userId}
+                            onValueChange={handleQcSelect}
+                          >
+                            <SelectTrigger
+                              className={`h-10 ${
+                                errors["assignedOperator.userId"]
+                                  ? "border-red-500"
+                                  : ""
+                              }`}
+                            >
+                              <SelectValue placeholder="Choose a QC technician..." />
+                            </SelectTrigger>
+                            <SelectContent>
+                              {qcTechnicians.map((qc) => (
+                                <SelectItem
+                                  key={qc.user_id}
+                                  value={qc.user_id}
+                                >
+                                  <div className="flex items-center gap-3">
+                                    <UserCheck className="h-4 w-4 text-blue-600" />
+                                    <div>
+                                      <div className="font-medium">{qc.name}</div>
+                                      <div className="text-xs text-gray-500">{qc.email}</div>
+                                    </div>
+                                  </div>
+                                </SelectItem>
+                              ))}
+                            </SelectContent>
+                          </Select>
+                          {errors["qcTechnician.userId"] && (
+                            <span className="text-red-500 text-sm">
+                              {errors["qcTechnician.userId"]}
+                            </span>
+                          )}
+                        </div>
+
+                        {formData.qcTechnician.userId && (
+                          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                            <InputField
+                              label="Name"
+                              name="qcTechnician.name"
+                              value={formData.qcTechnician.name}
+                              onChange={handleFieldChange}
+                              disabled
+                            />
+                            <InputField
+                              label="Email"
+                              name="qcTechnician.email"
+                              value={formData.qcTechnician.email}
+                              onChange={handleFieldChange}
+                              disabled
+                            />
+                            <div className="md:col-span-2">
+                              <InputField
+                                label="Certification"
+                                name="qcTechnician.certification"
+                                value={formData.qcTechnician.certification}
+                                onChange={handleFieldChange}
+                                placeholder="Enter certification details"
+                              />
+                            </div>
+                          </div>
+                        )}
+                      </div>
+                    </div>
+                  </>
+                )}
               </div>
             </div>
 

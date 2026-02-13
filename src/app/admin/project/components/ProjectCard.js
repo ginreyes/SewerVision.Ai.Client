@@ -3,7 +3,7 @@
 import { memo, useCallback, useMemo } from "react";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
-import { Eye, FileVideo, Target, PencilIcon, Trash2Icon, Building2 } from "lucide-react";
+import { Eye, FileVideo, Target, PencilIcon, Trash2Icon, Building2, UserCog, Check, X } from "lucide-react";
 import { useRouter } from "next/navigation";
 import { useAlert } from "@/components/providers/AlertProvider";
 import { useDialog } from "@/components/providers/DialogProvider";
@@ -157,41 +157,94 @@ const ProjectCard = memo((props) => {
 
   const handleDelete = async (project_id) => {
     showDelete({
-      title: "Delete Projects",
+      title: "Request project deletion",
       description:
-        "Are you sure it will be deleted to our system but you can create another one ?",
+        "This will mark the project for deletion and notify the assigned team and customer. The project will only be permanently removed after admin approval.",
       onConfirm: async () => {
         try {
-          const { ok, data } = await api(`/api/projects/delete-project/${project_id}`, "DELETE");
-          if (!ok) {
-            showAlert('Project Deletion Failed', 'error');
+          const response = await api(`/api/projects/request-delete/${project_id}`, "POST", {});
+          if (!response.ok) {
+            showAlert('Delete request failed', 'error');
           } else {
-            showAlert("Project deleted", "success");
-            loadData();
+            showAlert("Delete request submitted", 'success');
+            loadData?.();
           }
         } catch (error) {
-          showAlert("Failed to delete project", "error");
+          showAlert("Failed to request project deletion", "error");
         }
       },
       onCancel: () => showAlert("Cancelled", "info"),
     });
   };
 
+  const handleApproveDelete = useCallback(
+    async (e, projectId) => {
+      e?.stopPropagation?.();
+      showDelete({
+        title: "Approve project deletion",
+        description: "Approve and permanently delete this project?",
+        onConfirm: async () => {
+          try {
+            const approveRes = await api(`/api/projects/approve-delete/${projectId}`, "POST");
+            if (!approveRes.ok) {
+              showAlert("Approval failed", "error");
+              return;
+            }
+            const delRes = await api(`/api/projects/delete-project/${projectId}`, "DELETE");
+            if (!delRes.ok) {
+              showAlert("Deletion failed", "error");
+              return;
+            }
+            showAlert("Project deleted", "success");
+            loadData?.();
+          } catch (err) {
+            showAlert("Failed to approve/delete project", "error");
+          }
+        },
+        onCancel: () => {},
+      });
+    },
+    [showDelete, showAlert, loadData]
+  );
+
+  const handleRejectDelete = useCallback(
+    async (e, projectId) => {
+      e?.stopPropagation?.();
+      try {
+        const res = await api(`/api/projects/reject-delete/${projectId}`, "POST");
+        if (res.ok) {
+          showAlert("Delete request rejected", "success");
+          loadData?.();
+        } else {
+          showAlert("Reject failed", "error");
+        }
+      } catch (err) {
+        showAlert("Failed to reject delete request", "error");
+      }
+    },
+    [showAlert, loadData]
+  );
+
   const customerName = getCustomerName();
 
   // Get actual video count
   const videoCount = project.videoCount ?? (project.videoUrl ? 1 : 0);
 
+  const isPendingDelete = project.deleteStatus === "pending";
+  const headerGradient = isPendingDelete
+    ? "from-gray-300 via-gray-400 to-gray-500"
+    : statusGradient.header;
+
   return (
     <Card
-      className="flex flex-col h-full overflow-hidden transition-all duration-300 hover:shadow-xl hover:-translate-y-1 p-0 cursor-pointer border-0 shadow-md"
+      className={`flex flex-col h-full overflow-hidden transition-all duration-300 hover:shadow-xl hover:-translate-y-1 p-0 cursor-pointer border-0 shadow-md ${isPendingDelete ? "bg-gray-50" : ""}`}
       onClick={() => {
         router.push(`?selectedProject=${project._id}`, { scroll: false });
         setSelectedProject(project);
       }}
     >
       {/* Header with Status-based Gradient */}
-      <CardHeader className={`bg-gradient-to-r ${statusGradient.header} text-white p-6 h-full relative overflow-hidden`}>
+      <CardHeader className={`bg-gradient-to-r ${headerGradient} text-white p-6 h-full relative overflow-hidden`}>
         {/* Decorative pattern */}
         <div className="absolute inset-0 opacity-10">
           <div className="absolute -right-8 -top-8 w-32 h-32 rounded-full border-4 border-white" />
@@ -257,7 +310,7 @@ const ProjectCard = memo((props) => {
 
       <CardContent className="flex flex-col justify-between flex-grow p-5 space-y-4 bg-white">
         <div>
-          <div className="flex items-center gap-2 mb-4">
+          <div className="flex flex-wrap items-center gap-2 mb-2">
             <span
               className={`px-3 py-1 rounded-full text-xs font-semibold ${getStatusColor(
                 project.status
@@ -272,7 +325,39 @@ const ProjectCard = memo((props) => {
             >
               {project.priority.toUpperCase()}
             </span>
+            {project.deleteStatus === "pending" && (
+              <span className="px-3 py-1 rounded-full text-xs font-semibold bg-amber-100 text-amber-800">
+                Pending Deletion
+              </span>
+            )}
           </div>
+          {project.deleteStatus === "pending" && !hideActions && (
+            <>
+              <p className="mb-3 text-xs text-gray-100/90">
+                This project is pending deletion. Review the request and choose <span className="font-semibold">Approve delete</span> or <span className="font-semibold">Reject</span>.
+              </p>
+              <div className="flex gap-2 mb-4" onClick={(e) => e.stopPropagation()}>
+                <Button
+                  size="sm"
+                  variant="default"
+                  className="gap-1 bg-green-600 hover:bg-green-700"
+                  onClick={(e) => handleApproveDelete(e, project._id)}
+                >
+                  <Check className="w-3.5 h-3.5" />
+                  Approve delete
+                </Button>
+                <Button
+                  size="sm"
+                  variant="outline"
+                  className="gap-1 bg-white/90 text-gray-800 hover:bg-white"
+                  onClick={(e) => handleRejectDelete(e, project._id)}
+                >
+                  <X className="w-3.5 h-3.5" />
+                  Reject
+                </Button>
+              </div>
+            </>
+          )}
 
           {/* Customer Info Section */}
           {customerName && (
@@ -339,6 +424,18 @@ const ProjectCard = memo((props) => {
 
           {/* Project Details */}
           <div className="space-y-2 text-sm bg-gray-50 rounded-xl p-3">
+            {project.managerId && (
+              <div className="flex justify-between items-center">
+                <span className="text-gray-500 flex items-center gap-1">
+                  <UserCog className="w-3.5 h-3.5" /> Project Lead:
+                </span>
+                <span className="font-semibold text-gray-800">
+                  {project.managerId.first_name && project.managerId.last_name
+                    ? `${project.managerId.first_name} ${project.managerId.last_name}`
+                    : project.managerId.username || "—"}
+                </span>
+              </div>
+            )}
             <div className="flex justify-between">
               <span className="text-gray-500">Length:</span>
               <span className="font-semibold text-gray-800">{project.totalLength}</span>
@@ -354,32 +451,30 @@ const ProjectCard = memo((props) => {
           </div>
         </div>
 
-        {/* Footer section - Operator */}
-        <div className="pt-4 border-t border-gray-100 text-sm flex justify-between items-center mt-auto">
+        {/* Footer section - Team Lead */}
+        <div className="pt-4 border-t border-gray-100 text-sm flex items-center mt-auto">
           <div className="flex items-center gap-3 text-gray-600">
             <div
               className={`w-9 h-9 rounded-full flex items-center justify-center text-white text-sm font-medium shadow-sm ${getAvatarColor(
-                project.assignedOperator?.name || "Unknown"
+                (project.managerId?.first_name && project.managerId?.last_name)
+                  ? `${project.managerId.first_name} ${project.managerId.last_name}`
+                  : project.managerId?.username || "Unknown"
               )}`}
             >
-              {getInitials(project.assignedOperator?.name || "UN")}
+              {getInitials(
+                (project.managerId?.first_name && project.managerId?.last_name)
+                  ? `${project.managerId.first_name} ${project.managerId.last_name}`
+                  : project.managerId?.username || "UN"
+              )}
             </div>
             <div>
-              <p className="text-xs text-gray-400">Operator</p>
+              <p className="text-xs text-gray-400">Team Lead</p>
               <span className="font-semibold text-gray-700">
-                {project.assignedOperator?.name || "Unassigned"}
+                {(project.managerId?.first_name && project.managerId?.last_name)
+                  ? `${project.managerId.first_name} ${project.managerId.last_name}`
+                  : project.managerId?.username || "Unassigned"}
               </span>
             </div>
-          </div>
-          <div className="text-right">
-            <p className="text-xs text-gray-400">Due Date</p>
-            <p className="font-semibold text-gray-700">
-              {project.estimatedCompletion || project.estimated_completion
-                ? new Date(
-                  project.estimatedCompletion || project.estimated_completion
-                ).toLocaleDateString()
-                : "N/A"}
-            </p>
           </div>
         </div>
       </CardContent>

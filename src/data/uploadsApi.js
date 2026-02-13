@@ -1,6 +1,6 @@
 "use client";
 
-import { api } from "@/lib/helper";
+import { api, getCookie } from "@/lib/helper";
 
 /**
  * Uploads API functions
@@ -118,7 +118,7 @@ export const uploadsApi = {
    */
   async downloadFile(uploadId, filename) {
     const API = process.env.NEXT_PUBLIC_BACKEND_URL || "http://localhost:5000";
-    const authToken = localStorage.getItem("authToken");
+    const authToken = getCookie("authToken");
     
     const response = await fetch(`${API}/api/uploads/download/${uploadId}`, {
       method: 'GET',
@@ -158,7 +158,7 @@ export const uploadsApi = {
     }
 
     const API = process.env.NEXT_PUBLIC_BACKEND_URL || "http://localhost:5000";
-    const authToken = localStorage.getItem("authToken");
+    const authToken = getCookie("authToken");
     
     const url = `${API}/api/uploads/view/${uploadId}`;
     

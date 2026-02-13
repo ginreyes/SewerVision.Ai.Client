@@ -1,3 +1,4 @@
+//src/app/admin/users/[user_id]/page.js
 'use client'
 
 import { api } from "@/lib/helper"
@@ -6,8 +7,7 @@ import React, { useEffect, useRef, useState } from "react"
 import {
   FaUserShield, FaUser, FaUserTag, FaCheckCircle, FaTimesCircle,
   FaEdit, FaArrowLeft, FaCamera, FaCog, FaTools,
-  FaBuilding, FaPhone, FaMapMarkerAlt, FaBriefcase, FaCalendarAlt,
-  FaChartLine, FaFileAlt, FaStar, FaCrown, FaEnvelope, FaIdCard
+  FaBuilding,FaStar, FaCrown, FaEnvelope, FaIdCard,
 } from "react-icons/fa"
 import { Input } from "@/components/ui/input"
 import {
@@ -20,10 +20,13 @@ import { Label } from "@/components/ui/label"
 import { useDialog } from "@/components/providers/DialogProvider"
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card"
 import { Badge } from "@/components/ui/badge"
-import { Separator } from "@/components/ui/separator"
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar"
-import { Textarea } from "@/components/ui/textarea"
 import { Switch } from "@/components/ui/switch"
+import { SeparatorVertical } from "@/components/ui/separator"
+import CustomerDetailed from "../components/CustomerDetailed"
+import QcTechnicianDetailed from "../components/QcTechnicianDetailed"
+import TeamLeadDetailed from "../components/TeamLeadDetailed"
+import OperatorDetailed, { OperatorWorkspaceOverview } from "../components/OperatorDetailed"
 
 const roleOptions = [
   {
@@ -53,6 +56,13 @@ const roleOptions = [
     icon: <FaTools className="h-4 w-4" />,
     color: "bg-orange-100 text-orange-800 border-orange-200",
     description: "Equipment operation"
+  },
+  {
+    value: "user",
+    label: "Management User (Team Lead)",
+    icon: <FaUserTag className="h-4 w-4" />,
+    color: "bg-emerald-100 text-emerald-800 border-emerald-200",
+    description: "Team lead / management workspace"
   }
 ]
 
@@ -76,12 +86,16 @@ const UserProfile = () => {
     first_name: "", last_name: "", email: "",
     username: "", role: "", active: false,
     avatar: "",
-    // Role-specific fields
     certification: "", license_number: "", experience_years: "",
     shift_preference: "", equipment_experience: "",
     company_name: "", industry: "", phone_number: "", address: "",
     account_type: "standard", company_size: "", tax_id: "", billing_contact: "",
   })
+
+  // Team lead → members they manage
+  const [managedMembers, setManagedMembers] = useState([])
+  const [availableMembers, setAvailableMembers] = useState([])
+  const [selectedMemberId, setSelectedMemberId] = useState("")
 
   useEffect(() => {
     const fetchUser = async () => {
@@ -90,17 +104,32 @@ const UserProfile = () => {
         const u = response.data.user;
 
         setUser(u);
+        setManagedMembers(Array.isArray(u.managedMembers) ? u.managedMembers : []);
         setForm({
           first_name: u.first_name || "", last_name: u.last_name || "",
           email: u.email || "", username: u.username || "",
           role: u.role || "", active: u.active ?? false,
-          avatar: u.avatar || "",
+          avatar: u.avatar || "default_avatar.png",
           // Role fields
           certification: u.certification || "", license_number: u.license_number || "", experience_years: u.experience_years || "",
           shift_preference: u.shift_preference || "", equipment_experience: u.equipment_experience || "",
           company_name: u.company_name || "", industry: u.industry || "", phone_number: u.phone_number || "", address: u.address || "",
           account_type: u.account_type || "standard", company_size: u.company_size || "", tax_id: u.tax_id || "", billing_contact: u.billing_contact || "",
         });
+
+        // Load potential team members (operators & QC techs)
+        const { ok, data } = await api("/api/users/get-all-user?limit=200", "GET");
+        if (ok && Array.isArray(data.users)) {
+          const candidates = data.users.filter(
+            (m) =>
+              m._id !== u._id &&
+              m.role !== "admin" &&
+              m.role !== "customer"
+          );
+          setAvailableMembers(candidates);
+        } else {
+          setAvailableMembers([]);
+        }
       } catch (err) {
         console.error("Fetch error:", err);
         showAlert("Failed to load user profile", "error");
@@ -136,7 +165,8 @@ const UserProfile = () => {
       account_type: form.account_type,
       company_size: form.company_size,
       tax_id: form.tax_id,
-      billing_contact: form.billing_contact
+      billing_contact: form.billing_contact,
+      managedMembers: managedMembers.map((m) => m._id || m.user_id)
     };
 
     showProfile({
@@ -156,7 +186,7 @@ const UserProfile = () => {
           const { ok: updateOk, data: updateData } = await api("/api/users/change-info", "PUT", payload);
           if (!updateOk) throw new Error(updateData?.message || "Failed to update user");
 
-          setUser((prev) => ({ ...prev, ...form }));
+          setUser((prev) => ({ ...prev, ...form, managedMembers }));
           setIsEdit(false);
           showAlert("User profile updated successfully", "success");
         } catch (err) {
@@ -178,7 +208,11 @@ const UserProfile = () => {
   if (loading) return <div className="flex justify-center py-20"><div className="animate-spin rounded-full h-10 w-10 border-b-2 border-rose-500"></div></div>;
   if (!user) return <div className="text-center py-20 font-medium text-gray-500">User not found.</div>;
 
-  const currentRole = roleOptions.find(r => r.value === user.role) || { label: user.role, color: "bg-gray-100 text-gray-800" };
+  const normalizedRole = (user.role || "").toLowerCase();
+  const currentRole =
+    roleOptions.find(
+      (r) => (r.value || "").toLowerCase() === normalizedRole
+    ) || { label: user.role, color: "bg-gray-100 text-gray-800" };
 
   return (
     <div className="max-w-7xl mx-auto p-6 space-y-8 animate-in fade-in duration-500">
@@ -208,7 +242,47 @@ const UserProfile = () => {
         {/* Left Column: Avatar & Quick Info */}
         <div className="lg:col-span-4 space-y-6">
           <Card className="overflow-hidden border-rose-100 shadow-lg">
-            <div className="h-32 bg-gradient-to-r from-rose-500 to-pink-500 relative">
+            <div
+              className="h-32 relative"
+              style={(() => {
+                if (normalizedRole === 'operator') {
+                  return {
+                    backgroundImage:
+                      "url('/background_pictures/operator_background.jpg')",
+                    backgroundSize: 'cover',
+                    backgroundPosition: 'center',
+                  };
+                }
+                if (normalizedRole === 'customer') {
+                  return {
+                    backgroundImage:
+                      "url('/background_pictures/customer_background.jpg')",
+                    backgroundSize: 'cover',
+                    backgroundPosition: 'center',
+                  };
+                }
+                if (normalizedRole === 'qc-technician') {
+                  return {
+                    backgroundImage:
+                      "url('/background_pictures/qc-techinician_background.jpg')",
+                    backgroundSize: 'cover',
+                    backgroundPosition: 'center',
+                  };
+                }
+                if (normalizedRole === 'user') {
+                  return {
+                    backgroundImage:
+                      "url('/background_pictures/user-team_background.jpg')",
+                    backgroundSize: 'cover',
+                    backgroundPosition: 'center',
+                  };
+                }
+                return {
+                  backgroundImage:
+                    'linear-gradient(to right, #f43f5e, #ec4899)',
+                };
+              })()}
+            >
               <div className="absolute top-4 right-4">
                 <Badge className={`${user.active ? 'bg-green-500' : 'bg-red-500'} text-white border-none shadow-sm`}>
                   {user.active ? <><FaCheckCircle className="mr-1" /> Active</> : <><FaTimesCircle className="mr-1" /> Inactive</>}
@@ -324,143 +398,75 @@ const UserProfile = () => {
                     />
                   </div>
                 </div>
-                <div className="space-y-2">
-                  <Label>Role</Label>
-                  <Select
-                    disabled={!isEdit}
-                    value={form.role}
-                    onValueChange={v => setForm({ ...form, role: v })}
-                  >
-                    <SelectTrigger className={!isEdit ? "bg-gray-50" : "bg-white"}>
-                      <SelectValue />
-                    </SelectTrigger>
-                    <SelectContent>
-                      {roleOptions.map(opt => (
-                        <SelectItem key={opt.value} value={opt.value}>{opt.label}</SelectItem>
-                      ))}
-                    </SelectContent>
-                  </Select>
-                </div>
+
+                {/* Right column: either role selector or operator workspace overview */}
+                {normalizedRole === 'operator' ? (
+                  <div className="space-y-2">
+                    <Label>Operator Workspace Overview</Label>
+                    <OperatorWorkspaceOverview operatorId={user._id} />
+                  </div>
+                ) : (
+                  <div className="space-y-2">
+                    <Label>Role</Label>
+                    <Select
+                      disabled={!isEdit}
+                      value={form.role}
+                      onValueChange={v => setForm({ ...form, role: v })}
+                    >
+                      <SelectTrigger className={!isEdit ? "bg-gray-50" : "bg-white"}>
+                        <SelectValue />
+                      </SelectTrigger>
+                      <SelectContent>
+                        {roleOptions.map(opt => (
+                          <SelectItem key={opt.value} value={opt.value}>{opt.label}</SelectItem>
+                        ))}
+                      </SelectContent>
+                    </Select>
+                  </div>
+                )}
               </div>
             </CardContent>
           </Card>
 
           {/* Role Specific Modules */}
-          {user.role === 'customer' && (
-            <Card className="border-emerald-100 shadow-sm">
-              <CardHeader className="border-b border-emerald-50 bg-emerald-50/30">
-                <div className="flex items-center gap-2">
-                  <div className="p-2 bg-emerald-100 rounded-lg text-emerald-600"><FaBuilding /></div>
-                  <div>
-                    <CardTitle className="text-lg">Company Profile</CardTitle>
-                    <CardDescription>Business and billing details</CardDescription>
-                  </div>
-                </div>
-              </CardHeader>
-              <CardContent className="p-6 grid grid-cols-1 md:grid-cols-2 gap-6">
-                <div className="col-span-2 md:col-span-1">
-                  <Label className="text-emerald-800">Company Name</Label>
-                  <Input disabled={!isEdit} value={form.company_name} onChange={e => setForm({ ...form, company_name: e.target.value })} />
-                </div>
-                <div className="col-span-2 md:col-span-1">
-                  <Label className="text-emerald-800">Industry</Label>
-                  <Input disabled={!isEdit} value={form.industry} onChange={e => setForm({ ...form, industry: e.target.value })} />
-                </div>
-                <div className="col-span-2">
-                  <Label className="text-emerald-800">Address</Label>
-                  <Textarea disabled={!isEdit} value={form.address} onChange={e => setForm({ ...form, address: e.target.value })} rows={2} />
-                </div>
-                <div className="col-span-2 pt-4 border-t border-gray-100">
-                  <h4 className="font-semibold text-gray-900 mb-4 flex items-center gap-2"><FaCrown text-amber-500 /> Subscription Details</h4>
-                  <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                    <div>
-                      <Label>Account Plan</Label>
-                      <Select disabled={!isEdit} value={form.account_type} onValueChange={v => setForm({ ...form, account_type: v })}>
-                        <SelectTrigger>
-                          <SelectValue />
-                        </SelectTrigger>
-                        <SelectContent>
-                          {accountTypeOptions.map(opt => (
-                            <SelectItem key={opt.value} value={opt.value}>{opt.label}</SelectItem>
-                          ))}
-                        </SelectContent>
-                      </Select>
-                    </div>
-                    <div>
-                      <Label>Tax ID</Label>
-                      <Input disabled={!isEdit} value={form.tax_id} onChange={e => setForm({ ...form, tax_id: e.target.value })} />
-                    </div>
-                  </div>
-                </div>
-              </CardContent>
-            </Card>
+          {normalizedRole === 'customer' && (
+            <CustomerDetailed
+              form={form}
+              isEdit={isEdit}
+              setForm={setForm}
+              accountTypeOptions={accountTypeOptions}
+            />
           )}
 
-          {user.role === 'Qc-Technician' && (
-            <Card className="border-purple-100 shadow-sm">
-              <CardHeader className="border-b border-purple-50 bg-purple-50/30">
-                <div className="flex items-center gap-2">
-                  <div className="p-2 bg-purple-100 rounded-lg text-purple-600"><FaCog /></div>
-                  <div>
-                    <CardTitle className="text-lg">Qualification Data</CardTitle>
-                    <CardDescription>Certifications and experience</CardDescription>
-                  </div>
-                </div>
-              </CardHeader>
-              <CardContent className="p-6 space-y-4">
-                <div className="grid grid-cols-2 gap-4">
-                  <div>
-                    <Label>Certification</Label>
-                    <Input disabled={!isEdit} value={form.certification} onChange={e => setForm({ ...form, certification: e.target.value })} />
-                  </div>
-                  <div>
-                    <Label>License #</Label>
-                    <Input disabled={!isEdit} value={form.license_number} onChange={e => setForm({ ...form, license_number: e.target.value })} />
-                  </div>
-                  <div className="col-span-2">
-                    <Label>Experience (Years)</Label>
-                    <Input type="number" disabled={!isEdit} value={form.experience_years} onChange={e => setForm({ ...form, experience_years: e.target.value })} />
-                  </div>
-                </div>
-              </CardContent>
-            </Card>
+          {normalizedRole === 'qc-technician' && (
+            <QcTechnicianDetailed
+              user={user}
+              form={form}
+              isEdit={isEdit}
+              setForm={setForm}
+            />
           )}
 
-          {user.role === 'Operator' && (
-            <Card className="border-orange-100 shadow-sm">
-              <CardHeader className="border-b border-orange-50 bg-orange-50/30">
-                <div className="flex items-center gap-2">
-                  <div className="p-2 bg-orange-100 rounded-lg text-orange-600"><FaTools /></div>
-                  <div>
-                    <CardTitle className="text-lg">Operational Data</CardTitle>
-                    <CardDescription>Shift preferences and equipment logs</CardDescription>
-                  </div>
-                </div>
-              </CardHeader>
-              <CardContent className="p-6 space-y-4">
-                <div className="grid grid-cols-2 gap-4">
-                  <div>
-                    <Label>Certification</Label>
-                    <Input disabled={!isEdit} value={form.certification} onChange={e => setForm({ ...form, certification: e.target.value })} />
-                  </div>
-                  <div>
-                    <Label>Preferred Shift</Label>
-                    <Select disabled={!isEdit} value={form.shift_preference} onValueChange={v => setForm({ ...form, shift_preference: v })}>
-                      <SelectTrigger><SelectValue placeholder="Select..." /></SelectTrigger>
-                      <SelectContent>
-                        <SelectItem value="day">Day Shift</SelectItem>
-                        <SelectItem value="night">Night Shift</SelectItem>
-                        <SelectItem value="rotating">Rotating</SelectItem>
-                      </SelectContent>
-                    </Select>
-                  </div>
-                  <div className="col-span-2">
-                    <Label>Equipment Expertise</Label>
-                    <Textarea disabled={!isEdit} value={form.equipment_experience} onChange={e => setForm({ ...form, equipment_experience: e.target.value })} />
-                  </div>
-                </div>
-              </CardContent>
-            </Card>
+          {normalizedRole === 'operator' && (
+            <OperatorDetailed
+              user={user}
+              form={form}
+              isEdit={isEdit}
+              setForm={setForm}
+            />
+          )}
+
+          {/* Management User (Team Lead) */}
+          {normalizedRole === 'user' && (
+            <TeamLeadDetailed
+              user={user}
+              isEdit={isEdit}
+              managedMembers={managedMembers}
+              setManagedMembers={setManagedMembers}
+              availableMembers={availableMembers}
+              selectedMemberId={selectedMemberId}
+              setSelectedMemberId={setSelectedMemberId}
+            />
           )}
 
         </div>
@@ -468,5 +474,167 @@ const UserProfile = () => {
     </div>
   )
 }
+
+const OperatorCurrentProjects = ({ operatorId }) => {
+  const [loading, setLoading] = useState(true);
+  const [projects, setProjects] = useState([]);
+  const [uploadCount, setUploadCount] = useState(null);
+  const [leaderName, setLeaderName] = useState(null);
+
+  useEffect(() => {
+    const load = async () => {
+      if (!operatorId) return;
+      try {
+        setLoading(true);
+        // Load projects scoped to operator
+        const projectParams = new URLSearchParams({
+          page: "1",
+          limit: "5",
+          assignedOperatorId: String(operatorId),
+        });
+        const { ok: okProjects, data: projectData } = await api(
+          `/api/projects/get-all-projects?${projectParams.toString()}`,
+          "GET"
+        );
+        if (okProjects && Array.isArray(projectData.data)) {
+          setProjects(projectData.data);
+        } else if (Array.isArray(projectData)) {
+          setProjects(projectData);
+        } else {
+          setProjects([]);
+        }
+
+        // Load detailed operator profile to get leader + uploads
+        const { data: detail } = await api(
+          `/api/users/get-user-details/${operatorId}`,
+          "GET"
+        );
+        const u = detail?.user;
+        if (u?.leader) {
+          setLeaderName(
+            u.leader.name ||
+              u.leader.username ||
+              u.leader.email ||
+              "Team Lead"
+          );
+        } else {
+          setLeaderName("No team lead assigned");
+        }
+        if (u?.uploadStats && typeof u.uploadStats.totalUploads === "number") {
+          setUploadCount(u.uploadStats.totalUploads);
+        }
+      } catch (err) {
+        console.error("Failed to load operator projects", err);
+        setProjects([]);
+      } finally {
+        setLoading(false);
+      }
+    };
+
+    load();
+  }, [operatorId]);
+
+  if (loading) {
+    return (
+      <div className="h-[78px] flex items-center justify-center rounded-lg border border-gray-100 bg-gray-50 text-xs text-gray-500">
+        Loading projects...
+      </div>
+    );
+  }
+
+  return (
+    <div className="rounded-lg border border-blue-100 bg-blue-50/40 p-3 space-y-3 max-h-64 overflow-y-auto">
+      {/* Leader & uploads summary */}
+      <div className="flex items-center justify-between gap-3 text-[11px]">
+        <div className="min-w-0">
+          <p className="font-semibold text-blue-900 truncate">
+            Team Lead
+          </p>
+          <p className="text-[11px] text-blue-800 truncate">
+            {leaderName || "No team lead assigned"}
+          </p>
+        </div>
+        {uploadCount !== null && (
+          <div className="text-right">
+            <p className="text-[10px] text-blue-900 uppercase tracking-wide">
+              Uploads
+            </p>
+            <p className="text-sm font-semibold text-blue-800">
+              {uploadCount}
+            </p>
+          </div>
+        )}
+      </div>
+
+      <SeparatorVertical className="my-1 border-blue-100" />
+
+      {/* Current projects list (can be empty) */}
+      {projects.length ? (
+        <>
+          <p className="text-[11px] font-semibold text-blue-900 uppercase tracking-wide">
+            Current Projects
+          </p>
+          <div className="space-y-1.5">
+            {projects.slice(0, 4).map((p) => (
+              <div
+                key={p._id}
+                className="flex items-center justify-between gap-2 text-xs"
+              >
+                <div className="min-w-0">
+                  <p className="font-semibold text-gray-900 truncate">
+                    {p.name || "Untitled Project"}
+                  </p>
+                  <p className="text-[11px] text-gray-500 truncate">
+                    {p.location || p.client || p.workOrder}
+                  </p>
+                </div>
+                <span className="px-2 py-0.5 rounded-full text-[10px] font-semibold bg-white text-blue-700 border border-blue-200">
+                  {(p.status || "").replace("-", " ").toUpperCase()}
+                </span>
+              </div>
+            ))}
+            {projects.length > 4 && (
+              <p className="text-[11px] text-gray-500">
+                +{projects.length - 4} more project
+                {projects.length - 4 > 1 ? "s" : ""} assigned.
+              </p>
+            )}
+          </div>
+        </>
+      ) : (
+        <div className="h-[60px] flex items-center justify-center rounded-lg border border-dashed border-blue-100 bg-blue-50 text-[11px] text-blue-700">
+          No projects assigned to this operator yet.
+        </div>
+      )}
+
+      {/* Applications / modules the operator can use */}
+      <div className="pt-2 border-t border-blue-100 space-y-1.5">
+        <p className="text-[11px] font-semibold text-blue-900 uppercase tracking-wide">
+          Applications Available
+        </p>
+        <div className="flex flex-wrap gap-1.5 text-[11px]">
+          <span className="px-2 py-0.5 rounded-full bg-white text-blue-700 border border-blue-200">
+            Operator Dashboard
+          </span>
+          <span className="px-2 py-0.5 rounded-full bg-white text-blue-700 border border-blue-200">
+            Inspection Projects
+          </span>
+          <span className="px-2 py-0.5 rounded-full bg-white text-blue-700 border border-blue-200">
+            Reports Workspace
+          </span>
+          <span className="px-2 py-0.5 rounded-full bg-white text-blue-700 border border-blue-200">
+            Activity Logs
+          </span>
+          <span className="px-2 py-0.5 rounded-full bg-white text-blue-700 border border-blue-200">
+            Equipment & Devices
+          </span>
+          <span className="px-2 py-0.5 rounded-full bg-white text-blue-700 border border-blue-200">
+            Notifications
+          </span>
+        </div>
+      </div>
+    </div>
+  );
+};
 
 export default UserProfile

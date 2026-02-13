@@ -4,12 +4,12 @@ import Navbar from "@/components/ui/navbar";
 import Sidebar from "@/components/ui/sidebar";
 import { useEffect, useState } from "react";
 import { usePathname, useRouter } from "next/navigation";
-import { api } from "@/lib/helper";
+import { api, getCookie, deleteCookie } from "@/lib/helper";
 import AdminSidebar from "@/components/ui/AdminSidebar";
 import { TourGuide, useTourGuide } from "@/components/TourGuide";
 
 export default function AdminLayout({ children }) {
-  const [openSidebar, setOpenSidebar] = useState(false);
+  const [openSidebar, setOpenSidebar] = useState(true);
   const [role, setRole] = useState(null);
   const router = useRouter();
   const pathname = usePathname();
@@ -34,8 +34,9 @@ export default function AdminLayout({ children }) {
 
     const fetchUserRole = async () => {
       try {
-        const storedUsername = localStorage.getItem("username");
-        if (!storedUsername) {
+        const storedUsername = getCookie("username");
+        const token = getCookie("authToken");
+        if (!storedUsername || !token) {
           // Only redirect if we definitely don't have a user
           router.push("/login");
           return;
@@ -54,17 +55,18 @@ export default function AdminLayout({ children }) {
           }
         } else {
           console.error("Role check failed:", error || "No role returned");
-          // Auth failed: Clear session and redirect to login to prevent loops and allow retry
-          localStorage.removeItem("authToken");
-          localStorage.removeItem("username");
-          localStorage.removeItem("role");
+          // Auth failed: Clear session cookies and redirect to login
+          deleteCookie("authToken");
+          deleteCookie("username");
+          deleteCookie("role");
           router.push("/login");
         }
       } 
       catch (error) {
         console.error("Failed to fetch role", error);
-        localStorage.removeItem("authToken");
-        localStorage.removeItem("username");
+        deleteCookie("authToken");
+        deleteCookie("username");
+        deleteCookie("role");
         router.push("/login");
       }
     };

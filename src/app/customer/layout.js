@@ -3,7 +3,7 @@
 import Navbar from "@/components/ui/navbar";
 import { useEffect, useState } from "react";
 import { usePathname, useRouter } from "next/navigation";
-import { api } from "@/lib/helper";
+import { api, getCookie, deleteCookie } from "@/lib/helper";
 import CustomerSidebar from "./components/CustomerSidebar";
 import { TourGuide, useTourGuide } from "@/components/TourGuide";
 
@@ -30,8 +30,9 @@ export default function CustomerLayout({ children }) {
   useEffect(() => {
     const fetchUserRole = async () => {
       try {
-        const storedUsername = localStorage.getItem("username");
-        if (!storedUsername) {
+        const storedUsername = getCookie("username");
+        const token = getCookie("authToken");
+        if (!storedUsername || !token) {
           router.push("/login");
           return;
         }
@@ -46,10 +47,16 @@ export default function CustomerLayout({ children }) {
           }
           setRole(data.role);
         } else {
+          deleteCookie("authToken");
+          deleteCookie("username");
+          deleteCookie("role");
           router.push("/login");
         }
       } catch (error) {
         console.error("Failed to fetch role", error);
+        deleteCookie("authToken");
+        deleteCookie("username");
+        deleteCookie("role");
         router.push("/login");
       }
     };

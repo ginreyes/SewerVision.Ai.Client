@@ -2,7 +2,7 @@
 
 import QcSidebar from "@/components/ui/QcSidebar";
 import Navbar from "@/components/ui/navbar";
-import { api } from "@/lib/helper";
+import { api, getCookie, deleteCookie } from "@/lib/helper";
 import { useEffect, useState } from "react";
 import { TourGuide, useTourGuide } from "@/components/TourGuide";
 
@@ -28,13 +28,17 @@ export default function QcTechLayout({ children }) {
   useEffect(() => {
     async function fetchUserRole() {
       try {
-        const storedUsername = localStorage.getItem("username");
-        if (!storedUsername) return;
+        const storedUsername = getCookie("username");
+        const token = getCookie("authToken");
+        if (!storedUsername || !token) return;
 
         const { data, error } = await api(`/api/users/role/${storedUsername}`);
 
         if (error) {
           console.error("Error fetching user role:", error);
+          deleteCookie("authToken");
+          deleteCookie("username");
+          deleteCookie("role");
           return;
         }
 

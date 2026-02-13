@@ -1,13 +1,14 @@
 "use client";
 import React, { useState, useEffect } from "react";
-import AddUserModal from "./AddUserModal";
-import SendEmailModal from "./SendEmailModal";
-import { api } from "@/lib/helper";
+import AddUserModal from "./components/AddUserModal";
+import SendEmailModal from "./components/SendEmailModal";
+import { api, getCookie } from "@/lib/helper";
 import { useAlert } from "@/components/providers/AlertProvider";
 import { useDialog } from "@/components/providers/DialogProvider";
 import SewerTable from "@/components/ui/SewerTable";
+import AuditTable from "@/components/ui/AuditTable";
 import { useRouter } from "next/navigation";
-import CardList from "./CardList";
+import CardList from "./components/CardList";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Button } from "@/components/ui/button";
 import {
@@ -18,14 +19,16 @@ import {
   Power,
   Trash2,
   Shield,
-  Activity
+  Activity,
+  RefreshCw,
 } from "lucide-react";
+import { Card } from "@/components/ui/card";
 
 const UserPage = () => {
   const [users, setUsers] = useState([]);
   const [search, setSearch] = useState("");
   const [loading, setLoading] = useState(true);
-  const [filters, setFilters] = useState({ role: "", plan: "", status: "" });
+  const [filters, setFilters] = useState({ role: "", status: "" });
   const { showAlert } = useAlert();
   const { showDelete } = useDialog();
   const router = useRouter();
@@ -48,7 +51,6 @@ const UserPage = () => {
         ...(search && { search }),
         ...(filters.role && filters.role !== 'all' && { role: filters.role }),
         ...(filters.status && filters.status !== 'all' && { status: filters.status }),
-        ...(filters.plan && filters.plan !== 'all' && { plan: filters.plan }),
       });
 
       const { ok, data } = await api(`/api/users/get-all-user?${queryParams}`, "GET");
@@ -77,7 +79,14 @@ const UserPage = () => {
         "Are you sure it will be deleted to our system but you can create another one ?",
       onConfirm: async () => {
         try {
-          await api("/api/users/delete-account", "DELETE", { user_id });
+          const actorUsername = getCookie("username") || "unknown-admin";
+          const actorRole = getCookie("role") || "admin";
+
+          await api("/api/users/delete-account", "DELETE", {
+            user_id,
+            actorUsername,
+            actorRole,
+          });
           setUsers((prev) => prev.filter((u) => u._id !== user_id));
           showAlert("User deleted", "success");
           fetchUsers();
@@ -89,16 +98,21 @@ const UserPage = () => {
     });
   };
 
-
-
-  // Server-side filtering now, so no client-side filtering needed
-  // But keep for any remaining client-side operations
   const filteredUsers = users;
 
   const [emailModalOpen, setEmailModalOpen] = useState(false);
   const [selectedUserForEmail, setSelectedUserForEmail] = useState(null);
   const [selectedUsers, setSelectedUsers] = useState([]);
   const [activeTab, setActiveTab] = useState("users");
+
+  // Audit logs state
+  const [auditLogs, setAuditLogs] = useState([]);
+  const [auditLoading, setAuditLoading] = useState(false);
+  const [auditPage, setAuditPage] = useState(1);
+  const [auditTotalPages, setAuditTotalPages] = useState(1);
+  const [auditFilters, setAuditFilters] = useState({ action: "all" });
+  const [auditSearch, setAuditSearch] = useState("");
+  const [auditTotal, setAuditTotal] = useState(0);
 
   const handleDisable = async (item) => {
     const userId = item.user.user_id;
@@ -153,14 +167,43 @@ const UserPage = () => {
     }
   }
 
-
   const columns = [
     { key: "user", name: "USER" },
-    { key: "role", name: "ROLE" },
-    { key: "plan", name: "PLAN" },
-    { key: "billing", name: "BILLING" },
+    { key: "roleTag", name: "ROLE" },
     { key: "status", name: "STATUS" },
   ];
+
+  const getRoleBadge = (u) => {
+    const role = (u.role || "").toLowerCase();
+    let label = u.role;
+    let classes =
+      "inline-flex items-center px-2.5 py-1 rounded-full text-xs font-semibold border bg-gray-100 text-gray-700 border-gray-200";
+
+    if (role === "admin") {
+      label = "Admin";
+      classes =
+        "inline-flex items-center px-2.5 py-1 rounded-full text-xs font-semibold border bg-rose-100 text-rose-700 border-rose-200";
+    } else if (role === "user") {
+      label = "User";
+      classes =
+        "inline-flex items-center px-2.5 py-1 rounded-full text-xs font-semibold border bg-red-100 text-red-700 border-red-200";
+    } else if (role === "operator") {
+      label = "Operator";
+      classes =
+        "inline-flex items-center px-2.5 py-1 rounded-full text-xs font-semibold border bg-blue-100 text-blue-700 border-blue-200";
+    } else if (role === "qc-technician") {
+      label = "QC Technician";
+      classes =
+        "inline-flex items-center px-2.5 py-1 rounded-full text-xs font-semibold border bg-emerald-100 text-emerald-700 border-emerald-200";
+    } else if (role === "customer") {
+      label = "Customer";
+      classes =
+        "inline-flex items-center px-2.5 py-1 rounded-full text-xs font-semibold border bg-amber-100 text-amber-700 border-amber-200";
+    }
+
+    return <span className={classes}>{label}</span>;
+  };
+
 
   const tableData = filteredUsers.map((u) => ({
     user: {
@@ -169,42 +212,34 @@ const UserPage = () => {
       avatar: u.avatar,
       user_id: u.user_id,
     },
+    roleTag: getRoleBadge(u),
     role: u.role,
-    plan: u.plan,
-    billing: u.billing || "N/A",
     status: u.status,
   }));
 
-  const filterOptions = [{
-    key: "role",
-    label: "Role",
-    options: [
-      { label: "Show All", value: "all" },
-      { label: "Admin", value: "admin" },
-      { label: "Customer", value: "customer" },
-      { label: "QC Technician", value: "Qc-Technician" },
-      { label: "Operator", value: "Operator" },
-    ],
-  },
-  {
-    key: "plan",
-    label: "Plan",
-    options: [
-      { label: "Show All", value: "all" },
-      { label: "Enterprise", value: "Enterprise" },
-      { label: "Basic", value: "Basic" },
-    ],
-  },
-  {
-    key: "status",
-    label: "Status",
-    options: [
-      { label: "Show All", value: "all" },
-      { label: "Active", value: "Active" },
-      { label: "Inactive", value: "Inactive" },
-      { label: "Pending", value: "Pending" },
-    ],
-  },
+  const filterOptions = [
+    {
+      key: "role",
+      label: "Role",
+      options: [
+        { label: "Show All", value: "all" },
+        { label: "Admin", value: "admin" },
+        { label: "Customer", value: "customer" },
+        { label: "QC Technician", value: "qc-technician" },
+        { label: "Operator", value: "operator" },
+        { label: "Management User", value: "user" },
+      ],
+    },
+    {
+      key: "status",
+      label: "Status",
+      options: [
+        { label: "Show All", value: "all" },
+        { label: "Active", value: "Active" },
+        { label: "Inactive", value: "Inactive" },
+        { label: "Pending", value: "Pending" },
+      ],
+    },
   ];
 
   const handleFilterChange = (key, val) => {
@@ -285,8 +320,8 @@ const UserPage = () => {
 
     const selectedData = users.filter(u => selectedUsers.includes(u.user_id || u._id));
     const csvContent = [
-      ["Name", "Email", "Role", "Status", "Plan"],
-      ...selectedData.map(u => [u.name, u.email, u.role, u.status, u.plan])
+      ["Name", "Email", "Role", "Status"],
+      ...selectedData.map(u => [u.name, u.email, u.role, u.status])
     ].map(row => row.join(",")).join("\n");
 
     const blob = new Blob([csvContent], { type: 'text/csv' });
@@ -297,6 +332,46 @@ const UserPage = () => {
     link.click();
 
     showAlert(`Exported ${selectedUsers.length} user(s)`, "success");
+  };
+
+  // Fetch audit logs
+  const fetchAuditLogs = async () => {
+    try {
+      setAuditLoading(true);
+      const params = new URLSearchParams({
+        page: auditPage.toString(),
+        limit: "25",
+        ...(auditFilters.action && auditFilters.action !== "all" && { action: auditFilters.action }),
+      });
+
+      const { ok, data } = await api(`/api/audit/user-management?${params.toString()}`, "GET");
+      if (ok && Array.isArray(data.logs)) {
+        setAuditLogs(data.logs);
+        setAuditTotalPages(data.pagination?.totalPages || 1);
+        setAuditTotal(data.pagination?.total || data.logs.length);
+      } else {
+        setAuditLogs([]);
+      }
+    } catch (err) {
+      console.error("Fetch audit logs error:", err);
+      showAlert("Failed to load audit logs", "error");
+      setAuditLogs([]);
+    } finally {
+      setAuditLoading(false);
+    }
+  };
+
+  useEffect(() => {
+    if (activeTab !== "audit") return;
+    fetchAuditLogs();
+  }, [activeTab, auditPage, auditFilters]);
+
+  // Compute audit summary stats
+  const auditStats = {
+    total: auditTotal,
+    created: auditLogs.filter((l) => l.action?.includes("created")).length,
+    updated: auditLogs.filter((l) => l.action?.includes("updated")).length,
+    deleted: auditLogs.filter((l) => l.action?.includes("deleted")).length,
   };
 
   return (
@@ -433,31 +508,104 @@ const UserPage = () => {
 
             {/* Audit Logs Tab */}
             <TabsContent value="audit" className="p-6">
-              <div className="text-center py-16">
-                <div className="inline-flex items-center justify-center w-16 h-16 rounded-xl bg-purple-100 mb-4">
-                  <Activity className="w-8 h-8 text-purple-600" />
+              <div className="space-y-5">
+                {/* Audit Header with Stats */}
+                <div className="flex items-center justify-between">
+                  <div>
+                    <h2 className="text-lg font-semibold text-gray-900">Activity Timeline</h2>
+                    <p className="text-sm text-gray-500 mt-0.5">
+                      Track all user management actions across your organization
+                    </p>
+                  </div>
+                  <Button
+                    variant="outline"
+                    size="sm"
+                    onClick={fetchAuditLogs}
+                    disabled={auditLoading}
+                    className="gap-2 h-9 text-xs"
+                  >
+                    <RefreshCw className={`w-3.5 h-3.5 ${auditLoading ? "animate-spin" : ""}`} />
+                    Refresh
+                  </Button>
                 </div>
-                <h3 className="text-xl font-bold text-gray-900 mb-2">
-                  Audit Logs Coming Soon
-                </h3>
-                <p className="text-sm text-gray-600 max-w-md mx-auto mb-6">
-                  Track all user management activities including logins, role changes,
-                  account modifications, and system access. Full audit trail will be available here.
-                </p>
-                <div className="flex items-center justify-center gap-4 text-xs text-gray-500">
-                  <div className="flex items-center gap-2">
-                    <div className="w-2 h-2 bg-green-500 rounded-full"></div>
-                    <span>User Actions</span>
-                  </div>
-                  <div className="flex items-center gap-2">
-                    <div className="w-2 h-2 bg-blue-500 rounded-full"></div>
-                    <span>System Events</span>
-                  </div>
-                  <div className="flex items-center gap-2">
-                    <div className="w-2 h-2 bg-amber-500 rounded-full"></div>
-                    <span>Security Alerts</span>
-                  </div>
+
+                {/* Mini Stats Row */}
+                <div className="grid grid-cols-4 gap-3">
+                  {[
+                    { label: "Total Events", value: auditStats.total, color: "bg-gray-100 text-gray-700" },
+                    { label: "Created", value: auditStats.created, color: "bg-emerald-50 text-emerald-700" },
+                    { label: "Updated", value: auditStats.updated, color: "bg-blue-50 text-blue-700" },
+                    { label: "Deleted", value: auditStats.deleted, color: "bg-red-50 text-red-700" },
+                  ].map((stat) => (
+                    <div
+                      key={stat.label}
+                      className={`${stat.color} rounded-lg px-4 py-3 flex items-center justify-between`}
+                    >
+                      <span className="text-xs font-medium opacity-80">{stat.label}</span>
+                      <span className="text-lg font-bold">{stat.value}</span>
+                    </div>
+                  ))}
                 </div>
+
+                {/* Audit Table */}
+                <AuditTable
+                  data={auditLogs
+                    .filter((log) => {
+                      if (!auditSearch) return true;
+                      const q = auditSearch.toLowerCase();
+                      const target = log.targetSnapshot || {};
+                      return (
+                        (log.actor && log.actor.toLowerCase().includes(q)) ||
+                        (target.username && target.username.toLowerCase().includes(q)) ||
+                        (target.email && target.email.toLowerCase().includes(q))
+                      );
+                    })
+                    .map((log) => ({
+                      id: log._id || `${log.action}-${log.createdAt}`,
+                      time: log.createdAt
+                        ? new Date(log.createdAt).toLocaleString()
+                        : "-",
+                      action: log.action
+                        ? log.action.replace("user_", "").replace("_", " ")
+                        : "-",
+                      target: {
+                        username: log.targetSnapshot?.username,
+                        email: log.targetSnapshot?.email,
+                        role: log.targetSnapshot?.role,
+                      },
+                      actor: log.actor || "admin-panel",
+                    }))}
+                  columns={[
+                    { key: "time", name: "TIME" },
+                    { key: "action", name: "ACTION" },
+                    { key: "target", name: "TARGET USER" },
+                    { key: "actor", name: "ACTOR" },
+                  ]}
+                  loading={auditLoading}
+                  currentPage={auditPage}
+                  totalPages={auditTotalPages}
+                  onPageChange={setAuditPage}
+                  filters={[
+                    {
+                      key: "action",
+                      label: "Action",
+                      options: [
+                        { label: "All actions", value: "all" },
+                        { label: "User created", value: "user_created" },
+                        { label: "User updated", value: "user_updated" },
+                        { label: "User deleted", value: "user_deleted" },
+                      ],
+                    },
+                  ]}
+                  search={auditSearch}
+                  onSearch={setAuditSearch}
+                  onFilterChange={(key, val) => {
+                    if (key === "action") {
+                      setAuditFilters({ action: val });
+                      setAuditPage(1);
+                    }
+                  }}
+                />
               </div>
             </TabsContent>
           </Tabs>

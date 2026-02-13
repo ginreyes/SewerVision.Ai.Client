@@ -2,21 +2,28 @@
 import { Button } from "@/components/ui/button";
 import Image from "next/image";
 import { useRouter } from "next/navigation";
-import { useEffect } from "react";
+import { useEffect, useState } from "react";
+import { getCookie } from "@/lib/helper";
 
 export default function NotFound() {
     const router = useRouter();
+    const [role, setRole] = useState(null);
     
     useEffect(() => {
-        const role = localStorage.getItem("role");
-        if (role) {
-          router.push(`/${role}/dashboard`);
+        const storedRole = getCookie("role");
+        if (storedRole) {
+          setRole(storedRole);
+          router.push(`/${storedRole}/dashboard`);
         }
       }, [router])
       
 
     const goHome = () => {
-        router.push(`/${role}/dashboard`);
+        if (role) {
+          router.push(`/${role}/dashboard`);
+        } else {
+          router.push("/");
+        }
     };
 
     return (

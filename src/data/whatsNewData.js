@@ -1,10 +1,220 @@
 
 export const whatsNewData = [
     {
+        id: "v1.7.0",
+        date: "February 9-11, 2026",
+        label: "Feature Update",
+        isNew: true,
+        updates: {
+            admin: [
+                {
+                    type: 'improvement',
+                    title: 'Unified Customer-Driven Client Field',
+                    description: 'Simplified project create/edit forms by making Customer the single source of truth for client information.',
+                    image: '/updates/admin/admin_create_project_change_1.png',
+                    details: [
+                        'Removed the separate "Client (Organization Name)" field across admin/user create and edit flows',
+                        'Project client value is now derived from the selected customer (name/email) on save',
+                        'Applies consistently to admin create, user create, and admin/user edit pages so all roles follow the same pattern'
+                    ]
+                },
+                {
+                    type: 'feature',
+                    title: 'Project Delete Approval & Team Lead Visibility',
+                    description: 'Safer project deletion workflow and clearer ownership signals in Admin Projects.',
+                    images: [
+                        '/updates/admin/admin_project_delete_approval.png',
+                        '/updates/user/user_project_pendeng_deletion_table.png',
+                        '/updates/user/user_project_pendeng_deletion.png'      
+                    ],
+                    details: [
+                        'Project cards show Team Lead sourced from managerId instead of only the operator',
+                        'New deleteRequestedBy, deleteRequestedAt, and deleteStatus fields power a proper delete request workflow',
+                        'Pending Deletion badge plus Approve / Reject buttons when deleteStatus is "pending"',
+                        'Backend endpoints for requestProjectDelete, approveProjectDelete, and rejectProjectDelete'
+                    ]
+                },
+                {
+                    type: 'feature',
+                    title: 'Project Console – AI Processing Modal & Live Logs',
+                    description: 'Enhanced SewerVision Project Console for admins with an AI processing modal that shows real-time logs and a clear success state when analysis is complete.',
+                    image: '/updates/admin/admin_project_console_ai_modal.png',
+                    details: [
+                        'AI Processing modal now shows a green success state once AI finishes (status completed or progress 100%)',
+                        'Log panel auto-scrolls to the last line so you can follow AI progress without reloading the page',
+                        'selectedVideo in ProjectDetail stays in sync with the polled video list so AI progress and status update live',
+                        'Polling continues while the modal is open so admins always see up-to-date processing logs'
+                    ]
+                },
+                {
+                    type: 'enhancement',
+                    title: 'User Management -User Detail Page Overhaul For all Roles',
+                    description: 'Enhanced User Detail page with clearer role display, team lead visibility, and user activity insights.',
+                    images: [
+                        '/updates/admin/admin_user_detail_operator.png',
+                        '/updates/admin/admin_user_detail_qc_technician.png',
+                        '/updates/admin/admin_user_detail_user.png',
+                        '/updates/admin/admin_user_detail_customer.png'
+                    ],
+                    details: [
+                        'User Detail page now shows the user\'s role with a badge and displays their assigned team lead if they have one (managerId)',
+                        'For operators and QC techs, added sections showing their recent activity and assigned projects for better context',
+                        'For team leads (User role), added a section showing the users they manage (managedMembers) with links to their profiles',
+                        'For customers, added a section showing their contact information and any projects they are associated with',
+                        'For all roles, improved the layout and styling for better readability and a more professional appearance'
+                    ]
+                }
+            ],
+            user: [
+                {
+                    type: 'feature',
+                    title: 'Team Lead Dashboard & Management Portal',
+                    description: 'New dedicated workspace for the User (Team Lead) role with its own dashboard, navigation, and management tools.',
+                    image: '/updates/user/user_dashboard.png',
+                    details: [
+                        'User role sees a Management Portal with its own sidebar and navbar, separate from Admin/Operator/QC layouts',
+                        'Dashboard highlights the projects you manage, AI processing status, QC progress, and team activity',
+                        'Sidebar navigation for Dashboard, My Projects, Track Tasks, Team Management, Device Assignments, and Inbox',
+                        'Tour Guide onboarding for the User role explains how to use the new management workspace'
+                    ]
+                },
+                {
+                    type: 'feature',
+                    title: 'My Projects – Lead View with Grid & Table Modes',
+                    description: 'Lead-focused My Projects page that shows only projects where you are the manager, with both grid and table layouts.',
+                    image: '/updates/user/user_my_projects_grid_table.png',
+                    details: [
+                        'Projects scoped by managerId so Team Leads only see projects they own',
+                        'Card grid view reuses the rich Admin project cards while hiding admin-only actions',
+                        'Table view shows key columns (Project, Client, Location, Status, Priority, Videos) with quick access to the Project Console',
+                        'New project create flow for User role reuses the shared wizard and automatically sets you as project manager'
+                    ]
+                },
+                {
+                    type: 'feature',
+                    title: 'Team Management – View & Manage Your Operators and QC Techs',
+                    description: 'Dedicated Team Management page where User role can see all their assigned operators and QC techs, view their activity, and manage assignments.',
+                    image: '/updates/user/user_team_management.png',
+                    details: [
+                        'Team Management page shows all users assigned to your projects (managedMembers) with their role, contact info, and activity status',
+                        'Clicking a team member shows their profile with assigned projects, recent activity, and contact options',
+                        'Ability to remove users from your team (removes them from managedMembers) or contact them directly via email link',
+                        'Future enhancements planned for adding users to your team and managing their project assignments directly from this interface'
+                    ]
+                },
+                {
+                    type: 'feature',
+                    title: 'Track Tasks – Centralized Task Management for Team Leads',
+                    description: 'New Track Tasks page where User role can see all active tasks across their projects, track progress, and manage priorities.',
+                    image: '/updates/user/user_task_management.png',
+                    details: [
+                        'Track Tasks page aggregates all active tasks from your projects (AI processing, QC reviews, report generation) into a single view',
+                        'Tasks are categorized by project and type, with status indicators and due dates',
+                        'Ability to click into a task to see more details, view related project information, and contact the assigned operator or QC tech if needed',
+                        'Future plans to add task management features like priority setting, due date adjustments, and progress updates directly from this interface'
+                    ]
+                },
+                {
+                    type: 'feature',
+                    title: 'Device Assignments – Monitor and Manage Your Team\'s Equipment',
+                    description: 'Device Assignments page where User role can see all equipment assigned to their team, monitor status, and manage assignments.',
+                    image: '/updates/user/user_device_assignments.png',
+                    details: [
+                        'Device Assignments page shows all equipment assigned to users on your team (managedMembers) with real-time status indicators',
+                        'Ability to click into a device to see more details, view which team member it\'s assigned to, and contact them if there are any issues',
+                        'Future enhancements planned for managing device assignments directly from this interface, including reassigning devices and tracking maintenance schedules'
+                     ]
+                },
+                {
+                    type: 'feature',
+                    title: 'Inbox & Notifications for Team Leads',
+                    description: 'Centralized inbox for the User role to receive notifications about their projects, team activity, and important updates.',
+                    image: '/updates/user/user_incomming_soon_inbox.png',
+                    details: [
+                        'Inbox page where Team Leads receive notifications about project updates, AI processing status changes, QC review completions, and team member activity',
+                        'Notifications are categorized by type (Project Updates, Team Activity, System Alerts) with clear indicators for unread messages',
+                        'Ability to click into a notification to see more details, view related project or team information, and contact relevant users if needed',
+                        'Future plans to allow Team Leads to customize their notification preferences and set up alerts for specific events or thresholds'
+                    ]
+                },
+                {
+                    type: 'feature',
+                    title: 'Tour Guide Onboarding for User Role',
+                    description: 'Interactive tour guide that walks new User role (Team Leads) through their unique dashboard, features, and workflows.',
+                    images:[
+                        '/updates/user/user_tour_1.png',
+                        '/updates/user/user_tour_2.png',
+                        '/updates/user/user_tour_3.png',
+                        '/updates/user/user_tour_4.png',
+                        '/updates/user/user_tour_5.png'
+                    ] ,
+                    details: [
+                        'When a user with the User role logs in for the first time, they are prompted to take a tour of their new dashboard and features',
+                        'The tour highlights key areas of the dashboard, explains the purpose of each section, and provides tips on how to use the management tools effectively', 
+                        'Users can choose to skip the tour or revisit it later from their profile settings',
+                        'The tour is designed to help Team Leads quickly understand how to navigate their workspace, manage their projects and teams, and make the most of the new features available to them'
+                    ]
+
+                }
+            ],
+            operator: [
+                {
+                    type: 'feature',
+                    title: 'Real-Time AI Processing Console for Admin & Operator',
+                    description: 'Improved SewerVision.ai AI processing modal with live logs and clear completion state shared by admin and operator consoles.',
+                    image: '/updates/operator/operator_project_console_ai_modal.png',
+                    details: [
+                        'AI processing modal now shows a dedicated success state when status reaches completed or progress hits 100%',
+                        'Log panel auto-scrolls to the latest line so operators and admins can follow AI progress without manual scrolling',
+                        'selectedVideo stays in sync with the polled video list so AI status and progress update in real time',
+                        'Polling continues while the modal is open, updating every few seconds until AI processing is done'
+                    ]
+                },
+                {
+                    type: 'improvement',
+                    title: 'Project Console – Smarter Video Selection & Status Updates',
+                    description: 'Enhanced video selection logic in the Project Console that automatically focuses on videos currently being processed by AI.',
+                    image: '/updates/operator/operator_project_console_video_selection.png',
+                    details: [
+                        'When AI processing starts, the video being processed is automatically selected in the console so operators can see real-time status and logs',
+                        'If you manually select a different video while AI is processing, the console respects your choice and doesn\'t auto-switch until you refresh or open the modal again',
+                        'Once AI processing completes, the console updates to show the final status and allows you to select any video for review'
+                    ]
+                    
+                }
+            ],
+            qc: [],
+            customer: [],
+            other: [
+                {
+                    type: 'security',
+                    title: 'Authentication & Storage Hardening',
+                    description: 'Improved auth/session handling and storage to be safer in development and production.',
+                    details: [
+                        'Replaced fragile localStorage-based auth handling with cookie-based storage for tokens and session data',
+                        'Adjusted login form and authentication flow for more robust, secure handling of credentials',
+                        'Backend and database updates aligned with the new managerId / managedMembers / deleteStatus model fields'
+                    ]
+                },
+                {
+                    type: 'improvement',
+                    title: 'Codebase Cleanup & Refactoring',
+                    description: 'Removed unused code, standardized imports, and refactored components for better maintainability.',
+                    details: [
+                        'Removed unused imports and components across admin and user modules',
+                        'Standardized import paths and component structures for better readability',
+                        'Refactored shared components to reduce duplication and improve consistency',
+                        'Improved code comments and documentation for key features and workflows'
+                    ]
+                }
+            ]
+        }
+    },
+    {
         id: "v1.6.0",
         date: "February 3-6, 2026",
         label: "Major Release",
-        isNew: true,
+        isNew: false,
         updates: {
             qc: [
                 {

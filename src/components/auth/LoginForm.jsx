@@ -17,7 +17,7 @@ import { useForm } from "react-hook-form";
 import { useRouter } from "next/navigation";
 import { useAlert } from "@/components/providers/AlertProvider";
 import { useUser } from "@/components/providers/UserContext"; 
-import { api } from "@/lib/helper";
+import { api, setCookie, deleteCookie } from "@/lib/helper";
 
 const LoginForm = ({ className }) => {
     const [passwordVisible, setPasswordVisible] = useState(false);
@@ -72,17 +72,20 @@ const LoginForm = ({ className }) => {
                 throw new Error("Invalid response from server");
             }
 
-            const { token, role } = responseData;
-
-            remember
-                ? localStorage.setItem("rememberedUsername", data.usernameOrEmail)
-                : localStorage.removeItem("rememberedUsername");
-
+            const { token, role, username } = responseData;
             const normalizedRole = role.toLowerCase();
 
-            localStorage.setItem("authToken", token);
-            localStorage.setItem("username", data.usernameOrEmail);
-            localStorage.setItem("role", normalizedRole);
+            // Handle "remember me" using cookies instead of localStorage
+            if (remember) {
+                setCookie("rememberedUsername", data.usernameOrEmail, { days: 7 });
+            } else {
+                deleteCookie("rememberedUsername");
+            }
+
+            // Store auth info in cookies (no localStorage)
+            setCookie("authToken", token, { days: 1 });
+            setCookie("username", username || data.usernameOrEmail, { days: 1 });
+            setCookie("role", normalizedRole, { days: 1 });
 
             await refetchUser();
 
@@ -93,7 +96,8 @@ const LoginForm = ({ className }) => {
                 "admin": "/admin/dashboard",
                 "operator": "/operator/dashboard",
                 "qc-technician": "/qc-technician/dashboard",
-                "customer": "/customer/dashboard"
+                "customer": "/customer/dashboard",
+                "user": "/user/dashboard",
             };
 
             if (roleRoutes[normalizedRole]) {

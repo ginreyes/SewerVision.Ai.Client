@@ -30,7 +30,6 @@ import {
   Ruler,
   Calendar,
   CheckCircle2,
-  AlertCircle,
   Zap,
 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
@@ -41,13 +40,15 @@ import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
 import { Badge } from '@/components/ui/badge';
 import AddObservation from './AddObersavation';
 import ObservationsPanel from './ObservationsPanel';
+import { AiProcessingModal } from '@/components/project/AiProcessingModal';
+import { ReprocessModal } from '@/components/project/ReprocessModal';
 import { useUser } from '@/components/providers/UserContext';
 import { useAlert } from '@/components/providers/AlertProvider';
-import { api } from '@/lib/helper';
+import { api, getCookie } from '@/lib/helper';
 import { useRouter } from 'next/navigation';
 import { getVideoUrl } from '@/lib/getVideoUrl';
 
-const ProjectDetail = ({ project, setSelectedProject }) => {
+const ProjectDetail = ({ project, setSelectedProject, onBack }) => {
   const [isRecordingInfoExpanded, setIsRecordingInfoExpanded] = useState(true);
   const [isSnapshotsExpanded, setIsSnapshotsExpanded] = useState(true);
   const [isVideosExpanded, setIsVideosExpanded] = useState(true);
@@ -64,6 +65,8 @@ const ProjectDetail = ({ project, setSelectedProject }) => {
   const [newMetadataValue, setNewMetadataValue] = useState('');
   const [editingMetadata, setEditingMetadata] = useState({});
   const [isReprocessing, setIsReprocessing] = useState(false);
+  const [isReprocessConfirmOpen, setIsReprocessConfirmOpen] = useState(false);
+  const [isAiInfoOpen, setIsAiInfoOpen] = useState(false);
 
   // Video list state
   const [projectVideos, setProjectVideos] = useState([]);
@@ -162,11 +165,16 @@ const ProjectDetail = ({ project, setSelectedProject }) => {
   }, [project?.status]);
 
   const handleBackToProjects = () => {
+    if (onBack) {
+      onBack();
+      return;
+    }
     setSelectedProject(null);
-    // Check if we're in QC technician context
     const currentPath = window.location.pathname;
     if (currentPath.includes('/qc-technician')) {
       router.replace(`/qc-technician/project`);
+    } else if (currentPath.includes('/operator')) {
+      router.replace(`/operator/projects`);
     } else {
       router.replace(`/admin/project`);
     }
@@ -292,17 +300,21 @@ const ProjectDetail = ({ project, setSelectedProject }) => {
       const { ok, data } = await api(`/api/videos/project/${project._id}`, 'GET');
       if (ok && data?.data) {
         setProjectVideos(data.data);
-        // Auto-select first video if none selected
-        if (data.data.length > 0 && !selectedVideo) {
-          setSelectedVideo(data.data[0]);
-        }
+        setSelectedVideo((prev) => {
+          if (data.data.length > 0 && !prev) return data.data[0];
+          if (prev?._id) {
+            const updated = data.data.find((v) => v._id === prev._id);
+            if (updated) return updated;
+          }
+          return prev;
+        });
       }
     } catch (error) {
       console.error('Error fetching project videos:', error);
     } finally {
       setLoadingVideos(false);
     }
-  }, [project?._id, selectedVideo]);
+  }, [project?._id]);
 
   // Handle video deletion (admin only)
   const handleDeleteVideo = async () => {
@@ -313,9 +325,10 @@ const ProjectDetail = ({ project, setSelectedProject }) => {
       const { ok } = await api(`/api/videos/${videoToDelete._id}`, 'DELETE');
       if (ok) {
         showAlert('Video deleted successfully', 'success');
-        setProjectVideos(prev => prev.filter(v => v._id !== videoToDelete._id));
+        const nextList = projectVideos.filter(v => v._id !== videoToDelete._id);
+        setProjectVideos(nextList);
         if (selectedVideo?._id === videoToDelete._id) {
-          setSelectedVideo(projectVideos.length > 1 ? projectVideos.find(v => v._id !== videoToDelete._id) : null);
+          setSelectedVideo(nextList.length > 0 ? nextList[0] : null);
         }
         setIsDeleteVideoOpen(false);
         setVideoToDelete(null);
@@ -398,8 +411,8 @@ const ProjectDetail = ({ project, setSelectedProject }) => {
         setUploadProgress(0);
       });
 
-      // Get auth token
-      const token = typeof window !== 'undefined' ? localStorage.getItem('authToken') : null;
+      // Get auth token (cookie or localStorage for XHR)
+      const token = typeof window !== 'undefined' ? (getCookie('authToken') || localStorage.getItem('authToken')) : null;
       const apiUrl = process.env.NEXT_PUBLIC_BACKEND_URL || 'http://localhost:5000';
 
       xhr.open('POST', `${apiUrl}/api/videos/upload`);
@@ -448,11 +461,11 @@ const ProjectDetail = ({ project, setSelectedProject }) => {
       project.status === 'uploading' ||
       project.status === 'processing';
 
-    const shouldPoll = isProjectActive || hasActiveVideos || isReprocessing;
+    const shouldPoll = isProjectActive || hasActiveVideos || isReprocessing || isAiInfoOpen;
 
     if (!shouldPoll) return;
 
-    // Poll every 3 seconds for faster updates
+    // Poll every 3 seconds (or while AI modal is open so logs update without page reload)
     const intervalId = setInterval(() => {
       // Refresh videos to get latest AI status
       fetchProjectVideos();
@@ -477,6 +490,7 @@ const ProjectDetail = ({ project, setSelectedProject }) => {
     project?.status,
     projectVideos,
     isReprocessing,
+    isAiInfoOpen,
     fetchProjectVideos,
     setSelectedProject
   ]);
@@ -802,6 +816,26 @@ const ProjectDetail = ({ project, setSelectedProject }) => {
     return date.toISOString().substr(11, 8);
   };
 
+  // Derived flag for showing floating AI processing bubble
+  const hasActiveAiVideos = projectVideos.some((v) =>
+    ['pending', 'processing', 'uploading'].includes(v.aiProcessingStatus)
+  );
+  const isProjectAiActive =
+    project?.status === 'ai-processing' ||
+    project?.status === 'uploading' ||
+    project?.status === 'processing';
+  const showAiBubble = isReprocessing || isProjectAiActive || hasActiveAiVideos;
+
+  const startReprocessFlow = async () => {
+    if (!project?._id) {
+      showAlert('Project ID is missing', 'error');
+      return;
+    }
+    setIsReprocessConfirmOpen(false);
+    setIsAiInfoOpen(true);
+    await handleReprocess();
+  };
+
   return (
     <div className="min-h-screen bg-gradient-to-br from-slate-50 to-gray-100">
       <div className="max-w-7xl mx-auto p-6">
@@ -857,7 +891,7 @@ const ProjectDetail = ({ project, setSelectedProject }) => {
               {/* Reprocess AI Button - Show for applicable statuses */}
               {project?.status !== 'planning' && project?.status !== 'in-progress' && (
                 <Button
-                  onClick={handleReprocess}
+                  onClick={() => setIsReprocessConfirmOpen(true)}
                   disabled={isReprocessing}
                   className={`flex items-center gap-2 transition-all duration-300 ${isReprocessing
                     ? 'bg-gradient-to-r from-violet-500 to-purple-600 shadow-lg shadow-violet-200'
@@ -1076,14 +1110,6 @@ const ProjectDetail = ({ project, setSelectedProject }) => {
                     <Maximize className="h-4 w-4" />
                   </button>
                 </div>
-              </div>
-
-              {/* Progress bar (project progress) */}
-              <div className="w-full bg-gray-200 rounded-full h-2">
-                <div
-                  className="bg-blue-600 h-2 rounded-full"
-                  style={{ width: `${project?.progress || 0}%` }}
-                />
               </div>
             </div>
 
@@ -1567,6 +1593,41 @@ const ProjectDetail = ({ project, setSelectedProject }) => {
           </Dialog>
         </div>
       </div>
+
+      {/* Floating AI processing bubble */}
+      {showAiBubble && (
+        <div className="fixed bottom-6 right-6 z-40">
+          <button
+            type="button"
+            onClick={() => setIsAiInfoOpen(true)}
+            className="flex items-center gap-3 px-4 py-3 rounded-full bg-white shadow-lg border border-violet-100 hover:shadow-xl transition-all"
+          >
+            <div className="w-8 h-8 rounded-full bg-violet-100 flex items-center justify-center">
+              <Loader2 className="w-4 h-4 text-violet-600 animate-spin" />
+            </div>
+            <div className="text-left">
+              <p className="text-xs font-semibold text-violet-700">AI processing in progress</p>
+              <p className="text-[11px] text-gray-500">
+                You can keep working while SewerVision.ai analyzes this project.
+              </p>
+            </div>
+          </button>
+        </div>
+      )}
+
+      <ReprocessModal
+        open={isReprocessConfirmOpen}
+        onOpenChange={setIsReprocessConfirmOpen}
+        onConfirm={startReprocessFlow}
+      />
+
+      <AiProcessingModal
+        open={isAiInfoOpen}
+        onOpenChange={setIsAiInfoOpen}
+        project={project}
+        selectedVideo={selectedVideo}
+        logPanelHeight="min-h-[420px] md:min-h-[480px]"
+      />
     </div>
   );
 };

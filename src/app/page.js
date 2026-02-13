@@ -3,6 +3,7 @@ import { useEffect } from "react";
 import { useRouter } from "next/navigation";
 import Link from "next/link";
 import Login from "./login/page";
+import { getCookie } from "@/lib/helper";
 import LandingFooter from "@/components/ui/LandingFooter";
 import { FaCamera, FaBrain, FaChartLine, FaShieldAlt, FaClock, FaUsers, FaArrowRight, FaStar } from "react-icons/fa";
 
@@ -11,8 +12,8 @@ export default function Home() {
 
   useEffect(() => {
     // Check if user is already logged in and redirect them
-    const token = localStorage.getItem("authToken");
-    const role = localStorage.getItem("role");
+    const token = getCookie("authToken");
+    const role = getCookie("role");
 
     if (token && role) {
       const knownRoles = ["admin", "user", "operator", "qc-technician", "customer"];
