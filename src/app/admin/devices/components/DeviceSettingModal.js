@@ -1,6 +1,6 @@
 'use client'
 
-import React, { useState, useEffect } from 'react' 
+import React, { useState, useEffect } from 'react'
 import {
   Settings,
   Wifi,
@@ -11,7 +11,9 @@ import {
   Save,
   RotateCcw,
   Trash2,
-  Info
+  Info,
+  Loader2,
+  User
 } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
@@ -25,21 +27,44 @@ import { Alert, AlertDescription } from '@/components/ui/alert'
 import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle, DialogFooter } from '@/components/ui/dialog'
 import { Separator } from '@/components/ui/separator'
 import { Label } from '@/components/ui/label'
+import { api } from '@/lib/helper'
+import { useAssignDeviceToTeamLeader } from '@/hooks/useQueryHooks'
+import { useAlert } from '@/components/providers/AlertProvider'
 
 const DeviceSettingsModal = (props) => {
   const { isOpen, onClose, device } = props
+  const { showAlert } = useAlert()
+  const assignToTeamLeader = useAssignDeviceToTeamLeader()
 
   const [settings, setSettings] = useState({})
   const [hasChanges, setHasChanges] = useState(false)
   const [showResetDialog, setShowResetDialog] = useState(false)
+  const [teamLeaders, setTeamLeaders] = useState([])
+  const [selectedTeamLeaderId, setSelectedTeamLeaderId] = useState('')
+
+  useEffect(() => {
+    const fetchTeamLeaders = async () => {
+      try {
+        const { ok, data } = await api('/api/users/get-all-user', 'GET')
+        if (!ok || !Array.isArray(data?.users)) return
+        setTeamLeaders(data.users.filter((u) => String(u.role || '').toLowerCase() === 'user'))
+      } catch (e) {
+        console.error('Fetch team leaders:', e)
+      }
+    }
+    fetchTeamLeaders()
+  }, [])
 
   useEffect(() => {
     if (!device) return
+    const tl = device.teamLeader
+    setSelectedTeamLeaderId(tl ? (typeof tl === 'object' ? tl._id : tl) : '')
 
     const newSettings = {
       deviceName: device.name || '',
       location: device.location || '',
       operator: device.operator || '',
+      teamLeader: device.teamLeader || '',
       
       wifiEnabled: true,
       wifiSSID: 'SewerVision-Field',
@@ -276,12 +301,41 @@ const DeviceSettingsModal = (props) => {
 
                   {isFieldDevice && (
                     <div className="space-y-2">
-                      <Label htmlFor="operator">Assigned Operator</Label>
-                      <Input
-                        id="operator"
-                        value={settings.operator || ''}
-                        onChange={(e) => handleSettingChange('operator', e.target.value)}
-                      />
+                      <Label>Assigned Team Leader</Label>
+                      <div className="flex gap-2">
+                        <Select
+                          value={selectedTeamLeaderId}
+                          onValueChange={setSelectedTeamLeaderId}
+                        >
+                          <SelectTrigger className="flex-1">
+                            <SelectValue placeholder="Select team leader" />
+                          </SelectTrigger>
+                          <SelectContent>
+                            <SelectItem value="">Unassigned</SelectItem>
+                            {teamLeaders.map((tl) => (
+                              <SelectItem key={tl._id} value={tl._id}>
+                                {[tl.first_name, tl.last_name].filter(Boolean).join(' ') || tl.username || 'Team Leader'}
+                              </SelectItem>
+                            ))}
+                          </SelectContent>
+                        </Select>
+                        <Button
+                          size="sm"
+                          disabled={assignToTeamLeader.isPending || !selectedTeamLeaderId || selectedTeamLeaderId === (device.teamLeader?._id || device.teamLeader)}
+                          onClick={async () => {
+                            if (!device?._id || !selectedTeamLeaderId) return
+                            try {
+                              await assignToTeamLeader.mutateAsync({ deviceId: device._id, teamLeaderId: selectedTeamLeaderId })
+                              showAlert('Team leader updated', 'success')
+                            } catch (err) {
+                              showAlert(err?.message || 'Failed to update team leader', 'error')
+                            }
+                          }}
+                        >
+                          {assignToTeamLeader.isPending ? <Loader2 className="w-4 h-4 animate-spin" /> : 'Update'}
+                        </Button>
+                      </div>
+                      <p className="text-xs text-gray-500">Team leaders assign this device to QC and operators.</p>
                     </div>
                   )}
 

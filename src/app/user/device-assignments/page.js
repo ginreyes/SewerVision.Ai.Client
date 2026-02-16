@@ -17,11 +17,12 @@ export default function UserDeviceAssignmentsPage() {
       try {
         setLoading(true);
         const { ok, data } = await api('/api/devices/get-all-devices', 'GET');
-        if (!ok || !Array.isArray(data)) {
+        const list = data?.data ?? (Array.isArray(data) ? data : []);
+        if (!ok) {
           setDevices([]);
           return;
         }
-        setDevices(data);
+        setDevices(Array.isArray(list) ? list : []);
       } catch (err) {
         console.error('Failed to load devices:', err);
         showAlert('Failed to load devices', 'error');
@@ -94,10 +95,12 @@ export default function UserDeviceAssignmentsPage() {
                     Project: {d.assignedProject.name || 'N/A'}
                   </p>
                 )}
-                {d.assignedTo && (
+                {(d.teamLeader || d.operator) && (
                   <p className="text-xs text-gray-700 flex items-center gap-1">
                     <Link2 className="w-3 h-3" />
-                    Operator: {d.assignedTo.username || d.assignedTo.name || 'N/A'}
+                    Team Leader: {d.teamLeader?.first_name || d.teamLeader?.last_name
+                      ? `${d.teamLeader.first_name || ''} ${d.teamLeader.last_name || ''}`.trim()
+                      : d.teamLeader?.username || d.assignedTo?.username || d.operator?.username || 'N/A'}
                   </p>
                 )}
               </CardContent>

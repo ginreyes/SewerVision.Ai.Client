@@ -34,7 +34,7 @@ import { Badge } from '@/components/ui/badge';
 import { Separator } from '@/components/ui/separator';
 import { useUser } from '@/components/providers/UserContext';
 import { useAlert } from '@/components/providers/AlertProvider';
-import { api } from '@/lib/helper';
+import { api, getCookie } from '@/lib/helper';
 
 // --- Components ---
 
@@ -237,24 +237,27 @@ function OperatorSettingsContent() {
       return;
     }
 
-    try {
-      setLoading(true); // Reuse loading state or add specific one for avatar 
-      const username = localStorage.getItem('username');
-      if (!username) throw new Error("No username found");
+    const userId = userData?._id;
+    const username = userData?.username || getCookie('username');
+    if (!userId && !username) {
+      showAlert('Please refresh the page or log in again to update your avatar.', 'error');
+      return;
+    }
 
+    try {
+      setLoading(true);
       const formData = new FormData();
       formData.append('avatar', file);
-      formData.append('username', username);
+      if (username) formData.append('username', username);
 
-      const token = localStorage.getItem('token');
-      // Adjust URL to your backend
+      const token = getCookie('authToken');
       const backendUrl = process.env.NEXT_PUBLIC_BACKEND_URL || 'http://localhost:5000';
-      
-      const res = await fetch(`${backendUrl}/api/users/upload-avatar`, {
+      const uploadUrl = userId
+        ? `${backendUrl}/api/users/upload-avatar/${userId}`
+        : `${backendUrl}/api/users/upload-avatar`;
+      const res = await fetch(uploadUrl, {
         method: 'POST',
-        headers: {
-          'Authorization': `Bearer ${token}`
-        },
+        headers: token ? { 'Authorization': `Bearer ${token}` } : {},
         body: formData
       });
 

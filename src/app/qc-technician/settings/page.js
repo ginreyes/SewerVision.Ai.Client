@@ -28,7 +28,8 @@ import {
   FileCheck,
   ClipboardCheck,
   BarChart,
-  History
+  History,
+  Sparkles
 } from 'lucide-react';
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
@@ -43,7 +44,7 @@ import { Separator } from '@/components/ui/separator';
 import { Progress } from '@/components/ui/progress';
 import { useUser } from '@/components/providers/UserContext';
 import { useAlert } from '@/components/providers/AlertProvider';
-import { api } from '@/lib/helper';
+import { api, getCookie } from '@/lib/helper';
 
 // --- Components ---
 
@@ -182,6 +183,42 @@ function QCSettingsContent() {
     }
   }, [userData]);
 
+  // Load QC preferences from backend (aligned with QC tech workflow)
+  useEffect(() => {
+    if (!userData?._id) return;
+    const loadPreferences = async () => {
+      try {
+        const response = await api('/api/users/me/qc-preferences', 'GET');
+        if (response?.ok && response?.data?.data) {
+          const prefs = response.data.data;
+          setSettings(prev => ({
+            ...prev,
+            autoSave: prefs.autoSave ?? prev.autoSave,
+            smartLabeling: prefs.smartLabeling ?? prev.smartLabeling,
+            preloadVideos: prefs.preloadVideos ?? prev.preloadVideos,
+            autoSubmit: prefs.autoSubmit ?? prev.autoSubmit,
+            playbackQuality: prefs.playbackQuality ?? prev.playbackQuality,
+            playbackSpeed: prefs.playbackSpeed ?? prev.playbackSpeed,
+            showAiOverlays: prefs.showAiOverlays ?? prev.showAiOverlays,
+            loopVideo: prefs.loopVideo ?? prev.loopVideo,
+            soundEnabled: prefs.soundEnabled ?? prev.soundEnabled,
+            emailAlerts: prefs.emailAlerts ?? prev.emailAlerts,
+            pushNotifications: prefs.pushNotifications ?? prev.pushNotifications,
+            notifyReviewAssigned: prefs.notifyReviewAssigned ?? prev.notifyReviewAssigned,
+            notifyReportDeadline: prefs.notifyReportDeadline ?? prev.notifyReportDeadline,
+            notifySystemUpdates: prefs.notifySystemUpdates ?? prev.notifySystemUpdates,
+            theme: prefs.theme ?? prev.theme,
+            language: prefs.language ?? prev.language,
+            units: prefs.units ?? prev.units,
+          }));
+        }
+      } catch (e) {
+        console.warn('Could not load QC preferences, using defaults:', e);
+      }
+    };
+    loadPreferences();
+  }, [userData?._id]);
+
   // Handle Tab Change
   const handleTabChange = (value) => {
     setActiveTab(value);
@@ -200,8 +237,7 @@ function QCSettingsContent() {
   const handleSaveProfile = async () => {
     try {
       setSaving(true);
-      const username = localStorage.getItem('username');
-
+      const username = userData?.username || getCookie('username');
       if (!username) throw new Error('User not identified');
 
       const response = await api(`/api/users/profile/${username}`, 'PATCH', {
@@ -243,25 +279,29 @@ function QCSettingsContent() {
       return;
     }
 
+    const userId = userData?._id;
+    const username = userData?.username || getCookie('username');
+    if (!userId && !username) {
+      showAlert('Please refresh the page or log in again to update your avatar.', 'error');
+      return;
+    }
+
     try {
       setLoading(true);
-      const username = localStorage.getItem('username');
-      if (!username) throw new Error("No username found");
 
       const formData = new FormData();
       formData.append('avatar', file);
-      formData.append('username', username);
+      if (username) formData.append('username', username);
 
-      const token = localStorage.getItem('token');
-      // Adjust URL to your backend
+      const token = getCookie('authToken');
       const backendUrl = process.env.NEXT_PUBLIC_BACKEND_URL || 'http://localhost:5000';
+      const uploadUrl = userId
+        ? `${backendUrl}/api/users/upload-avatar/${userId}`
+        : `${backendUrl}/api/users/upload-avatar`;
 
-
-      const res = await fetch(`${backendUrl}/api/users/upload-avatar`, {
+      const res = await fetch(uploadUrl, {
         method: 'POST',
-        headers: {
-          'Authorization': `Bearer ${token}`
-        },
+        headers: token ? { 'Authorization': `Bearer ${token}` } : {},
         body: formData
       });
 
@@ -323,19 +363,34 @@ function QCSettingsContent() {
   const handleSaveSettings = async () => {
     try {
       setSaving(true);
-      // Using qc section specifically
-      const response = await api('/api/settings/section/qc', 'PATCH', {
-        qc: settings
-      });
+      const payload = {
+        autoSave: settings.autoSave,
+        smartLabeling: settings.smartLabeling,
+        preloadVideos: settings.preloadVideos,
+        autoSubmit: settings.autoSubmit,
+        playbackQuality: settings.playbackQuality,
+        playbackSpeed: settings.playbackSpeed,
+        showAiOverlays: settings.showAiOverlays,
+        loopVideo: settings.loopVideo,
+        soundEnabled: settings.soundEnabled,
+        emailAlerts: settings.emailAlerts,
+        pushNotifications: settings.pushNotifications,
+        notifyReviewAssigned: settings.notifyReviewAssigned,
+        notifyReportDeadline: settings.notifyReportDeadline,
+        notifySystemUpdates: settings.notifySystemUpdates,
+        theme: settings.theme,
+        language: settings.language,
+        units: settings.units,
+      };
+      const response = await api('/api/users/me/qc-preferences', 'PATCH', payload);
 
-      if (response.ok) {
+      if (response?.ok) {
         showAlert('Settings saved', 'success');
       } else {
-        // Fallback to local
-        localStorage.setItem('qc_settings', JSON.stringify(settings));
-        showAlert('Settings saved (Local)', 'success');
+        showAlert(response?.data?.message || 'Failed to save settings', 'error');
       }
     } catch (e) {
+      console.error('Save QC settings error:', e);
       showAlert('Failed to save settings', 'error');
     } finally {
       setSaving(false);
@@ -778,24 +833,36 @@ function QCSettingsContent() {
               </Card>
             </TabsContent>
 
-            {/* --- Preferences Tab --- */}
+            {/* --- Preferences Tab (Coming soon) --- */}
             <TabsContent value="preferences" className="space-y-6 mt-0">
-              <Card className="border-0 shadow-sm">
+              <Card className="border-0 shadow-sm border-amber-200/60 bg-amber-50/30">
                 <CardHeader>
-                  <SectionHeader
-                    icon={Globe}
-                    title="System Preferences"
-                    description="Customize language and display settings"
-                  />
+                  <div className="flex items-start justify-between gap-4">
+                    <div className="flex items-center gap-3">
+                      <div className="p-2 bg-amber-100 rounded-lg">
+                        <Globe className="w-6 h-6 text-amber-600" />
+                      </div>
+                      <div>
+                        <div className="flex items-center gap-2">
+                          <h2 className="text-lg font-semibold text-gray-900">System Preferences</h2>
+                          <Badge variant="secondary" className="bg-amber-200 text-amber-800 border-amber-300 font-medium">
+                            <Sparkles className="w-3 h-3 mr-1" />
+                            Coming soon
+                          </Badge>
+                        </div>
+                        <p className="text-sm text-gray-500 mt-0.5">Customize language and display settings</p>
+                      </div>
+                    </div>
+                  </div>
                 </CardHeader>
-                <CardContent className="space-y-6">
+                <CardContent className="space-y-6 opacity-75 pointer-events-none select-none">
+                  <p className="text-sm text-amber-800/90 bg-amber-100/50 rounded-lg p-3 border border-amber-200/50">
+                    Language, theme, and measurement units will be available in a future update. Your choices will be saved and applied across the QC workspace.
+                  </p>
                   <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
                     <div className="space-y-2">
-                      <Label>Language</Label>
-                      <Select
-                        value={settings.language}
-                        onValueChange={(v) => updateSetting('language', v)}
-                      >
+                      <Label className="text-gray-500">Language</Label>
+                      <Select value={settings.language} disabled>
                         <SelectTrigger>
                           <SelectValue placeholder="Select Language" />
                         </SelectTrigger>
@@ -808,11 +875,8 @@ function QCSettingsContent() {
                       </Select>
                     </div>
                     <div className="space-y-2">
-                      <Label>Measurement Units</Label>
-                      <Select
-                        value={settings.units}
-                        onValueChange={(v) => updateSetting('units', v)}
-                      >
+                      <Label className="text-gray-500">Measurement Units</Label>
+                      <Select value={settings.units} disabled>
                         <SelectTrigger>
                           <SelectValue placeholder="Select Units" />
                         </SelectTrigger>
@@ -823,22 +887,16 @@ function QCSettingsContent() {
                       </Select>
                     </div>
                   </div>
-
                   <Separator />
-
                   <div className="space-y-3">
-                    <Label>Theme</Label>
+                    <Label className="text-gray-500">Theme</Label>
                     <div className="grid grid-cols-3 gap-3">
                       {['light', 'dark', 'system'].map((theme) => (
                         <div
                           key={theme}
-                          onClick={() => updateSetting('theme', theme)}
-                          className={`cursor-pointer rounded-xl border-2 p-3 text-center transition-all ${settings.theme === theme
-                            ? 'border-rose-500 bg-rose-50 text-rose-700'
-                            : 'border-gray-100 hover:border-gray-200'
-                            }`}
+                          className={`rounded-xl border-2 p-3 text-center border-gray-100 bg-gray-50/50`}
                         >
-                          <div className="capitalize font-medium">{theme}</div>
+                          <div className="capitalize font-medium text-gray-400">{theme}</div>
                         </div>
                       ))}
                     </div>

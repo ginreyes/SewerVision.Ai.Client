@@ -8,6 +8,7 @@ import { reportsApi } from '@/data/reportsApi';
 import { settingsApi } from '@/data/settingsApi';
 import { uploadsApi } from '@/data/uploadsApi';
 import { operatorApi } from '@/data/operatorApi';
+import { devicesApi } from '@/data/devicesApi';
 
 /**
  * Query Keys - Centralized key management for cache invalidation
@@ -52,6 +53,10 @@ export const queryKeys = {
     project: (projectId) => ['projects', projectId],
     projectMedia: (projectId) => ['projects', projectId, 'media'],
     projectVideos: (projectId) => ['projects', projectId, 'videos'],
+
+    // Devices (admin)
+    devices: (params) => ['devices', params ?? {}],
+    device: (deviceId) => ['devices', deviceId],
 };
 
 /**
@@ -479,6 +484,74 @@ export function useDeleteNote() {
 }
 
 /**
+ * ============ DEVICES HOOKS (Admin) ============
+ */
+
+export function useDevices(params = {}, options = {}) {
+    return useQuery({
+        queryKey: queryKeys.devices(params),
+        queryFn: () => devicesApi.getDevices(params),
+        staleTime: 1000 * 60 * 2,
+        ...options,
+    });
+}
+
+export function useDevice(deviceId, options = {}) {
+    return useQuery({
+        queryKey: queryKeys.device(deviceId),
+        queryFn: () => devicesApi.getDeviceById(deviceId),
+        enabled: !!deviceId,
+        ...options,
+    });
+}
+
+export function useCreateDevice(options = {}) {
+    const queryClient = useQueryClient();
+    return useMutation({
+        mutationFn: (payload) => devicesApi.createDevice(payload),
+        onSuccess: () => {
+            queryClient.invalidateQueries({ queryKey: ['devices'] });
+        },
+        ...options,
+    });
+}
+
+export function useUpdateDevice(options = {}) {
+    const queryClient = useQueryClient();
+    return useMutation({
+        mutationFn: ({ id, payload }) => devicesApi.updateDevice(id, payload),
+        onSuccess: (_, variables) => {
+            queryClient.invalidateQueries({ queryKey: ['devices'] });
+            queryClient.invalidateQueries({ queryKey: queryKeys.device(variables.id) });
+        },
+        ...options,
+    });
+}
+
+export function useDeleteDevice(options = {}) {
+    const queryClient = useQueryClient();
+    return useMutation({
+        mutationFn: (id) => devicesApi.deleteDevice(id),
+        onSuccess: () => {
+            queryClient.invalidateQueries({ queryKey: ['devices'] });
+        },
+        ...options,
+    });
+}
+
+export function useAssignDeviceToTeamLeader(options = {}) {
+    const queryClient = useQueryClient();
+    return useMutation({
+        mutationFn: ({ deviceId, teamLeaderId }) =>
+            devicesApi.assignToTeamLeader(deviceId, teamLeaderId),
+        onSuccess: () => {
+            queryClient.invalidateQueries({ queryKey: ['devices'] });
+        },
+        ...options,
+    });
+}
+
+/**
  * ============ CACHE UTILITIES ============
  */
 
@@ -574,6 +647,12 @@ export default {
     useCreateNote,
     useUpdateNote,
     useDeleteNote,
+    useDevices,
+    useDevice,
+    useCreateDevice,
+    useUpdateDevice,
+    useDeleteDevice,
+    useAssignDeviceToTeamLeader,
     useQueryUtilities,
     queryKeys,
 };

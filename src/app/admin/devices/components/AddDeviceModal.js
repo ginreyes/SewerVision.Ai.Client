@@ -37,8 +37,9 @@ const AddDeviceModal = (props) => {
   const [deviceData, setDeviceData] = useState({
     name: '',
     type: '',
-    category: 'field', 
+    category: 'field',
     location: '',
+    teamLeader: '',
     operator: '',
     serialNumber: '',
     model: '',
@@ -67,31 +68,25 @@ const AddDeviceModal = (props) => {
   const [imagePreview, setImagePreview] = useState(null)
   const [isSubmitting, setIsSubmitting] = useState(false)
   const [errors, setErrors] = useState({})
-  const [operators, setOperators] = useState([]) // ✅ Fixed: was {}, now []
+  const [teamLeaders, setTeamLeaders] = useState([])
   const { userId } = useUser()
 
   useEffect(() => {
-    const fetchOperators = async () => {
+    const fetchTeamLeaders = async () => {
       try {
         const { ok, data } = await api("/api/users/get-all-user", "GET")
-
         if (!ok || !Array.isArray(data?.users)) {
-          setOperators([])
+          setTeamLeaders([])
           return
         }
-
-        const operatorsOnly = data.users.filter(
-          (user) => user.role?.toLowerCase() === "operator"
-        )
-
-        setOperators(operatorsOnly)
+        const leaders = data.users.filter((u) => String(u.role || '').toLowerCase() === 'user')
+        setTeamLeaders(leaders)
       } catch (error) {
-        console.error(`Error fetching operators:`, error.message)
-        setOperators([])
+        console.error('Error fetching team leaders:', error.message)
+        setTeamLeaders([])
       }
     }
-
-    fetchOperators()
+    fetchTeamLeaders()
   }, [])
 
   const handleInputChange = (field, value) => {
@@ -126,9 +121,8 @@ const AddDeviceModal = (props) => {
       if (!deviceData.name) newErrors.name = 'Device name is required'
       if (!deviceData.type) newErrors.type = 'Device type is required'
       if (!deviceData.location) newErrors.location = 'Location is required'
-      // ✅ ADDED: Validate operator for field devices
-      if (deviceData.category === 'field' && !deviceData.operator) {
-        newErrors.operator = 'Operator is required for field devices'
+      if (deviceData.category === 'field' && !deviceData.teamLeader) {
+        newErrors.teamLeader = 'Team leader is required for field devices'
       }
     }
     
@@ -182,13 +176,13 @@ const AddDeviceModal = (props) => {
       const payload = {
         ...deviceData,
         createdBy: userId,
+        teamLeader: deviceData.category === 'field' ? deviceData.teamLeader || undefined : undefined,
         settings: {
           ...deviceData.settings,
           qualityThreshold: deviceData.settings.qualityThreshold[0],
           confidenceThreshold: deviceData.settings.confidenceThreshold[0]
         }
       }
-  
       const { data, error } = await api('/api/devices/create-device', 'POST', payload)
       if (error) throw error
 
@@ -226,6 +220,7 @@ const AddDeviceModal = (props) => {
         type: '',
         category: 'field',
         location: '',
+        teamLeader: '',
         operator: '',
         serialNumber: '',
         model: '',
@@ -319,7 +314,7 @@ const AddDeviceModal = (props) => {
                       onClick={() => {
                         handleInputChange('category', 'field')
                         handleInputChange('type', '')
-                        handleInputChange('operator', '') // ✅ Reset operator when switching category
+                        handleInputChange('teamLeader', '')
                       }}
                     >
                       <CardContent className="p-4 text-center">
@@ -337,7 +332,7 @@ const AddDeviceModal = (props) => {
                       onClick={() => {
                         handleInputChange('category', 'cloud')
                         handleInputChange('type', '')
-                        handleInputChange('operator', '') // ✅ Reset operator
+                        handleInputChange('teamLeader', '')
                       }}
                     >
                       <CardContent className="p-4 text-center">
@@ -425,42 +420,43 @@ const AddDeviceModal = (props) => {
                   )}
                 </div>
 
-                {/* Operator (Field devices only) */}
+                {/* Team Leader (Field devices only) – team lead assigns device to QC/operators */}
                 {deviceData.category === 'field' && (
                   <div className="space-y-2 mb-4">
-                    <Label htmlFor="operator">Assigned Operator</Label>
+                    <Label htmlFor="teamLeader">Assigned Team Leader</Label>
                     <div className="flex items-center relative w-full">
                       <User className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400 w-4 h-4 pointer-events-none" />
                       <Select
-                        value={deviceData.operator}
-                        onValueChange={(value) => handleInputChange('operator', value)}
+                        value={deviceData.teamLeader}
+                        onValueChange={(value) => handleInputChange('teamLeader', value)}
                       >
                         <SelectTrigger
-                          id="operator"
-                          className={`pl-10 w-full ${errors.operator ? 'border-red-500' : ''}`}
+                          id="teamLeader"
+                          className={`pl-10 w-full ${errors.teamLeader ? 'border-red-500' : ''}`}
                         >
-                          <SelectValue placeholder="Select an operator" />
+                          <SelectValue placeholder="Select a team leader" />
                         </SelectTrigger>
                         <SelectContent>
-                          {operators.length > 0 ? (
-                            operators.map((op) => (
-                              <SelectItem key={op._id} value={op._id}>
-                                {/* ✅ FIXED: Safe rendering of operator name */}
-                                {op.name || `${op.firstName || ''} ${op.lastName || ''}`.trim() || 'Unnamed Operator'}
+                          {teamLeaders.length > 0 ? (
+                            teamLeaders.map((tl) => (
+                              <SelectItem key={tl._id} value={tl._id}>
+                                {tl.first_name && tl.last_name
+                                  ? `${tl.first_name} ${tl.last_name}`.trim()
+                                  : tl.username || 'Unnamed Team Leader'}
                               </SelectItem>
                             ))
                           ) : (
                             <SelectItem disabled value="">
-                              No operators available
+                              No team leaders available
                             </SelectItem>
                           )}
                         </SelectContent>
                       </Select>
                     </div>
-                    {errors.operator && (
+                    {errors.teamLeader && (
                       <Alert variant="destructive">
                         <AlertCircle className="h-4 w-4" />
-                        <AlertDescription>{errors.operator}</AlertDescription>
+                        <AlertDescription>{errors.teamLeader}</AlertDescription>
                       </Alert>
                     )}
                   </div>
@@ -811,12 +807,12 @@ const AddDeviceModal = (props) => {
                     <div><span className="font-medium">Name:</span> {deviceData.name}</div>
                     <div><span className="font-medium">Type:</span> {selectedDeviceType?.name}</div>
                     <div><span className="font-medium">Location:</span> {deviceData.location}</div>
-                    {deviceData.operator && (
+                    {deviceData.teamLeader && (
                       <div>
-                        <span className="font-medium">Operator:</span> 
-                        {operators.find(op => op._id === deviceData.operator)?.name ||
-                         `${operators.find(op => op._id === deviceData.operator)?.firstName || ''} ${operators.find(op => op._id === deviceData.operator)?.lastName || ''}`.trim() ||
-                         'Unknown Operator'}
+                        <span className="font-medium">Team Leader:</span>{' '}
+                        {teamLeaders.find((tl) => tl._id === deviceData.teamLeader)
+                          ? `${teamLeaders.find((tl) => tl._id === deviceData.teamLeader)?.first_name || ''} ${teamLeaders.find((tl) => tl._id === deviceData.teamLeader)?.last_name || ''}`.trim() || 'Unknown'
+                          : 'Unknown'}
                       </div>
                     )}
                     <div><span className="font-medium">AI Enabled:</span> {deviceData.settings.aiEnabled ? 'Yes' : 'No'}</div>

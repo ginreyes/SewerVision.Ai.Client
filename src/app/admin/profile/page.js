@@ -18,10 +18,12 @@ import { Label } from "@/components/ui/label";
 import { Switch } from "@/components/ui/switch";
 import { use } from "react";
 import { Checkbox } from "@/components/ui/checkbox";
-import { api } from "@/lib/helper";
+import { api, getCookie } from "@/lib/helper";
+import { useUser } from "@/components/providers/UserContext";
 
 
 const AccountSettings = () => {
+  const { userData } = useUser();
   const [formData, setFormData] = useState({
     firstName: "",
     lastName: "",
@@ -62,15 +64,7 @@ const AccountSettings = () => {
  
   const handleAvatarUpload = async (e) => {
     const file = e.target.files[0];
-    const username = localStorage.getItem("username");
-    
-
-  
     if (!file) return;
-    if (!username) {
-      showAlert("You are not logged in.", "error");
-      return;
-    }
     if (!file.type.startsWith("image/")) {
       showAlert("Only image files are accepted", "error");
       return;
@@ -79,13 +73,23 @@ const AccountSettings = () => {
       showAlert("File size should be under 5MB.", "error");
       return;
     }
-  
+
+    const userId = userData?._id;
+    const username = userData?.username || getCookie("username");
+    if (!userId && !username) {
+      showAlert("Please refresh the page or log in again to update your avatar.", "error");
+      return;
+    }
+
     const formData = new FormData();
     formData.append("avatar", file);
-    formData.append("username", username);
-  
+    if (username) formData.append("username", username);
+
     try {
-      const { ok, data } = await api("/api/users/upload-avatar", "POST", formData);
+      const uploadPath = userId
+        ? `/api/users/upload-avatar/${userId}`
+        : "/api/users/upload-avatar";
+      const { ok, data } = await api(uploadPath, "POST", formData);
   
       if (ok) {
         showSuccess("Avatar uploaded successfully");

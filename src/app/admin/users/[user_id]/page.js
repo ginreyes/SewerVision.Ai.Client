@@ -177,8 +177,11 @@ const UserProfile = () => {
           if (selectedAvatar) {
             const avatarForm = new FormData();
             avatarForm.append("avatar", selectedAvatar);
-            avatarForm.append("username", payload.username);
-            const { ok, data } = await api("/api/users/upload-avatar", "POST", avatarForm);
+            if (payload.username) avatarForm.append("username", payload.username);
+            const uploadPath = user?._id
+              ? `/api/users/upload-avatar/${user._id}`
+              : "/api/users/upload-avatar";
+            const { ok, data } = await api(uploadPath, "POST", avatarForm);
             if (!ok) throw new Error(data?.message || "Avatar upload failed");
             payload.avatar = data.avatarUrl;
           }

@@ -51,7 +51,7 @@ import {
 } from '@/components/ui/table';
 import { useUser } from '@/components/providers/UserContext';
 import { useAlert } from '@/components/providers/AlertProvider';
-import { api } from '@/lib/helper';
+import { api, getCookie } from '@/lib/helper';
 import settingsApi from '@/data/settingsApi';
 
 // --- Components ---
@@ -323,7 +323,7 @@ function SettingsPageContent() {
     fileInputRef.current?.click();
   };
 
-  // Avatar upload – same implementation as operator settings (username only, no auth)
+  // Avatar upload – use userData/getCookie and userId in URL so all admins can upload
   const handleAvatarFileChange = async (e) => {
     const file = e.target.files?.[0];
     if (!file) return;
@@ -333,9 +333,10 @@ function SettingsPageContent() {
       return;
     }
 
-    const username = localStorage.getItem('username');
-    if (!username) {
-      showAlert('No username found', 'error');
+    const userId = userData?._id;
+    const username = userData?.username || getCookie('username');
+    if (!userId && !username) {
+      showAlert('Please refresh the page or log in again to update your avatar.', 'error');
       return;
     }
 
@@ -343,11 +344,16 @@ function SettingsPageContent() {
       setSaving(true);
       const formData = new FormData();
       formData.append('avatar', file);
-      formData.append('username', username);
+      if (username) formData.append('username', username);
 
+      const token = getCookie('authToken');
       const backendUrl = process.env.NEXT_PUBLIC_BACKEND_URL || 'http://localhost:5000';
-      const res = await fetch(`${backendUrl}/api/users/upload-avatar`, {
+      const uploadUrl = userId
+        ? `${backendUrl}/api/users/upload-avatar/${userId}`
+        : `${backendUrl}/api/users/upload-avatar`;
+      const res = await fetch(uploadUrl, {
         method: 'POST',
+        headers: token ? { 'Authorization': `Bearer ${token}` } : {},
         body: formData,
       });
 
