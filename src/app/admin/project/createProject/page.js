@@ -24,7 +24,8 @@ import {
   RefreshCw,
   Building2,
   Mail,
-  User
+  User,
+  Monitor
 } from "lucide-react";
 import { Textarea } from "@/components/ui/textarea";
 import { useRouter } from "next/navigation";
@@ -138,6 +139,8 @@ export default function CreateProjectPage({ backUrl = "/admin/project", returnTo
   const [qcUserId, setQcUserId] = useState("");
   const [qcName, setQcName] = useState("");
   const [qcEmail, setQcEmail] = useState("");
+  const [devices, setDevices] = useState([]);
+  const [assignedDeviceId, setAssignedDeviceId] = useState("");
 
   // Inspection Data - Step 4
   const [recordingDate, setRecordingDate] = useState("");
@@ -192,10 +195,22 @@ export default function CreateProjectPage({ backUrl = "/admin/project", returnTo
     }
   }, [showAlert]);
 
+  const fetchDevices = useCallback(async () => {
+    try {
+      const { ok, data } = await api("/api/devices/get-all-devices", "GET");
+      const list = data?.data ?? (Array.isArray(data) ? data : []);
+      setDevices(Array.isArray(list) ? list : []);
+    } catch (e) {
+      console.error("Fetch devices:", e);
+      setDevices([]);
+    }
+  }, []);
+
   useEffect(() => {
     fetchUsers();
     fetchCustomers();
-  }, [fetchUsers, fetchCustomers]);
+    fetchDevices();
+  }, [fetchUsers, fetchCustomers, fetchDevices]);
 
   const handleOperatorSelect = useCallback((userId) => {
     const selectedOperator = operators.find(op => op.user_id === userId);
@@ -325,13 +340,14 @@ export default function CreateProjectPage({ backUrl = "/admin/project", returnTo
         material: metadataMaterial,
         remarks,
       },
+      ...(assignedDeviceId ? { assignedDevice: assignedDeviceId } : {}),
     };
     return base;
   }, [name, location, customers, customerId, totalLength, pipelineMaterial, pipelineShape, workOrder, priority,
     operatorUserId, operatorName, operatorEmail,
     qcUserId, qcName, qcEmail,
     leadUserId,
-    recordingDate, upstreamMH, downstreamMH, metadataShape, metadataMaterial, remarks, userId, userData?.role]);
+    recordingDate, upstreamMH, downstreamMH, metadataShape, metadataMaterial, remarks, userId, userData?.role, assignedDeviceId]);
 
   const validateStep = useCallback((step) => {
     const newErrors = {};
@@ -854,6 +870,43 @@ export default function CreateProjectPage({ backUrl = "/admin/project", returnTo
                 </div>
               </div>
             )}
+
+            {/* Device used (optional) — admin create */}
+            <div className="max-w-2xl mx-auto mt-8">
+              <div className="bg-white rounded-2xl border-2 border-gray-100 shadow-sm overflow-hidden">
+                <div className="bg-gradient-to-r from-gray-500 to-gray-600 px-6 py-4">
+                  <div className="flex items-center gap-3">
+                    <div className="p-2 bg-white/20 rounded-lg">
+                      <Monitor className="h-5 w-5 text-white" />
+                    </div>
+                    <div>
+                      <h4 className="font-semibold text-white">Device used (optional)</h4>
+                      <p className="text-gray-200 text-sm">Assign a device to this project</p>
+                    </div>
+                  </div>
+                </div>
+                <div className="p-6">
+                  <Select
+                    value={assignedDeviceId || "__none__"}
+                    onValueChange={(value) =>
+                      setAssignedDeviceId(value === "__none__" ? "" : value)
+                    }
+                  >
+                    <SelectTrigger className="h-12 border-gray-200">
+                      <SelectValue placeholder="Select a device..." />
+                    </SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="__none__">None</SelectItem>
+                      {devices.map((d) => (
+                        <SelectItem key={d._id} value={d._id}>
+                          {d.name} {d.serialNumber ? `(${d.serialNumber})` : ""}
+                        </SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
+                </div>
+              </div>
+            </div>
 
             {/* Refresh button */}
             <div className="flex justify-center pt-4">

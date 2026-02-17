@@ -27,11 +27,15 @@ import { Alert, AlertDescription } from '@/components/ui/alert'
 import { connectivityOptions, deviceTypes } from './DataTypes'
 import { api } from '@/lib/helper'
 import { useUser } from '@/components/providers/UserContext'
+import { useAlert } from '@/components/providers/AlertProvider'
+import { useQueryClient } from '@tanstack/react-query'
 
 // ❌ REMOVED: import { userAgent } from 'next/server' — causes client/server conflict
 
 const AddDeviceModal = (props) => {
-  const { isOpen, onClose, onAddDevice ,onSuccess} = props
+  const { isOpen, onClose, onAddDevice, onSuccess } = props
+  const { showAlert } = useAlert()
+  const queryClient = useQueryClient()
 
   const [currentStep, setCurrentStep] = useState(1)
   const [deviceData, setDeviceData] = useState({
@@ -49,7 +53,7 @@ const AddDeviceModal = (props) => {
     specifications: {
       resolution: '',
       storage: '',
-      battery: '',
+      battery: null, // number (hours)
       connectivity: []
     },
     certifications: {
@@ -169,37 +173,56 @@ const AddDeviceModal = (props) => {
 
   const handleSubmit = async () => {
     if (!validateStep(currentStep)) return
-  
+    if (!userId) {
+      showAlert('You must be logged in to add a device', 'error')
+      return
+    }
+
     setIsSubmitting(true)
-  
+
     try {
+      const normalizedBattery =
+        deviceData.specifications?.battery === '' ||
+        deviceData.specifications?.battery === null ||
+        typeof deviceData.specifications?.battery === 'undefined'
+          ? null
+          : Number(deviceData.specifications?.battery);
+
       const payload = {
         ...deviceData,
+        operator: deviceData.operator || undefined,
         createdBy: userId,
-        teamLeader: deviceData.category === 'field' ? deviceData.teamLeader || undefined : undefined,
+        teamLeader:
+          deviceData.category === 'field' ? deviceData.teamLeader || undefined : undefined,
+        specifications: {
+          ...deviceData.specifications,
+          battery: normalizedBattery,
+        },
         settings: {
           ...deviceData.settings,
           qualityThreshold: deviceData.settings.qualityThreshold[0],
-          confidenceThreshold: deviceData.settings.confidenceThreshold[0]
-        }
+          confidenceThreshold: deviceData.settings.confidenceThreshold[0],
+        },
       }
-      const { data, error } = await api('/api/devices/create-device', 'POST', payload)
-      if (error) throw error
-
+      const res = await api('/api/devices/create-device', 'POST', payload)
+      if (!res.ok) {
+        const msg = res.data?.message || res.data?.error?.message || 'Failed to create device'
+        throw new Error(typeof msg === 'string' ? msg : 'Failed to create device')
+      }
+      const data = res.data?.data ?? res.data
       const deviceId = data?._id || data?.id
-  
+
       // Upload device image if selected
       if (deviceImage && deviceId) {
         const formData = new FormData()
         formData.append('image', deviceImage)
-        
         try {
           await api(`/api/devices/${deviceId}/upload-image`, 'POST', formData)
         } catch (imageError) {
           console.error('Error uploading device image:', imageError)
         }
       }
-  
+
       const createdDevice = {
         id: deviceId || Date.now(),
         ...payload,
@@ -207,10 +230,10 @@ const AddDeviceModal = (props) => {
         dateAdded: new Date().toISOString(),
         lastSeen: 'Never',
       }
-  
-      onAddDevice(createdDevice)
 
-      if (onSuccess) onSuccess() 
+      onAddDevice(createdDevice)
+      queryClient.invalidateQueries({ queryKey: ['devices'] })
+      if (onSuccess) onSuccess()
 
       onClose()
   
@@ -230,7 +253,7 @@ const AddDeviceModal = (props) => {
         specifications: {
           resolution: '',
           storage: '',
-          battery: '',
+          battery: null,
           connectivity: []
         },
         certifications: {
@@ -250,6 +273,7 @@ const AddDeviceModal = (props) => {
       setCurrentStep(1)
     } catch (error) {
       console.error('Error adding device:', error)
+      showAlert(error?.message || 'Failed to create device', 'error')
     } finally {
       setIsSubmitting(false)
     }
@@ -446,7 +470,7 @@ const AddDeviceModal = (props) => {
                               </SelectItem>
                             ))
                           ) : (
-                            <SelectItem disabled value="">
+                            <SelectItem disabled value="no-team-leaders">
                               No team leaders available
                             </SelectItem>
                           )}
@@ -550,24 +574,45 @@ const AddDeviceModal = (props) => {
 
                 <div className="space-y-2">
                   <Label htmlFor="storage">Storage Capacity</Label>
-                  <Input
-                    id="storage"
-                    value={deviceData.specifications.storage}
-                    onChange={(e) => handleInputChange('specifications.storage', e.target.value)}
-                    placeholder="e.g., 1TB, 500GB"
-                  />
+                  <Select
+                    value={deviceData.specifications.storage || ''}
+                    onValueChange={(v) => handleInputChange('specifications.storage', v)}
+                  >
+                    <SelectTrigger id="storage">
+                      <SelectValue placeholder="Select storage capacity" />
+                    </SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="32GB">32 GB</SelectItem>
+                      <SelectItem value="64GB">64 GB</SelectItem>
+                      <SelectItem value="128GB">128 GB</SelectItem>
+                      <SelectItem value="256GB">256 GB</SelectItem>
+                      <SelectItem value="512GB">512 GB</SelectItem>
+                      <SelectItem value="1TB">1 TB</SelectItem>
+                      <SelectItem value="2TB">2 TB</SelectItem>
+                      <SelectItem value="4TB">4 TB</SelectItem>
+                      <SelectItem value="8TB">8 TB</SelectItem>
+                    </SelectContent>
+                  </Select>
                 </div>
               </div>
 
               {deviceData.category === 'field' && (
                 <div className="space-y-2">
-                  <Label htmlFor="battery">Battery Life</Label>
+                  <Label htmlFor="battery">Battery Life (hours)</Label>
                   <Input
                     id="battery"
-                    value={deviceData.specifications.battery}
-                    onChange={(e) => handleInputChange('specifications.battery', e.target.value)}
-                    placeholder="e.g., 8 hours, 12 hours"
+                    type="number"
+                    min={0}
+                    max={72}
+                    step={0.5}
+                    value={deviceData.specifications.battery ?? ''}
+                    onChange={(e) => {
+                      const v = e.target.value;
+                      handleInputChange('specifications.battery', v === '' ? null : Number(v));
+                    }}
+                    placeholder="e.g. 8"
                   />
+                  <p className="text-xs text-muted-foreground">Expected runtime in hours</p>
                 </div>
               )}
             </div>

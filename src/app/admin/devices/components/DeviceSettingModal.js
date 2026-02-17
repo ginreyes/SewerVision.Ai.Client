@@ -304,14 +304,14 @@ const DeviceSettingsModal = (props) => {
                       <Label>Assigned Team Leader</Label>
                       <div className="flex gap-2">
                         <Select
-                          value={selectedTeamLeaderId}
-                          onValueChange={setSelectedTeamLeaderId}
+                          value={selectedTeamLeaderId || '__none__'}
+                          onValueChange={(v) => setSelectedTeamLeaderId(v === '__none__' ? '' : v)}
                         >
                           <SelectTrigger className="flex-1">
                             <SelectValue placeholder="Select team leader" />
                           </SelectTrigger>
                           <SelectContent>
-                            <SelectItem value="">Unassigned</SelectItem>
+                            <SelectItem value="__none__">Unassigned</SelectItem>
                             {teamLeaders.map((tl) => (
                               <SelectItem key={tl._id} value={tl._id}>
                                 {[tl.first_name, tl.last_name].filter(Boolean).join(' ') || tl.username || 'Team Leader'}

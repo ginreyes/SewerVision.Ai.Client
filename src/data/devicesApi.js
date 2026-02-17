@@ -71,4 +71,17 @@ export const devicesApi = {
     }
     return response.data;
   },
+
+  /** Operator/QC: report device as needs repair / needs maintenance / ok */
+  async reportStatus(deviceId, { reportedStatus, reportedBy }) {
+    const response = await api(`/api/devices/${deviceId}/report-status`, 'PUT', {
+      reportedStatus,
+      reportedBy,
+    });
+    if (!response.ok) {
+      throw new Error(response.data?.message || 'Failed to report device status');
+    }
+    const data = response.data;
+    return data?.data ?? data;
+  },
 };

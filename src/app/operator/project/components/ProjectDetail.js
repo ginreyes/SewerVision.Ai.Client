@@ -27,11 +27,13 @@ import {
   Calendar,
   CheckCircle2,
   Zap,
+  Monitor,
 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from '@/components/ui/dialog';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
 import { Badge } from '@/components/ui/badge';
 import AddObservation from './AddObersavation';
@@ -71,6 +73,9 @@ const ProjectDetail = ({ project, setSelectedProject, onBack }) => {
   const [isDeleteVideoOpen, setIsDeleteVideoOpen] = useState(false);
   const [videoToDelete, setVideoToDelete] = useState(null);
   const [deletingVideo, setDeletingVideo] = useState(false);
+  const [myDevices, setMyDevices] = useState([]);
+  const [selectedDeviceId, setSelectedDeviceId] = useState('');
+  const [updatingDevice, setUpdatingDevice] = useState(false);
 
   // Video upload state
   const [isUploading, setIsUploading] = useState(false);
@@ -286,6 +291,47 @@ const ProjectDetail = ({ project, setSelectedProject, onBack }) => {
       }
     }
   }, [project?._id, project?.metadata]);
+
+  const fetchMyDevices = useCallback(async () => {
+    if (!userId) return;
+    try {
+      const { ok, data } = await api(`/api/devices/get-all-devices?operatorId=${userId}`, 'GET');
+      const list = data?.data ?? (Array.isArray(data) ? data : []);
+      setMyDevices(Array.isArray(list) ? list : []);
+    } catch (e) {
+      console.error('Fetch my devices:', e);
+      setMyDevices([]);
+    }
+  }, [userId]);
+
+  useEffect(() => {
+    fetchMyDevices();
+  }, [fetchMyDevices]);
+
+  useEffect(() => {
+    const deviceId = project?.assignedDevice?._id ?? project?.assignedDevice;
+    setSelectedDeviceId(deviceId || '');
+  }, [project?._id, project?.assignedDevice]);
+
+  const handleSetDevice = useCallback(async () => {
+    if (!project?._id || !user_id) return;
+    setUpdatingDevice(true);
+    try {
+      const form = new FormData();
+      form.append('projectData', JSON.stringify({ assignedDevice: selectedDeviceId || null }));
+      const { ok } = await api(`/api/projects/update-project/${project._id}/${user_id}`, 'PUT', form);
+      if (ok) {
+        showAlert('Device updated for this project', 'success');
+        setSelectedProject?.((p) => (p?._id === project._id ? { ...p, assignedDevice: myDevices.find((d) => d._id === selectedDeviceId) || p.assignedDevice } : p));
+      } else {
+        showAlert('Failed to update device', 'error');
+      }
+    } catch (e) {
+      showAlert(e?.message || 'Failed to update device', 'error');
+    } finally {
+      setUpdatingDevice(false);
+    }
+  }, [project?._id, user_id, selectedDeviceId, myDevices, showAlert, setSelectedProject]);
 
   // Fetch project videos
   const fetchProjectVideos = useCallback(async () => {
@@ -960,6 +1006,35 @@ const ProjectDetail = ({ project, setSelectedProject, onBack }) => {
                           <span className="text-sm font-medium text-amber-700">
                             Due: {new Date(project.estimatedCompletion || project.estimated_completion).toLocaleDateString()}
                           </span>
+                        </div>
+                      )}
+                      <div className="flex items-center gap-2 bg-white/60 backdrop-blur-sm px-3 py-1.5 rounded-lg border border-gray-100 shadow-sm">
+                        <Monitor className="w-4 h-4 text-gray-500" />
+                        <span className="text-sm font-medium text-gray-700">
+                          Device: {project.assignedDevice?.name || (project.assignedDevice ? '—' : 'Not set')}
+                        </span>
+                      </div>
+                      {userData?.role === 'operator' && myDevices.length > 0 && (
+                        <div className="flex items-center gap-2">
+                          <Select
+                            value={selectedDeviceId || '__none__'}
+                            onValueChange={(value) =>
+                              setSelectedDeviceId(value === '__none__' ? '' : value)
+                            }
+                          >
+                            <SelectTrigger className="h-9 w-[200px] bg-white/80 border-gray-200">
+                              <SelectValue placeholder="Select device..." />
+                            </SelectTrigger>
+                            <SelectContent>
+                              <SelectItem value="__none__">None</SelectItem>
+                              {myDevices.map((d) => (
+                                <SelectItem key={d._id} value={d._id}>{d.name} {d.serialNumber ? `(${d.serialNumber})` : ''}</SelectItem>
+                              ))}
+                            </SelectContent>
+                          </Select>
+                          <Button size="sm" onClick={handleSetDevice} disabled={updatingDevice}>
+                            {updatingDevice ? <Loader2 className="w-4 h-4 animate-spin" /> : 'Set device'}
+                          </Button>
                         </div>
                       )}
                     </div>

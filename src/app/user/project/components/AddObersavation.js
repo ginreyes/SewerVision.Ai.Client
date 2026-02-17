@@ -431,7 +431,7 @@ const AddObservation = (props) => {
                         </SelectItem>
                       ))
                     ) : (
-                      <SelectItem value="" disabled>No PACP codes available</SelectItem>
+                      <SelectItem value="no-pacp-codes" disabled>No PACP codes available</SelectItem>
                     )}
                   </SelectContent>
                 </Select>

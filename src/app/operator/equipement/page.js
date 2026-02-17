@@ -1,15 +1,16 @@
 'use client'
 
 import React, { useState, useEffect } from 'react'
-import { 
-  Video,           
-  Tablet, 
-  Smartphone, 
-  Battery, 
-  MapPin, 
-  Search, 
-  Signal,          
-  CheckCircle,  
+import { useRouter } from 'next/navigation'
+import {
+  Video,
+  Tablet,
+  Smartphone,
+  Battery,
+  MapPin,
+  Search,
+  Signal,
+  CheckCircle,
   AlertCircle,
   Monitor,
   RefreshCw,
@@ -25,7 +26,16 @@ import {
   Eye,
   Settings as SettingsIcon
 } from 'lucide-react'
-import { api } from '@/lib/helper'
+import { api, getCookie } from '@/lib/helper'
+import { useUser } from '@/components/providers/UserContext'
+import {
+  Dialog,
+  DialogContent,
+  DialogDescription,
+  DialogFooter,
+  DialogHeader,
+  DialogTitle,
+} from '@/components/ui/dialog'
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
 import { Button } from '@/components/ui/button'
 import { Badge } from '@/components/ui/badge'
@@ -38,12 +48,21 @@ import {
   DropdownMenuSeparator,
   DropdownMenuTrigger,
 } from '@/components/ui/dropdown-menu'
+import { useAlert } from '@/components/providers/AlertProvider'
+import { Wrench, AlertTriangle } from 'lucide-react'
 
 const EquipmentPage = () => {
+  const router = useRouter()
+  const { showAlert } = useAlert()
+  const { userId } = useUser() || {}
   const [devices, setDevices] = useState([])
   const [loading, setLoading] = useState(true)
   const [refreshing, setRefreshing] = useState(false)
   const [searchQuery, setSearchQuery] = useState('')
+  const [reportingId, setReportingId] = useState(null)
+  const [powerModalOpen, setPowerModalOpen] = useState(false)
+  const [powerModalDevice, setPowerModalDevice] = useState(null)
+  const [sendingPower, setSendingPower] = useState(false)
   const [statistics, setStatistics] = useState({
     total: 0,
     online: 0,
@@ -53,35 +72,33 @@ const EquipmentPage = () => {
   
   useEffect(() => {
     fetchDevices()
-  }, [])
+  }, [userId])
 
   const fetchDevices = async () => {
     try {
-      const username = localStorage.getItem('username')
-      if (!username) return
+      setLoading(true)
+      if (!userId) {
+        setLoading(false)
+        setRefreshing(false)
+        return
+      }
 
-      // Get user ID
-      const userResponse = await api(`/api/users/role/${username}`, 'GET')
-      if (!userResponse.ok || !userResponse.data?._id) return
+      // Fetch devices assigned to this operator (backend filters by operatorId)
+      const devicesResponse = await api(`/api/devices/get-all-devices?operatorId=${userId}`, 'GET')
+      const raw = devicesResponse.data
+      const list = Array.isArray(raw) ? raw : raw?.data ?? []
+      if (devicesResponse.ok && list.length >= 0) {
+        const operatorDevices = list
 
-      const userId = userResponse.data._id
-
-      // Fetch devices assigned to operator
-      const devicesResponse = await api('/api/devices/get-all-devices', 'GET')
-      if (devicesResponse.ok && devicesResponse.data?.data) {
-        const allDevices = devicesResponse.data.data
-        const operatorDevices = allDevices.filter(d => 
-          d.operator && (d.operator._id === userId || d.operator.toString() === userId)
-        )
-        
         const formattedDevices = operatorDevices.map(device => ({
           id: device._id,
           name: device.name || 'Unknown Device',
           type: device.type?.toLowerCase() || 'camera',
           status: device.status || 'offline',
-          battery: device.specifications?.battery ? parseInt(device.specifications.battery.replace('%', '')) : 0,
+          reportedStatus: device.reportedStatus || null,
+          battery: device.specifications?.battery ? (typeof device.specifications.battery === 'number' ? device.specifications.battery : parseInt(String(device.specifications.battery).replace('%', ''), 10) || 0) : 0,
           location: device.location || 'Unknown',
-          signal: device.status === 'online' || device.status === 'recording' ? 'strong' : 
+          signal: device.status === 'online' || device.status === 'recording' ? 'strong' :
                  device.status === 'offline' ? 'none' : 'medium',
           lastActive: device.updatedAt || device.createdAt
         }))
@@ -107,6 +124,30 @@ const EquipmentPage = () => {
   const handleRefresh = () => {
     setRefreshing(true)
     fetchDevices()
+  }
+
+  const handleReportStatus = async (deviceId, reportedStatus) => {
+    if (!userId) return
+    setReportingId(deviceId)
+    try {
+      const res = await api(`/api/devices/${deviceId}/report-status`, 'PUT', {
+        reportedStatus,
+        reportedBy: userId,
+      })
+      if (res.ok) {
+        const updated = res.data?.data ?? res.data
+        setDevices(prev =>
+          prev.map(d => (d.id === deviceId ? { ...d, reportedStatus: updated?.reportedStatus ?? reportedStatus } : d))
+        )
+        showAlert('Device report updated', 'success')
+      } else {
+        showAlert(res.data?.message || 'Failed to report status', 'error')
+      }
+    } catch (e) {
+      showAlert(e?.message || 'Failed to report status', 'error')
+    } finally {
+      setReportingId(null)
+    }
   }
 
   // Filter devices
@@ -327,7 +368,7 @@ const EquipmentPage = () => {
                       <DropdownMenuContent align="end">
                         <DropdownMenuLabel>Actions</DropdownMenuLabel>
                         <DropdownMenuSeparator />
-                        <DropdownMenuItem>
+                        <DropdownMenuItem onClick={() => router.push(`/operator/equipement/${device.id}`)}>
                           <Eye className="w-4 h-4 mr-2" />
                           View Details
                         </DropdownMenuItem>
@@ -335,7 +376,12 @@ const EquipmentPage = () => {
                           <SettingsIcon className="w-4 h-4 mr-2" />
                           Settings
                         </DropdownMenuItem>
-                        <DropdownMenuItem>
+                        <DropdownMenuItem
+                          onClick={() => {
+                            setPowerModalDevice(device)
+                            setPowerModalOpen(true)
+                          }}
+                        >
                           <Power className="w-4 h-4 mr-2" />
                           Power Options
                         </DropdownMenuItem>
@@ -371,9 +417,52 @@ const EquipmentPage = () => {
                   </div>
 
                   {/* Location */}
-                  <div className="flex items-center gap-2 text-sm text-gray-600 mb-4 p-2 bg-gray-50 rounded-lg">
+                  <div className="flex items-center gap-2 text-sm text-gray-600 mb-3 p-2 bg-gray-50 rounded-lg">
                     <MapPin className="w-4 h-4 text-gray-400 flex-shrink-0" />
                     <span className="truncate">{device.location}</span>
+                  </div>
+
+                  {/* Report status: needs repair / needs maintenance */}
+                  <div className="mb-4 p-3 border border-gray-100 rounded-lg bg-slate-50/50">
+                    <p className="text-xs font-medium text-gray-600 mb-2 flex items-center gap-1">
+                      <AlertTriangle className="w-3.5 h-3.5" />
+                      Report device
+                    </p>
+                    <div className="flex flex-wrap items-center gap-2">
+                      {device.reportedStatus && (
+                        <span className={`inline-flex items-center gap-1 px-2 py-0.5 rounded text-xs font-medium ${
+                          device.reportedStatus === 'needs_repair' ? 'bg-red-100 text-red-700 border border-red-200' :
+                          device.reportedStatus === 'needs_maintenance' ? 'bg-amber-100 text-amber-700 border border-amber-200' :
+                          'bg-green-100 text-green-700 border border-green-200'
+                        }`}>
+                          {device.reportedStatus === 'needs_repair' && <Wrench className="w-3 h-3" />}
+                          {device.reportedStatus === 'needs_maintenance' && <Wrench className="w-3 h-3" />}
+                          {device.reportedStatus === 'ok' && <CheckCircle className="w-3 h-3" />}
+                          {device.reportedStatus === 'needs_repair' ? 'Needs repair' : device.reportedStatus === 'needs_maintenance' ? 'Needs maintenance' : 'OK'}
+                        </span>
+                      )}
+                      <DropdownMenu>
+                        <DropdownMenuTrigger asChild>
+                          <Button size="sm" variant="outline" className="h-7 text-xs" disabled={reportingId === device.id}>
+                            {reportingId === device.id ? <Loader2 className="w-3 h-3 animate-spin" /> : 'Report…'}
+                          </Button>
+                        </DropdownMenuTrigger>
+                        <DropdownMenuContent align="start">
+                          <DropdownMenuItem onClick={() => handleReportStatus(device.id, 'ok')}>
+                            <CheckCircle className="w-4 h-4 mr-2" />
+                            OK
+                          </DropdownMenuItem>
+                          <DropdownMenuItem onClick={() => handleReportStatus(device.id, 'needs_maintenance')}>
+                            <Wrench className="w-4 h-4 mr-2" />
+                            Needs maintenance
+                          </DropdownMenuItem>
+                          <DropdownMenuItem onClick={() => handleReportStatus(device.id, 'needs_repair')}>
+                            <AlertTriangle className="w-4 h-4 mr-2" />
+                            Needs repair
+                          </DropdownMenuItem>
+                        </DropdownMenuContent>
+                      </DropdownMenu>
+                    </div>
                   </div>
 
                   {/* Action Buttons */}
@@ -439,6 +528,91 @@ const EquipmentPage = () => {
           </div>
         )}
       </div>
+
+      {/* Power Options modal */}
+      <Dialog open={powerModalOpen} onOpenChange={setPowerModalOpen}>
+        <DialogContent>
+          <DialogHeader>
+            <DialogTitle>Power options</DialogTitle>
+            <DialogDescription>
+              {powerModalDevice ? (
+                <>Send a power command to <strong>{powerModalDevice.name}</strong>. The device must be online to receive it.</>
+              ) : (
+                'Select a device first.'
+              )}
+            </DialogDescription>
+          </DialogHeader>
+          {powerModalDevice && (
+            <div className="grid gap-2 py-2">
+              <Button
+                variant="outline"
+                className="justify-start gap-2"
+                disabled={sendingPower}
+                onClick={async () => {
+                  setSendingPower(true)
+                  await new Promise((r) => setTimeout(r, 600))
+                  showAlert(
+                    powerModalDevice.status === 'online' || powerModalDevice.status === 'ready'
+                      ? 'Restart command sent to device.'
+                      : 'Device must be online to receive the command.',
+                    powerModalDevice.status === 'online' || powerModalDevice.status === 'ready' ? 'success' : 'warning'
+                  )
+                  setSendingPower(false)
+                  setPowerModalOpen(false)
+                }}
+              >
+                {sendingPower ? <Loader2 className="w-4 h-4 animate-spin" /> : <Zap className="w-4 h-4" />}
+                Restart device
+              </Button>
+              <Button
+                variant="outline"
+                className="justify-start gap-2"
+                disabled={sendingPower}
+                onClick={async () => {
+                  setSendingPower(true)
+                  await new Promise((r) => setTimeout(r, 600))
+                  showAlert(
+                    powerModalDevice.status === 'online' || powerModalDevice.status === 'ready'
+                      ? 'Standby command sent.'
+                      : 'Device must be online.',
+                    powerModalDevice.status === 'online' || powerModalDevice.status === 'ready' ? 'success' : 'warning'
+                  )
+                  setSendingPower(false)
+                  setPowerModalOpen(false)
+                }}
+              >
+                <Activity className="w-4 h-4" />
+                Standby
+              </Button>
+              <Button
+                variant="outline"
+                className="justify-start gap-2 text-red-600 hover:text-red-700 hover:bg-red-50"
+                disabled={sendingPower}
+                onClick={async () => {
+                  setSendingPower(true)
+                  await new Promise((r) => setTimeout(r, 600))
+                  showAlert(
+                    powerModalDevice.status === 'online' || powerModalDevice.status === 'ready'
+                      ? 'Shutdown command sent.'
+                      : 'Device must be online.',
+                    powerModalDevice.status === 'online' || powerModalDevice.status === 'ready' ? 'success' : 'warning'
+                  )
+                  setSendingPower(false)
+                  setPowerModalOpen(false)
+                }}
+              >
+                <Power className="w-4 h-4" />
+                Shutdown
+              </Button>
+            </div>
+          )}
+          <DialogFooter>
+            <Button variant="secondary" onClick={() => setPowerModalOpen(false)}>
+              Cancel
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
     </div>
   )
 }

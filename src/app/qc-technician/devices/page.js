@@ -3,13 +3,20 @@ import React, { useState, useEffect } from "react";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuTrigger,
+} from "@/components/ui/dropdown-menu";
 import { 
   Monitor, Tablet, Camera, CheckCircle, XCircle, 
   Search, Activity, AlertCircle, Calendar, Loader2,
-  Zap, Settings, MapPin, HardDrive
+  Zap, Settings, MapPin, HardDrive, Wrench, AlertTriangle
 } from "lucide-react";
 import { api } from "@/lib/helper";
 import { useAlert } from "@/components/providers/AlertProvider";
+import { useUser } from "@/components/providers/UserContext";
 import { Select, SelectTrigger, SelectValue, SelectContent, SelectItem } from "@/components/ui/select";
 import DeviceDetailModal from "./DeviceDetailModal";
 
@@ -40,13 +47,15 @@ const StatCard = ({ icon: Icon, value, label, color = 'blue' }) => {
 };
 
 const QCDevicesPage = () => {
+  const { showAlert } = useAlert();
+  const { userId } = useUser() || {};
   const [devices, setDevices] = useState([]);
   const [loading, setLoading] = useState(true);
   const [searchQuery, setSearchQuery] = useState("");
   const [filterStatus, setFilterStatus] = useState("all");
   const [selectedDevice, setSelectedDevice] = useState(null);
   const [isModalOpen, setIsModalOpen] = useState(false);
-  const { showAlert } = useAlert();
+  const [reportingId, setReportingId] = useState(null);
 
   useEffect(() => {
     fetchDevices();
@@ -123,6 +132,34 @@ const QCDevicesPage = () => {
   const handleCloseModal = () => {
     setIsModalOpen(false);
     setSelectedDevice(null);
+  };
+
+  const handleReportStatus = async (deviceId, reportedStatus) => {
+    if (!userId) return;
+    setReportingId(deviceId);
+    try {
+      const res = await api(`/api/devices/${deviceId}/report-status`, "PUT", {
+        reportedStatus,
+        reportedBy: userId,
+      });
+      if (res.ok) {
+        const updated = res.data?.data ?? res.data;
+        setDevices((prev) =>
+          prev.map((d) =>
+            d._id === deviceId
+              ? { ...d, reportedStatus: updated?.reportedStatus ?? reportedStatus }
+              : d
+          )
+        );
+        showAlert("Device report updated", "success");
+      } else {
+        showAlert(res.data?.message || "Failed to report status", "error");
+      }
+    } catch (e) {
+      showAlert(e?.message || "Failed to report status", "error");
+    } finally {
+      setReportingId(null);
+    }
   };
 
   return (
@@ -299,6 +336,67 @@ const QCDevicesPage = () => {
                       <span className="text-xs font-semibold text-gray-900 truncate ml-2">{device.manufacturer}</span>
                     </div>
                   )}
+
+                  {/* Report device: needs repair / needs maintenance */}
+                  <div className="py-2 px-3 border border-slate-100 rounded-lg bg-slate-50/50 space-y-2">
+                    <p className="text-xs font-medium text-gray-600 flex items-center gap-1">
+                      <AlertTriangle className="w-3.5 h-3.5" />
+                      Report device
+                    </p>
+                    <div className="flex flex-wrap items-center gap-2">
+                      {device.reportedStatus && (
+                        <span
+                          className={`inline-flex items-center gap-1 px-2 py-0.5 rounded text-xs font-medium ${
+                            device.reportedStatus === "needs_repair"
+                              ? "bg-red-100 text-red-700 border border-red-200"
+                              : device.reportedStatus === "needs_maintenance"
+                              ? "bg-amber-100 text-amber-700 border border-amber-200"
+                              : "bg-green-100 text-green-700 border border-green-200"
+                          }`}
+                        >
+                          {(device.reportedStatus === "needs_repair" || device.reportedStatus === "needs_maintenance") && (
+                            <Wrench className="w-3 h-3" />
+                          )}
+                          {device.reportedStatus === "needs_repair"
+                            ? "Needs repair"
+                            : device.reportedStatus === "needs_maintenance"
+                            ? "Needs maintenance"
+                            : "OK"}
+                        </span>
+                      )}
+                      <DropdownMenu>
+                        <DropdownMenuTrigger asChild>
+                          <Button
+                            size="sm"
+                            variant="outline"
+                            className="h-7 text-xs"
+                            disabled={reportingId === device._id}
+                            onClick={(e) => e.stopPropagation()}
+                          >
+                            {reportingId === device._id ? (
+                              <Loader2 className="w-3 h-3 animate-spin" />
+                            ) : (
+                              "Report…"
+                            )}
+                          </Button>
+                        </DropdownMenuTrigger>
+                        <DropdownMenuContent align="start" onClick={(e) => e.stopPropagation()}>
+                          <DropdownMenuItem onClick={() => handleReportStatus(device._id, "ok")}>
+                            <CheckCircle className="w-4 h-4 mr-2" />
+                            OK
+                          </DropdownMenuItem>
+                          <DropdownMenuItem onClick={() => handleReportStatus(device._id, "needs_maintenance")}>
+                            <Wrench className="w-4 h-4 mr-2" />
+                            Needs maintenance
+                          </DropdownMenuItem>
+                          <DropdownMenuItem onClick={() => handleReportStatus(device._id, "needs_repair")}>
+                            <AlertTriangle className="w-4 h-4 mr-2" />
+                            Needs repair
+                          </DropdownMenuItem>
+                        </DropdownMenuContent>
+                      </DropdownMenu>
+                    </div>
+                  </div>
                   
                   {/* Last Maintenance */}
                   {device.lastMaintenance && (

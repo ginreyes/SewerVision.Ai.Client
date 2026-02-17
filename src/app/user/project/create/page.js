@@ -24,7 +24,8 @@ import {
   RefreshCw,
   Building2,
   Mail,
-  User
+  User,
+  Monitor
 } from "lucide-react";
 import { Textarea } from "@/components/ui/textarea";
 import { useRouter } from "next/navigation";
@@ -136,6 +137,8 @@ export default function CreateProjectPage({ backUrl = "/user/project", returnTo 
   const [qcUserId, setQcUserId] = useState("");
   const [qcName, setQcName] = useState("");
   const [qcEmail, setQcEmail] = useState("");
+  const [assignedDeviceId, setAssignedDeviceId] = useState("");
+  const [devices, setDevices] = useState([]);
 
   // Inspection Data - Step 4
   const [recordingDate, setRecordingDate] = useState("");
@@ -189,10 +192,26 @@ export default function CreateProjectPage({ backUrl = "/user/project", returnTo 
     }
   }, [showAlert]);
 
+  const fetchDevices = useCallback(async () => {
+    if (userData?.role !== "user" || !userId) return;
+    try {
+      const { ok, data } = await api(`/api/devices/get-all-devices?teamLeaderId=${userId}`, "GET");
+      const list = data?.data ?? (Array.isArray(data) ? data : []);
+      setDevices(Array.isArray(list) ? list : []);
+    } catch (e) {
+      console.error("Fetch devices:", e);
+      setDevices([]);
+    }
+  }, [userId, userData?.role]);
+
   useEffect(() => {
     fetchUsers();
     fetchCustomers();
   }, [fetchUsers, fetchCustomers]);
+
+  useEffect(() => {
+    fetchDevices();
+  }, [fetchDevices]);
 
   const handleOperatorSelect = useCallback((userId) => {
     const selectedOperator = operators.find(op => op.user_id === userId);
@@ -314,6 +333,7 @@ export default function CreateProjectPage({ backUrl = "/user/project", returnTo 
         name: qcName,
         email: qcEmail
       },
+      ...(assignedDeviceId ? { assignedDevice: assignedDeviceId } : {}),
       metadata: {
         recordingDate,
         upstreamMH,
@@ -327,6 +347,7 @@ export default function CreateProjectPage({ backUrl = "/user/project", returnTo 
   }, [name, location, customers, customerId, totalLength, pipelineMaterial, pipelineShape, workOrder, priority,
     operatorUserId, operatorName, operatorEmail,
     qcUserId, qcName, qcEmail,
+    assignedDeviceId,
     recordingDate, upstreamMH, downstreamMH, metadataShape, metadataMaterial, remarks, userId, userData?.role]);
 
   const validateStep = useCallback((step) => {
@@ -803,6 +824,43 @@ export default function CreateProjectPage({ backUrl = "/user/project", returnTo 
                       </div>
                     )}
                   </div>
+                </div>
+              </div>
+            )}
+
+            {/* Device used (optional) - Team lead assigns device to project */}
+            {userData?.role === "user" && (
+              <div className="mt-6 bg-white rounded-2xl border-2 border-gray-100 shadow-sm overflow-hidden max-w-5xl mx-auto">
+                <div className="bg-gradient-to-r from-gray-500 to-gray-600 px-6 py-4">
+                  <div className="flex items-center gap-3">
+                    <div className="p-2 bg-white/20 rounded-lg">
+                      <Monitor className="h-5 w-5 text-white" />
+                    </div>
+                    <div>
+                      <h4 className="font-semibold text-white">Device used (optional)</h4>
+                      <p className="text-gray-200 text-sm">Link a device to this project for the operator</p>
+                    </div>
+                  </div>
+                </div>
+                <div className="p-6">
+                  <Select
+                    value={assignedDeviceId || '__none__'}
+                    onValueChange={(value) =>
+                      setAssignedDeviceId(value === '__none__' ? '' : value)
+                    }
+                  >
+                    <SelectTrigger className="h-12 border-gray-200">
+                      <SelectValue placeholder="Select device (optional)..." />
+                    </SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="__none__">None</SelectItem>
+                      {devices.map((d) => (
+                        <SelectItem key={d._id} value={d._id}>
+                          {d.name} {d.serialNumber ? `(${d.serialNumber})` : ""}
+                        </SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
                 </div>
               </div>
             )}

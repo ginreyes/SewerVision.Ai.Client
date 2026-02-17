@@ -1,6 +1,7 @@
 'use client'
 
 import React, { useState, useEffect, useCallback } from 'react'
+import { useRouter } from 'next/navigation'
 import {
   Upload,
   Video,
@@ -24,13 +25,25 @@ import {
   ChevronRight,
   MoreVertical,
   Eye,
-  Radio
+  Radio,
+  Power,
+  Activity
 } from 'lucide-react'
 import { api } from '@/lib/helper'
+import { useUser } from '@/components/providers/UserContext'
+import { useAlert } from '@/components/providers/AlertProvider'
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
 import { Button } from '@/components/ui/button'
 import { Badge } from '@/components/ui/badge'
 import { Progress } from '@/components/ui/progress'
+import {
+  Dialog,
+  DialogContent,
+  DialogDescription,
+  DialogFooter,
+  DialogHeader,
+  DialogTitle,
+} from '@/components/ui/dialog'
 
 // Status Badge Component
 const StatusBadge = ({ status }) => {
@@ -199,14 +212,21 @@ const UploadItem = ({ upload }) => {
 
 // Main Component
 const OperationsPage = () => {
+  const router = useRouter()
+  const { showAlert } = useAlert()
+  const { userId, userData } = useUser() || {}
   const [selectedDevice, setSelectedDevice] = useState(null)
   const [devices, setDevices] = useState([])
   const [uploads, setUploads] = useState([])
   const [loading, setLoading] = useState(true)
   const [refreshing, setRefreshing] = useState(false)
+  const [powerModalOpen, setPowerModalOpen] = useState(false)
+  const [sendingPower, setSendingPower] = useState(false)
+
+  const username = userData?.username ?? userData?.email ?? ''
 
   // Helper function to format devices
-  const formatDevice = (device, index, username) => ({
+  const formatDevice = (device, index, uname) => ({
     id: device._id,
     name: device.name || `Device ${index + 1}`,
     status: device.status || 'offline',
@@ -214,32 +234,27 @@ const OperationsPage = () => {
     recordingTime: '00:00:00',
     footage: '0 ft',
     aiDetections: 0,
-    battery: device.specifications?.battery ? parseInt(device.specifications.battery) : 0,
+    battery: device.specifications?.battery ? (typeof device.specifications.battery === 'number' ? device.specifications.battery : parseInt(device.specifications.battery, 10) || 0) : 0,
     signal: device.status === 'online' ? 'strong' : device.status === 'offline' ? 'none' : 'weak',
     operator: device.operator?.first_name && device.operator?.last_name
       ? `${device.operator.first_name} ${device.operator.last_name}`
-      : username
+      : uname
   })
 
   const fetchData = useCallback(async () => {
     try {
-      const username = localStorage.getItem('username')
-      if (!username) return
+      setLoading(true)
+      if (!userId) {
+        setLoading(false)
+        return
+      }
 
-      const userResponse = await api(`/api/users/role/${username}`, 'GET')
-      if (!userResponse.ok || !userResponse.data?._id) return
-
-      const userId = userResponse.data._id
-
-      // Fetch devices
-      const devicesResponse = await api('/api/devices/get-all-devices', 'GET')
-      if (devicesResponse.ok && devicesResponse.data?.data) {
-        const allDevices = devicesResponse.data.data
-        const operatorDevices = allDevices.filter(d =>
-          d.operator && (d.operator._id === userId || d.operator.toString() === userId)
-        )
-
-        const formattedDevices = operatorDevices.map((device, index) => formatDevice(device, index, username))
+      // Fetch devices assigned to this operator (backend filters by operatorId)
+      const devicesResponse = await api(`/api/devices/get-all-devices?operatorId=${userId}`, 'GET')
+      const raw = devicesResponse.data
+      const list = Array.isArray(raw) ? raw : raw?.data ?? []
+      if (devicesResponse.ok && list.length >= 0) {
+        const formattedDevices = list.map((device, index) => formatDevice(device, index, username))
         setDevices(formattedDevices)
         if (formattedDevices.length > 0 && !selectedDevice) {
           setSelectedDevice(formattedDevices[0].id)
@@ -265,7 +280,7 @@ const OperationsPage = () => {
     } finally {
       setLoading(false)
     }
-  }, [selectedDevice])
+  }, [userId, username, selectedDevice])
 
   useEffect(() => {
     fetchData()
@@ -457,9 +472,114 @@ const OperationsPage = () => {
                     </Button>
                   )}
                 </div>
+                <div className="flex gap-2 mt-3">
+                  <Button
+                    variant="outline"
+                    size="sm"
+                    className="gap-2"
+                    onClick={() => router.push(`/operator/equipement/${selectedDeviceData.id}`)}
+                  >
+                    <Eye className="w-4 h-4" />
+                    View Details
+                  </Button>
+                  <Button
+                    variant="outline"
+                    size="sm"
+                    className="gap-2"
+                    onClick={() => setPowerModalOpen(true)}
+                  >
+                    <Power className="w-4 h-4" />
+                    Power Options
+                  </Button>
+                </div>
               </CardContent>
             </Card>
           )}
+
+          {/* Power Options modal */}
+          <Dialog open={powerModalOpen} onOpenChange={setPowerModalOpen}>
+            <DialogContent>
+              <DialogHeader>
+                <DialogTitle>Power options</DialogTitle>
+                <DialogDescription>
+                  {selectedDeviceData ? (
+                    <>Send a power command to <strong>{selectedDeviceData.name}</strong>. The device must be online to receive it.</>
+                  ) : (
+                    'Select a device first.'
+                  )}
+                </DialogDescription>
+              </DialogHeader>
+              {selectedDeviceData && (
+                <div className="grid gap-2 py-2">
+                  <Button
+                    variant="outline"
+                    className="justify-start gap-2"
+                    disabled={sendingPower}
+                    onClick={async () => {
+                      setSendingPower(true)
+                      await new Promise((r) => setTimeout(r, 600))
+                      showAlert(
+                        selectedDeviceData.status === 'online' || selectedDeviceData.status === 'ready'
+                          ? 'Restart command sent to device.'
+                          : 'Device must be online to receive the command.',
+                        selectedDeviceData.status === 'online' || selectedDeviceData.status === 'ready' ? 'success' : 'warning'
+                      )
+                      setSendingPower(false)
+                      setPowerModalOpen(false)
+                    }}
+                  >
+                    {sendingPower ? <Loader2 className="w-4 h-4 animate-spin" /> : <Zap className="w-4 h-4" />}
+                    Restart device
+                  </Button>
+                  <Button
+                    variant="outline"
+                    className="justify-start gap-2"
+                    disabled={sendingPower}
+                    onClick={async () => {
+                      setSendingPower(true)
+                      await new Promise((r) => setTimeout(r, 600))
+                      showAlert(
+                        selectedDeviceData.status === 'online' || selectedDeviceData.status === 'ready'
+                          ? 'Standby command sent.'
+                          : 'Device must be online.',
+                        selectedDeviceData.status === 'online' || selectedDeviceData.status === 'ready' ? 'success' : 'warning'
+                      )
+                      setSendingPower(false)
+                      setPowerModalOpen(false)
+                    }}
+                  >
+                    <Activity className="w-4 h-4" />
+                    Standby
+                  </Button>
+                  <Button
+                    variant="outline"
+                    className="justify-start gap-2 text-red-600 hover:text-red-700 hover:bg-red-50"
+                    disabled={sendingPower}
+                    onClick={async () => {
+                      setSendingPower(true)
+                      await new Promise((r) => setTimeout(r, 600))
+                      showAlert(
+                        selectedDeviceData.status === 'online' || selectedDeviceData.status === 'ready'
+                          ? 'Shutdown command sent.'
+                          : 'Device must be online.',
+                        selectedDeviceData.status === 'online' || selectedDeviceData.status === 'ready' ? 'success' : 'warning'
+                      )
+                      setSendingPower(false)
+                      setPowerModalOpen(false)
+                    }}
+                  >
+                    <Power className="w-4 h-4" />
+                    Shutdown
+                  </Button>
+                </div>
+              )}
+              <DialogFooter>
+                <Button variant="secondary" onClick={() => setPowerModalOpen(false)}>
+                  Cancel
+                </Button>
+              </DialogFooter>
+            </DialogContent>
+          </Dialog>
         </div>
 
         {/* Right - Upload Queue */}

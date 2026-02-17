@@ -189,7 +189,7 @@ const Devices = () => {
                 Manage field and cloud devices. Assign team leaders to assign devices to QC and operators.
               </p>
             </div>
-            <Button onClick={() => setShowModal(true)} className="shrink-0">
+            <Button onClick={() => setShowModal(true)} className="shrink-0" variant="rose">
               <Plus className="w-4 h-4 mr-2" />
               Add Device
             </Button>

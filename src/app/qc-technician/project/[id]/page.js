@@ -6,7 +6,7 @@ import {
     ArrowLeft, Play, Pause, CheckCircle, XCircle,
     MapPin, Building2, Ruler, Calendar, Maximize, Maximize2, Minimize2, Loader2,
     CheckSquare, FileVideo, Target, RefreshCw, ChevronDown, ChevronUp,
-    Rewind, SkipBack, SkipForward, FastForward, Plus, X
+    Rewind, SkipBack, SkipForward, FastForward, Plus, X, Monitor
 } from 'lucide-react';
 import { useUser } from '@/components/providers/UserContext';
 import { Button } from '@/components/ui/button';
@@ -590,6 +590,10 @@ const ProjectConsolePage = () => {
                                                     <span className="text-sm font-medium text-amber-700">Due: {new Date(project.estimatedCompletion || project.estimated_completion).toLocaleDateString()}</span>
                                                 </div>
                                             )}
+                                            <div className="flex items-center gap-2 bg-white/60 backdrop-blur-sm px-3 py-1.5 rounded-lg border border-gray-100 shadow-sm">
+                                                <Monitor className="w-4 h-4 text-gray-500" />
+                                                <span className="text-sm font-medium text-gray-700">Device: {project.assignedDevice?.name || (project.assignedDevice ? '—' : 'Not set')}</span>
+                                            </div>
                                         </div>
                                     </div>
                                     <div className="text-right min-w-[100px]">
