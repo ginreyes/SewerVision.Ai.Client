@@ -10,6 +10,8 @@ export const devicesApi = {
     const q = new URLSearchParams();
     if (params.teamLeaderId) q.set('teamLeaderId', params.teamLeaderId);
     if (params.operatorId) q.set('operatorId', params.operatorId);
+    if (params.qcTechnicianId) q.set('qcTechnicianId', params.qcTechnicianId);
+    if (params.unassigned === true || params.unassigned === 'true') q.set('unassigned', 'true');
     const query = q.toString() ? `?${q.toString()}` : '';
     const response = await api(`/api/devices/get-all-devices${query}`, 'GET');
     if (!response.ok) {
@@ -58,6 +60,15 @@ export const devicesApi = {
     );
     if (!response.ok) {
       throw new Error(response.data?.message || 'Failed to assign device to team leader');
+    }
+    return response.data?.data ?? response.data;
+  },
+
+  /** Bulk assign devices to team leader, operator, and/or QC */
+  async bulkAssign(payload) {
+    const response = await api('/api/devices/bulk-assign', 'PATCH', payload);
+    if (!response.ok) {
+      throw new Error(response.data?.message || 'Failed to bulk assign devices');
     }
     return response.data?.data ?? response.data;
   },

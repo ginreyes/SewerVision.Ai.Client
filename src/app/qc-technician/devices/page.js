@@ -15,6 +15,7 @@ import {
   Zap, Settings, MapPin, HardDrive, Wrench, AlertTriangle
 } from "lucide-react";
 import { api } from "@/lib/helper";
+import { devicesApi } from "@/data/devicesApi";
 import { useAlert } from "@/components/providers/AlertProvider";
 import { useUser } from "@/components/providers/UserContext";
 import { Select, SelectTrigger, SelectValue, SelectContent, SelectItem } from "@/components/ui/select";
@@ -59,18 +60,21 @@ const QCDevicesPage = () => {
 
   useEffect(() => {
     fetchDevices();
-  }, []);
+  }, [userId]);
 
   const fetchDevices = async () => {
     try {
       setLoading(true);
-      const result = await api("/api/devices/get-all-devices", "GET");
-      if (result.ok && result.data?.data) {
-        setDevices(result.data.data || []);
+      if (!userId) {
+        setDevices([]);
+        return;
       }
+      const list = await devicesApi.getDevices({ qcTechnicianId: userId });
+      setDevices(Array.isArray(list) ? list : []);
     } catch (error) {
       console.error("Error fetching devices:", error);
       showAlert("Failed to load devices", "error");
+      setDevices([]);
     } finally {
       setLoading(false);
     }

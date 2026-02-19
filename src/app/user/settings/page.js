@@ -18,7 +18,8 @@ import {
   LogOut,
   Upload,
   CheckCircle2,
-  Pencil
+  Pencil,
+  X
 } from 'lucide-react';
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
@@ -33,25 +34,28 @@ import { useUser } from '@/components/providers/UserContext';
 import { useAlert } from '@/components/providers/AlertProvider';
 import { api, getCookie } from '@/lib/helper';
 
-const SectionHeader = ({ icon: Icon, title, description }) => (
-  <div className="flex items-center space-x-4 mb-6">
-    <div className="p-2 bg-indigo-100 rounded-lg">
-      <Icon className="w-6 h-6 text-indigo-600" />
+const SectionHeader = ({ icon: Icon, title, description, variant = 'default' }) => {
+  const isRose = variant === 'rose';
+  return (
+    <div className="flex items-center space-x-4 mb-6">
+      <div className={`p-2 rounded-lg ${isRose ? 'bg-rose-100' : 'bg-indigo-100'}`}>
+        <Icon className={`w-6 h-6 ${isRose ? 'text-rose-600' : 'text-indigo-600'}`} />
+      </div>
+      <div>
+        <h2 className="text-lg font-semibold text-gray-900">{title}</h2>
+        <p className="text-sm text-gray-500">{description}</p>
+      </div>
     </div>
-    <div>
-      <h2 className="text-lg font-semibold text-gray-900">{title}</h2>
-      <p className="text-sm text-gray-500">{description}</p>
-    </div>
-  </div>
-);
+  );
+};
 
-const ToggleSetting = ({ label, description, checked, onCheckedChange }) => (
-  <div className="flex items-center justify-between py-4">
+const ToggleSetting = ({ label, description, checked, onCheckedChange, disabled }) => (
+  <div className={`flex items-center justify-between py-4 ${disabled ? 'opacity-70' : ''}`}>
     <div className="space-y-0.5">
       <Label className="text-base font-medium text-gray-900">{label}</Label>
       <p className="text-sm text-gray-500">{description}</p>
     </div>
-    <Switch checked={checked} onCheckedChange={onCheckedChange} />
+    <Switch checked={checked} onCheckedChange={onCheckedChange} disabled={disabled} />
   </div>
 );
 
@@ -61,10 +65,16 @@ function UserSettingsContent() {
   const { userData, logout, updateUserData } = useUser();
   const { showAlert } = useAlert();
 
-  const [activeTab, setActiveTab] = useState(searchParams.get('tab') || 'profile');
+  const [activeTab, setActiveTab] = useState(searchParams.get('tab') || 'preferences');
   const [loading, setLoading] = useState(false);
   const [saving, setSaving] = useState(false);
+
+  // ── Separate edit states for profile vs settings ──────────────
   const [isEditingProfile, setIsEditingProfile] = useState(false);
+  const [profileSnapshot, setProfileSnapshot] = useState(null);
+
+  const [isEditingSettings, setIsEditingSettings] = useState(false);
+  const [settingsSnapshot, setSettingsSnapshot] = useState(null);
 
   const [profile, setProfile] = useState({
     firstName: '',
@@ -130,6 +140,18 @@ function UserSettingsContent() {
     setProfile((prev) => ({ ...prev, [name]: value }));
   };
 
+  // ── Profile edit handlers ─────────────────────────────────────
+  const handleEditProfile = () => {
+    setProfileSnapshot(JSON.parse(JSON.stringify(profile)));
+    setIsEditingProfile(true);
+  };
+
+  const handleCancelEditProfile = () => {
+    if (profileSnapshot) setProfile(profileSnapshot);
+    setProfileSnapshot(null);
+    setIsEditingProfile(false);
+  };
+
   const handleSaveProfile = async () => {
     try {
       setSaving(true);
@@ -148,6 +170,7 @@ function UserSettingsContent() {
           updateUserData(response.data.data);
         }
         showAlert('Profile updated successfully', 'success');
+        setProfileSnapshot(null);
         setIsEditingProfile(false);
       } else {
         throw new Error(response.message || 'Failed to update profile');
@@ -240,6 +263,18 @@ function UserSettingsContent() {
 
   const updateSetting = (key, value) => setSettings((prev) => ({ ...prev, [key]: value }));
 
+  // ── Settings (notifications/preferences) edit handlers ────────
+  const handleEditSettings = () => {
+    setSettingsSnapshot(JSON.parse(JSON.stringify(settings)));
+    setIsEditingSettings(true);
+  };
+
+  const handleCancelEdit = () => {
+    if (settingsSnapshot) setSettings(settingsSnapshot);
+    setSettingsSnapshot(null);
+    setIsEditingSettings(false);
+  };
+
   const handleSaveSettings = async () => {
     try {
       setSaving(true);
@@ -249,12 +284,16 @@ function UserSettingsContent() {
       } else {
         showAlert('Settings saved (local)', 'success');
       }
+      setSettingsSnapshot(null);
+      setIsEditingSettings(false);
     } catch (e) {
       showAlert('Failed to save settings', 'error');
     } finally {
       setSaving(false);
     }
   };
+
+  const canEdit = Boolean(isEditingSettings);
 
   return (
     <div className="max-w-7xl mx-auto p-6 space-y-8">
@@ -264,13 +303,27 @@ function UserSettingsContent() {
           <p className="text-gray-500 mt-1">Manage your account and preferences as team lead</p>
         </div>
         <div className="flex items-center gap-3">
-          <Button variant="outline" className="text-gray-600" onClick={() => router.push('/user/dashboard')}>
+          <Button variant="outline" size="sm" className="text-gray-600" onClick={() => router.push('/user/dashboard')}>
             Back to Dashboard
           </Button>
-          <Button onClick={handleSaveSettings} disabled={saving} className="bg-indigo-600 hover:bg-indigo-700">
-            {saving ? <Loader2 className="w-4 h-4 mr-2 animate-spin" /> : <Save className="w-4 h-4 mr-2" />}
-            Save Changes
-          </Button>
+          {/* Top-bar edit/save only controls notifications & preferences */}
+          {!isEditingSettings ? (
+            <Button variant="rose" size="sm" onClick={handleEditSettings} className="gap-1.5">
+              <Pencil className="w-4 h-4" />
+              Edit
+            </Button>
+          ) : (
+            <>
+              <Button variant="outline" size="sm" onClick={handleCancelEdit} className="gap-1.5">
+                <X className="w-4 h-4" />
+                Cancel
+              </Button>
+              <Button variant="rose" size="sm" onClick={handleSaveSettings} disabled={saving} className="gap-1.5">
+                {saving ? <Loader2 className="w-4 h-4 animate-spin" /> : <Save className="w-4 h-4" />}
+                Save
+              </Button>
+            </>
+          )}
         </div>
       </div>
 
@@ -281,16 +334,16 @@ function UserSettingsContent() {
               {[
                 { id: 'profile', label: 'Profile', icon: User },
                 { id: 'notifications', label: 'Notifications', icon: Bell },
-                { id: 'preferences', label: 'Preferences', icon: Globe }
+                { id: 'preferences', label: 'Preferences', icon: Globe }         
               ].map((item) => (
                 <button
                   key={item.id}
                   onClick={() => handleTabChange(item.id)}
                   className={`flex items-center w-full px-3 py-2 text-sm font-medium rounded-lg transition-colors ${
-                    activeTab === item.id ? 'bg-indigo-50 text-indigo-700' : 'text-gray-600 hover:bg-gray-50 hover:text-gray-900'
+                    activeTab === item.id ? 'bg-rose-50 text-rose-700' : 'text-gray-600 hover:bg-gray-50 hover:text-gray-900'
                   }`}
                 >
-                  <item.icon className={`w-4 h-4 mr-3 ${activeTab === item.id ? 'text-indigo-600' : 'text-gray-400'}`} />
+                  <item.icon className={`w-4 h-4 mr-3 ${activeTab === item.id ? 'text-rose-600' : 'text-gray-400'}`} />
                   {item.label}
                 </button>
               ))}
@@ -314,26 +367,30 @@ function UserSettingsContent() {
                   <div className="flex items-center justify-between">
                     <div>
                       <CardTitle>Personal Information</CardTitle>
-                      <CardDescription>Your profile and contact details</CardDescription>
+                      <CardDescription>
+                        {isEditingProfile
+                          ? 'Edit your profile details below.'
+                          : 'View your details. Click Edit to make changes.'}
+                      </CardDescription>
                     </div>
-                    <Button
-                      variant={isEditingProfile ? 'ghost' : 'outline'}
-                      size="sm"
-                      onClick={() => (isEditingProfile ? handleSaveProfile() : setIsEditingProfile(true))}
-                      className={isEditingProfile ? 'text-green-600 hover:text-green-700 bg-green-50' : ''}
-                    >
-                      {isEditingProfile ? (
-                        <>
-                          {saving ? <Loader2 className="w-4 h-4 mr-2 animate-spin" /> : <Save className="w-4 h-4 mr-2" />}
-                          Save Profile
-                        </>
-                      ) : (
-                        <>
-                          <Pencil className="w-4 h-4 mr-2" />
-                          Edit Profile
-                        </>
-                      )}
-                    </Button>
+                    {/* Profile-specific edit/cancel/save buttons */}
+                    {!isEditingProfile ? (
+                      <Button variant="outline" size="sm" onClick={handleEditProfile} className="gap-1.5">
+                        <Pencil className="w-4 h-4" />
+                        Edit
+                      </Button>
+                    ) : (
+                      <div className="flex gap-2">
+                        <Button variant="outline" size="sm" onClick={handleCancelEditProfile} className="gap-1.5">
+                          <X className="w-4 h-4" />
+                          Cancel
+                        </Button>
+                        <Button variant="rose" size="sm" onClick={handleSaveProfile} disabled={saving} className="gap-1.5">
+                          {saving ? <Loader2 className="w-4 h-4 animate-spin" /> : <Save className="w-4 h-4" />}
+                          Save
+                        </Button>
+                      </div>
+                    )}
                   </div>
                 </CardHeader>
                 <CardContent className="space-y-8">
@@ -351,7 +408,7 @@ function UserSettingsContent() {
                         onClick={handleAvatarClick}
                       >
                         <AvatarImage src={profile.avatar} />
-                        <AvatarFallback className="bg-indigo-100 text-indigo-600 text-2xl">
+                        <AvatarFallback className="bg-rose-100 text-rose-600 text-2xl">
                           {profile.firstName?.[0]}
                           {profile.lastName?.[0]}
                         </AvatarFallback>
@@ -371,7 +428,7 @@ function UserSettingsContent() {
                         Team Lead • {profile.department || 'Management'}
                       </p>
                       <div className="flex items-center justify-center sm:justify-start gap-2 mt-3">
-                        <Badge variant="secondary" className="bg-indigo-50 text-indigo-700 hover:bg-indigo-100">
+                        <Badge variant="secondary" className="bg-rose-50 text-rose-700 hover:bg-rose-100">
                           Management
                         </Badge>
                         {userData?._id && (
@@ -381,8 +438,9 @@ function UserSettingsContent() {
                         )}
                       </div>
                     </div>
-                    <Button variant="outline" onClick={handleAvatarClick} disabled={loading}>
-                      Change Avatar
+                    <Button variant="rose" size="sm" onClick={handleAvatarClick} disabled={loading}>
+                      {loading ? <Loader2 className="w-4 h-4 animate-spin" /> : <Upload className="w-4 h-4 mr-1.5" />}
+                      Update avatar
                     </Button>
                   </div>
 
@@ -390,79 +448,61 @@ function UserSettingsContent() {
 
                   <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
                     <div className="space-y-2">
-                      <Label>First Name</Label>
-                      <div className="relative">
-                        <User className="absolute left-3 top-2.5 h-4 w-4 text-gray-400" />
-                        <Input
-                          name="firstName"
-                          value={profile.firstName}
-                          onChange={handleProfileChange}
-                          className="pl-9"
-                          disabled={!isEditingProfile}
-                        />
-                      </div>
+                      <Label className="text-gray-500">First Name</Label>
+                      <Input
+                        name="firstName"
+                        value={profile.firstName}
+                        onChange={handleProfileChange}
+                        className={isEditingProfile ? '' : 'bg-gray-50'}
+                        disabled={!isEditingProfile}
+                        readOnly={!isEditingProfile}
+                      />
                     </div>
                     <div className="space-y-2">
-                      <Label>Last Name</Label>
-                      <div className="relative">
-                        <User className="absolute left-3 top-2.5 h-4 w-4 text-gray-400" />
-                        <Input
-                          name="lastName"
-                          value={profile.lastName}
-                          onChange={handleProfileChange}
-                          className="pl-9"
-                          disabled={!isEditingProfile}
-                        />
-                      </div>
+                      <Label className="text-gray-500">Last Name</Label>
+                      <Input
+                        name="lastName"
+                        value={profile.lastName}
+                        onChange={handleProfileChange}
+                        className={isEditingProfile ? '' : 'bg-gray-50'}
+                        disabled={!isEditingProfile}
+                        readOnly={!isEditingProfile}
+                      />
                     </div>
                     <div className="space-y-2">
-                      <Label>Email Address</Label>
-                      <div className="relative">
-                        <Mail className="absolute left-3 top-2.5 h-4 w-4 text-gray-400" />
-                        <Input name="email" value={profile.email} className="pl-9 bg-gray-50" disabled title="Contact admin to change email" />
-                      </div>
+                      <Label className="text-gray-500">Email Address</Label>
+                      <Input
+                        name="email"
+                        value={profile.email}
+                        className="bg-gray-50"
+                        disabled
+                        readOnly
+                        title="Contact admin to change email"
+                      />
                     </div>
                     <div className="space-y-2">
-                      <Label>Phone Number</Label>
-                      <div className="relative">
-                        <Phone className="absolute left-3 top-2.5 h-4 w-4 text-gray-400" />
-                        <Input
-                          name="phone"
-                          value={profile.phone}
-                          onChange={handleProfileChange}
-                          className="pl-9"
-                          placeholder="+1 (555) 000-0000"
-                          disabled={!isEditingProfile}
-                        />
-                      </div>
+                      <Label className="text-gray-500">Phone Number</Label>
+                      <Input
+                        name="phone"
+                        value={profile.phone}
+                        onChange={handleProfileChange}
+                        className={isEditingProfile ? '' : 'bg-gray-50'}
+                        disabled={!isEditingProfile}
+                        readOnly={!isEditingProfile}
+                      />
                     </div>
                     <div className="space-y-2">
-                      <Label>Department</Label>
-                      <div className="relative">
-                        <Building className="absolute left-3 top-2.5 h-4 w-4 text-gray-400" />
-                        <Input
-                          name="department"
-                          value={profile.department}
-                          onChange={handleProfileChange}
-                          className="pl-9"
-                          placeholder="e.g. Operations"
-                          disabled={!isEditingProfile}
-                        />
-                      </div>
+                      <Label className="text-gray-500">Department</Label>
+                      <Input
+                        name="department"
+                        value={profile.department}
+                        onChange={handleProfileChange}
+                        className={isEditingProfile ? '' : 'bg-gray-50'}
+                        disabled={!isEditingProfile}
+                        readOnly={!isEditingProfile}
+                      />
                     </div>
                   </div>
-
-                  {isEditingProfile && (
-                    <div className="flex justify-end pt-4">
-                      <Button variant="ghost" onClick={() => setIsEditingProfile(false)} className="mr-2">
-                        Cancel
-                      </Button>
-                      <Button onClick={handleSaveProfile} disabled={saving} className="bg-indigo-600">
-                        {saving && <Loader2 className="w-4 h-4 mr-2 animate-spin" />}
-                        Save Changes
-                      </Button>
-                    </div>
-                  )}
                 </CardContent>
               </Card>
 
@@ -532,6 +572,7 @@ function UserSettingsContent() {
                     </div>
                     <Button
                       type="submit"
+                      variant="rose"
                       disabled={saving || !passwordForm.currentPassword || !passwordForm.newPassword || !passwordForm.confirmPassword}
                     >
                       {saving && <Loader2 className="w-4 h-4 mr-2 animate-spin" />}
@@ -543,7 +584,7 @@ function UserSettingsContent() {
             </TabsContent>
 
             <TabsContent value="notifications" className="space-y-6 mt-0">
-              <Card className="border-0 shadow-sm">
+              <Card className="border-0 shadow-sm relative">
                 <CardHeader>
                   <SectionHeader
                     icon={Bell}
@@ -551,12 +592,13 @@ function UserSettingsContent() {
                     description="Choose what updates you receive by email and in-app"
                   />
                 </CardHeader>
-                <CardContent className="space-y-2">
+                <CardContent className="space-y-2 relative">
                   <ToggleSetting
                     label="Project updates"
                     description="Email when project status or progress changes"
                     checked={settings.emailProjectUpdates}
                     onCheckedChange={(v) => updateSetting('emailProjectUpdates', v)}
+                    disabled={!canEdit}
                   />
                   <Separator />
                   <ToggleSetting
@@ -564,6 +606,7 @@ function UserSettingsContent() {
                     description="Email when new tasks are assigned to your team"
                     checked={settings.emailTaskAssignments}
                     onCheckedChange={(v) => updateSetting('emailTaskAssignments', v)}
+                    disabled={!canEdit}
                   />
                   <Separator />
                   <ToggleSetting
@@ -571,6 +614,7 @@ function UserSettingsContent() {
                     description="Email when admin approves or rejects a project deletion request"
                     checked={settings.emailDeleteRequestStatus}
                     onCheckedChange={(v) => updateSetting('emailDeleteRequestStatus', v)}
+                    disabled={!canEdit}
                   />
                   <Separator />
                   <ToggleSetting
@@ -578,6 +622,7 @@ function UserSettingsContent() {
                     description="Email for new messages or notifications in your inbox"
                     checked={settings.emailInboxAlerts}
                     onCheckedChange={(v) => updateSetting('emailInboxAlerts', v)}
+                    disabled={!canEdit}
                   />
                   <Separator />
                   <ToggleSetting
@@ -585,27 +630,30 @@ function UserSettingsContent() {
                     description="Show in-app or browser push notifications"
                     checked={settings.pushNotifications}
                     onCheckedChange={(v) => updateSetting('pushNotifications', v)}
+                    disabled={!canEdit}
                   />
                 </CardContent>
               </Card>
             </TabsContent>
 
             <TabsContent value="preferences" className="space-y-6 mt-0">
-              <Card className="border-0 shadow-sm">
+              <Card className="border border-rose-100 shadow-sm relative">
                 <CardHeader>
                   <SectionHeader
                     icon={Globe}
-                    title="App preferences"
-                    description="Theme and language"
+                    title="Incoming preferences"
+                    description="Theme and language — your default view when you open settings"
+                    variant="rose"
                   />
                 </CardHeader>
-                <CardContent className="space-y-6">
+                <CardContent className="space-y-6 relative">
                   <div className="space-y-2">
-                    <Label>Theme</Label>
+                    <Label className="text-gray-900">Theme</Label>
                     <select
                       value={settings.theme}
                       onChange={(e) => updateSetting('theme', e.target.value)}
-                      className="flex h-10 w-full max-w-xs rounded-md border border-input bg-background px-3 py-2 text-sm"
+                      disabled={!canEdit}
+                      className={`flex h-10 w-full max-w-xs rounded-md border px-3 py-2 text-sm focus:ring-rose-500 focus:border-rose-500 ${!canEdit ? 'border-gray-200 bg-gray-50 cursor-not-allowed' : 'border-rose-200 bg-background'}`}
                     >
                       <option value="system">System</option>
                       <option value="light">Light</option>
@@ -615,11 +663,12 @@ function UserSettingsContent() {
                   </div>
                   <Separator />
                   <div className="space-y-2">
-                    <Label>Language</Label>
+                    <Label className="text-gray-900">Language</Label>
                     <select
                       value={settings.language}
                       onChange={(e) => updateSetting('language', e.target.value)}
-                      className="flex h-10 w-full max-w-xs rounded-md border border-input bg-background px-3 py-2 text-sm"
+                      disabled={!canEdit}
+                      className={`flex h-10 w-full max-w-xs rounded-md border px-3 py-2 text-sm focus:ring-rose-500 focus:border-rose-500 ${!canEdit ? 'border-gray-200 bg-gray-50 cursor-not-allowed' : 'border-rose-200 bg-background'}`}
                     >
                       <option value="en">English</option>
                     </select>

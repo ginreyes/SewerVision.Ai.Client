@@ -11,7 +11,6 @@ import {
   MapPin,
   User,
 } from "lucide-react";
-import { api } from "@/lib/helper";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Input } from "@/components/ui/input";
@@ -23,6 +22,8 @@ import {
   SelectValue,
 } from "@/components/ui/select";
 import { useAlert } from "@/components/providers/AlertProvider";
+import { useUser } from "@/components/providers/UserContext";
+import reportsApi from "@/data/reportsApi";
 
 const statusConfig = {
   completed: {
@@ -45,6 +46,7 @@ const statusConfig = {
 
 export default function UserReportsPage() {
   const { showAlert } = useAlert();
+  const { userId } = useUser() || {};
   const [reports, setReports] = useState([]);
   const [loading, setLoading] = useState(true);
   const [statusFilter, setStatusFilter] = useState("all");
@@ -59,40 +61,41 @@ export default function UserReportsPage() {
 
   useEffect(() => {
     const fetchAllReports = async () => {
+      if (!userId) {
+        setLoading(false);
+        setReports([]);
+        return;
+      }
       try {
         setLoading(true);
-        const { ok, data } = await api("/api/reports/get-all-report", "GET");
-        if (!ok || !Array.isArray(data)) {
-          setReports([]);
-          return;
-        }
-
-        const formatted = data.map((r) => ({
+        const response = await reportsApi.getReports({
+          managerId: userId,
+        });
+        const rawList = Array.isArray(response?.data) ? response.data : (response?.data ?? []);
+        const formatted = rawList.map((r) => ({
           id: r._id,
-          inspectionId: r.reportId || `REP-${String(r._id).slice(-6)}`,
-          projectName: r.project?.name || "N/A",
-          location: r.project?.location || r.location || "Unknown",
+          inspectionId: r.inspectionId || `REP-${String(r._id).slice(-6)}`,
+          projectName: r.projectId?.name || "N/A",
+          location: r.projectId?.location || r.location || "Unknown",
           status: r.status || "pending",
-          roleSource: r.role === "qc-technician" ? "qc" : "operator",
+          roleSource: r.qcTechnician ? "qc" : "operator",
           operatorName:
             r.operator?.name ||
-            (r.operator?.first_name && r.operator?.last_name
-              ? `${r.operator.first_name} ${r.operator.last_name}`
+            (r.operator?.first_name != null || r.operator?.last_name != null
+              ? [r.operator.first_name, r.operator.last_name].filter(Boolean).join(" ") || r.operator.username
               : "N/A"),
           qcName:
             r.qcTechnician?.name ||
-            (r.qcTechnician?.first_name && r.qcTechnician?.last_name
-              ? `${r.qcTechnician.first_name} ${r.qcTechnician.last_name}`
+            (r.qcTechnician?.first_name != null || r.qcTechnician?.last_name != null
+              ? [r.qcTechnician.first_name, r.qcTechnician.last_name].filter(Boolean).join(" ") || r.qcTechnician.username
               : null),
           createdAt: r.createdAt,
         }));
 
         setReports(formatted);
 
-        const completed = formatted.filter((r) => r.status === "completed")
-          .length;
-        const inReview = formatted.filter((r) => r.status === "in-review")
-          .length;
+        const completed = formatted.filter((r) => r.status === "completed").length;
+        const inReview = formatted.filter((r) => r.status === "in-review").length;
 
         setStats({
           total: formatted.length,
@@ -101,14 +104,15 @@ export default function UserReportsPage() {
         });
       } catch (err) {
         console.error("Failed to load reports:", err);
-        showAlert("Failed to load reports", "error");
+        showAlert(err?.message || "Failed to load reports", "error");
+        setReports([]);
       } finally {
         setLoading(false);
       }
     };
 
     fetchAllReports();
-  }, [showAlert]);
+  }, [userId, showAlert]);
 
   const filteredReports = reports.filter((r) => {
     const matchesStatus =
@@ -122,9 +126,9 @@ export default function UserReportsPage() {
     const term = search.trim().toLowerCase();
     const matchesSearch =
       !term ||
-      r.inspectionId.toLowerCase().includes(term) ||
-      r.projectName.toLowerCase().includes(term) ||
-      r.location.toLowerCase().includes(term);
+      (r.inspectionId && r.inspectionId.toLowerCase().includes(term)) ||
+      (r.projectName && r.projectName.toLowerCase().includes(term)) ||
+      (r.location && r.location.toLowerCase().includes(term));
     return matchesStatus && matchesSource && matchesSearch;
   });
 

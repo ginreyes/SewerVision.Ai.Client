@@ -307,6 +307,22 @@ export default function OperatorDeviceDetailPage() {
                 <span className="text-sm font-medium text-gray-900">{device.manufacturer}</span>
               </div>
             )}
+            {(device.project?._id ?? device.project) && (
+              <div className="flex items-center justify-between py-2 px-3 bg-blue-50 rounded-lg border border-blue-100">
+                <span className="text-sm text-gray-600 flex items-center gap-2">
+                  <Calendar className="w-4 h-4 text-blue-600" />
+                  Used in project
+                </span>
+                <Button
+                  type="button"
+                  variant="link"
+                  className="h-auto p-0 text-blue-600 hover:text-blue-800 text-sm font-medium"
+                  onClick={() => router.push(`/operator/project?selectedProject=${device.project?._id ?? device.project}`)}
+                >
+                  {device.project?.name || 'View project'}
+                </Button>
+              </div>
+            )}
           </CardContent>
         </Card>
         <Card>

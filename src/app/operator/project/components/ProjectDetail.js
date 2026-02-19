@@ -1012,6 +1012,16 @@ const ProjectDetail = ({ project, setSelectedProject, onBack }) => {
                         <Monitor className="w-4 h-4 text-gray-500" />
                         <span className="text-sm font-medium text-gray-700">
                           Device: {project.assignedDevice?.name || (project.assignedDevice ? '—' : 'Not set')}
+                          {(project.assignedDevice?._id ?? project.assignedDevice) && userData?.role === 'operator' && (
+                            <Button
+                              type="button"
+                              variant="link"
+                              className="h-auto p-0 ml-1 text-blue-600 hover:text-blue-800 text-sm font-normal"
+                              onClick={() => router.push(`/operator/equipement/${project.assignedDevice?._id ?? project.assignedDevice}`)}
+                            >
+                              View device
+                            </Button>
+                          )}
                         </span>
                       </div>
                       {userData?.role === 'operator' && myDevices.length > 0 && (

@@ -593,6 +593,16 @@ const ProjectConsolePage = () => {
                                             <div className="flex items-center gap-2 bg-white/60 backdrop-blur-sm px-3 py-1.5 rounded-lg border border-gray-100 shadow-sm">
                                                 <Monitor className="w-4 h-4 text-gray-500" />
                                                 <span className="text-sm font-medium text-gray-700">Device: {project.assignedDevice?.name || (project.assignedDevice ? '—' : 'Not set')}</span>
+                                                {(project.assignedDevice?._id ?? project.assignedDevice) && (
+                                                    <Button
+                                                        type="button"
+                                                        variant="link"
+                                                        className="h-auto p-0 ml-1 text-blue-600 hover:text-blue-800 text-sm font-normal"
+                                                        onClick={() => router.push('/qc-technician/devices')}
+                                                    >
+                                                        View device
+                                                    </Button>
+                                                )}
                                             </div>
                                         </div>
                                     </div>

@@ -21,6 +21,10 @@ export const getReports = async (filters = {}) => {
       queryParams.append('dateRange', filters.dateRange);
     }
 
+    if (filters.managerId) {
+      queryParams.append('managerId', filters.managerId);
+    }
+
     const queryString = queryParams.toString();
     const url = `/api/reports/get-all-report${queryString ? `?${queryString}` : ''}`;
 
@@ -38,18 +42,40 @@ export const getReports = async (filters = {}) => {
 };
 
 /**
- * Get projects available for reporting (filtered by QC technician)
+ * Get team leaders (role 'user') for admin report filter / create report
  */
-export const getProjectsForReport = async (userId) => {
+export const getReportLeaders = async () => {
   try {
-    // Get only projects assigned to this QC technician
-    const response = await api(`/api/projects/get-all-projects?qcTechnicianId=${userId}&limit=100`, 'GET');
+    const response = await api('/api/reports/leaders', 'GET');
+    if (!response.ok) {
+      throw new Error(response.data?.message || 'Failed to fetch leaders');
+    }
+    return response.data?.data ?? response.data ?? [];
+  } catch (error) {
+    console.error('Report Leaders API Error:', error);
+    throw error;
+  }
+};
+
+/**
+ * Get projects available for reporting (filtered by QC technician or managerId)
+ */
+export const getProjectsForReport = async (userId, managerId) => {
+  try {
+    const params = new URLSearchParams();
+    params.set('limit', '100');
+    if (managerId) {
+      params.set('managerId', managerId);
+    } else if (userId) {
+      params.set('qcTechnicianId', userId);
+    }
+    const response = await api(`/api/projects/get-all-projects?${params.toString()}`, 'GET');
 
     if (!response.ok) {
       throw new Error(response.data?.message || 'Failed to fetch projects');
     }
 
-    return response.data?.data || [];
+    return response.data?.data || response.data || [];
   } catch (error) {
     console.error('Get Projects API Error:', error);
     throw error;
@@ -256,6 +282,7 @@ export const updateTemplate = async (templateId, templateData) => {
 // Default export for backward compatibility
 const reportsApi = {
   getReports,
+  getReportLeaders,
   getProjectsForReport,
   getReportById,
   createReport,

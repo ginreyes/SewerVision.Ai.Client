@@ -28,16 +28,18 @@ import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle, Di
 import { Separator } from '@/components/ui/separator'
 import { Label } from '@/components/ui/label'
 import { api } from '@/lib/helper'
+import { devicesApi } from '@/data/devicesApi'
 import { useAssignDeviceToTeamLeader } from '@/hooks/useQueryHooks'
 import { useAlert } from '@/components/providers/AlertProvider'
 
 const DeviceSettingsModal = (props) => {
-  const { isOpen, onClose, device } = props
+  const { isOpen, onClose, device, onSaved } = props
   const { showAlert } = useAlert()
   const assignToTeamLeader = useAssignDeviceToTeamLeader()
 
   const [settings, setSettings] = useState({})
   const [hasChanges, setHasChanges] = useState(false)
+  const [saving, setSaving] = useState(false)
   const [showResetDialog, setShowResetDialog] = useState(false)
   const [teamLeaders, setTeamLeaders] = useState([])
   const [selectedTeamLeaderId, setSelectedTeamLeaderId] = useState('')
@@ -147,10 +149,37 @@ const DeviceSettingsModal = (props) => {
     setHasChanges(true)
   }
 
-  const handleSave = () => {
-    console.log('Saving device settings:', settings)
-    setHasChanges(false)
-    onClose()
+  const handleSave = async () => {
+    if (!device?._id) return
+    setSaving(true)
+    try {
+      const payload = {
+        name: settings.deviceName || device.name,
+        location: settings.location || device.location,
+        ipAddress: settings.ipAddress || device.ipAddress,
+        specifications: {
+          ...(device.specifications || {}),
+          resolution: settings.videoQuality || device.specifications?.resolution,
+        },
+        settings: {
+          aiEnabled: settings.aiEnabled ?? device.settings?.aiEnabled ?? true,
+          autoUpload: settings.autoUpload ?? device.settings?.autoUpload ?? true,
+          qualityThreshold: device.settings?.qualityThreshold ?? 80,
+          confidenceThreshold: settings.aiConfidenceThreshold?.[0] ?? device.settings?.confidenceThreshold ?? 85,
+        },
+        firmwareVersion: settings.firmwareVersion || device.firmwareVersion,
+      }
+      const result = await devicesApi.updateDevice(device._id, payload)
+      const updated = result?.data ?? result
+      showAlert('Device settings saved', 'success')
+      setHasChanges(false)
+      onSaved?.(updated)
+      onClose()
+    } catch (err) {
+      showAlert(err?.message || 'Failed to save device settings', 'error')
+    } finally {
+      setSaving(false)
+    }
   }
 
   const handleReset = () => {
@@ -752,8 +781,8 @@ const DeviceSettingsModal = (props) => {
               <Button variant="outline" onClick={onClose}>
                 Cancel
               </Button>
-              <Button onClick={handleSave} disabled={!hasChanges}>
-                <Save className="w-4 h-4 mr-2" />
+              <Button onClick={handleSave} disabled={!hasChanges || saving}>
+                {saving ? <Loader2 className="w-4 h-4 mr-2 animate-spin" /> : <Save className="w-4 h-4 mr-2" />}
                 Save Settings
               </Button>
             </div>
