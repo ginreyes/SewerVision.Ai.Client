@@ -27,6 +27,7 @@ import {
   Settings as SettingsIcon
 } from 'lucide-react'
 import { api, getCookie } from '@/lib/helper'
+import { devicesApi } from '@/data/devicesApi'
 import { useUser } from '@/components/providers/UserContext'
 import {
   Dialog,
@@ -63,6 +64,7 @@ const EquipmentPage = () => {
   const [powerModalOpen, setPowerModalOpen] = useState(false)
   const [powerModalDevice, setPowerModalDevice] = useState(null)
   const [sendingPower, setSendingPower] = useState(false)
+  const [sendingLiveStatusId, setSendingLiveStatusId] = useState(null)
   const [statistics, setStatistics] = useState({
     total: 0,
     online: 0,
@@ -90,18 +92,31 @@ const EquipmentPage = () => {
       if (devicesResponse.ok && list.length >= 0) {
         const operatorDevices = list
 
-        const formattedDevices = operatorDevices.map(device => ({
-          id: device._id,
-          name: device.name || 'Unknown Device',
-          type: device.type?.toLowerCase() || 'camera',
-          status: device.status || 'offline',
-          reportedStatus: device.reportedStatus || null,
-          battery: device.specifications?.battery ? (typeof device.specifications.battery === 'number' ? device.specifications.battery : parseInt(String(device.specifications.battery).replace('%', ''), 10) || 0) : 0,
-          location: device.location || 'Unknown',
-          signal: device.status === 'online' || device.status === 'recording' ? 'strong' :
-                 device.status === 'offline' ? 'none' : 'medium',
-          lastActive: device.updatedAt || device.createdAt
-        }))
+        const LIVE_MAX_AGE_MS = 10 * 60 * 1000 // 10 min
+        const isLiveRecent = (d) => d.liveUpdatedAt && (Date.now() - new Date(d.liveUpdatedAt).getTime() < LIVE_MAX_AGE_MS)
+        const formattedDevices = operatorDevices.map(device => {
+          const useLive = isLiveRecent(device)
+          const battery = useLive && typeof device.liveBattery === 'number'
+            ? device.liveBattery
+            : (device.specifications?.battery != null ? (typeof device.specifications.battery === 'number' ? device.specifications.battery : parseInt(String(device.specifications.battery).replace('%', ''), 10) || 0) : 0)
+          const signal = useLive && device.liveSignal
+            ? device.liveSignal
+            : (device.status === 'online' || device.status === 'recording' ? 'strong' : device.status === 'offline' ? 'none' : 'medium')
+          const liveStatus = useLive && device.liveStatus ? device.liveStatus : 'Active'
+          return {
+            id: device._id,
+            name: device.name || 'Unknown Device',
+            type: device.type?.toLowerCase() || 'camera',
+            status: device.status || 'offline',
+            reportedStatus: device.reportedStatus || null,
+            battery,
+            signal,
+            liveStatus,
+            location: device.location || 'Unknown',
+            lastActive: device.updatedAt || device.createdAt,
+            liveUpdatedAt: device.liveUpdatedAt
+          }
+        })
         
         setDevices(formattedDevices)
         
@@ -147,6 +162,30 @@ const EquipmentPage = () => {
       showAlert(e?.message || 'Failed to report status', 'error')
     } finally {
       setReportingId(null)
+    }
+  }
+
+  const handleSendMyStatus = async (deviceId) => {
+    setSendingLiveStatusId(deviceId)
+    try {
+      let battery = null
+      let signal = 'none'
+      if (typeof navigator !== 'undefined' && navigator.getBattery) {
+        const bat = await navigator.getBattery()
+        battery = Math.round((bat.level ?? 0) * 100)
+        if (navigator.connection?.effectiveType) signal = navigator.connection.effectiveType
+      }
+      await devicesApi.reportLiveStatus(deviceId, {
+        battery: battery ?? undefined,
+        signal: signal || undefined,
+        status: 'active',
+      })
+      showAlert('Live status updated. Card will show real data.', 'success')
+      fetchDevices()
+    } catch (e) {
+      showAlert(e?.message || 'Failed to send live status', 'error')
+    } finally {
+      setSendingLiveStatusId(null)
     }
   }
 
@@ -390,12 +429,17 @@ const EquipmentPage = () => {
                   </div>
 
                   {/* Status Badge */}
-                  <div className="mb-4">
+                  <div className="mb-2">
                     <span className={`inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-xs font-medium border ${config.color}`}>
                       <span className={`w-1.5 h-1.5 rounded-full ${config.dot}`} />
                       {config.label}
                     </span>
                   </div>
+                  {device.liveUpdatedAt && (
+                    <p className="text-xs text-gray-500 mb-3">
+                      Last data received: {new Date(device.liveUpdatedAt).toLocaleString()}
+                    </p>
+                  )}
 
                   {/* Stats Grid */}
                   <div className="grid grid-cols-3 gap-3 mb-4">
@@ -411,9 +455,27 @@ const EquipmentPage = () => {
                     </div>
                     <div className="bg-gray-50 rounded-lg p-3 text-center">
                       <Activity className="w-5 h-5 text-purple-500 mx-auto mb-1" />
-                      <p className="text-xs font-medium text-gray-900">Active</p>
+                      <p className="text-xs font-medium text-gray-900 capitalize">{device.liveStatus || 'Active'}</p>
                       <p className="text-xs text-gray-500">Status</p>
                     </div>
+                  </div>
+
+                  {/* Send my status (real data from this device / phone) */}
+                  <div className="mb-3">
+                    <Button
+                      variant="outline"
+                      size="sm"
+                      className="w-full gap-2 text-xs"
+                      disabled={sendingLiveStatusId === device.id}
+                      onClick={() => handleSendMyStatus(device.id)}
+                    >
+                      {sendingLiveStatusId === device.id ? (
+                        <Loader2 className="w-3.5 h-3.5 animate-spin" />
+                      ) : (
+                        <Smartphone className="w-3.5 h-3.5" />
+                      )}
+                      {sendingLiveStatusId === device.id ? 'Sending…' : 'Send my status (real data)'}
+                    </Button>
                   </div>
 
                   {/* Location */}
@@ -549,16 +611,18 @@ const EquipmentPage = () => {
                 className="justify-start gap-2"
                 disabled={sendingPower}
                 onClick={async () => {
+                  const id = powerModalDevice._id || powerModalDevice.id
+                  if (!id) return
                   setSendingPower(true)
-                  await new Promise((r) => setTimeout(r, 600))
-                  showAlert(
-                    powerModalDevice.status === 'online' || powerModalDevice.status === 'ready'
-                      ? 'Restart command sent to device.'
-                      : 'Device must be online to receive the command.',
-                    powerModalDevice.status === 'online' || powerModalDevice.status === 'ready' ? 'success' : 'warning'
-                  )
-                  setSendingPower(false)
-                  setPowerModalOpen(false)
+                  try {
+                    await devicesApi.sendPowerCommand(id, { action: 'restart' })
+                    showAlert('Restart command sent to device.', 'success')
+                    setPowerModalOpen(false)
+                  } catch (err) {
+                    showAlert(err?.message || 'Failed to send command.', 'error')
+                  } finally {
+                    setSendingPower(false)
+                  }
                 }}
               >
                 {sendingPower ? <Loader2 className="w-4 h-4 animate-spin" /> : <Zap className="w-4 h-4" />}
@@ -569,16 +633,18 @@ const EquipmentPage = () => {
                 className="justify-start gap-2"
                 disabled={sendingPower}
                 onClick={async () => {
+                  const id = powerModalDevice._id || powerModalDevice.id
+                  if (!id) return
                   setSendingPower(true)
-                  await new Promise((r) => setTimeout(r, 600))
-                  showAlert(
-                    powerModalDevice.status === 'online' || powerModalDevice.status === 'ready'
-                      ? 'Standby command sent.'
-                      : 'Device must be online.',
-                    powerModalDevice.status === 'online' || powerModalDevice.status === 'ready' ? 'success' : 'warning'
-                  )
-                  setSendingPower(false)
-                  setPowerModalOpen(false)
+                  try {
+                    await devicesApi.sendPowerCommand(id, { action: 'standby' })
+                    showAlert('Standby command sent.', 'success')
+                    setPowerModalOpen(false)
+                  } catch (err) {
+                    showAlert(err?.message || 'Failed to send command.', 'error')
+                  } finally {
+                    setSendingPower(false)
+                  }
                 }}
               >
                 <Activity className="w-4 h-4" />
@@ -589,16 +655,18 @@ const EquipmentPage = () => {
                 className="justify-start gap-2 text-red-600 hover:text-red-700 hover:bg-red-50"
                 disabled={sendingPower}
                 onClick={async () => {
+                  const id = powerModalDevice._id || powerModalDevice.id
+                  if (!id) return
                   setSendingPower(true)
-                  await new Promise((r) => setTimeout(r, 600))
-                  showAlert(
-                    powerModalDevice.status === 'online' || powerModalDevice.status === 'ready'
-                      ? 'Shutdown command sent.'
-                      : 'Device must be online.',
-                    powerModalDevice.status === 'online' || powerModalDevice.status === 'ready' ? 'success' : 'warning'
-                  )
-                  setSendingPower(false)
-                  setPowerModalOpen(false)
+                  try {
+                    await devicesApi.sendPowerCommand(id, { action: 'shutdown' })
+                    showAlert('Shutdown command sent.', 'success')
+                    setPowerModalOpen(false)
+                  } catch (err) {
+                    showAlert(err?.message || 'Failed to send command.', 'error')
+                  } finally {
+                    setSendingPower(false)
+                  }
                 }}
               >
                 <Power className="w-4 h-4" />

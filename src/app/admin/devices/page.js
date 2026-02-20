@@ -20,13 +20,17 @@ import {
   CheckCircle,
   Clock,
   Upload,
+  Trash2,
 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
+import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from '@/components/ui/dialog';
 import AddDeviceModal from './components/AddDeviceModal';
 import ViewFootage from './components/ViewFotage';
 import DeviceSettingsModal from './components/DeviceSettingModal';
 import { useDevices } from '@/hooks/useQueryHooks';
 import { useAlert } from '@/components/providers/AlertProvider';
+import { getCookie } from '@/lib/helper';
+import { devicesApi } from '@/data/devicesApi';
 
 const getDeviceIcon = (type) => {
   const icons = {
@@ -105,6 +109,11 @@ const Devices = () => {
   const [selectedFootageDevice, setSelectedFootageDevice] = useState(null);
   const [showSettingsModal, setShowSettingsModal] = useState(false);
   const [selectedSettingsDevice, setSelectedSettingsDevice] = useState(null);
+  const [deviceToDelete, setDeviceToDelete] = useState(null);
+  const [deleting, setDeleting] = useState(false);
+
+  const role = (typeof window !== 'undefined' ? getCookie('role') : '') || '';
+  const canDeleteDevice = role?.toLowerCase() === 'admin' || role?.toLowerCase() === 'user';
 
   const enrichedDevices = useMemo(() => {
     const list = Array.isArray(devicesList) ? devicesList : [];
@@ -167,6 +176,26 @@ const Devices = () => {
     showAlert('Device added successfully', 'success');
   };
 
+  const handleDeleteClick = (e, device) => {
+    e.stopPropagation();
+    setDeviceToDelete(device);
+  };
+
+  const handleDeleteConfirm = async () => {
+    if (!deviceToDelete?._id) return;
+    setDeleting(true);
+    try {
+      await devicesApi.deleteDevice(deviceToDelete._id);
+      showAlert('Device deleted', 'success');
+      refetch();
+      setDeviceToDelete(null);
+    } catch (err) {
+      showAlert(err?.message || 'Failed to delete device', 'error');
+    } finally {
+      setDeleting(false);
+    }
+  };
+
   if (currentView === 'footage' && selectedFootageDevice) {
     return (
       <ViewFootage
@@ -187,6 +216,11 @@ const Devices = () => {
               <h1 className="text-xl font-bold text-gray-900">Devices</h1>
               <p className="text-sm text-gray-500 mt-0.5">
                 Manage field and cloud devices. Assign team leaders to assign devices to QC and operators.
+                {!canDeleteDevice && (
+                  <span className="block mt-1 text-amber-600">
+                    Only admin and team leaders can delete devices. Operators and QC need admin permission to use a device.
+                  </span>
+                )}
               </p>
             </div>
             <Button onClick={() => setShowModal(true)} className="shrink-0" variant="rose">
@@ -210,6 +244,48 @@ const Devices = () => {
         device={selectedSettingsDevice}
         onSaved={() => refetch()}
       />
+
+      {/* Delete device confirmation — only for admin/user; informs assigned team leader */}
+      <Dialog open={!!deviceToDelete} onOpenChange={(open) => !open && setDeviceToDelete(null)}>
+        <DialogContent>
+          <DialogHeader>
+            <DialogTitle className="flex items-center gap-2 text-red-600">
+              <Trash2 className="w-5 h-5" />
+              Delete device
+            </DialogTitle>
+            <DialogDescription asChild>
+              <div className="space-y-2">
+                <p>
+                  This will permanently remove <strong>{deviceToDelete?.name}</strong> from Concertina. All data for this device will be removed. This action cannot be undone.
+                </p>
+                {deviceToDelete?.teamLeader && (
+                  <div className="rounded-lg bg-amber-50 border border-amber-200 p-3 text-sm text-amber-800">
+                    <p className="font-medium">Assigned team leader</p>
+                    <p className="mt-0.5">
+                      This device is assigned to{' '}
+                      <strong>
+                        {typeof deviceToDelete.teamLeader === 'object'
+                          ? [deviceToDelete.teamLeader.first_name, deviceToDelete.teamLeader.last_name].filter(Boolean).join(' ') || deviceToDelete.teamLeader.username || 'Team Leader'
+                          : 'a team leader'}
+                      </strong>
+                      . They will no longer have access to this device after it is deleted.
+                    </p>
+                  </div>
+                )}
+              </div>
+            </DialogDescription>
+          </DialogHeader>
+          <DialogFooter>
+            <Button variant="outline" onClick={() => setDeviceToDelete(null)} disabled={deleting}>
+              Cancel
+            </Button>
+            <Button variant="destructive" onClick={handleDeleteConfirm} disabled={deleting}>
+              {deleting ? <Loader2 className="w-4 h-4 mr-2 animate-spin" /> : <Trash2 className="w-4 h-4 mr-2" />}
+              Delete device
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
 
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-6">
         <div className="flex flex-col sm:flex-row gap-3 mb-4">
@@ -301,11 +377,11 @@ const Devices = () => {
                         <span className="truncate">{device.teamLeaderLabel}</span>
                       </div>
                     </div>
-                    <div className="mt-3 flex gap-2">
+                    <div className="mt-3 flex gap-2 flex-wrap">
                       <Button
                         variant="outline"
                         size="sm"
-                        className="flex-1"
+                        className="flex-1 min-w-0"
                         onClick={(e) => { e.stopPropagation(); handleOpenSettings(device); }}
                       >
                         <Settings className="w-4 h-4 mr-1" />
@@ -319,6 +395,16 @@ const Devices = () => {
                           onClick={(e) => { e.stopPropagation(); handleViewFootage(device); }}
                         >
                           <Play className="w-4 h-4" />
+                        </Button>
+                      )}
+                      {canDeleteDevice && (
+                        <Button
+                          variant="outline"
+                          size="sm"
+                          className="text-red-600 border-red-200 hover:bg-red-50 hover:text-red-700"
+                          onClick={(e) => handleDeleteClick(e, device)}
+                        >
+                          <Trash2 className="w-4 h-4" />
                         </Button>
                       )}
                     </div>

@@ -30,6 +30,7 @@ import {
   Activity
 } from 'lucide-react'
 import { api } from '@/lib/helper'
+import { devicesApi } from '@/data/devicesApi'
 import { useUser } from '@/components/providers/UserContext'
 import { useAlert } from '@/components/providers/AlertProvider'
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
@@ -516,16 +517,18 @@ const OperationsPage = () => {
                     className="justify-start gap-2"
                     disabled={sendingPower}
                     onClick={async () => {
+                      const id = selectedDeviceData.id
+                      if (!id) return
                       setSendingPower(true)
-                      await new Promise((r) => setTimeout(r, 600))
-                      showAlert(
-                        selectedDeviceData.status === 'online' || selectedDeviceData.status === 'ready'
-                          ? 'Restart command sent to device.'
-                          : 'Device must be online to receive the command.',
-                        selectedDeviceData.status === 'online' || selectedDeviceData.status === 'ready' ? 'success' : 'warning'
-                      )
-                      setSendingPower(false)
-                      setPowerModalOpen(false)
+                      try {
+                        await devicesApi.sendPowerCommand(id, { action: 'restart' })
+                        showAlert('Restart command sent to device.', 'success')
+                        setPowerModalOpen(false)
+                      } catch (err) {
+                        showAlert(err?.message || 'Failed to send command.', 'error')
+                      } finally {
+                        setSendingPower(false)
+                      }
                     }}
                   >
                     {sendingPower ? <Loader2 className="w-4 h-4 animate-spin" /> : <Zap className="w-4 h-4" />}
@@ -536,16 +539,18 @@ const OperationsPage = () => {
                     className="justify-start gap-2"
                     disabled={sendingPower}
                     onClick={async () => {
+                      const id = selectedDeviceData.id
+                      if (!id) return
                       setSendingPower(true)
-                      await new Promise((r) => setTimeout(r, 600))
-                      showAlert(
-                        selectedDeviceData.status === 'online' || selectedDeviceData.status === 'ready'
-                          ? 'Standby command sent.'
-                          : 'Device must be online.',
-                        selectedDeviceData.status === 'online' || selectedDeviceData.status === 'ready' ? 'success' : 'warning'
-                      )
-                      setSendingPower(false)
-                      setPowerModalOpen(false)
+                      try {
+                        await devicesApi.sendPowerCommand(id, { action: 'standby' })
+                        showAlert('Standby command sent.', 'success')
+                        setPowerModalOpen(false)
+                      } catch (err) {
+                        showAlert(err?.message || 'Failed to send command.', 'error')
+                      } finally {
+                        setSendingPower(false)
+                      }
                     }}
                   >
                     <Activity className="w-4 h-4" />
@@ -556,16 +561,18 @@ const OperationsPage = () => {
                     className="justify-start gap-2 text-red-600 hover:text-red-700 hover:bg-red-50"
                     disabled={sendingPower}
                     onClick={async () => {
+                      const id = selectedDeviceData.id
+                      if (!id) return
                       setSendingPower(true)
-                      await new Promise((r) => setTimeout(r, 600))
-                      showAlert(
-                        selectedDeviceData.status === 'online' || selectedDeviceData.status === 'ready'
-                          ? 'Shutdown command sent.'
-                          : 'Device must be online.',
-                        selectedDeviceData.status === 'online' || selectedDeviceData.status === 'ready' ? 'success' : 'warning'
-                      )
-                      setSendingPower(false)
-                      setPowerModalOpen(false)
+                      try {
+                        await devicesApi.sendPowerCommand(id, { action: 'shutdown' })
+                        showAlert('Shutdown command sent.', 'success')
+                        setPowerModalOpen(false)
+                      } catch (err) {
+                        showAlert(err?.message || 'Failed to send command.', 'error')
+                      } finally {
+                        setSendingPower(false)
+                      }
                     }}
                   >
                     <Power className="w-4 h-4" />
