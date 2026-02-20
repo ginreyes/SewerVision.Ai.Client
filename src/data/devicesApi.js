@@ -95,4 +95,48 @@ export const devicesApi = {
     const data = response.data;
     return data?.data ?? data;
   },
+
+  /** Send power command to device: restart | standby | shutdown */
+  async sendPowerCommand(deviceId, { action }) {
+    const normalized = String(action).toLowerCase();
+    if (!['restart', 'standby', 'shutdown'].includes(normalized)) {
+      throw new Error('action must be one of: restart, standby, shutdown');
+    }
+    const response = await api(`/api/devices/${deviceId}/power`, 'POST', { action: normalized });
+    if (!response.ok) {
+      throw new Error(response.data?.message || 'Failed to send power command');
+    }
+    return response.data;
+  },
+
+  /** Test if device is reachable (ping). Returns { success, reachable }. */
+  async testConnection(deviceId) {
+    const response = await api(`/api/devices/${deviceId}/test-connection`, 'GET');
+    if (!response.ok) {
+      throw new Error(response.data?.message || 'Failed to test connection');
+    }
+    return response.data;
+  },
+
+  /** Report live device data (battery %, signal, status) from the device itself (e.g. phone). */
+  async reportLiveStatus(deviceId, { battery, signal, status }) {
+    const response = await api(`/api/devices/${deviceId}/live-status`, 'POST', {
+      battery,
+      signal,
+      status,
+    });
+    if (!response.ok) {
+      throw new Error(response.data?.message || 'Failed to report live status');
+    }
+    return response.data;
+  },
+
+  /** Generate a device secret so the device can send data without user login (admin). Returns { data: { deviceSecret } }. */
+  async generateDeviceSecret(deviceId) {
+    const response = await api(`/api/devices/${deviceId}/generate-secret`, 'POST');
+    if (!response.ok) {
+      throw new Error(response.data?.message || 'Failed to generate device secret');
+    }
+    return response.data;
+  },
 };

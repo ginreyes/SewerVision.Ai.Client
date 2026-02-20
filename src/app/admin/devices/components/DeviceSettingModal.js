@@ -13,7 +13,10 @@ import {
   Trash2,
   Info,
   Loader2,
-  User
+  User,
+  Upload,
+  Copy,
+  Check
 } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
@@ -27,6 +30,7 @@ import { Alert, AlertDescription } from '@/components/ui/alert'
 import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle, DialogFooter } from '@/components/ui/dialog'
 import { Separator } from '@/components/ui/separator'
 import { Label } from '@/components/ui/label'
+import { QRCodeSVG } from 'qrcode.react'
 import { api } from '@/lib/helper'
 import { devicesApi } from '@/data/devicesApi'
 import { useAssignDeviceToTeamLeader } from '@/hooks/useQueryHooks'
@@ -43,6 +47,9 @@ const DeviceSettingsModal = (props) => {
   const [showResetDialog, setShowResetDialog] = useState(false)
   const [teamLeaders, setTeamLeaders] = useState([])
   const [selectedTeamLeaderId, setSelectedTeamLeaderId] = useState('')
+  const [generatedSecret, setGeneratedSecret] = useState(null)
+  const [generatingSecret, setGeneratingSecret] = useState(false)
+  const [secretCopied, setSecretCopied] = useState(false)
 
   useEffect(() => {
     const fetchTeamLeaders = async () => {
@@ -297,6 +304,7 @@ const DeviceSettingsModal = (props) => {
               <TabsTrigger value="ai">AI & Processing</TabsTrigger>
               {isFieldDevice && <TabsTrigger value="power">Power</TabsTrigger>}
               <TabsTrigger value="advanced">Advanced</TabsTrigger>
+              <TabsTrigger value="ingest">Device data</TabsTrigger>
             </TabsList>
 
             {/* General Settings */}
@@ -764,6 +772,136 @@ const DeviceSettingsModal = (props) => {
                       </Button>
                     </div>
                   </div>
+                </CardContent>
+              </Card>
+            </TabsContent>
+
+            {/* Device data ingest — device can send data without user login */}
+            <TabsContent value="ingest" className="space-y-6">
+              <Card>
+                <CardHeader>
+                  <CardTitle className="flex items-center space-x-2">
+                    <Upload className="w-5 h-5" />
+                    <span>Device sends data to Concertina</span>
+                  </CardTitle>
+                  <p className="text-sm text-gray-500 font-normal">
+                    Any device (phone, tablet, inspection unit) can push battery, signal, and status to Concertina without a user logged in. Generate a secret and use it in the device app or script.
+                  </p>
+                </CardHeader>
+                <CardContent className="space-y-4">
+                  <div className="flex flex-wrap items-center gap-2">
+                    <Button
+                      variant="outline"
+                      size="sm"
+                      disabled={generatingSecret || !device?._id}
+                      onClick={async () => {
+                        if (!device?._id) return
+                        setGeneratingSecret(true)
+                        setGeneratedSecret(null)
+                        setSecretCopied(false)
+                        try {
+                          const res = await devicesApi.generateDeviceSecret(device._id)
+                          const secret = res?.data?.deviceSecret
+                          setGeneratedSecret(secret || null)
+                          if (secret) showAlert('Secret generated. Copy it and store it securely.', 'success')
+                        } catch (err) {
+                          showAlert(err?.message || 'Failed to generate secret', 'error')
+                        } finally {
+                          setGeneratingSecret(false)
+                        }
+                      }}
+                    >
+                      {generatingSecret ? <Loader2 className="w-4 h-4 animate-spin mr-2" /> : null}
+                      Generate device secret
+                    </Button>
+                  </div>
+                  {generatedSecret && (
+                    <>
+                      <div className="flex items-center gap-2">
+                        <Input
+                          readOnly
+                          value={generatedSecret}
+                          className="font-mono text-sm"
+                        />
+                        <Button
+                          variant="outline"
+                          size="sm"
+                          onClick={() => {
+                            navigator.clipboard?.writeText(generatedSecret)
+                            setSecretCopied(true)
+                            showAlert('Copied to clipboard', 'success')
+                            setTimeout(() => setSecretCopied(false), 2000)
+                          }}
+                        >
+                          {secretCopied ? <Check className="w-4 h-4" /> : <Copy className="w-4 h-4" />}
+                        </Button>
+                      </div>
+                      <div className="rounded-lg bg-gray-900 text-gray-100 p-3 text-xs font-mono overflow-x-auto">
+                        <p className="text-gray-400 mb-1">Example (replace BASE_URL and DEVICE_ID):</p>
+                        <pre className="whitespace-pre break-all">
+{`curl -X POST BASE_URL/api/devices/DEVICE_ID/ingest \\
+  -H "Content-Type: application/json" \\
+  -d '{"deviceSecret":"YOUR_SECRET","battery":85,"signal":"strong","status":"active"}'`}
+                        </pre>
+                        <p className="text-gray-400 mt-2">
+                          BASE_URL = your backend (e.g. http://192.168.100.12:5000). DEVICE_ID = {device?._id || 'this device id'}.
+                        </p>
+                      </div>
+                      <Separator className="my-4" />
+                      <div>
+                        <Label className="text-sm font-medium">Connect this device: scan QR or open link</Label>
+                        <p className="text-xs text-gray-500 mt-1 mb-3">
+                          On the device (e.g. phone), scan the QR code or open the link. For accurate serial/model/MAC, use the &quot;Download Concertina Device app&quot; on the connection page.
+                        </p>
+                        <div className="flex flex-wrap items-start gap-4">
+                          <div className="rounded-lg border bg-white p-3">
+                            <QRCodeSVG
+                              value={(() => {
+                                const base = typeof window !== 'undefined' ? (process.env.NEXT_PUBLIC_APP_URL || window.location.origin) : (process.env.NEXT_PUBLIC_APP_URL || '')
+                                const params = 'deviceId=' + encodeURIComponent(device?._id || '') + '&secret=' + encodeURIComponent(generatedSecret || '')
+                                const apiBase = process.env.NEXT_PUBLIC_BACKEND_URL
+                                const qs = apiBase ? params + '&apiBase=' + encodeURIComponent(apiBase) : params
+                                return base + '/device-connect?' + qs
+                              })()}
+                              size={140}
+                              level="M"
+                            />
+                          </div>
+                          <div className="flex-1 min-w-0 space-y-2">
+                            <div className="flex items-center gap-2">
+                              <Input
+                                readOnly
+                                className="font-mono text-xs"
+                                value={(() => {
+                                  const base = typeof window !== 'undefined' ? (process.env.NEXT_PUBLIC_APP_URL || window.location.origin) : (process.env.NEXT_PUBLIC_APP_URL || '')
+                                  const params = 'deviceId=' + encodeURIComponent(device?._id || '') + '&secret=' + encodeURIComponent(generatedSecret || '')
+                                  const apiBase = process.env.NEXT_PUBLIC_BACKEND_URL
+                                  const qs = apiBase ? params + '&apiBase=' + encodeURIComponent(apiBase) : params
+                                  return base + '/device-connect?' + qs
+                                })()}
+                              />
+                              <Button
+                                variant="outline"
+                                size="sm"
+                                onClick={() => {
+                                  const base = typeof window !== 'undefined' ? (process.env.NEXT_PUBLIC_APP_URL || window.location.origin) : ''
+                                  const params = 'deviceId=' + encodeURIComponent(device?._id || '') + '&secret=' + encodeURIComponent(generatedSecret || '')
+                                  const apiBase = process.env.NEXT_PUBLIC_BACKEND_URL
+                                  const qs = apiBase ? params + '&apiBase=' + encodeURIComponent(apiBase) : params
+                                  const url = base + '/device-connect?' + qs
+                                  navigator.clipboard?.writeText(url)
+                                  showAlert('Link copied. Open it on the device.', 'success')
+                                }}
+                              >
+                                <Copy className="w-4 h-4" />
+                              </Button>
+                            </div>
+                            <p className="text-xs text-gray-500">Open this link on the device to connect. Paste the same link in the Concertina Device app for accurate device info.</p>
+                          </div>
+                        </div>
+                      </div>
+                    </>
+                  )}
                 </CardContent>
               </Card>
             </TabsContent>
