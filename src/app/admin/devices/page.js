@@ -78,6 +78,27 @@ const getStatusIcon = (status) => {
   }
 };
 
+/** Format lastSeen for display: "Never", "2 min ago", "1 hour ago", or date */
+function formatLastSeen(lastSeen) {
+  if (!lastSeen || lastSeen === 'Never') return 'Never';
+  try {
+    const d = new Date(lastSeen);
+    if (Number.isNaN(d.getTime())) return lastSeen;
+    const now = new Date();
+    const diffMs = now - d;
+    const diffMins = Math.floor(diffMs / 60000);
+    const diffHours = Math.floor(diffMs / 3600000);
+    const diffDays = Math.floor(diffMs / 86400000);
+    if (diffMins < 1) return 'Just now';
+    if (diffMins < 60) return `${diffMins} min ago`;
+    if (diffHours < 24) return `${diffHours} h ago`;
+    if (diffDays < 7) return `${diffDays} d ago`;
+    return d.toLocaleDateString();
+  } catch {
+    return lastSeen;
+  }
+}
+
 const colorByType = {
   camera: 'bg-gradient-to-br from-blue-500 to-purple-600',
   tablet: 'bg-gradient-to-br from-green-500 to-emerald-600',
@@ -375,6 +396,10 @@ const Devices = () => {
                       <div className="flex items-center gap-1.5">
                         <User className="w-3.5 h-3.5 shrink-0 text-gray-400" />
                         <span className="truncate">{device.teamLeaderLabel}</span>
+                      </div>
+                      <div className="flex items-center gap-1.5 text-xs text-gray-500">
+                        <Clock className="w-3.5 h-3.5 shrink-0" />
+                        <span>Last seen: {formatLastSeen(device.lastSeen)}</span>
                       </div>
                     </div>
                     <div className="mt-3 flex gap-2 flex-wrap">

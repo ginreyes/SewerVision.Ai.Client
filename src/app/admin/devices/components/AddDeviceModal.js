@@ -29,6 +29,9 @@ import { api } from '@/lib/helper'
 import { useUser } from '@/components/providers/UserContext'
 import { useAlert } from '@/components/providers/AlertProvider'
 import { useQueryClient } from '@tanstack/react-query'
+import { devicesApi } from '@/data/devicesApi'
+import { QRCodeSVG } from 'qrcode.react'
+import { Copy, Check, Smartphone } from 'lucide-react'
 
 // ❌ REMOVED: import { userAgent } from 'next/server' — causes client/server conflict
 
@@ -73,6 +76,9 @@ const AddDeviceModal = (props) => {
   const [isSubmitting, setIsSubmitting] = useState(false)
   const [errors, setErrors] = useState({})
   const [teamLeaders, setTeamLeaders] = useState([])
+  const [useForApp, setUseForApp] = useState(false)
+  const [connectionResult, setConnectionResult] = useState(null)
+  const [connectionLinkCopied, setConnectionLinkCopied] = useState(false)
   const { userId } = useUser()
 
   useEffect(() => {
@@ -233,44 +239,63 @@ const AddDeviceModal = (props) => {
 
       onAddDevice(createdDevice)
       queryClient.invalidateQueries({ queryKey: ['devices'] })
-      if (onSuccess) onSuccess()
 
-      onClose()
-  
-      // Reset form
-      setDeviceData({
-        name: '',
-        type: '',
-        category: 'field',
-        location: '',
-        teamLeader: '',
-        operator: '',
-        serialNumber: '',
-        model: '',
-        manufacturer: '',
-        ipAddress: '',
-        macAddress: '',
-        specifications: {
-          resolution: '',
-          storage: '',
-          battery: null,
-          connectivity: []
-        },
-        certifications: {
-          pacp: false,
-          lacp: false,
-          other: ''
-        },
-        settings: {
-          aiEnabled: true,
-          autoUpload: true,
-          qualityThreshold: [80],
-          confidenceThreshold: [85]
+      if (useForApp && deviceId) {
+        try {
+          const secretRes = await devicesApi.generateDeviceSecret(deviceId)
+          const secret = secretRes?.data?.deviceSecret
+          if (secret) {
+            setConnectionResult({ deviceId, secret })
+            showAlert('Device created. Use the link or QR below to connect the Concertina Device app.', 'success')
+          } else {
+            if (onSuccess) onSuccess()
+            onClose()
+          }
+        } catch (err) {
+          showAlert(err?.message || 'Device created but failed to generate connection secret. Open device Settings > Device data to generate it.', 'warning')
+          if (onSuccess) onSuccess()
+          onClose()
         }
-      })
-      setDeviceImage(null)
-      setImagePreview(null)
-      setCurrentStep(1)
+      } else {
+        if (onSuccess) onSuccess()
+        onClose()
+      }
+
+      if (!useForApp) {
+        setDeviceData({
+          name: '',
+          type: '',
+          category: 'field',
+          location: '',
+          teamLeader: '',
+          operator: '',
+          serialNumber: '',
+          model: '',
+          manufacturer: '',
+          ipAddress: '',
+          macAddress: '',
+          specifications: {
+            resolution: '',
+            storage: '',
+            battery: null,
+            connectivity: []
+          },
+          certifications: {
+            pacp: false,
+            lacp: false,
+            other: ''
+          },
+          settings: {
+            aiEnabled: true,
+            autoUpload: true,
+            qualityThreshold: [80],
+            confidenceThreshold: [85]
+          }
+        })
+        setDeviceImage(null)
+        setImagePreview(null)
+        setCurrentStep(1)
+      }
     } catch (error) {
       console.error('Error adding device:', error)
       showAlert(error?.message || 'Failed to create device', 'error')
@@ -291,9 +316,85 @@ const AddDeviceModal = (props) => {
   const Icon = selectedDeviceType?.icon || Settings
   const progress = (currentStep / 5) * 100
 
+  const buildConnectionUrl = () => {
+    if (!connectionResult?.deviceId || !connectionResult?.secret) return ''
+    const base = typeof window !== 'undefined' ? (process.env.NEXT_PUBLIC_APP_URL || window.location.origin) : (process.env.NEXT_PUBLIC_APP_URL || '')
+    const params = 'deviceId=' + encodeURIComponent(connectionResult.deviceId) + '&secret=' + encodeURIComponent(connectionResult.secret)
+    const apiBase = process.env.NEXT_PUBLIC_BACKEND_URL
+    const qs = apiBase ? params + '&apiBase=' + encodeURIComponent(apiBase) : params
+    return base + '/device-connect?' + qs
+  }
+
+  const handleConnectionDone = () => {
+    setConnectionResult(null)
+    setConnectionLinkCopied(false)
+    setUseForApp(false)
+    setDeviceData({
+      name: '', type: '', category: 'field', location: '', teamLeader: '', operator: '',
+      serialNumber: '', model: '', manufacturer: '', ipAddress: '', macAddress: '',
+      specifications: { resolution: '', storage: '', battery: null, connectivity: [] },
+      certifications: { pacp: false, lacp: false, other: '' },
+      settings: { aiEnabled: true, autoUpload: true, qualityThreshold: [80], confidenceThreshold: [85] }
+    })
+    setDeviceImage(null)
+    setImagePreview(null)
+    setCurrentStep(1)
+    if (onSuccess) onSuccess()
+    onClose()
+  }
+
   return (
-    <Dialog open={isOpen} onOpenChange={onClose}>
+    <Dialog open={isOpen} onOpenChange={(open) => { if (!open && !connectionResult) onClose(); if (!open) setConnectionResult(null); }}>
       <DialogContent className="max-w-3xl max-h-[90vh] overflow-y-auto">
+        {connectionResult ? (
+          <>
+            <DialogHeader className="pb-4">
+              <div className="flex items-center space-x-3">
+                <div className="p-2 bg-green-100 rounded-lg">
+                  <CheckCircle className="w-6 h-6 text-green-600" />
+                </div>
+                <div>
+                  <DialogTitle className="text-xl">Connect Concertina Device app</DialogTitle>
+                  <DialogDescription>
+                    Device created. Scan the QR code or open the link on your phone/tablet to connect the app to this device.
+                  </DialogDescription>
+                </div>
+              </div>
+            </DialogHeader>
+            <div className="space-y-4 py-4">
+              <div className="flex flex-wrap items-start gap-4">
+                <div className="rounded-lg border bg-white p-3">
+                  <QRCodeSVG value={buildConnectionUrl()} size={160} level="M" />
+                </div>
+                <div className="flex-1 min-w-0 space-y-2">
+                  <Label className="text-sm font-medium">Connection link</Label>
+                  <div className="flex items-center gap-2">
+                    <Input readOnly className="font-mono text-xs" value={buildConnectionUrl()} />
+                    <Button
+                      variant="outline"
+                      size="sm"
+                      onClick={() => {
+                        navigator.clipboard?.writeText(buildConnectionUrl())
+                        setConnectionLinkCopied(true)
+                        showAlert('Link copied. Open it on the device.', 'success')
+                        setTimeout(() => setConnectionLinkCopied(false), 2000)
+                      }}
+                    >
+                      {connectionLinkCopied ? <Check className="w-4 h-4" /> : <Copy className="w-4 h-4" />}
+                    </Button>
+                  </div>
+                  <p className="text-xs text-muted-foreground">
+                    The app needs internet permission to reach the backend. Open this link in the device where the Concertina Device app is installed (or in a browser to get the connection URL).
+                  </p>
+                </div>
+              </div>
+              <DialogFooter>
+                <Button onClick={handleConnectionDone}>Done</Button>
+              </DialogFooter>
+            </div>
+          </>
+        ) : (
+          <>
         <DialogHeader className="pb-4">
           <div className="flex items-center space-x-3">
             <div className="p-2 bg-blue-100 rounded-lg">
@@ -403,6 +504,24 @@ const AddDeviceModal = (props) => {
                       <AlertDescription>{errors.type}</AlertDescription>
                     </Alert>
                   )}
+                </div>
+
+                {/* Use with Concertina Device app */}
+                <div className="flex items-start space-x-3 mb-4 p-3 rounded-lg border border-gray-200 bg-gray-50">
+                  <Checkbox
+                    id="useForApp"
+                    checked={useForApp}
+                    onCheckedChange={(checked) => setUseForApp(!!checked)}
+                  />
+                  <div className="grid gap-1.5 leading-none">
+                    <Label htmlFor="useForApp" className="text-sm font-medium flex items-center gap-2">
+                      <Smartphone className="w-4 h-4" />
+                      Use with Concertina Device app
+                    </Label>
+                    <p className="text-xs text-muted-foreground">
+                      Generate a connection link and secret so this device can connect via the Concertina Device app (phone/tablet). You will get a QR code and link after creating the device.
+                    </p>
+                  </div>
                 </div>
 
                 {/* Device Name */}
@@ -908,6 +1027,8 @@ const AddDeviceModal = (props) => {
             )}
           </div>
         </DialogFooter>
+          </>
+        )}
       </DialogContent>
     </Dialog>
   )

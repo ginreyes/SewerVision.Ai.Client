@@ -399,6 +399,12 @@ export default function CreateProjectPage({ backUrl = "/admin/project", returnTo
   const handleSubmit = useCallback(async () => {
     if (!validateStep(currentStep)) return;
 
+    const maxVideoSize = 100 * 1024 * 1024; // 100MB (must match backend)
+    if (videoFile && videoFile.size > maxVideoSize) {
+      showAlert("Video file is too large. Maximum size is 100MB.", "error");
+      return;
+    }
+
     try {
       setLoading(true);
       const formData = getFormData();
@@ -416,7 +422,8 @@ export default function CreateProjectPage({ backUrl = "/admin/project", returnTo
       const { ok, data } = await api("/api/projects/create-project", "POST", form);
 
       if (!ok) {
-        showAlert("Project creation failed", "error");
+        const msg = data?.message || data?.error || "Project creation failed";
+        showAlert(msg, "error");
         return;
       }
 
@@ -425,7 +432,8 @@ export default function CreateProjectPage({ backUrl = "/admin/project", returnTo
       router.push(redirectAfterCreate);
 
     } catch (error) {
-      showAlert(error.message || "Failed to create project", "error");
+      const msg = error?.data?.message || error?.message || "Failed to create project";
+      showAlert(msg, "error");
     } finally {
       setLoading(false);
     }
@@ -1026,7 +1034,7 @@ export default function CreateProjectPage({ backUrl = "/admin/project", returnTo
                     Click to upload video file
                   </span>
                   <p className="text-gray-500 mt-2">or drag and drop</p>
-                  <p className="text-gray-400 mt-2 text-sm">Supports MP4, AVI, MOV files</p>
+                  <p className="text-gray-400 mt-2 text-sm">Supports MP4, AVI, MOV. Max 100MB.</p>
                 </Label>
               </div>
 
