@@ -209,6 +209,24 @@ export const downloadReport = async (reportId) => {
 };
 
 /**
+ * Update an existing report (metadata only)
+ */
+export const updateReport = async (reportId, updateData) => {
+  try {
+    const response = await api(`/api/reports/update-report/${reportId}`, 'PUT', updateData);
+
+    if (!response.ok) {
+      throw new Error(response.data?.message || 'Failed to update report');
+    }
+
+    return response.data;
+  } catch (error) {
+    console.error('Update Report API Error:', error);
+    throw error;
+  }
+};
+
+/**
  * Get detailed 2-day report
  */
 export const getDetailed2DayReport = async (userId, startDate, endDate) => {
@@ -293,7 +311,8 @@ const reportsApi = {
   downloadReport,
   getDetailed2DayReport,
   deleteReport,
-  updateTemplate
+  updateTemplate,
+  updateReport,
 };
 
 export default reportsApi;

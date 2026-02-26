@@ -6,12 +6,14 @@ import UserSidebar from "@/components/ui/UserSidebar";
 import { api } from "@/lib/helper";
 import { useUser } from "@/components/providers/UserContext";
 import { TourGuide, useTourGuide } from "@/components/TourGuide";
+import { useRouter } from "next/navigation";
 
 export default function UserLayout({ children }) {
   const [openSidebar, setOpenSidebar] = useState(true);
   const [role, setRole] = useState("user");
   const [userRoleMeta, setUserRoleMeta] = useState(null);
   const { userData } = useUser();
+  const router = useRouter();
 
   // Tour Guide state for User (Team Lead) role
   const { showTour, openTour, closeTour } = useTourGuide("user");
@@ -27,20 +29,27 @@ export default function UserLayout({ children }) {
     return () => window.removeEventListener("openTourGuide", handleOpenTour);
   }, [openTour]);
 
-  // Load extended role metadata for management users
+  // Load extended role metadata and gate /user routes to team-lead "user" role
   useEffect(() => {
     const fetchUserRoleMeta = async () => {
       try {
         if (!userData?.username) return;
 
-        // Reuse existing backend route pattern for role lookup
         const { data, error } = await api(
           `/api/users/get-user/${userData.username}`,
           "GET"
         );
 
         if (!error && data?.user) {
-          setRole(data.user.role || "user");
+          const backendRole = data.user.role || "user";
+
+          // If this account is not a management "user" role, redirect them
+          if (backendRole !== "user") {
+            router.push(`/${backendRole}/dashboard`);
+            return;
+          }
+
+          setRole("user");
           if (data.user.userRole) {
             setUserRoleMeta(data.user.userRole);
           }
@@ -51,7 +60,11 @@ export default function UserLayout({ children }) {
     };
 
     fetchUserRoleMeta();
-  }, [userData]);
+  }, [userData, router]);
+
+  if (!userData?.username || role !== "user") {
+    return null;
+  }
 
   return (
     <>

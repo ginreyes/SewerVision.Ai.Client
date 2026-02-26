@@ -277,16 +277,7 @@ const TasksPage = ({ role = 'admin' }) => {
                     search: searchQuery
                 });
 
-                // Map API response to UI format if needed (though backend returns similar structure now)
-                const formattedTasks = tasksList.map(t => ({
-                    id: t._id,
-                    ...t,
-                    startTime: t.startTime || t.createdAt,
-                    // Ensure numeric progress
-                    progress: t.progress || 0
-                }));
-
-                setTasks(formattedTasks);
+                setTasks(tasksList);
 
                 // Fetch real stats
                 try {
@@ -295,7 +286,7 @@ const TasksPage = ({ role = 'admin' }) => {
                 } catch (statsError) {
                     console.error("Error fetching stats:", statsError);
                     // Fallback stats calculation if API fails
-                    calculateStats(formattedTasks);
+                    calculateStats(tasksList);
                 }
             }
         } catch (error) {
@@ -429,6 +420,8 @@ const TasksPage = ({ role = 'admin' }) => {
         setSelectedTask(task);
         if (role === 'qc-technician' && task.projectId) {
             router.push(`/qc-technician/quality-control?projectId=${task.projectId}`);
+        } else if (role === 'admin' && task.id) {
+            router.push(`/admin/task/${task.id}`);
         }
     };
 

@@ -4,11 +4,13 @@ import OperatorSidebar from "@/components/ui/OperatorSidebar";
 import Navbar from "@/components/ui/navbar";
 import { api, getCookie, deleteCookie } from "@/lib/helper";
 import { useEffect, useState } from "react";
+import { useRouter } from "next/navigation";
 import { TourGuide, useTourGuide } from "@/components/TourGuide";
 
 export default function OperatorLayout({ children }) {
   const [openSidebar, setOpenSidebar] = useState(true);
   const [role, setRole] = useState(null);
+  const router = useRouter();
 
   // Tour Guide state
   const { showTour, openTour, closeTour } = useTourGuide('operator');
@@ -24,28 +26,46 @@ export default function OperatorLayout({ children }) {
     return () => window.removeEventListener('openTourGuide', handleOpenTour);
   }, [openTour]);
 
+  // Strict role-gating for all /operator pages
   useEffect(() => {
+    if (role) return;
+
     const fetchUserRole = async () => {
       try {
         const storedUsername = getCookie('username');
         const token = getCookie('authToken');
-        if (!storedUsername || !token) return;
+        if (!storedUsername || !token) {
+          router.push("/login");
+          return;
+        }
 
         const { data, error } = await api(`/api/users/role/${storedUsername}`, 'GET');
-        if (!error) {
-          setRole(data.role);
+        if (!error && data?.role) {
+          if (data.role !== "operator") {
+            router.push(`/${data.role}/dashboard`);
+            return;
+          }
+          setRole("operator");
         } else {
-          console.error("Error fetching user role:", error);
+          console.error("Error fetching user role:", error || "No role returned");
           deleteCookie("authToken");
           deleteCookie("username");
           deleteCookie("role");
+          router.push("/login");
         }
       } catch (error) {
         console.error("Error fetching user role:", error);
+        deleteCookie("authToken");
+        deleteCookie("username");
+        deleteCookie("role");
+        router.push("/login");
       }
-    }
+    };
+
     fetchUserRole();
-  }, []);
+  }, [role, router]);
+
+  if (!role) return null;
 
   return (
     <>
