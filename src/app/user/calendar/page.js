@@ -65,8 +65,10 @@ export default function UserCalendarPage() {
   const handleFetchListEvents = async () => {
     try {
       const result = await api('/api/calendar/get-event', 'GET');
-      const data = result?.data ?? result;
-      setEventList(Array.isArray(data) ? data : []);
+      const raw = result?.data;
+      const list = raw?.data ?? raw;
+      const events = Array.isArray(list) ? list : Array.isArray(raw) ? raw : [];
+      setEventList(events);
     } catch (error) {
       console.error('Failed to fetch events:', error?.message || error);
       setEventList([]);

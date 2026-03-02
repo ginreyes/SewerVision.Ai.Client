@@ -1,6 +1,6 @@
 'use client'
 
-import React, { useEffect, useRef, useState } from 'react'
+import React, { useEffect, useRef, useState, useCallback } from 'react'
 import {
   Drawer,
   DrawerTrigger,
@@ -12,8 +12,7 @@ import {
 import { Input } from '@/components/ui/input'
 import { Button } from '@/components/ui/button'
 import { Label } from '@/components/ui/label'
-import { X ,Trash2, Save, PencilLine, XCircle } from 'lucide-react'
-
+import { X ,Trash2, Save, PencilLine, XCircle, Users } from 'lucide-react'
 
 import {
   Select,
@@ -28,12 +27,15 @@ import { Textarea } from '@/components/ui/textarea'
 import { api } from '@/lib/helper'
 import { useAlert } from '@/components/providers/AlertProvider'
 import { useDialog } from '@/components/providers/DialogProvider'
+import { useUser } from '@/components/providers/UserContext'
 
 export default function EventModal(props) {
 
   const { open, onOpenChange, date, userId, selectedDate, onEventSaved, eventData } = props;
+  const { userData } = useUser() || {};
+  const isTeamLead = userData?.role === 'user';
   
-  //states
+  // basic event state
   const [title, setTitle] = useState('')
   const [description, setDescription] = useState('')
   const [location, setLocation] = useState('')
@@ -47,6 +49,77 @@ export default function EventModal(props) {
   const {showAlert} = useAlert();
   const {showDelete} = useDialog();
 
+  // assignment state (team lead can assign schedule to operator and QC tech)
+  const [operators, setOperators] = useState([]);
+  const [qcTechnicians, setQcTechnicians] = useState([]);
+  const [loadingUsers, setLoadingUsers] = useState(false);
+
+  const [operatorUserId, setOperatorUserId] = useState('');
+  const [operatorName, setOperatorName] = useState('');
+  const [operatorEmail, setOperatorEmail] = useState('');
+
+  const [qcUserId, setQcUserId] = useState('');
+  const [qcName, setQcName] = useState('');
+  const [qcEmail, setQcEmail] = useState('');
+
+  const clearOperatorSelection = useCallback(() => {
+    setOperatorUserId('');
+    setOperatorName('');
+    setOperatorEmail('');
+  }, []);
+
+  const clearQcSelection = useCallback(() => {
+    setQcUserId('');
+    setQcName('');
+    setQcEmail('');
+  }, []);
+
+  const fetchUsers = useCallback(async () => {
+    if (!isTeamLead) return;
+    try {
+      setLoadingUsers(true);
+      const { ok, data } = await api("/api/users/get-all-user", "GET");
+
+      if (ok && data?.users) {
+        let operatorUsers = data.users.filter((u) => u.role === "operator");
+        let qcUsers = data.users.filter((u) => u.role === "qc-technician");
+
+        if (Array.isArray(userData?.managedMembers) && userData.managedMembers.length > 0) {
+          const managedIds = new Set(userData.managedMembers.map((id) => String(id)));
+          operatorUsers = operatorUsers.filter((u) => u._id && managedIds.has(String(u._id)));
+          qcUsers = qcUsers.filter((u) => u._id && managedIds.has(String(u._id)));
+        }
+
+        setOperators(operatorUsers);
+        setQcTechnicians(qcUsers);
+      }
+    } catch (error) {
+      console.error("Error fetching users for schedule assignment:", error);
+      showAlert("Failed to fetch team members for schedule assignment", "error");
+    } finally {
+      setLoadingUsers(false);
+    }
+  }, [isTeamLead, showAlert, userData?.managedMembers]);
+
+  const handleOperatorSelect = useCallback((id) => {
+    const selected = operators.find((op) => (op.user_id || op._id) === id);
+    if (selected) {
+      const fullName = [selected.first_name, selected.last_name].filter(Boolean).join(" ").trim() || selected.name || selected.email || "";
+      setOperatorUserId(id);
+      setOperatorName(fullName);
+      setOperatorEmail(selected.email || "");
+    }
+  }, [operators]);
+
+  const handleQcSelect = useCallback((id) => {
+    const selected = qcTechnicians.find((qc) => (qc.user_id || qc._id) === id);
+    if (selected) {
+      const fullName = [selected.first_name, selected.last_name].filter(Boolean).join(" ").trim() || selected.name || selected.email || "";
+      setQcUserId(id);
+      setQcName(fullName);
+      setQcEmail(selected.email || "");
+    }
+  }, [qcTechnicians]);
 
 
   useEffect(() => {
@@ -82,6 +155,36 @@ export default function EventModal(props) {
         setIsAllDay(eventData.isAllDay || false);
         setStartDate(eventData.start_date ? new Date(eventData.start_date) : new Date());
         setEndDate(eventData.end_date ? new Date(eventData.end_date) : new Date());
+
+        // pre-fill assignments if event has assigned operator / QC
+        const assigned = eventData.assignedTo;
+        if (assigned && typeof assigned === 'object') {
+          const op = assigned.operator || assigned.assignedOperator;
+          const qc = assigned.qcTechnician || assigned.qc || assigned.qcTech;
+
+          if (op) {
+            const opId = op.userId || op.user_id || op._id || '';
+            const opName = op.name || [op.first_name, op.last_name].filter(Boolean).join(' ').trim() || '';
+            setOperatorUserId(opId);
+            setOperatorName(opName);
+            setOperatorEmail(op.email || '');
+          } else {
+            clearOperatorSelection();
+          }
+
+          if (qc) {
+            const qcId = qc.userId || qc.user_id || qc._id || '';
+            const qcNameFull = qc.name || [qc.first_name, qc.last_name].filter(Boolean).join(' ').trim() || '';
+            setQcUserId(qcId);
+            setQcName(qcNameFull);
+            setQcEmail(qc.email || '');
+          } else {
+            clearQcSelection();
+          }
+        } else {
+          clearOperatorSelection();
+          clearQcSelection();
+        }
       } 
       else if (selectedDate && !isNaN(new Date(selectedDate).getTime())) {
         const date = new Date(selectedDate);
@@ -93,15 +196,44 @@ export default function EventModal(props) {
         setEventUrl('');
         setCategory('');
         setIsAllDay(false);
+        clearOperatorSelection();
+        clearQcSelection();
       }
     }
-  }, [open, eventData, selectedDate]);
+  }, [open, eventData, selectedDate, clearOperatorSelection, clearQcSelection]);
+  
+  // load team members when the drawer opens (team lead only)
+  useEffect(() => {
+    if (open && isTeamLead) {
+      fetchUsers();
+    }
+  }, [open, isTeamLead, fetchUsers]);
   
   
   
 
   const handleSave = async () => {
     try {
+      let assignedTo;
+      if (operatorUserId || qcUserId) {
+        assignedTo = {
+          operator: operatorUserId
+            ? {
+                userId: operatorUserId,
+                name: operatorName,
+                email: operatorEmail,
+              }
+            : undefined,
+          qcTechnician: qcUserId
+            ? {
+                userId: qcUserId,
+                name: qcName,
+                email: qcEmail,
+              }
+            : undefined,
+        };
+      }
+
       const payload = {
         userId,
         title,
@@ -112,6 +244,7 @@ export default function EventModal(props) {
         isAllDay,
         start_date,
         end_date,
+        ...(assignedTo ? { assignedTo } : {}),
       };
   
       const endpoint = eventData?._id
@@ -217,7 +350,7 @@ export default function EventModal(props) {
               <div className="space-y-2">
                 <Label>Category</Label>
                 <Select value={category} onValueChange={setCategory}>
-                <SelectTrigger className="w-full h-10 px-3 py-2 text-sm border rounded-md focus:outline-none focus:ring-2 focus:ring-ring">
+                  <SelectTrigger className="w-full h-10 px-3 py-2 text-sm border rounded-md focus:outline-none focus:ring-2 focus:ring-ring">
                     <SelectValue placeholder="Select category" />
                   </SelectTrigger>
                   <SelectContent>
@@ -229,6 +362,98 @@ export default function EventModal(props) {
                   </SelectContent>
                 </Select>
               </div>
+
+              {isTeamLead && (
+                <div className="space-y-4 rounded-lg border bg-muted/40 p-3">
+                  <div className="flex items-center justify-between">
+                    <div className="flex items-center gap-2">
+                      <Users className="w-4 h-4 text-gray-600" />
+                      <span className="text-sm font-medium text-gray-800">
+                        Assign schedule to team
+                      </span>
+                    </div>
+                    {loadingUsers && (
+                      <span className="text-xs text-gray-500">
+                        Loading team members...
+                      </span>
+                    )}
+                  </div>
+
+                  <div className="space-y-3">
+                    <div className="space-y-2">
+                      <Label className="text-xs font-medium text-gray-700">
+                        Assigned Operator
+                      </Label>
+                      <Select
+                        value={operatorUserId}
+                        onValueChange={handleOperatorSelect}
+                      >
+                        <SelectTrigger className="h-9 w-full text-sm">
+                          <SelectValue placeholder="Choose operator (optional)" />
+                        </SelectTrigger>
+                        <SelectContent>
+                          {operators.length === 0 ? (
+                            <div className="px-3 py-4 text-center text-xs text-gray-500">
+                              No operators available
+                            </div>
+                          ) : (
+                            operators.map((op) => {
+                              const id = op.user_id || op._id;
+                              const name = [op.first_name, op.last_name].filter(Boolean).join(' ').trim() || op.name || op.email;
+                              return (
+                                <SelectItem key={id} value={id}>
+                                  <div className="flex flex-col">
+                                    <span className="text-sm font-medium">{name}</span>
+                                    {op.email && (
+                                      <span className="text-xs text-gray-500">{op.email}</span>
+                                    )}
+                                  </div>
+                                </SelectItem>
+                              );
+                            })
+                          )}
+                        </SelectContent>
+                      </Select>
+                    </div>
+
+                    <div className="space-y-2">
+                      <Label className="text-xs font-medium text-gray-700">
+                        QC Technician
+                      </Label>
+                      <Select
+                        value={qcUserId}
+                        onValueChange={handleQcSelect}
+                      >
+                        <SelectTrigger className="h-9 w-full text-sm">
+                          <SelectValue placeholder="Choose QC tech (optional)" />
+                        </SelectTrigger>
+                        <SelectContent>
+                          {qcTechnicians.length === 0 ? (
+                            <div className="px-3 py-4 text-center text-xs text-gray-500">
+                              No QC technicians available
+                            </div>
+                          ) : (
+                            qcTechnicians.map((qc) => {
+                              const id = qc.user_id || qc._id;
+                              const name = [qc.first_name, qc.last_name].filter(Boolean).join(' ').trim() || qc.name || qc.email;
+                              return (
+                                <SelectItem key={id} value={id}>
+                                  <div className="flex flex-col">
+                                    <span className="text-sm font-medium">{name}</span>
+                                    {qc.email && (
+                                      <span className="text-xs text-gray-500">{qc.email}</span>
+                                    )}
+                                  </div>
+                                </SelectItem>
+                              );
+                            })
+                          )}
+                        </SelectContent>
+                      </Select>
+                    </div>
+                  </div>
+                </div>
+              )}
 
                 {selectedDate && (
                   <div className="space-y-4">

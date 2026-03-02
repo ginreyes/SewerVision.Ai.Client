@@ -15,6 +15,7 @@ import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { useAlert } from '@/components/providers/AlertProvider';
 import reportsApi from '@/data/reportsApi';
+import { useAdminReport } from '@/hooks/useQueryHooks';
 
 /* ─── Avatar / User helpers ─── */
 const getInitials = (u) => {
@@ -226,20 +227,18 @@ export default function AdminReportDetailPage() {
   const { showAlert } = useAlert();
   const reportId = params?.reportId;
   const [report, setReport] = useState(null);
-  const [loading, setLoading] = useState(true);
   const [copied, setCopied] = useState(false);
 
+  const {
+    data: reportData,
+    isLoading: reportLoading,
+  } = useAdminReport(reportId);
+
   useEffect(() => {
-    if (!reportId) return;
-    reportsApi
-      .getReportById(reportId)
-      .then((res) => setReport(res?.data ?? res))
-      .catch((err) => {
-        showAlert(err?.message || 'Failed to load report', 'error');
-        setReport(null);
-      })
-      .finally(() => setLoading(false));
-  }, [reportId, showAlert]);
+    if (!reportData) return;
+    // Normalise possible wrapper shapes
+    setReport(reportData?.data ?? reportData);
+  }, [reportData]);
 
   const handleCopyId = () => {
     navigator.clipboard.writeText(reportId || '');
@@ -248,7 +247,7 @@ export default function AdminReportDetailPage() {
   };
 
   /* ─── Loading state ─── */
-  if (loading) {
+  if (reportLoading && !report) {
     return (
       <div className="flex items-center justify-center h-[60vh]">
         <div className="text-center">

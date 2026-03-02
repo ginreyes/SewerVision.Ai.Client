@@ -81,7 +81,7 @@ const ToggleSetting = ({ label, description, checked, onCheckedChange }) => (
   </div>
 );
 
-function OperatorSettingsContent() {
+const OperatorSettingsContent = () => {
   const router = useRouter();
   const searchParams = useSearchParams();
   const { userData, logout, updateUserData } = useUser();
@@ -102,6 +102,8 @@ function OperatorSettingsContent() {
     role: 'Operator',
     avatar: null
   });
+
+  console.log("User Data in Settings Page:", profile); 
 
   // Password Form State
   const [passwordForm, setPasswordForm] = useState({
@@ -168,12 +170,10 @@ function OperatorSettingsContent() {
         phone: userData.phone_number || '',
         department: userData.department || '',
         role: userData.role || 'Operator',
-        avatar: userData?.avatar || '/avatar_default.png'
+        avatar: userData.avatar || '/avatar_default.png'
       });
     }
   }, [userData, updateUserData]);
-
-
 
 
   // Handle Tab Change
@@ -252,9 +252,11 @@ function OperatorSettingsContent() {
 
       const token = getCookie('authToken');
       const backendUrl = process.env.NEXT_PUBLIC_BACKEND_URL || 'http://localhost:5000';
+
       const uploadUrl = userId
         ? `${backendUrl}/api/users/upload-avatar/${userId}`
         : `${backendUrl}/api/users/upload-avatar`;
+
       const res = await fetch(uploadUrl, {
         method: 'POST',
         headers: token ? { 'Authorization': `Bearer ${token}` } : {},
@@ -276,9 +278,9 @@ function OperatorSettingsContent() {
     } catch (error) {
       console.error('Avatar upload error:', error);
       showAlert(error.message, 'error');
-    } finally {
+    } 
+    finally {
       setLoading(false);
-      // Reset file input
       if (fileInputRef.current) fileInputRef.current.value = '';
     }
   };

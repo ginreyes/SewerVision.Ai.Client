@@ -28,6 +28,7 @@ import {
 } from '@/components/ui/dropdown-menu'
 import { useAlert } from "@/components/providers/AlertProvider"
 import reportsApi from '@/data/reportsApi'
+import { useAdminReports } from '@/hooks/useQueryHooks'
 
 // ─── Avatar Helper ───────────────────────────────────────────────
 const getInitials = (firstName, lastName, username, email) => {
@@ -115,8 +116,6 @@ const LeaderOption = ({ leader }) => {
 const Reports = () => {
   const router = useRouter()
   const { showAlert } = useAlert()
-  const [loading, setLoading] = useState(true)
-  const [refreshing, setRefreshing] = useState(false)
   const [searchQuery, setSearchQuery] = useState('')
   const [filterStatus, setFilterStatus] = useState('all')
   const [filterPeriod, setFilterPeriod] = useState('month')
@@ -133,72 +132,40 @@ const Reports = () => {
     aiAccuracy: 0, monthlyGrowth: 0, reportTypes: { pacp: 0, condition: 0, analytics: 0 }
   })
 
-  const [templates, setTemplates] = useState([])
-  const [isTemplateModalOpen, setIsTemplateModalOpen] = useState(false)
-  const [newTemplate, setNewTemplate] = useState({ name: '', description: '', sections: [] })
-  const [creatingTemplate, setCreatingTemplate] = useState(false)
-
-  const [isCreateForUserOpen, setIsCreateForUserOpen] = useState(false)
-  const [createLeaderId, setCreateLeaderId] = useState('')
-  const [createProjects, setCreateProjects] = useState([])
-  const [createProjectId, setCreateProjectId] = useState('')
-  const [createTemplateId, setCreateTemplateId] = useState('')
-  const [createQcId, setCreateQcId] = useState('')
-  const [creatingReport, setCreatingReport] = useState(false)
-  const [importing, setImporting] = useState(false)
+  // Admin is reviewer only – no template or report creation from this screen.
+  const [templates] = useState([])
 
   const roseGradientClass = "bg-gradient-to-r from-[#D76A84] to-rose-500 hover:from-rose-600 hover:to-pink-600 text-white shadow-lg hover:shadow-xl transition-all duration-200"
 
-  const fetchData = useCallback(async (isRefresh = false) => {
-    try {
-      if (isRefresh) setRefreshing(true)
-      else setLoading(true)
-      const [reportsResponse, analyticsResponse, templatesResponse] = await Promise.all([
-        reportsApi.getReports({ status: filterStatus, searchTerm: searchQuery, dateRange: filterPeriod, ...(filterLeaderId ? { managerId: filterLeaderId } : {}) }),
-        reportsApi.getReportsAnalytics(filterPeriod),
-        reportsApi.getTemplates()
-      ])
-      const reportsList = Array.isArray(reportsResponse?.data) ? reportsResponse.data : (reportsResponse?.data?.data ?? [])
-      const analyticsInfo = analyticsResponse?.data ?? null
-      const templatesList = Array.isArray(templatesResponse?.data) ? templatesResponse.data : (templatesResponse?.data ?? [])
-      setReports(reportsList)
-      setTemplates(templatesList)
-      if (analyticsInfo) setAnalytics(prev => ({ ...prev, ...analyticsInfo }))
-    } catch (error) {
-      console.error("Failed to fetch reports data:", error)
-    } finally {
-      if (isRefresh) setRefreshing(false)
-      else setLoading(false)
+  // TanStack Query: admin reports list + analytics/templates still via direct API
+  const {
+    data: reportsData,
+    isLoading: reportsLoading,
+    isFetching: reportsFetching,
+    refetch: refetchReports,
+  } = useAdminReports(
+    {
+      status: filterStatus,
+      searchTerm: searchQuery,
+      dateRange: filterPeriod,
+      ...(filterLeaderId ? { managerId: filterLeaderId } : {}),
+    },
+    {
+      keepPreviousData: true,
     }
-  }, [filterStatus, searchQuery, filterPeriod, filterLeaderId])
+  )
 
   useEffect(() => {
     reportsApi.getReportLeaders().then((list) => setLeaders(Array.isArray(list) ? list : [])).catch(() => setLeaders([]))
   }, [])
 
   useEffect(() => {
-    if (!createLeaderId) { setCreateProjects([]); setCreateProjectId(''); return }
-    reportsApi.getProjectsForReport(null, createLeaderId).then((list) => { setCreateProjects(Array.isArray(list) ? list : []); setCreateProjectId('') }).catch(() => setCreateProjects([]))
-  }, [createLeaderId])
-
-  useEffect(() => { fetchData() }, [fetchData])
-
-  const handleCreateReportForUser = async (e) => {
-    e.preventDefault()
-    if (!createProjectId) { showAlert('Please select a project', 'warning'); return }
-    setCreatingReport(true)
-    try {
-      await reportsApi.createReport({ projectId: createProjectId, templateId: createTemplateId || undefined, qcTechnicianId: createQcId || undefined })
-      setIsCreateForUserOpen(false)
-      setCreateLeaderId(''); setCreateProjectId(''); setCreateTemplateId(''); setCreateQcId('')
-      fetchData(true)
-      showAlert('Report created successfully', 'success')
-    } catch (error) {
-      showAlert(error?.message || 'Failed to create report', 'error')
-    } finally {
-      setCreatingReport(false)
-    }
-  }
+    // Keep local reports state for existing UI logic
+    const list = Array.isArray(reportsData?.data)
+      ? reportsData.data
+      : (reportsData?.data?.data ?? reportsData?.data ?? reportsData ?? [])
+    setReports(list)
+  }, [reportsData])
 
   const handleExportReports = () => {
     const leaderName = (r) => {
@@ -217,55 +184,7 @@ const Reports = () => {
     showAlert('Report exported as CSV', 'success')
   }
 
-  const handleImportReport = (e) => {
-    const file = e?.target?.files?.[0]
-    if (!file) return
-    setImporting(true)
-    const reader = new FileReader()
-    reader.onload = async (ev) => {
-      try {
-        const text = ev.target?.result
-        const json = JSON.parse(text)
-        const list = Array.isArray(json) ? json : (json.data ? (Array.isArray(json.data) ? json.data : [json.data]) : [json])
-        let created = 0
-        for (const item of list) {
-          const projectId = item.projectId || item.project_id
-          if (!projectId) continue
-          await reportsApi.createReport({ projectId, templateId: item.templateId || item.template_id, qcTechnicianId: item.qcTechnicianId || item.qc_technician_id })
-          created++
-        }
-        showAlert(`Imported ${created} report(s)`, 'success')
-        fetchData(true)
-      } catch (err) {
-        showAlert(err?.message || 'Import failed. Use JSON with projectId.', 'error')
-      } finally {
-        setImporting(false)
-      }
-    }
-    reader.readAsText(file)
-    e.target.value = ''
-  }
-
-  const addSection = () => setNewTemplate(prev => ({ ...prev, sections: [...(prev.sections || []), { name: '', fields: [], order: (prev.sections || []).length }] }))
-  const removeSection = (index) => setNewTemplate(prev => ({ ...prev, sections: prev.sections.filter((_, i) => i !== index) }))
-  const updateSectionName = (index, name) => setNewTemplate(prev => { const s = [...prev.sections]; s[index] = { ...s[index], name }; return { ...prev, sections: s } })
-  const updateSectionFields = (index, fieldsString) => setNewTemplate(prev => { const s = [...prev.sections]; s[index] = { ...s[index], fields: fieldsString.split(',').map(f => f.trim()).filter(f => f) }; return { ...prev, sections: s } })
-
-  const handleCreateTemplate = async (e) => {
-    e.preventDefault()
-    setCreatingTemplate(true)
-    try {
-      await reportsApi.createTemplate({ ...newTemplate, sections: newTemplate.sections || [] })
-      setIsTemplateModalOpen(false)
-      setNewTemplate({ name: '', description: '', sections: [] })
-      showAlert('Template created successfully', 'success')
-      fetchData(true)
-    } catch (error) {
-      showAlert('Failed to create template', 'error')
-    } finally {
-      setCreatingTemplate(false)
-    }
-  }
+  // Template/report creation & import handlers removed – admin reviews only.
 
   const getStatusColor = (status) => {
     switch (status?.toLowerCase()) {
@@ -501,7 +420,9 @@ const Reports = () => {
     )
   }
 
-  if (loading && !refreshing && reports.length === 0) {
+  const loading = reportsLoading && reports.length === 0
+
+  if (loading && reports.length === 0) {
     return (
       <div className="flex items-center justify-center min-h-screen bg-gray-50">
         <div className="flex flex-col items-center space-y-4">
@@ -529,14 +450,6 @@ const Reports = () => {
               </span>
             </div>
             <div className="flex items-center space-x-3">
-              <Button
-                variant="outline"
-                className="hover:bg-rose-50 hover:text-rose-600 border-gray-200"
-                onClick={() => setIsCreateForUserOpen(true)}
-              >
-                <Plus className="w-4 h-4 mr-2" />
-                Create report for user
-              </Button>
               <DropdownMenu>
                 <DropdownMenuTrigger asChild>
                   <Button className={roseGradientClass}>
@@ -547,14 +460,8 @@ const Reports = () => {
                   <DropdownMenuItem onClick={handleExportReports}>
                     <Download className="w-4 h-4 mr-2" /> Export
                   </DropdownMenuItem>
-                  <DropdownMenuItem asChild>
-                    <label className="flex cursor-pointer items-center w-full">
-                      <Upload className="w-4 h-4 mr-2" /> Import report
-                      <input type="file" accept=".json" className="hidden" disabled={importing} onChange={handleImportReport} />
-                    </label>
-                  </DropdownMenuItem>
-                  <DropdownMenuItem onClick={() => fetchData(true)} disabled={refreshing}>
-                    <RefreshCw className={`w-4 h-4 mr-2 ${refreshing ? 'animate-spin' : ''}`} /> Sync
+                  <DropdownMenuItem onClick={() => refetchReports()} disabled={reportsFetching}>
+                    <RefreshCw className={`w-4 h-4 mr-2 ${reportsFetching ? 'animate-spin' : ''}`} /> Sync
                   </DropdownMenuItem>
                 </DropdownMenuContent>
               </DropdownMenu>
@@ -563,87 +470,12 @@ const Reports = () => {
         </div>
       </div>
 
-      {/* Create report for user modal */}
-      <Dialog open={isCreateForUserOpen} onOpenChange={setIsCreateForUserOpen}>
-        <DialogContent className="sm:max-w-[500px]">
-          <DialogHeader>
-            <DialogTitle>Create report for user</DialogTitle>
-            <DialogDescription>Select a team leader and project to create an inspection report.</DialogDescription>
-          </DialogHeader>
-          <form onSubmit={handleCreateReportForUser} className="space-y-4 mt-4">
-            {/* Leader select with preview */}
-            <div className="space-y-2">
-              <Label>Team leader</Label>
-              <Select value={createLeaderId || '__none__'} onValueChange={(v) => setCreateLeaderId(v === '__none__' ? '' : v)}>
-                <SelectTrigger>
-                  <SelectValue placeholder="Select leader">
-                    {createLeaderId && leaders.find(l => l._id === createLeaderId) ? (
-                      <LeaderOption leader={leaders.find(l => l._id === createLeaderId)} />
-                    ) : 'Select leader'}
-                  </SelectValue>
-                </SelectTrigger>
-                <SelectContent>
-                  <SelectItem value="__none__">Select leader</SelectItem>
-                  {leaders.map((l) => (
-                    <SelectItem key={l._id} value={l._id}>
-                      <LeaderOption leader={l} />
-                    </SelectItem>
-                  ))}
-                </SelectContent>
-              </Select>
-            </div>
-
-            {/* Leader preview card */}
-            {createLeaderId && leaders.find(l => l._id === createLeaderId) && (
-              <div className="flex items-center gap-3 p-3 bg-rose-50 rounded-xl border border-rose-100">
-                <UserAvatar user={leaders.find(l => l._id === createLeaderId)} size="lg" />
-                <div>
-                  <p className="text-sm font-semibold text-gray-900">
-                    {[leaders.find(l => l._id === createLeaderId)?.first_name, leaders.find(l => l._id === createLeaderId)?.last_name].filter(Boolean).join(' ') || leaders.find(l => l._id === createLeaderId)?.username}
-                  </p>
-                  <p className="text-xs text-gray-500 capitalize">{leaders.find(l => l._id === createLeaderId)?.role || 'Team Leader'}</p>
-                  <p className="text-xs text-gray-400">{leaders.find(l => l._id === createLeaderId)?.email}</p>
-                </div>
-              </div>
-            )}
-
-            <div className="space-y-2">
-              <Label>Project</Label>
-              <Select value={createProjectId || '__none__'} onValueChange={(v) => setCreateProjectId(v === '__none__' ? '' : v)} disabled={!createLeaderId}>
-                <SelectTrigger><SelectValue placeholder="Select project" /></SelectTrigger>
-                <SelectContent>
-                  <SelectItem value="__none__">Select project</SelectItem>
-                  {createProjects.map((p) => (
-                    <SelectItem key={p._id} value={p._id}>{p.name || p._id}</SelectItem>
-                  ))}
-                </SelectContent>
-              </Select>
-            </div>
-            <div className="space-y-2">
-              <Label>Template (optional)</Label>
-              <Select value={createTemplateId || '__none__'} onValueChange={(v) => setCreateTemplateId(v === '__none__' ? '' : v)}>
-                <SelectTrigger><SelectValue placeholder="No template" /></SelectTrigger>
-                <SelectContent>
-                  <SelectItem value="__none__">No template</SelectItem>
-                  {templates.map((t) => (<SelectItem key={t._id} value={t._id}>{t.name}</SelectItem>))}
-                </SelectContent>
-              </Select>
-            </div>
-            <DialogFooter className="mt-6">
-              <Button type="button" variant="outline" onClick={() => setIsCreateForUserOpen(false)}>Cancel</Button>
-              <Button type="submit" className={roseGradientClass} disabled={creatingReport || !createProjectId}>
-                {creatingReport ? <Loader2 className="w-4 h-4 mr-2 animate-spin" /> : null}
-                Create report
-              </Button>
-            </DialogFooter>
-          </form>
-        </DialogContent>
-      </Dialog>
+      {/* Admin no longer creates reports here; modal removed */}
 
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
         <Tabs value={activeTab} onValueChange={setActiveTab}>
-          <TabsList className="grid w-fit grid-cols-4 mb-8 bg-white p-1 rounded-xl border border-gray-100 shadow-sm">
-            {['overview', 'reports', 'analytics', 'templates'].map(tab => (
+          <TabsList className="grid w-fit grid-cols-3 mb-8 bg-white p-1 rounded-xl border border-gray-100 shadow-sm">
+            {['overview', 'reports', 'analytics'].map(tab => (
               <TabsTrigger key={tab} value={tab} className="data-[state=active]:bg-[#D76A84] data-[state=active]:text-white rounded-lg transition-all capitalize">
                 {tab}
               </TabsTrigger>
@@ -892,114 +724,7 @@ const Reports = () => {
             </div>
           </TabsContent>
 
-          {/* ── Templates Tab ────────────────────────────────────────── */}
-          <TabsContent value="templates" className="space-y-6">
-            <Card>
-              <CardHeader>
-                <CardTitle>Report Templates</CardTitle>
-                <CardDescription>Pre-configured templates for different report types</CardDescription>
-              </CardHeader>
-              <CardContent>
-                <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-5">
-                  <Dialog open={isTemplateModalOpen} onOpenChange={setIsTemplateModalOpen}>
-                    <DialogTrigger asChild>
-                      <Card className="border-dashed border-2 border-gray-200 hover:border-[#D76A84] transition-colors cursor-pointer group flex flex-col items-center justify-center min-h-[200px]">
-                        <CardContent className="p-6 text-center">
-                          <div className="w-12 h-12 bg-rose-50 rounded-2xl flex items-center justify-center mx-auto mb-4 group-hover:bg-rose-100 transition-colors">
-                            <Plus className="w-6 h-6 text-[#D76A84]" />
-                          </div>
-                          <h3 className="font-medium text-gray-900 mb-1">Create New Template</h3>
-                          <p className="text-sm text-gray-400">Design a custom report template</p>
-                        </CardContent>
-                      </Card>
-                    </DialogTrigger>
-                    <DialogContent className="max-w-3xl max-h-[85vh] overflow-y-auto">
-                      <DialogHeader>
-                        <DialogTitle>Create New Report Template</DialogTitle>
-                        <DialogDescription>Define the structure and sections for your report.</DialogDescription>
-                      </DialogHeader>
-                      <form onSubmit={handleCreateTemplate} className="space-y-6">
-                        <div className="grid gap-3">
-                          <Label htmlFor="t-name">Template Name</Label>
-                          <Input id="t-name" value={newTemplate.name} onChange={(e) => setNewTemplate({ ...newTemplate, name: e.target.value })} placeholder="e.g., Structural Inspection V2" required />
-                        </div>
-                        <div className="grid gap-3">
-                          <Label htmlFor="t-desc">Description</Label>
-                          <Textarea id="t-desc" value={newTemplate.description} onChange={(e) => setNewTemplate({ ...newTemplate, description: e.target.value })} placeholder="Brief description..." />
-                        </div>
-                        <div className="space-y-4 border-t pt-4">
-                          <div className="flex items-center justify-between">
-                            <Label className="text-base font-semibold">Report Sections</Label>
-                            <Button type="button" variant="outline" size="sm" onClick={addSection}>
-                              <Plus className="w-4 h-4 mr-2" /> Add Section
-                            </Button>
-                          </div>
-                          {newTemplate.sections?.length === 0 && (
-                            <p className="text-sm text-gray-400 text-center py-6 bg-gray-50 rounded-xl">No sections yet. Click "Add Section" to begin.</p>
-                          )}
-                          {newTemplate.sections?.map((section, index) => (
-                            <div key={index} className="bg-gray-50 p-4 rounded-xl border relative">
-                              <Button type="button" variant="ghost" size="icon" className="absolute top-2 right-2 text-gray-300 hover:text-red-500" onClick={() => removeSection(index)}>
-                                <X className="w-4 h-4" />
-                              </Button>
-                              <div className="space-y-3">
-                                <div className="grid gap-2">
-                                  <Label>Section Name</Label>
-                                  <Input value={section.name} onChange={(e) => updateSectionName(index, e.target.value)} placeholder="e.g., Site Conditions" className="bg-white" />
-                                </div>
-                                <div className="grid gap-2">
-                                  <Label>Fields (comma separated)</Label>
-                                  <Input value={section.fields.join(', ')} onChange={(e) => updateSectionFields(index, e.target.value)} placeholder="e.g., Weather, Temperature, Surface Type" className="bg-white" />
-                                </div>
-                              </div>
-                            </div>
-                          ))}
-                        </div>
-                        <DialogFooter>
-                          <Button type="button" variant="outline" onClick={() => setIsTemplateModalOpen(false)}>Cancel</Button>
-                          <Button type="submit" disabled={creatingTemplate} className={roseGradientClass}>
-                            {creatingTemplate && <Loader2 className="w-4 h-4 mr-2 animate-spin" />}
-                            Create Template
-                          </Button>
-                        </DialogFooter>
-                      </form>
-                    </DialogContent>
-                  </Dialog>
-
-                  {templates.map((template) => (
-                    <Card key={template._id} className="hover:shadow-lg transition-all cursor-pointer border-0 shadow-sm group">
-                      <CardContent className="p-6">
-                        <div className="w-12 h-12 bg-rose-50 rounded-2xl flex items-center justify-center mb-4 group-hover:bg-rose-100 transition-colors">
-                          <FileText className="w-6 h-6 text-[#D76A84]" />
-                        </div>
-                        <h3 className="font-semibold text-gray-900 mb-1">{template.name}</h3>
-                        <p className="text-sm text-gray-400 mb-4 line-clamp-2">{template.description || "No description provided."}</p>
-                        <div className="flex justify-between items-center">
-                          <Badge variant="secondary" className="text-xs">{template.sections?.length || 0} Sections</Badge>
-                          <Button variant="ghost" size="icon" className="h-8 w-8 opacity-0 group-hover:opacity-100 transition-opacity">
-                            <Edit className="w-4 h-4" />
-                          </Button>
-                        </div>
-                      </CardContent>
-                    </Card>
-                  ))}
-
-                  {templates.length === 0 && (
-                    <Card className="hover:shadow-md transition-shadow cursor-pointer border-t-4 border-t-purple-400">
-                      <CardContent className="p-6">
-                        <div className="w-12 h-12 bg-purple-50 rounded-2xl flex items-center justify-center mb-4">
-                          <FileText className="w-6 h-6 text-purple-600" />
-                        </div>
-                        <h3 className="font-semibold text-gray-900 mb-1">Standard PACP Report</h3>
-                        <p className="text-sm text-gray-400 mb-4">Comprehensive pipeline assessment following PACP standards</p>
-                        <Badge variant="outline" className="bg-purple-50 text-purple-700 border-purple-200">System Default</Badge>
-                      </CardContent>
-                    </Card>
-                  )}
-                </div>
-              </CardContent>
-            </Card>
-          </TabsContent>
+          {/* Templates tab removed – admin reviews existing reports only */}
         </Tabs>
       </div>
     </div>

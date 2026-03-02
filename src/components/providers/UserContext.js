@@ -71,7 +71,7 @@ export const UserProvider = ({ children }) => {
     <UserContext.Provider value={{
       userId,
       userData,
-      loading,  // 👈 Export loading state
+      loading,  
       updateUserData,
       refetchUser,
       logout

@@ -12,6 +12,7 @@ import {
 } from 'lucide-react';
 import { useUser } from '@/components/providers/UserContext';
 import notificationApi from '@/data/notificationApi ';
+import { useUserInbox, useUserUnreadCount } from '@/hooks/useQueryHooks';
 
 /* ─── Type config with icons and avatar colors ─── */
 const typeConfig = {
@@ -226,35 +227,37 @@ export default function UserInboxPage() {
   const [searchOpen, setSearchOpen] = useState(false);
   const [searchQuery, setSearchQuery] = useState('');
 
-  const loadData = async () => {
-    if (!userId) {
-      setLoading(false);
-      return;
-    }
-    try {
-      setLoading(true);
-      const [listData, unread] = await Promise.all([
-        notificationApi.getNotifications(userId, {
-          page: 1,
-          limit: 50,
-          unreadOnly: filterUnreadOnly,
-          type: filterType !== 'all' ? filterType : undefined,
-        }),
-        notificationApi.getUnreadCount(userId),
-      ]);
-      setNotifications(listData?.data?.notifications || []);
-      setUnreadCount(unread ?? 0);
-    } catch (err) {
-      console.error('Error loading inbox:', err);
-    } finally {
-      setLoading(false);
-    }
-  };
+  // TanStack Query: notifications list + unread count
+  const {
+    data: inboxData,
+    isLoading: inboxLoading,
+  } = useUserInbox(userId, {
+    page: 1,
+    limit: 50,
+    unreadOnly: filterUnreadOnly,
+    type: filterType !== 'all' ? filterType : undefined,
+  });
+
+  const {
+    data: unreadData,
+    isLoading: unreadLoading,
+  } = useUserUnreadCount(userId);
 
   useEffect(() => {
-    loadData();
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [userId, filterUnreadOnly, filterType]);
+    if (inboxData) {
+      setNotifications(inboxData?.data?.notifications || inboxData?.notifications || []);
+    }
+  }, [inboxData]);
+
+  useEffect(() => {
+    if (typeof unreadData === 'number') {
+      setUnreadCount(unreadData);
+    }
+  }, [unreadData]);
+
+  useEffect(() => {
+    setLoading(inboxLoading || unreadLoading);
+  }, [inboxLoading, unreadLoading]);
 
   const handleOpen = (item) => {
     if (item.actionUrl) {

@@ -93,17 +93,39 @@ const QCCalendarPage = () => {
   const handleFetchListEvents = async () => {
     try {
       const result = await api("/api/calendar/get-event", "GET");
-      if (result.ok && result.data?.data) {
-        const events = Array.isArray(result.data.data) ? result.data.data : [];
-        // Filter out QC events to avoid duplicates
+      if (result.ok && result.data) {
+        const raw = result.data;
+        const list = raw?.data ?? raw;
+        const allEvents = Array.isArray(list) ? list : Array.isArray(raw) ? raw : [];
+
+        // Only keep events that are explicitly assigned to this QC technician
+        const assignedEvents = allEvents.filter((event) => {
+          const assigned = event.assignedTo;
+          if (!assigned || typeof assigned !== "object") return false;
+
+          const qc =
+            assigned.qcTechnician ||
+            assigned.qc ||
+            assigned.qcTech;
+
+          if (!qc) return false;
+
+          const assignedId = qc.userId || qc.user_id || qc._id;
+          return assignedId && String(assignedId) === String(userId);
+        });
+
+        // Filter out QC-assignment synthetic events (qc-*) to avoid duplicates,
+        // then merge with the assigned calendar events.
         const existingQCIds = new Set();
-        setEventList(prev => {
-          prev.forEach(e => {
-            if (e.id?.startsWith('qc-')) {
+        setEventList((prev) => {
+          prev.forEach((e) => {
+            if (e.id?.startsWith("qc-")) {
               existingQCIds.add(e.id);
             }
           });
-          return prev.filter(e => !e.id?.startsWith('qc-')).concat(events);
+
+          const nonSynthetic = prev.filter((e) => !e.id?.startsWith("qc-"));
+          return nonSynthetic.concat(assignedEvents);
         });
       }
     } catch (error) {
