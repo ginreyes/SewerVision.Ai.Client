@@ -48,7 +48,7 @@ import { api, getCookie } from '@/lib/helper';
 import { useRouter } from 'next/navigation';
 import { getVideoUrl } from '@/lib/getVideoUrl';
 
-const ProjectDetail = ({ project, setSelectedProject, onBack }) => {
+const ProjectDetail = ({ project, setSelectedProject, onBack, initialSeekTime }) => {
   const [isRecordingInfoExpanded, setIsRecordingInfoExpanded] = useState(true);
   const [isSnapshotsExpanded, setIsSnapshotsExpanded] = useState(true);
   const [isVideosExpanded, setIsVideosExpanded] = useState(true);
@@ -59,6 +59,10 @@ const ProjectDetail = ({ project, setSelectedProject, onBack }) => {
   const [pacpCodes, setPacpCodes] = useState([]);
   const [snapshots, setSnapshots] = useState([]);
   const [projectMetadata, setProjectMetadata] = useState(null);
+  const [observations, setObservations] = useState([]);
+  const [obsPage, setObsPage] = useState(1);
+  const obsPageSize = 10;
+  const [obsTotal, setObsTotal] = useState(0);
   const [isAddMetadataOpen, setIsAddMetadataOpen] = useState(false);
   const [isEditMetadataOpen, setIsEditMetadataOpen] = useState(false);
   const [newMetadataKey, setNewMetadataKey] = useState('');
@@ -90,6 +94,7 @@ const ProjectDetail = ({ project, setSelectedProject, onBack }) => {
 
   const user_id = userId;
   const isAdmin = userData?.role === 'admin';
+
 
   // Status-based gradient colors
   const statusGradient = useMemo(() => {
@@ -197,6 +202,41 @@ const ProjectDetail = ({ project, setSelectedProject, onBack }) => {
   useEffect(() => {
     fetchpacpCodes();
   }, [fetchpacpCodes]);
+
+  // If an initialSeekTime (HH:MM:SS) is provided via URL, jump video once when ready
+  useEffect(() => {
+    if (!initialSeekTime || !videoRef.current) return;
+
+    const video = videoRef.current;
+    const parseToSeconds = (t) => {
+      if (!t) return 0;
+      const parts = String(t).split(':').map((p) => parseInt(p, 10) || 0);
+      return parts[0] * 3600 + parts[1] * 60 + parts[2];
+    };
+
+    const seekWhenReady = () => {
+      const seconds = parseToSeconds(initialSeekTime);
+      if (!Number.isFinite(seconds) || seconds < 0) return;
+      try {
+        video.currentTime = seconds;
+        setIsPlaying(true);
+        video.play().catch(() => {});
+      } catch {
+        // ignore
+      }
+    };
+
+    if (video.readyState >= 2) {
+      seekWhenReady();
+    } else {
+      const onLoaded = () => {
+        seekWhenReady();
+        video.removeEventListener('loadedmetadata', onLoaded);
+      };
+      video.addEventListener('loadedmetadata', onLoaded);
+      return () => video.removeEventListener('loadedmetadata', onLoaded);
+    }
+  }, [initialSeekTime]);
 
   const getSnapshotColor = useCallback((label) => {
     if (!label) return 'bg-gray-400';
@@ -315,6 +355,72 @@ const ProjectDetail = ({ project, setSelectedProject, onBack }) => {
       setLoadingVideos(false);
     }
   }, [project?._id]);
+
+  const fetchObservations = useCallback(async (page = 1) => {
+    if (!project?._id) return;
+    try {
+      // First, try Observation collection with pagination
+      const { ok, data } = await api(
+        `/api/observations/get-all-observations?projectId=${project._id}&page=${page}&limit=${obsPageSize}`,
+        'GET'
+      );
+      let list = [];
+      let total = 0;
+
+      if (ok && data?.data) {
+        list = Array.isArray(data.data) ? data.data : [];
+        total = data.pagination?.total ?? list.length;
+      } else if (Array.isArray(data)) {
+        list = data;
+        total = list.length;
+      }
+
+      // If there are no saved observations yet, fall back to AI detections (no pagination)
+      if (!list.length) {
+        const detRes = await api(`/api/qc-technicians/projects/${project._id}/detections`, 'GET');
+        if (detRes.ok && detRes.data?.data && Array.isArray(detRes.data.data)) {
+          const dets = detRes.data.data;
+          list = dets.map((d) => {
+            const frameNumber = d.frameNumber || 0;
+            const seconds = Math.max(0, frameNumber - 1);
+            const hh = String(Math.floor(seconds / 3600)).padStart(2, '0');
+            const mm = String(Math.floor((seconds % 3600) / 60)).padStart(2, '0');
+            const ss = String(seconds % 60).padStart(2, '0');
+            const time = `${hh}:${mm}:${ss}`;
+
+            const label = d.type || 'AI detection';
+            const remarks =
+              d.severity || d.qcStatus
+                ? `${(d.severity || d.qcStatus).toString()} • ${(d.confidence ?? 0)}%`
+                : '';
+
+            return {
+              _id: d._id,
+              distance:
+                d.location && d.location.distance != null
+                  ? String(d.location.distance)
+                  : '0.0',
+              pacpCode:
+                d.pacpCode || (label || 'AI_DEFECT').toString().toUpperCase(),
+              observation: label,
+              time,
+              remarks,
+              snapshot: false,
+            };
+          });
+          total = list.length;
+        }
+      }
+
+      setObservations(list);
+      setObsTotal(total);
+      setObsPage(page);
+    } catch (error) {
+      console.error('Error fetching observations for project:', error);
+      setObservations([]);
+      setObsTotal(0);
+    }
+  }, [project?._id, obsPageSize]);
 
   // Handle video deletion (admin only)
   const handleDeleteVideo = async () => {
@@ -444,8 +550,9 @@ const ProjectDetail = ({ project, setSelectedProject, onBack }) => {
       fetchSnapshots();
       fetchProjectMetadata();
       fetchProjectVideos();
+      fetchObservations(1);
     }
-  }, [project?._id, fetchSnapshots, fetchProjectMetadata, fetchProjectVideos]);
+  }, [project?._id, fetchSnapshots, fetchProjectMetadata, fetchProjectVideos, fetchObservations]);
 
   // Real-time polling for processing updates
   useEffect(() => {
@@ -518,7 +625,6 @@ const ProjectDetail = ({ project, setSelectedProject, onBack }) => {
         { metadata: updatedMetadata }
       );
 
-      console.log('Metadata update response:', response);
 
       if (response.ok) {
         showAlert('Custom metadata added successfully', 'success');
@@ -1115,10 +1221,26 @@ const ProjectDetail = ({ project, setSelectedProject, onBack }) => {
 
             {/* Observations Section */}
             <ObservationsPanel
-              observations={project.observations}
+              observations={observations}
               onAddObservation={observationOpen}
               pacpCodes={pacpCodes}
               projectId={project._id}
+              page={obsPage}
+              pageSize={obsPageSize}
+              total={obsTotal}
+              onPageChange={(nextPage) => {
+                if (nextPage < 1) return;
+                fetchObservations(nextPage);
+              }}
+              onGoToTime={(obs) => {
+                if (!videoRef.current || !obs?.time) return;
+                // Expect HH:MM:SS
+                const parts = String(obs.time).split(':').map((p) => parseInt(p, 10) || 0);
+                const seconds = parts[0] * 3600 + parts[1] * 60 + parts[2];
+                videoRef.current.currentTime = seconds;
+                setIsPlaying(true);
+                videoRef.current.play().catch(() => {});
+              }}
             />
           </div>
 

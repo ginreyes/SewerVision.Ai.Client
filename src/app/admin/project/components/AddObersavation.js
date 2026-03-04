@@ -264,10 +264,10 @@ const AddObservation = (props) => {
     try {
       if (!validateForm()) return;
 
-      // Prepare observation data with captured frame
+      // Prepare observation data; we'll enrich with snapshotUrl if snapshot is saved
       const observationData = {
         ...formData,
-        capturedFrame: capturedFrame, // Include captured frame if available
+        capturedFrame: capturedFrame, // Include captured frame if available (not persisted, just for debugging)
       };
 
       // If snapshot is enabled and we have a captured frame, save it as snapshot
@@ -288,8 +288,13 @@ const AddObservation = (props) => {
           );
 
           if (snapshotResponse.ok) {
-            console.log('Snapshot saved:', snapshotResponse.data);
-          }
+            const raw = snapshotResponse.data;
+            const savedSnapshot = raw?.data || raw;
+            if (savedSnapshot?.imageUrl) {
+              observationData.snapshot = true;
+              observationData.snapshotUrl = savedSnapshot.imageUrl;
+            }
+          } 
         } catch (snapshotError) {
           console.error('Error saving snapshot:', snapshotError);
           // Don't block observation save if snapshot fails
