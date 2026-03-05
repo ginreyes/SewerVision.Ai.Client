@@ -11,6 +11,7 @@ import {
   FileText,
   Loader2,
   Trash2,
+  ClipboardList,
 } from 'lucide-react';
 
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
@@ -24,11 +25,12 @@ import { useAlert } from '@/components/providers/AlertProvider';
 import { api } from '@/lib/helper';
 
 // Helper Icons
-const FileTextIcon = () => <FileText className="h-4 w-4 text-rose-500" />;
+const FileTextIcon = () => <FileText className="h-4 w-4 text-blue-500" />;
 const BotIcon = () => <AlertCircle className="h-4 w-4 text-green-500" />;
 const UpdateIcon = () => <Clock className="h-4 w-4 text-orange-500" />;
+const TaskIcon = () => <ClipboardList className="h-4 w-4 text-blue-600" />;
 
-const NotificationPageQCTechnician = () => {
+const NotificationPageTeamLeader = () => {
   const { userId } = useUser();
   const { showAlert } = useAlert();
   const {
@@ -42,18 +44,17 @@ const NotificationPageQCTechnician = () => {
     fetchNotifications,
   } = useNotifications();
   const [deletingAll, setDeletingAll] = useState(false);
-  
+
   const [preferences, setPreferences] = useState({
     email: true,
     push: true,
     reportReady: true,
     aiComplete: true,
     statusUpdate: true,
-    qcReview: true,
-    defectFound: true,
+    taskAssignment: true,
+    deleteRequest: true,
   });
 
-  // Load notifications and preferences on mount
   useEffect(() => {
     if (userId) {
       fetchNotifications(true);
@@ -69,8 +70,8 @@ const NotificationPageQCTechnician = () => {
               reportReady: prefs.reportReady ?? true,
               aiComplete: prefs.aiComplete ?? true,
               statusUpdate: prefs.statusUpdate ?? true,
-              qcReview: prefs.qcReview ?? true,
-              defectFound: prefs.defectFound ?? true,
+              taskAssignment: prefs.taskAssignment ?? true,
+              deleteRequest: prefs.deleteRequest ?? true,
             });
           }
         } catch (err) {
@@ -153,11 +154,13 @@ const NotificationPageQCTechnician = () => {
       case 'report_ready':
         return <FileTextIcon />;
       case 'ai_complete':
-      case 'defect_found':
         return <BotIcon />;
       case 'status_update':
-      case 'qc_review':
         return <UpdateIcon />;
+      case 'task_assignment':
+        return <TaskIcon />;
+      case 'delete_request':
+        return <Trash2 className="h-4 w-4 text-red-500" />;
       default:
         return <Info className="h-4 w-4" />;
     }
@@ -180,9 +183,9 @@ const NotificationPageQCTechnician = () => {
       <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
         <div>
           <h1 className="text-3xl font-bold flex items-center gap-2">
-            Notifications
+            Team Leader Notifications
             {unreadCount > 0 && (
-              <Badge variant="destructive" className="ml-2">
+              <Badge className="ml-2 bg-blue-600 hover:bg-blue-700">
                 {unreadCount}
               </Badge>
             )}
@@ -213,14 +216,14 @@ const NotificationPageQCTechnician = () => {
           <Card>
             <CardHeader>
               <CardTitle className="flex items-center gap-2">
-                <Bell className="h-5 w-5" />
+                <Bell className="h-5 w-5 text-blue-600" />
                 Recent Notifications
               </CardTitle>
             </CardHeader>
             <CardContent className="space-y-4">
               {isLoading ? (
                 <div className="flex items-center justify-center py-8">
-                  <Loader2 className="h-6 w-6 animate-spin text-primary" />
+                  <Loader2 className="h-6 w-6 animate-spin text-blue-600" />
                   <span className="ml-3 text-muted-foreground">Loading notifications...</span>
                 </div>
               ) : notifications.length === 0 ? (
@@ -230,7 +233,7 @@ const NotificationPageQCTechnician = () => {
                   <div
                     key={notification._id}
                     className={`flex items-start gap-3 p-3 rounded-md border transition-colors ${
-                      !notification.read ? 'bg-accent/30 border-primary/20' : 'border-transparent hover:bg-accent/10'
+                      !notification.read ? 'bg-blue-50/50 border-blue-200/50' : 'border-transparent hover:bg-accent/10'
                     }`}
                   >
                     <div className="mt-1">
@@ -277,7 +280,7 @@ const NotificationPageQCTechnician = () => {
           <Card>
             <CardHeader>
               <CardTitle className="flex items-center gap-2">
-                <Mail className="h-5 w-5" />
+                <Mail className="h-5 w-5 text-blue-600" />
                 Notification Settings
               </CardTitle>
             </CardHeader>
@@ -315,7 +318,7 @@ const NotificationPageQCTechnician = () => {
             <CardContent className="space-y-4">
               <div className="flex items-center justify-between">
                 <Label htmlFor="report-ready" className="text-sm">
-                  New Reports Ready
+                  Report Ready
                 </Label>
                 <Switch
                   id="report-ready"
@@ -326,7 +329,7 @@ const NotificationPageQCTechnician = () => {
 
               <div className="flex items-center justify-between">
                 <Label htmlFor="ai-complete" className="text-sm">
-                  AI Processing Complete
+                  AI Complete
                 </Label>
                 <Switch
                   id="ai-complete"
@@ -337,7 +340,7 @@ const NotificationPageQCTechnician = () => {
 
               <div className="flex items-center justify-between">
                 <Label htmlFor="status-update" className="text-sm">
-                  Project Status Updates
+                  Status Updates
                 </Label>
                 <Switch
                   id="status-update"
@@ -347,24 +350,24 @@ const NotificationPageQCTechnician = () => {
               </div>
 
               <div className="flex items-center justify-between">
-                <Label htmlFor="qc-review" className="text-sm">
-                  QC Review Updates
+                <Label htmlFor="task-assignment" className="text-sm">
+                  Task Assignments
                 </Label>
                 <Switch
-                  id="qc-review"
-                  checked={preferences.qcReview}
-                  onCheckedChange={() => togglePreference('qcReview')}
+                  id="task-assignment"
+                  checked={preferences.taskAssignment}
+                  onCheckedChange={() => togglePreference('taskAssignment')}
                 />
               </div>
 
               <div className="flex items-center justify-between">
-                <Label htmlFor="defect-found" className="text-sm">
-                  Defect Alerts
+                <Label htmlFor="delete-request" className="text-sm">
+                  Delete Requests
                 </Label>
                 <Switch
-                  id="defect-found"
-                  checked={preferences.defectFound}
-                  onCheckedChange={() => togglePreference('defectFound')}
+                  id="delete-request"
+                  checked={preferences.deleteRequest}
+                  onCheckedChange={() => togglePreference('deleteRequest')}
                 />
               </div>
             </CardContent>
@@ -375,5 +378,4 @@ const NotificationPageQCTechnician = () => {
   );
 };
 
-export default NotificationPageQCTechnician;
-
+export default NotificationPageTeamLeader;

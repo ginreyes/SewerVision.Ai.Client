@@ -44,6 +44,8 @@ import { Separator } from '@/components/ui/separator';
 import { Progress } from '@/components/ui/progress';
 import { useUser } from '@/components/providers/UserContext';
 import { useAlert } from '@/components/providers/AlertProvider';
+import { useQuery } from '@tanstack/react-query';
+import { qcApi } from '@/data/qcApi';
 import { api, getCookie } from '@/lib/helper';
 
 // --- Components ---
@@ -94,7 +96,7 @@ const ToggleSetting = ({ label, description, checked, onCheckedChange }) => (
 function QCSettingsContent() {
   const router = useRouter();
   const searchParams = useSearchParams();
-  const { userData, logout, updateUserData } = useUser();
+  const { userData, logout, updateUserData, refetchUser } = useUser();
   const { showAlert } = useAlert();
 
   const [activeTab, setActiveTab] = useState('profile');
@@ -153,12 +155,19 @@ function QCSettingsContent() {
     units: 'imperial'
   });
 
-  // Stats (Mock data for now, could be fetched)
+  // Fetch real stats from QC dashboard API
+  const { data: dashboardData } = useQuery({
+    queryKey: ['qc', 'dashboard', userData?._id],
+    queryFn: () => qcApi.getDashboardStats(userData?._id),
+    enabled: !!userData?._id,
+    staleTime: 5 * 60 * 1000,
+  });
+
   const stats = {
-    reviews: 342,
-    reports: 189,
-    accuracy: 99.2,
-    hours: 410
+    reviews: dashboardData?.stats?.totalReviewed || dashboardData?.totalReviewed || 0,
+    reports: dashboardData?.stats?.totalReports || dashboardData?.reportsCount || 0,
+    accuracy: dashboardData?.stats?.avgAccuracy || dashboardData?.averageAccuracy || 0,
+    hours: dashboardData?.stats?.totalHours || dashboardData?.totalHoursWorked || 0
   };
 
   const fileInputRef = useRef(null);
@@ -312,6 +321,7 @@ function QCSettingsContent() {
         if (updateUserData) {
           updateUserData({ ...userData, avatar: data.avatarUrl });
         }
+        if (refetchUser) await refetchUser();
         showAlert('Avatar uploaded successfully', 'success');
       } else {
         throw new Error(data.message || 'Failed to upload avatar');

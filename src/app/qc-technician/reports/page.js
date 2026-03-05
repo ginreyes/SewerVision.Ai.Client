@@ -34,13 +34,14 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@
 import { Label } from '@/components/ui/label'
 import { Textarea } from '@/components/ui/textarea'
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger, DropdownMenuSeparator } from '@/components/ui/dropdown-menu'
-import { useRouter } from 'next/navigation'
+import { useRouter, useSearchParams } from 'next/navigation'
 import { useUser } from '@/components/providers/UserContext'
 import { useAlert } from '@/components/providers/AlertProvider'
-import reportsApi from '@/data/reportsApi'
+import { api } from '@/lib/helper'
 
 const QualityReportPage = () => {
   const router = useRouter()
+  const searchParams = useSearchParams()
   const { userId, userData } = useUser()
   const { showAlert, showConfirm } = useAlert()
   const [selectedReport, setSelectedReport] = useState(null)
@@ -156,17 +157,56 @@ const QualityReportPage = () => {
     }
   }, [userId, filterStatus, searchTerm, dateRange])
 
+  // Auto-open new report modal when navigated from QC review completion
+  useEffect(() => {
+    if (!searchParams) return
+    const shouldCreateReport = searchParams.get('newReport') === 'true'
+    const projectId = searchParams.get('projectId')
+    if (shouldCreateReport && projects.length > 0) {
+      // Pre-select the project from the review
+      if (projectId) {
+        const project = projects.find(p => {
+          const pId = String(p._id?.toString() || p.id?.toString() || '')
+          return pId === projectId
+        })
+        if (project) {
+          setNewReportForm(prev => ({ ...prev, projectId }))
+          setSelectedProject(project)
+        }
+      }
+      setIsNewReportModalOpen(true)
+      // Clean the URL to prevent re-opening on refresh
+      router.replace('/qc-technician/reports', { scroll: false })
+    }
+  }, [searchParams, projects, router])
+
   const fetchReports = async () => {
     if (!userId) return
     try {
       setLoading(true)
-      const response = await reportsApi.getReports(userId, {
-        status: filterStatus,
-        searchTerm,
-        dateRange
-      })
-      setReports(response.data || [])
-      setStats(response.stats || stats)
+      const params = new URLSearchParams()
+      if (filterStatus && filterStatus !== 'all') params.append('status', filterStatus)
+      if (searchTerm) params.append('searchTerm', searchTerm)
+      if (dateRange) params.append('dateRange', dateRange)
+      const queryStr = params.toString()
+
+      const response = await api(
+        `/api/qc-technicians/reports-list/${userId}${queryStr ? `?${queryStr}` : ''}`,
+        'GET'
+      )
+
+      if (response.ok) {
+        const resData = response.data
+        setReports(resData?.data || resData?.reports || [])
+        setStats(resData?.stats || {
+          total: (resData?.data || []).length,
+          completed: (resData?.data || []).filter(r => r.status === 'completed').length,
+          draft: (resData?.data || []).filter(r => r.status === 'draft').length,
+          inReview: (resData?.data || []).filter(r => r.status === 'in-review' || r.status === 'in_review').length
+        })
+      } else {
+        setReports([])
+      }
     } catch (error) {
       console.error('Error fetching reports:', error)
       showAlert(error.message || 'Failed to fetch reports', 'error')
@@ -177,8 +217,12 @@ const QualityReportPage = () => {
 
   const fetchTemplates = async () => {
     try {
-      const templates = await reportsApi.getTemplates()
-      setReportTemplates(templates || [])
+      const response = await api(`/api/qc-technicians/templates?userId=${userId}`, 'GET')
+      if (response.ok) {
+        setReportTemplates(response.data?.data || [])
+      } else {
+        setReportTemplates([])
+      }
     } catch (error) {
       console.error('Error fetching templates:', error)
       showAlert(error.message || 'Failed to fetch templates', 'error')
@@ -188,8 +232,12 @@ const QualityReportPage = () => {
   const fetchProjects = async () => {
     if (!userId) return
     try {
-      const projectsData = await reportsApi.getProjectsForReport(userId)
-      setProjects(projectsData || [])
+      const response = await api(`/api/qc-technicians/reports/projects/${userId}`, 'GET')
+      if (response.ok) {
+        setProjects(response.data?.data || [])
+      } else {
+        setProjects([])
+      }
     } catch (error) {
       console.error('Error fetching projects:', error)
     }
@@ -207,7 +255,7 @@ const QualityReportPage = () => {
     }
 
     try {
-      await reportsApi.createReport({
+      const response = await api('/api/qc-technicians/reports', 'POST', {
         projectId: newReportForm.projectId,
         templateId: (newReportForm.templateId && newReportForm.templateId !== '' && newReportForm.templateId !== 'no_template') ? newReportForm.templateId : undefined,
         qcTechnicianId: userId,
@@ -222,10 +270,14 @@ const QualityReportPage = () => {
         initialNotes: newReportForm.initialNotes
       })
 
-      showAlert('Report created successfully', 'success')
+      if (!response.ok) {
+        throw new Error(response.data?.error || 'Failed to create report')
+      }
+
+      showAlert('Report created successfully! Defects and grade auto-calculated.', 'success')
       setIsNewReportModalOpen(false)
-      setNewReportForm({ 
-        projectId: '', 
+      setNewReportForm({
+        projectId: '',
         templateId: '',
         reportTitle: '',
         inspectionDate: new Date().toISOString().split('T')[0],
@@ -239,7 +291,15 @@ const QualityReportPage = () => {
       })
       setSelectedProject(null)
       setSelectedTemplate(null)
+      setCreateReportTab('project')
       fetchReports()
+
+      // Navigate to the new report if created from QC review
+      const newReport = response.data?.data
+      if (newReport && (newReport._id || newReport.id)) {
+        const reportId = newReport._id || newReport.id
+        router.push(`/qc-technician/reports/${reportId}`)
+      }
     } catch (error) {
       console.error('Error creating report:', error)
       showAlert(error.message || 'Failed to create report', 'error')
@@ -258,13 +318,18 @@ const QualityReportPage = () => {
     }
 
     try {
-      await reportsApi.createTemplate({
+      const response = await api('/api/qc-technicians/templates', 'POST', {
         name: newTemplateForm.name,
         description: newTemplateForm.description,
         fields: newTemplateForm.fields,
         sections: newTemplateForm.sections,
         createdBy: userId
       })
+
+      if (!response.ok) {
+        throw new Error(response.data?.error || 'Failed to create template')
+      }
+
       showAlert('Template created successfully', 'success')
       setIsTemplateModalOpen(false)
       setNewTemplateForm({ name: '', description: '', fields: [], sections: [] })
@@ -328,12 +393,17 @@ const QualityReportPage = () => {
     }
 
     try {
-      await reportsApi.updateTemplate(editTemplateForm.id, {
+      const response = await api(`/api/qc-technicians/templates/${editTemplateForm.id}`, 'PUT', {
         name: editTemplateForm.name,
         description: editTemplateForm.description,
         fields: editTemplateForm.fields,
         sections: editTemplateForm.sections
       })
+
+      if (!response.ok) {
+        throw new Error(response.data?.error || 'Failed to update template')
+      }
+
       showAlert('Template updated successfully', 'success')
       setIsEditTemplateModalOpen(false)
       setEditTemplateForm({ id: '', name: '', description: '', sections: [], fields: [], isDefault: false })
@@ -381,8 +451,75 @@ const QualityReportPage = () => {
     router.push(`/qc-technician/reports/${report._id || report.id}`)
   }
 
-  const handleDownloadReport = (report) => {
-    alert(`Downloading report: ${report.projectId?.name || report.projectName}`)
+  const handleDownloadReport = async (report) => {
+    try {
+      const reportId = report._id || report.id
+      // Fetch the full report data with detections
+      const response = await api(`/api/qc-technicians/reports/detail/${reportId}`, 'GET')
+
+      if (!response.ok) {
+        throw new Error(response.data?.error || 'Failed to fetch report for download')
+      }
+
+      const reportData = response.data?.data || report
+      const detections = response.data?.detections || []
+      const projectName = reportData.projectId?.name || report.projectId?.name || 'Unknown'
+
+      // Build a comprehensive report document
+      const downloadData = {
+        reportInfo: {
+          inspectionId: reportData.inspectionId || 'N/A',
+          reportType: reportData.reportType || 'PACP Condition Assessment',
+          status: reportData.status,
+          overallGrade: reportData.overallGrade || 'N/A',
+          date: reportData.date || reportData.createdAt,
+          generatedAt: new Date().toISOString()
+        },
+        project: {
+          name: projectName,
+          location: reportData.projectId?.location || reportData.location || 'N/A',
+          client: reportData.projectId?.client || 'N/A'
+        },
+        operator: reportData.operator
+          ? `${reportData.operator.first_name || ''} ${reportData.operator.last_name || ''}`.trim() || 'N/A'
+          : 'N/A',
+        qcTechnician: reportData.qcTechnician
+          ? `${reportData.qcTechnician.first_name || ''} ${reportData.qcTechnician.last_name || ''}`.trim() || 'N/A'
+          : 'N/A',
+        metrics: {
+          totalDefects: reportData.totalDefects || 0,
+          criticalDefects: reportData.criticalDefects || 0,
+          aiDetections: reportData.aiDetections || 0,
+          confidence: `${reportData.confidence || 0}%`,
+          footage: reportData.footage || 'N/A'
+        },
+        issues: reportData.issues || [],
+        detections: detections.map(d => ({
+          type: d.type,
+          severity: d.severity,
+          confidence: `${d.confidence}%`,
+          status: d.qcStatus,
+          pacpCode: d.pacpCode || 'N/A',
+          distance: d.distance || 'N/A'
+        }))
+      }
+
+      // Create and download as JSON
+      const blob = new Blob([JSON.stringify(downloadData, null, 2)], { type: 'application/json' })
+      const url = window.URL.createObjectURL(blob)
+      const link = document.createElement('a')
+      link.href = url
+      link.download = `report-${projectName.replace(/\s+/g, '-')}-${reportData.date || 'unknown'}.json`
+      document.body.appendChild(link)
+      link.click()
+      document.body.removeChild(link)
+      window.URL.revokeObjectURL(url)
+
+      showAlert('Report downloaded successfully', 'success')
+    } catch (error) {
+      console.error('Error downloading report:', error)
+      showAlert(error.message || 'Failed to download report', 'error')
+    }
   }
 
   const handleShareReport = (report) => {
@@ -408,7 +545,11 @@ const QualityReportPage = () => {
     }
 
     try {
-      await reportsApi.deleteReport(report._id || report.id)
+      const reportId = report._id || report.id
+      const response = await api(`/api/qc-technicians/reports/detail/${reportId}`, 'DELETE')
+      if (!response.ok) {
+        throw new Error(response.data?.error || 'Failed to delete report')
+      }
       showAlert('Report deleted successfully', 'success')
       fetchReports()
     } catch (error) {

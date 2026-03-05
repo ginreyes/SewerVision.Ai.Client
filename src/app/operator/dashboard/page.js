@@ -1,6 +1,7 @@
 'use client'
 
-import React, { useState, useEffect, useRef, useCallback, useMemo } from 'react'
+import React, { useState, useEffect, useRef, useCallback } from 'react'
+import { useRouter } from 'next/navigation'
 import {
   AlertTriangle,
   Clock,
@@ -11,22 +12,19 @@ import {
   RefreshCw,
   Monitor,
   Server,
-  ChevronUp,
-  ChevronDown,
   X,
   Battery,
   MapPin,
   Wifi,
-  WifiOff,
-  Info,
   Camera,
   Activity,
   TrendingUp,
   CheckCircle2,
   ChevronRight,
-  MoreVertical,
   Calendar as CalendarIcon,
-  Wrench
+  Wrench,
+  FolderOpen,
+  Loader2
 } from 'lucide-react'
 
 import Chart from 'chart.js/auto'
@@ -34,17 +32,16 @@ import { api } from '@/lib/helper'
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
 import { Button } from '@/components/ui/button'
 import { Badge } from '@/components/ui/badge'
-
-// Import hooks
-import { usePolling } from '@/hooks'
+import { useUser } from '@/components/providers/UserContext'
+import { useAlert } from '@/components/providers/AlertProvider'
 
 // Import components
-import { LoadingState, ErrorState, EmptyState } from '@/components/qc'
+import { LoadingState, ErrorState } from '@/components/qc'
 
-const POLL_INTERVAL = 30000 // 30 seconds
+const POLL_INTERVAL = 30000
 
-// Compact Stat Card Component
-const StatCard = ({ icon: Icon, value, label, trend, color = 'blue', suffix = '' }) => {
+// ─── Stat Card ───────────────────────────────────────────────────
+const StatCard = ({ icon: Icon, value, label, color = 'blue', suffix = '' }) => {
   const colorClasses = {
     blue: 'from-blue-500 to-blue-600',
     green: 'from-green-500 to-emerald-600',
@@ -56,14 +53,9 @@ const StatCard = ({ icon: Icon, value, label, trend, color = 'blue', suffix = ''
   return (
     <div className="bg-white rounded-xl border border-gray-100 p-4 hover:shadow-md transition-all">
       <div className="flex items-center justify-between">
-        <div className={`p-2 rounded-lg bg-gradient-to-br ${colorClasses[color]} bg-opacity-10`}>
+        <div className={`p-2 rounded-lg bg-gradient-to-br ${colorClasses[color]}`}>
           <Icon className="w-5 h-5 text-white" />
         </div>
-        {trend && (
-          <span className={`text-xs font-medium ${trend > 0 ? 'text-green-600' : 'text-red-600'}`}>
-            {trend > 0 ? '+' : ''}{trend}%
-          </span>
-        )}
       </div>
       <div className="mt-3">
         <p className="text-2xl font-bold text-gray-900">{value}{suffix}</p>
@@ -73,26 +65,14 @@ const StatCard = ({ icon: Icon, value, label, trend, color = 'blue', suffix = ''
   )
 }
 
-// Quick Action Button
-const QuickAction = ({ icon: Icon, label, onClick, color = 'blue' }) => (
-  <button
-    onClick={onClick}
-    className={`flex flex-col items-center gap-2 p-4 rounded-xl border border-gray-100 hover:shadow-md hover:border-${color}-200 transition-all bg-white group`}
-  >
-    <div className={`p-3 rounded-xl bg-${color}-50 group-hover:bg-${color}-100 transition-colors`}>
-      <Icon className={`w-5 h-5 text-${color}-600`} />
-    </div>
-    <span className="text-sm font-medium text-gray-700">{label}</span>
-  </button>
-)
-
-// Equipment Status Card
+// ─── Equipment Card ──────────────────────────────────────────────
 const EquipmentCard = ({ equipment, onClick }) => {
   const statusColors = {
     running: 'bg-green-500',
     recording: 'bg-green-500',
     online: 'bg-blue-500',
     paused: 'bg-yellow-500',
+    idle: 'bg-gray-400',
     maintenance: 'bg-orange-500',
     offline: 'bg-gray-400'
   }
@@ -110,10 +90,10 @@ const EquipmentCard = ({ equipment, onClick }) => {
         </div>
       </div>
       <div className="flex items-center gap-2">
-        {equipment.battery && (
+        {equipment.battery && equipment.battery !== 'N/A' && (
           <span className="text-xs text-gray-500 flex items-center gap-1">
             <Battery className="w-3 h-3" />
-            {equipment.battery}
+            {typeof equipment.battery === 'number' ? `${equipment.battery}%` : equipment.battery}
           </span>
         )}
         <ChevronRight className="w-4 h-4 text-gray-400" />
@@ -122,16 +102,18 @@ const EquipmentCard = ({ equipment, onClick }) => {
   )
 }
 
-// Recent Activity Item
+// ─── Activity Item ───────────────────────────────────────────────
 const ActivityItem = ({ activity }) => (
   <div className="flex items-start gap-3 py-3 border-b border-gray-100 last:border-0">
-    <div className={`p-1.5 rounded-lg ${activity.type === 'success' ? 'bg-green-100' :
-        activity.type === 'warning' ? 'bg-yellow-100' :
-          activity.type === 'error' ? 'bg-red-100' : 'bg-blue-100'
-      }`}>
+    <div className={`p-1.5 rounded-lg ${
+      activity.type === 'success' ? 'bg-green-100' :
+      activity.type === 'warning' ? 'bg-yellow-100' :
+      activity.type === 'error' ? 'bg-red-100' : 'bg-blue-100'
+    }`}>
       {activity.type === 'success' ? <CheckCircle2 className="w-4 h-4 text-green-600" /> :
         activity.type === 'warning' ? <AlertTriangle className="w-4 h-4 text-yellow-600" /> :
-          <Activity className="w-4 h-4 text-blue-600" />}
+        activity.type === 'error' ? <AlertTriangle className="w-4 h-4 text-red-600" /> :
+        <Activity className="w-4 h-4 text-blue-600" />}
     </div>
     <div className="flex-1 min-w-0">
       <p className="text-sm text-gray-900 truncate">{activity.message}</p>
@@ -140,10 +122,59 @@ const ActivityItem = ({ activity }) => (
   </div>
 )
 
+// ─── Project Row ─────────────────────────────────────────────────
+const ProjectRow = ({ project, onClick }) => {
+  const statusConfig = {
+    'field-capture': { color: 'bg-blue-100 text-blue-700', label: 'Field Capture' },
+    'uploading': { color: 'bg-indigo-100 text-indigo-700', label: 'Uploading' },
+    'ai-processing': { color: 'bg-purple-100 text-purple-700', label: 'AI Processing' },
+    'qc-review': { color: 'bg-amber-100 text-amber-700', label: 'QC Review' },
+    'completed': { color: 'bg-green-100 text-green-700', label: 'Completed' },
+    'planning': { color: 'bg-gray-100 text-gray-700', label: 'Planning' },
+    'on-hold': { color: 'bg-red-100 text-red-700', label: 'On Hold' },
+  }
+
+  const config = statusConfig[project.status] || statusConfig['planning']
+
+  return (
+    <div
+      onClick={() => onClick(project)}
+      className="flex items-center justify-between p-3 bg-gray-50 rounded-lg hover:bg-gray-100 cursor-pointer transition-colors"
+    >
+      <div className="flex-1 min-w-0 mr-3">
+        <p className="font-medium text-gray-900 text-sm truncate">{project.name}</p>
+        <div className="flex items-center gap-2 mt-0.5">
+          {project.location && (
+            <span className="text-xs text-gray-500 flex items-center gap-1 truncate">
+              <MapPin className="w-3 h-3 shrink-0" />
+              {project.location}
+            </span>
+          )}
+        </div>
+      </div>
+      <div className="flex items-center gap-2 shrink-0">
+        <span className={`text-[10px] font-medium px-2 py-0.5 rounded-full ${config.color}`}>
+          {config.label}
+        </span>
+        <ChevronRight className="w-4 h-4 text-gray-400" />
+      </div>
+    </div>
+  )
+}
+
+// ═══════════════════════════════════════════════════════════════════
+// MAIN DASHBOARD
+// ═══════════════════════════════════════════════════════════════════
 export default function OperatorDashboardContent() {
+  const router = useRouter()
+  const { userId, userData } = useUser()
+  const { showAlert } = useAlert()
+
   const [refreshing, setRefreshing] = useState(false)
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState(null)
+
+  // Dashboard data
   const [operationalStats, setOperationalStats] = useState({
     activeOperations: 0,
     equipmentOnline: 0,
@@ -153,20 +184,10 @@ export default function OperatorDashboardContent() {
   })
   const [recentOperations, setRecentOperations] = useState([])
   const [devices, setDevices] = useState([])
-  const [weeklyPerformance, setWeeklyPerformance] = useState([
-    { day: 'Mon', efficiency: 0, output: 0 },
-    { day: 'Tue', efficiency: 0, output: 0 },
-    { day: 'Wed', efficiency: 0, output: 0 },
-    { day: 'Thu', efficiency: 0, output: 0 },
-    { day: 'Fri', efficiency: 0, output: 0 },
-    { day: 'Sat', efficiency: 0, output: 0 },
-    { day: 'Sun', efficiency: 0, output: 0 },
-  ])
-  const [todayEvents, setTodayEvents] = useState([
-    { id: 1, title: 'Downtown Sewer Inspection', time: '9:00 AM', location: 'Main St & 5th Ave', type: 'inspection' },
-    { id: 2, title: 'Equipment Maintenance', time: '2:00 PM', location: 'Maintenance Bay', type: 'maintenance' },
-    { id: 3, title: 'Team Meeting', time: '4:30 PM', location: 'Conference Room', type: 'meeting' }
-  ])
+  const [weeklyPerformance, setWeeklyPerformance] = useState([])
+  const [todayEvents, setTodayEvents] = useState([])
+  const [projects, setProjects] = useState([])
+  const [recentActivities, setRecentActivities] = useState([])
 
   // Modal state
   const [selectedEquipment, setSelectedEquipment] = useState(null)
@@ -176,133 +197,233 @@ export default function OperatorDashboardContent() {
   const performanceChartRef = useRef(null)
   const performanceChartInstance = useRef(null)
 
-  // Recent activities (simulated)
-  const recentActivities = [
-    { id: 1, type: 'success', message: 'Camera 001 upload completed', time: '2 min ago' },
-    { id: 2, type: 'info', message: 'AI processing started for Inspection #2847', time: '5 min ago' },
-    { id: 3, type: 'warning', message: 'Camera 003 battery low (15%)', time: '12 min ago' },
-    { id: 4, type: 'success', message: 'Inspection #2846 synced to cloud', time: '18 min ago' },
-  ]
+  // Track last updated
+  const [lastUpdated, setLastUpdated] = useState(null)
 
-  // Fetch dashboard data function
+  // ─── Build activity feed from real data ────────────────────────
+  const buildActivities = useCallback((devicesData, projectsData) => {
+    const activities = []
+
+    // Device-based activities
+    if (devicesData?.length) {
+      devicesData.forEach(d => {
+        if (d.status === 'recording') {
+          activities.push({
+            id: `dev-rec-${d.id}`,
+            type: 'success',
+            message: `${d.name} is currently recording`,
+            time: d.lastSeen ? formatRelativeTime(d.lastSeen) : 'Now'
+          })
+        } else if (d.status === 'offline') {
+          activities.push({
+            id: `dev-off-${d.id}`,
+            type: 'warning',
+            message: `${d.name} is offline`,
+            time: d.lastSeen ? formatRelativeTime(d.lastSeen) : 'Unknown'
+          })
+        } else if (d.status === 'maintenance') {
+          activities.push({
+            id: `dev-maint-${d.id}`,
+            type: 'warning',
+            message: `${d.name} requires maintenance`,
+            time: d.lastSeen ? formatRelativeTime(d.lastSeen) : 'Unknown'
+          })
+        }
+      })
+    }
+
+    // Project-based activities
+    if (projectsData?.length) {
+      projectsData.slice(0, 3).forEach(p => {
+        const statusMsg = {
+          'ai-processing': { type: 'info', msg: `AI processing: ${p.name}` },
+          'qc-review': { type: 'info', msg: `QC review pending: ${p.name}` },
+          'completed': { type: 'success', msg: `Project completed: ${p.name}` },
+          'field-capture': { type: 'info', msg: `Field capture active: ${p.name}` },
+        }
+        const info = statusMsg[p.status]
+        if (info) {
+          activities.push({
+            id: `proj-${p._id}`,
+            type: info.type,
+            message: info.msg,
+            time: p.updatedAt ? formatRelativeTime(p.updatedAt) : ''
+          })
+        }
+      })
+    }
+
+    // If no activities at all, show a default message
+    if (activities.length === 0) {
+      activities.push({
+        id: 'no-activity',
+        type: 'info',
+        message: 'No recent activity',
+        time: ''
+      })
+    }
+
+    return activities.slice(0, 6)
+  }, [])
+
+  // ─── Fetch all dashboard data ──────────────────────────────────
   const fetchDashboardData = useCallback(async () => {
-    const username = localStorage.getItem('username')
-    if (!username) return null
+    if (!userId) return
 
-    const userResponse = await api(`/api/users/role/${username}`, 'GET')
-    if (!userResponse.ok || !userResponse.data?._id) return null
+    try {
+      // Fetch dashboard stats, today's events, and projects in parallel
+      const [dashResponse, eventsResponse, projectsResponse] = await Promise.all([
+        api(`/api/dashboard/operator/${userId}`, 'GET'),
+        api(`/api/operator/calendar/events/today?userId=${userId}`, 'GET'),
+        api(`/api/projects/get-all-projects?assignedOperatorId=${userId}&limit=10`, 'GET'),
+      ])
 
-    const userId = userResponse.data._id
+      // Process dashboard stats
+      if (dashResponse.ok && dashResponse.data?.data) {
+        const data = dashResponse.data.data
+        setOperationalStats(data.operationalStats || operationalStats)
+        setRecentOperations(data.recentOperations || [])
+        setDevices(data.devices || [])
+        if (data.weeklyPerformance) {
+          setWeeklyPerformance(data.weeklyPerformance)
+        }
+      }
 
-    const response = await api(`/api/dashboard/operator/${userId}`, 'GET')
-    if (response.ok && response.data?.data) {
-      return response.data.data
+      // Process today's calendar events
+      if (eventsResponse.ok && eventsResponse.data?.data) {
+        const events = (eventsResponse.data.data || []).map(ev => ({
+          id: ev._id,
+          title: ev.title,
+          time: new Date(ev.start_date).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }),
+          location: ev.location || ev.projectId?.location || '',
+          type: ev.type || 'other',
+          status: ev.status || 'scheduled'
+        }))
+        setTodayEvents(events)
+      } else {
+        setTodayEvents([])
+      }
+
+      // Process projects
+      const projectsList = projectsResponse.ok ? (projectsResponse.data?.data || []) : []
+      setProjects(projectsList)
+
+      // Build real activity feed
+      const devicesData = dashResponse.ok ? (dashResponse.data?.data?.devices || []) : []
+      setRecentActivities(buildActivities(devicesData, projectsList))
+
+      setLastUpdated(new Date())
+      setError(null)
+    } catch (err) {
+      console.error('Error fetching dashboard data:', err)
+      setError(err.message || 'Failed to load dashboard data')
+    } finally {
+      setLoading(false)
     }
-    throw new Error('Failed to load dashboard data')
-  }, [])
+  }, [userId, buildActivities])
 
-  // Process dashboard data
-  const processDashboardData = useCallback((data) => {
-    if (!data) return
+  // ─── Initial fetch and polling ─────────────────────────────────
+  useEffect(() => {
+    if (!userId) return
 
-    setOperationalStats(data.operationalStats || operationalStats)
-    setRecentOperations(data.recentOperations || [])
-    setDevices(data.devices || [])
-    if (data.weeklyPerformance) {
-      setWeeklyPerformance(data.weeklyPerformance)
+    fetchDashboardData()
+
+    const intervalId = setInterval(fetchDashboardData, POLL_INTERVAL)
+    return () => clearInterval(intervalId)
+  }, [userId, fetchDashboardData])
+
+  // ─── Manual refresh ────────────────────────────────────────────
+  const handleRefresh = useCallback(async () => {
+    setRefreshing(true)
+    try {
+      await fetchDashboardData()
+    } finally {
+      setRefreshing(false)
     }
-  }, [])
+  }, [fetchDashboardData])
 
-  // Handle equipment click for modal
+  // ─── Equipment click for modal ─────────────────────────────────
   const handleEquipmentClick = useCallback((equipment) => {
     const device = devices.find(d => d.id === equipment.id) || equipment
     setSelectedEquipment(device)
     setShowEquipmentModal(true)
   }, [devices])
 
-  // Use polling hook
-  const { refresh: pollingRefresh, lastUpdated } = usePolling(
-    async () => {
-      const data = await fetchDashboardData()
-      processDashboardData(data)
-      return data
-    },
-    POLL_INTERVAL,
-    {
-      enabled: true,
-      immediate: true,
-      onError: (err) => {
-        console.error('Error fetching dashboard data:', err)
-        setError(err.message || 'Failed to load dashboard data')
-      },
-      onSuccess: () => {
-        setLoading(false)
-        setError(null)
-      }
-    }
-  )
-
-  // Manual refresh handler
-  const handleRefresh = useCallback(async () => {
-    setRefreshing(true)
-    try {
-      await pollingRefresh()
-    } finally {
-      setRefreshing(false)
-    }
-  }, [pollingRefresh])
-
-  // Status helpers
-  const getStatusColor = useCallback((status) => {
+  // ─── Status helpers ────────────────────────────────────────────
+  const getStatusColor = (status) => {
     switch (status) {
       case 'running': case 'recording': return 'bg-green-100 text-green-800'
-      case 'paused': return 'bg-yellow-100 text-yellow-800'
-      case 'maintenance': return 'bg-blue-100 text-blue-800'
+      case 'paused': case 'idle': return 'bg-yellow-100 text-yellow-800'
+      case 'maintenance': return 'bg-orange-100 text-orange-800'
       case 'online': return 'bg-blue-100 text-blue-800'
       default: return 'bg-gray-100 text-gray-800'
     }
-  }, [])
+  }
 
-  const getStatusIcon = useCallback((status) => {
+  const getStatusIcon = (status) => {
     switch (status) {
       case 'running': case 'recording': return <Play className="w-3 h-3" />
-      case 'paused': return <Pause className="w-3 h-3" />
+      case 'paused': case 'idle': return <Pause className="w-3 h-3" />
       case 'maintenance': return <Cog className="w-3 h-3" />
       default: return <Clock className="w-3 h-3" />
     }
-  }, [])
+  }
 
-  // Performance Chart
+  // ─── Performance Chart ─────────────────────────────────────────
   useEffect(() => {
     if (performanceChartInstance.current) {
       performanceChartInstance.current.destroy()
     }
 
-    if (performanceChartRef.current && weeklyPerformance.some(d => d.efficiency > 0)) {
+    if (performanceChartRef.current && weeklyPerformance.length > 0 && weeklyPerformance.some(d => d.efficiency > 0 || d.output > 0)) {
       performanceChartInstance.current = new Chart(performanceChartRef.current, {
         type: 'line',
         data: {
           labels: weeklyPerformance.map(d => d.day),
-          datasets: [{
-            label: 'Efficiency',
-            data: weeklyPerformance.map(d => d.efficiency),
-            borderColor: '#3B82F6',
-            backgroundColor: 'rgba(59, 130, 246, 0.1)',
-            fill: true,
-            tension: 0.4,
-            pointRadius: 4,
-            pointBackgroundColor: '#3B82F6'
-          }]
+          datasets: [
+            {
+              label: 'Efficiency %',
+              data: weeklyPerformance.map(d => d.efficiency),
+              borderColor: '#3B82F6',
+              backgroundColor: 'rgba(59, 130, 246, 0.1)',
+              fill: true,
+              tension: 0.4,
+              pointRadius: 4,
+              pointBackgroundColor: '#3B82F6'
+            },
+            {
+              label: 'Uploads',
+              data: weeklyPerformance.map(d => d.output),
+              borderColor: '#10B981',
+              backgroundColor: 'rgba(16, 185, 129, 0.05)',
+              fill: false,
+              tension: 0.4,
+              pointRadius: 4,
+              pointBackgroundColor: '#10B981',
+              yAxisID: 'y1'
+            }
+          ]
         },
         options: {
           responsive: true,
           maintainAspectRatio: false,
+          interaction: { mode: 'index', intersect: false },
           scales: {
-            y: { min: 70, max: 100, grid: { color: '#F3F4F6' } },
+            y: {
+              min: 70, max: 100,
+              grid: { color: '#F3F4F6' },
+              title: { display: true, text: 'Efficiency %', font: { size: 11 } }
+            },
+            y1: {
+              position: 'right',
+              min: 0,
+              grid: { drawOnChartArea: false },
+              title: { display: true, text: 'Uploads', font: { size: 11 } }
+            },
             x: { grid: { display: false } }
           },
           plugins: {
-            legend: { display: false }
+            legend: { display: true, position: 'bottom', labels: { boxWidth: 12, font: { size: 11 } } }
           }
         }
       })
@@ -315,22 +436,29 @@ export default function OperatorDashboardContent() {
     }
   }, [weeklyPerformance])
 
-  // Loading state
-  if (loading) {
+  // ─── Loading state ─────────────────────────────────────────────
+  if (loading && !lastUpdated) {
     return <LoadingState message="Loading dashboard..." spinnerColor="text-blue-600" />
   }
 
-  // Error state
-  if (error && !operationalStats.activeOperations && recentOperations.length === 0) {
+  // ─── Error state ───────────────────────────────────────────────
+  if (error && !lastUpdated) {
     return <ErrorState message={error} onRetry={handleRefresh} />
   }
+
+  // ─── Project counts ────────────────────────────────────────────
+  const activeProjectCount = projects.filter(p =>
+    ['field-capture', 'uploading', 'ai-processing'].includes(p.status)
+  ).length
 
   return (
     <div className="p-6 space-y-6 max-w-7xl mx-auto">
       {/* Header */}
       <div className="flex items-center justify-between">
         <div>
-          <h1 className="text-2xl font-bold text-gray-900">Operator Dashboard</h1>
+          <h1 className="text-2xl font-bold text-gray-900">
+            {userData?.first_name ? `Welcome, ${userData.first_name}` : 'Operator Dashboard'}
+          </h1>
           <p className="text-sm text-gray-500 mt-0.5">
             {lastUpdated ? `Last updated: ${lastUpdated.toLocaleTimeString()}` : 'Monitor your field operations'}
           </p>
@@ -347,14 +475,13 @@ export default function OperatorDashboardContent() {
         </Button>
       </div>
 
-      {/* Stats Grid - Compact 4-column */}
+      {/* Stats Grid */}
       <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
         <StatCard
-          icon={Play}
-          value={operationalStats.activeOperations}
-          label="Active Operations"
+          icon={FolderOpen}
+          value={activeProjectCount}
+          label="Active Projects"
           color="green"
-          trend={5}
         />
         <StatCard
           icon={Monitor}
@@ -364,22 +491,22 @@ export default function OperatorDashboardContent() {
         />
         <StatCard
           icon={AlertTriangle}
-          value={operationalStats.criticalAlerts}
-          label="Active Alerts"
+          value={operationalStats.criticalAlerts + operationalStats.maintenanceDue}
+          label="Alerts"
           color="orange"
         />
         <StatCard
           icon={Zap}
           value={operationalStats.systemUptime}
           suffix="%"
-          label="Uptime"
+          label="Device Uptime"
           color="purple"
         />
       </div>
 
       {/* Main Content Grid */}
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
-        {/* Left Column - Equipment & Quick Actions */}
+        {/* Left Column */}
         <div className="space-y-6">
           {/* Quick Actions */}
           <Card className="border-0 shadow-sm">
@@ -388,21 +515,33 @@ export default function OperatorDashboardContent() {
             </CardHeader>
             <CardContent>
               <div className="grid grid-cols-2 gap-3">
-                <button className="flex items-center gap-3 p-3 rounded-lg bg-blue-50 hover:bg-blue-100 transition-colors">
+                <button
+                  onClick={() => router.push('/operator/equipement')}
+                  className="flex items-center gap-3 p-3 rounded-lg bg-blue-50 hover:bg-blue-100 transition-colors"
+                >
                   <Camera className="w-5 h-5 text-blue-600" />
-                  <span className="text-sm font-medium text-blue-700">Start Recording</span>
+                  <span className="text-sm font-medium text-blue-700">Equipment</span>
                 </button>
-                <button className="flex items-center gap-3 p-3 rounded-lg bg-green-50 hover:bg-green-100 transition-colors">
-                  <Zap className="w-5 h-5 text-green-600" />
-                  <span className="text-sm font-medium text-green-700">Sync Data</span>
+                <button
+                  onClick={() => router.push('/operator/project')}
+                  className="flex items-center gap-3 p-3 rounded-lg bg-green-50 hover:bg-green-100 transition-colors"
+                >
+                  <FolderOpen className="w-5 h-5 text-green-600" />
+                  <span className="text-sm font-medium text-green-700">Projects</span>
                 </button>
-                <button className="flex items-center gap-3 p-3 rounded-lg bg-purple-50 hover:bg-purple-100 transition-colors">
+                <button
+                  onClick={() => router.push('/operator/maintenance')}
+                  className="flex items-center gap-3 p-3 rounded-lg bg-purple-50 hover:bg-purple-100 transition-colors"
+                >
                   <Cog className="w-5 h-5 text-purple-600" />
                   <span className="text-sm font-medium text-purple-700">Maintenance</span>
                 </button>
-                <button className="flex items-center gap-3 p-3 rounded-lg bg-orange-50 hover:bg-orange-100 transition-colors">
+                <button
+                  onClick={() => router.push('/operator/notifications')}
+                  className="flex items-center gap-3 p-3 rounded-lg bg-orange-50 hover:bg-orange-100 transition-colors"
+                >
                   <AlertTriangle className="w-5 h-5 text-orange-600" />
-                  <span className="text-sm font-medium text-orange-700">View Alerts</span>
+                  <span className="text-sm font-medium text-orange-700">Notifications</span>
                 </button>
               </div>
             </CardContent>
@@ -414,23 +553,31 @@ export default function OperatorDashboardContent() {
               <div className="flex items-center justify-between">
                 <CardTitle className="text-base font-semibold">Equipment Status</CardTitle>
                 <Badge variant="secondary" className="text-xs">
-                  {recentOperations.length} devices
+                  {devices.length} devices
                 </Badge>
               </div>
             </CardHeader>
             <CardContent className="space-y-2 max-h-64 overflow-y-auto">
-              {recentOperations.length > 0 ? (
-                recentOperations.slice(0, 5).map((op) => (
+              {devices.length > 0 ? (
+                devices.slice(0, 6).map((device) => (
                   <EquipmentCard
-                    key={op.id}
-                    equipment={op}
+                    key={device.id}
+                    equipment={device}
                     onClick={handleEquipmentClick}
                   />
                 ))
               ) : (
                 <div className="text-center py-6 text-gray-500">
                   <Server className="w-8 h-8 mx-auto mb-2 opacity-50" />
-                  <p className="text-sm">No equipment online</p>
+                  <p className="text-sm">No devices assigned</p>
+                  <Button
+                    variant="ghost"
+                    size="sm"
+                    className="text-blue-600 mt-2"
+                    onClick={() => router.push('/operator/connect-device')}
+                  >
+                    Connect Device
+                  </Button>
                 </div>
               )}
             </CardContent>
@@ -444,11 +591,11 @@ export default function OperatorDashboardContent() {
                   <CalendarIcon className="w-5 h-5 text-blue-600" />
                   <CardTitle className="text-base font-semibold">Today's Schedule</CardTitle>
                 </div>
-                <Button 
-                  variant="ghost" 
-                  size="sm" 
+                <Button
+                  variant="ghost"
+                  size="sm"
                   className="text-blue-600 h-auto py-1"
-                  onClick={() => window.location.href = '/operator/calendar'}
+                  onClick={() => router.push('/operator/calendar')}
                 >
                   View All
                 </Button>
@@ -460,17 +607,21 @@ export default function OperatorDashboardContent() {
                   <div
                     key={event.id}
                     className="flex items-start gap-3 p-3 rounded-lg hover:bg-gray-50 transition-colors cursor-pointer border border-gray-100"
-                    onClick={() => window.location.href = '/operator/calendar'}
+                    onClick={() => router.push('/operator/calendar')}
                   >
                     <div className={`p-2 rounded-lg ${
                       event.type === 'inspection' ? 'bg-blue-100' :
                       event.type === 'maintenance' ? 'bg-orange-100' :
-                      'bg-purple-100'
+                      event.type === 'meeting' ? 'bg-purple-100' :
+                      event.type === 'deadline' ? 'bg-red-100' :
+                      'bg-gray-100'
                     }`}>
                       {event.type === 'inspection' ? (
-                        <Camera className={`w-4 h-4 ${event.type === 'inspection' ? 'text-blue-600' : ''}`} />
+                        <Camera className="w-4 h-4 text-blue-600" />
                       ) : event.type === 'maintenance' ? (
                         <Wrench className="w-4 h-4 text-orange-600" />
+                      ) : event.type === 'deadline' ? (
+                        <AlertTriangle className="w-4 h-4 text-red-600" />
                       ) : (
                         <Clock className="w-4 h-4 text-purple-600" />
                       )}
@@ -497,13 +648,13 @@ export default function OperatorDashboardContent() {
                 <div className="text-center py-6 text-gray-500">
                   <CalendarIcon className="w-8 h-8 mx-auto mb-2 opacity-50" />
                   <p className="text-sm">No events scheduled today</p>
-                  <Button 
-                    variant="ghost" 
-                    size="sm" 
+                  <Button
+                    variant="ghost"
+                    size="sm"
                     className="text-blue-600 mt-2"
-                    onClick={() => window.location.href = '/operator/calendar'}
+                    onClick={() => router.push('/operator/calendar')}
                   >
-                    Add Event
+                    View Calendar
                   </Button>
                 </div>
               )}
@@ -511,8 +662,41 @@ export default function OperatorDashboardContent() {
           </Card>
         </div>
 
-        {/* Middle Column - Performance Chart */}
+        {/* Right 2/3 Column */}
         <div className="lg:col-span-2 space-y-6">
+          {/* Assigned Projects */}
+          <Card className="border-0 shadow-sm">
+            <CardHeader className="pb-3">
+              <div className="flex items-center justify-between">
+                <CardTitle className="text-base font-semibold">Assigned Projects</CardTitle>
+                <Button
+                  variant="ghost"
+                  size="sm"
+                  className="text-blue-600 h-auto py-1"
+                  onClick={() => router.push('/operator/project')}
+                >
+                  View All
+                </Button>
+              </div>
+            </CardHeader>
+            <CardContent className="space-y-2">
+              {projects.length > 0 ? (
+                projects.slice(0, 5).map((project) => (
+                  <ProjectRow
+                    key={project._id}
+                    project={project}
+                    onClick={() => router.push(`/operator/project`)}
+                  />
+                ))
+              ) : (
+                <div className="text-center py-6 text-gray-500">
+                  <FolderOpen className="w-8 h-8 mx-auto mb-2 opacity-50" />
+                  <p className="text-sm">No projects assigned yet</p>
+                </div>
+              )}
+            </CardContent>
+          </Card>
+
           {/* Performance Chart */}
           <Card className="border-0 shadow-sm">
             <CardHeader className="pb-3">
@@ -522,8 +706,17 @@ export default function OperatorDashboardContent() {
               </div>
             </CardHeader>
             <CardContent>
-              <div className="h-48">
-                <canvas ref={performanceChartRef}></canvas>
+              <div className="h-52">
+                {weeklyPerformance.length > 0 && weeklyPerformance.some(d => d.efficiency > 0 || d.output > 0) ? (
+                  <canvas ref={performanceChartRef}></canvas>
+                ) : (
+                  <div className="flex items-center justify-center h-full text-gray-400">
+                    <div className="text-center">
+                      <TrendingUp className="w-8 h-8 mx-auto mb-2 opacity-50" />
+                      <p className="text-sm">No performance data yet</p>
+                    </div>
+                  </div>
+                )}
               </div>
             </CardContent>
           </Card>
@@ -533,7 +726,12 @@ export default function OperatorDashboardContent() {
             <CardHeader className="pb-3">
               <div className="flex items-center justify-between">
                 <CardTitle className="text-base font-semibold">Recent Activity</CardTitle>
-                <Button variant="ghost" size="sm" className="text-blue-600 h-auto py-1">
+                <Button
+                  variant="ghost"
+                  size="sm"
+                  className="text-blue-600 h-auto py-1"
+                  onClick={() => router.push('/operator/notifications')}
+                >
                   View All
                 </Button>
               </div>
@@ -557,10 +755,11 @@ export default function OperatorDashboardContent() {
             <div className="bg-gradient-to-r from-blue-600 to-indigo-600 p-5 text-white">
               <div className="flex items-center justify-between">
                 <div className="flex items-center gap-3">
-                  <div className={`w-3 h-3 rounded-full ${selectedEquipment.status === 'recording' ? 'bg-green-400 animate-pulse' :
-                      selectedEquipment.status === 'online' ? 'bg-blue-300' :
-                        'bg-gray-300'
-                    }`} />
+                  <div className={`w-3 h-3 rounded-full ${
+                    selectedEquipment.status === 'recording' ? 'bg-green-400 animate-pulse' :
+                    selectedEquipment.status === 'online' ? 'bg-blue-300' :
+                    'bg-gray-300'
+                  }`} />
                   <h3 className="text-lg font-semibold">{selectedEquipment.name}</h3>
                 </div>
                 <button
@@ -590,7 +789,11 @@ export default function OperatorDashboardContent() {
                     <Battery className="w-3 h-3" />
                     Battery
                   </div>
-                  <p className="font-semibold text-gray-900 text-sm">{selectedEquipment.battery || 'N/A'}</p>
+                  <p className="font-semibold text-gray-900 text-sm">
+                    {selectedEquipment.battery && selectedEquipment.battery !== 'N/A'
+                      ? (typeof selectedEquipment.battery === 'number' ? `${selectedEquipment.battery}%` : selectedEquipment.battery)
+                      : 'N/A'}
+                  </p>
                 </div>
                 <div className="bg-gray-50 rounded-xl p-3">
                   <div className="flex items-center gap-2 text-gray-500 text-xs mb-1">
@@ -601,12 +804,17 @@ export default function OperatorDashboardContent() {
                 </div>
                 <div className="bg-gray-50 rounded-xl p-3">
                   <div className="flex items-center gap-2 text-gray-500 text-xs mb-1">
-                    <Zap className="w-3 h-3" />
-                    Uptime
+                    <Monitor className="w-3 h-3" />
+                    Type
                   </div>
-                  <p className="font-semibold text-gray-900 text-sm">{selectedEquipment.uptime || 'N/A'}</p>
+                  <p className="font-semibold text-gray-900 text-sm capitalize">{selectedEquipment.type || 'N/A'}</p>
                 </div>
               </div>
+              {selectedEquipment.lastSeen && (
+                <p className="text-xs text-gray-500">
+                  Last seen: {new Date(selectedEquipment.lastSeen).toLocaleString()}
+                </p>
+              )}
             </div>
 
             {/* Modal Footer */}
@@ -614,8 +822,11 @@ export default function OperatorDashboardContent() {
               <Button variant="outline" onClick={() => setShowEquipmentModal(false)}>
                 Close
               </Button>
-              <Button>
-                View Details
+              <Button onClick={() => {
+                setShowEquipmentModal(false)
+                router.push('/operator/equipement')
+              }}>
+                View Equipment Page
               </Button>
             </div>
           </div>
@@ -623,4 +834,20 @@ export default function OperatorDashboardContent() {
       )}
     </div>
   )
+}
+
+// ─── Helper: relative time formatting ────────────────────────────
+function formatRelativeTime(dateStr) {
+  if (!dateStr) return ''
+  const now = new Date()
+  const date = new Date(dateStr)
+  const diffMs = now - date
+  const diffMin = Math.floor(diffMs / 60000)
+
+  if (diffMin < 1) return 'Just now'
+  if (diffMin < 60) return `${diffMin} min ago`
+  const diffHrs = Math.floor(diffMin / 60)
+  if (diffHrs < 24) return `${diffHrs}h ago`
+  const diffDays = Math.floor(diffHrs / 24)
+  return `${diffDays}d ago`
 }

@@ -1,42 +1,33 @@
 'use client'
 
-import React, { useState, useEffect, useRef, useCallback, useMemo } from 'react'
+import React, { useState, useEffect, useRef, useCallback } from 'react'
 import {
   Eye,
   CheckCircle,
   XCircle,
   AlertTriangle,
-  Video,
   Clock,
-  Search,
   RefreshCw,
-  Image,
-  Filter,
-  CheckSquare,
-  Square,
-  Loader2,
-  Play,
-  Monitor,
   Zap,
   ChevronRight,
   TrendingUp,
   FileText,
-  Calendar
+  Calendar,
+  ClipboardCheck,
+  FolderOpen,
+  Award
 } from 'lucide-react'
 
 import Chart from 'chart.js/auto'
 import { qcApi } from '@/data/qcApi'
 import { useUser } from '@/components/providers/UserContext'
+import { useRouter } from 'next/navigation'
+import { usePolling } from '@/hooks'
+import { LoadingState, ErrorState, EmptyState } from '@/components/qc'
 
-// Import new hooks
-import { usePolling, useDebounce, useDebouncedCallback } from '@/hooks'
+const POLL_INTERVAL = 30000
 
-// Import new components
-import { LoadingState, ErrorState, EmptyState, DetectionCard } from '@/components/qc'
-
-const POLL_INTERVAL = 30000 // 30 seconds
-
-// Compact Stat Card Component (Matching Operator Dashboard)
+// Compact Stat Card Component
 const StatCard = ({ icon: Icon, value, label, trend, color = 'blue', suffix = '' }) => {
   const colorClasses = {
     blue: 'from-blue-500 to-blue-600',
@@ -54,8 +45,8 @@ const StatCard = ({ icon: Icon, value, label, trend, color = 'blue', suffix = ''
         <div className={`p-2 rounded-lg bg-gradient-to-br ${colorClasses[color] || colorClasses.blue} bg-opacity-10`}>
           <Icon className="w-5 h-5 text-white" />
         </div>
-        {trend && (
-          <span className={`text-xs font-medium ${trend > 0 ? 'text-green-600' : 'text-red-600'}`}>
+        {trend !== undefined && trend !== null && (
+          <span className={`text-xs font-medium ${trend > 0 ? 'text-green-600' : trend < 0 ? 'text-red-600' : 'text-gray-500'}`}>
             {trend > 0 ? '+' : ''}{trend}%
           </span>
         )}
@@ -83,30 +74,17 @@ const QuickAction = ({ icon: Icon, label, onClick, color = 'blue' }) => (
 
 const QCTechnicianDashboard = () => {
   const { userId, userData } = useUser()
-  const [selectedProject, setSelectedProject] = useState(null)
-  const [filterStatus, setFilterStatus] = useState('all')
-  const [filterSeverity, setFilterSeverity] = useState('all') // New severity filter
-  const [searchTerm, setSearchTerm] = useState('')
-  const [expandedDetection, setExpandedDetection] = useState(null)
-  const [selectedDetection, setSelectedDetection] = useState(null)
+  const router = useRouter()
   const [refreshing, setRefreshing] = useState(false)
-
-  // Bulk action state
-  const [selectedDetections, setSelectedDetections] = useState(new Set())
-  const [bulkActionLoading, setBulkActionLoading] = useState(false)
 
   // Real data state
   const [dashboardStats, setDashboardStats] = useState(null)
   const [pendingProjects, setPendingProjects] = useState([])
-  const [aiDetections, setAiDetections] = useState([])
   const [weeklyQCStats, setWeeklyQCStats] = useState([])
   const [detectionTypes, setDetectionTypes] = useState([])
   const [priorityDistribution, setPriorityDistribution] = useState([])
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState(null)
-
-  // Debounced search term
-  const debouncedSearchTerm = useDebounce(searchTerm, 300)
 
   // Chart refs
   const qcStatsChartRef = useRef(null)
@@ -121,7 +99,6 @@ const QCTechnicianDashboard = () => {
   // Fetch dashboard data function
   const fetchDashboardData = useCallback(async () => {
     if (!userId) return null
-
     const stats = await qcApi.getDashboardStats(userId)
     return stats
   }, [userId])
@@ -182,7 +159,7 @@ const QCTechnicianDashboard = () => {
   }, [])
 
   // Use polling hook for real-time updates
-  const { refresh: pollingRefresh, isPolling, lastUpdated } = usePolling(
+  const { refresh: pollingRefresh, lastUpdated } = usePolling(
     async () => {
       const data = await fetchDashboardData()
       processDashboardData(data)
@@ -204,44 +181,6 @@ const QCTechnicianDashboard = () => {
     }
   )
 
-  // Fetch project detections
-  const fetchProjectDetections = useCallback(async (projectId) => {
-    if (!projectId) return
-
-    try {
-      const detections = await qcApi.getProjectDetections(projectId, filterStatus === 'all' ? 'all' : filterStatus)
-
-      if (detections && Array.isArray(detections)) {
-        setAiDetections(detections.map(detection => ({
-          id: detection._id || detection.id,
-          type: detection.type || 'Unknown',
-          confidence: detection.confidence || 0,
-          frameTime: detection.frameTime || detection.timestamp || '00:00',
-          location: detection.location || detection.station || 'N/A',
-          severity: detection.severity || 'Minor',
-          clockPosition: detection.clockPosition || 'N/A',
-          description: detection.description || detection.notes || '',
-          needsReview: !detection.qcStatus || detection.qcStatus === 'pending',
-          qcStatus: detection.qcStatus || 'pending'
-        })))
-      } else {
-        setAiDetections([])
-      }
-    } catch (err) {
-      console.error('Error fetching project detections:', err)
-      setAiDetections([])
-    }
-  }, [filterStatus])
-
-  // Fetch detections when project is selected
-  useEffect(() => {
-    if (selectedProject?.id) {
-      fetchProjectDetections(selectedProject.id)
-    } else {
-      setAiDetections([])
-    }
-  }, [selectedProject, fetchProjectDetections])
-
   // Manual refresh handler
   const handleRefresh = useCallback(async () => {
     setRefreshing(true)
@@ -251,90 +190,6 @@ const QCTechnicianDashboard = () => {
       setRefreshing(false)
     }
   }, [pollingRefresh])
-
-  // Filter detections based on search term and severity
-  const filteredDetections = useMemo(() => {
-    let filtered = aiDetections
-
-    // Apply severity filter
-    if (filterSeverity !== 'all') {
-      filtered = filtered.filter(d => d.severity.toLowerCase() === filterSeverity.toLowerCase())
-    }
-
-    // Apply search filter
-    if (debouncedSearchTerm) {
-      const searchLower = debouncedSearchTerm.toLowerCase()
-      filtered = filtered.filter(d =>
-        d.type.toLowerCase().includes(searchLower) ||
-        d.description.toLowerCase().includes(searchLower) ||
-        d.location.toLowerCase().includes(searchLower)
-      )
-    }
-
-    return filtered
-  }, [aiDetections, debouncedSearchTerm, filterSeverity])
-
-  // Toggle detection selection for bulk actions
-  const toggleDetectionSelection = useCallback((detectionId) => {
-    setSelectedDetections(prev => {
-      const newSet = new Set(prev)
-      if (newSet.has(detectionId)) {
-        newSet.delete(detectionId)
-      } else {
-        newSet.add(detectionId)
-      }
-      return newSet
-    })
-  }, [])
-
-  // Select/deselect all visible detections
-  const toggleSelectAll = useCallback(() => {
-    if (selectedDetections.size === filteredDetections.length) {
-      setSelectedDetections(new Set())
-    } else {
-      setSelectedDetections(new Set(filteredDetections.map(d => d.id)))
-    }
-  }, [filteredDetections, selectedDetections.size])
-
-  // Bulk approve handler
-  const handleBulkApprove = useCallback(async () => {
-    if (selectedDetections.size === 0) return
-
-    setBulkActionLoading(true)
-    try {
-      const promises = Array.from(selectedDetections).map(id =>
-        qcApi.reviewDetection(id, { action: 'approved' })
-      )
-      await Promise.all(promises)
-      await fetchProjectDetections(selectedProject.id)
-      setSelectedDetections(new Set())
-    } catch (err) {
-      alert('Failed to approve some detections. Please try again.')
-    } finally {
-      setBulkActionLoading(false)
-    }
-  }, [selectedDetections, fetchProjectDetections, selectedProject])
-
-  // Bulk reject handler
-  const handleBulkReject = useCallback(async () => {
-    if (selectedDetections.size === 0) return
-
-    setBulkActionLoading(true)
-    try {
-      const promises = Array.from(selectedDetections).map(id =>
-        qcApi.reviewDetection(id, { action: 'rejected' })
-      )
-      await Promise.all(promises)
-      await fetchProjectDetections(selectedProject.id)
-      setSelectedDetections(new Set())
-    } catch (err) {
-      alert('Failed to reject some detections. Please try again.')
-    } finally {
-      setBulkActionLoading(false)
-    }
-  }, [selectedDetections, fetchProjectDetections, selectedProject])
-
-
 
   // Status helpers
   const getStatusColor = useCallback((status) => {
@@ -349,22 +204,6 @@ const QCTechnicianDashboard = () => {
     }
   }, [])
 
-  const getConfidenceColor = useCallback((confidence) => {
-    if (confidence >= 85) return 'bg-green-100 text-green-700'
-    if (confidence >= 70) return 'bg-yellow-100 text-yellow-700'
-    return 'bg-red-100 text-red-700'
-  }, [])
-
-  const getSeverityColor = useCallback((severity) => {
-    switch (severity) {
-      case 'Critical': return 'bg-red-100 text-red-700'
-      case 'Major': return 'bg-orange-100 text-orange-700'
-      case 'Moderate': return 'bg-yellow-100 text-yellow-700'
-      case 'Minor': return 'bg-rose-100 text-rose-700'
-      default: return 'bg-gray-100 text-gray-700'
-    }
-  }, [])
-
   const getPriorityColor = useCallback((priority) => {
     switch (priority) {
       case 'high': return 'bg-red-100 text-red-800'
@@ -373,31 +212,6 @@ const QCTechnicianDashboard = () => {
       default: return 'bg-gray-100 text-gray-800'
     }
   }, [])
-
-  // Detection action handlers
-  const handleApproveDetection = useCallback(async (detection) => {
-    try {
-      await qcApi.reviewDetection(detection.id, { action: 'approved' })
-      await fetchProjectDetections(selectedProject.id)
-      setExpandedDetection(null)
-      setSelectedDetection(null)
-    } catch (err) {
-      console.error('Error approving detection:', err)
-      alert('Failed to approve detection. Please try again.')
-    }
-  }, [fetchProjectDetections, selectedProject])
-
-  const handleRejectDetection = useCallback(async (detection) => {
-    try {
-      await qcApi.reviewDetection(detection.id, { action: 'rejected' })
-      await fetchProjectDetections(selectedProject.id)
-      setExpandedDetection(null)
-      setSelectedDetection(null)
-    } catch (err) {
-      console.error('Error rejecting detection:', err)
-      alert('Failed to reject detection. Please try again.')
-    }
-  }, [fetchProjectDetections, selectedProject])
 
   // Update charts when data changes
   useEffect(() => {
@@ -523,55 +337,6 @@ const QCTechnicianDashboard = () => {
     return destroyCharts
   }, [weeklyQCStats, detectionTypes, priorityDistribution])
 
-
-  useEffect(() => {
-    const handleKeyDown = (e) => {
-      // Only handle shortcuts when a detection is selected
-      if (!selectedDetection) return
-
-      // Skip if user is typing in an input
-      if (e.target.tagName === 'INPUT' || e.target.tagName === 'TEXTAREA' || e.target.tagName === 'SELECT') return
-
-      // A key = Approve
-      if (e.key === 'a' || e.key === 'A') {
-        e.preventDefault()
-        handleApproveDetection(selectedDetection)
-      }
-
-      // R key = Reject
-      if (e.key === 'r' || e.key === 'R') {
-        e.preventDefault()
-        handleRejectDetection(selectedDetection)
-      }
-
-      // Escape = Deselect
-      if (e.key === 'Escape') {
-        setSelectedDetection(null)
-        setExpandedDetection(null)
-      }
-
-      // Arrow keys for navigation
-      if (e.key === 'ArrowUp' || e.key === 'ArrowDown') {
-        e.preventDefault()
-        const currentIndex = filteredDetections.findIndex(d => d.id === selectedDetection.id)
-        if (currentIndex === -1) return
-
-        let newIndex
-        if (e.key === 'ArrowUp') {
-          newIndex = currentIndex > 0 ? currentIndex - 1 : filteredDetections.length - 1
-        } else {
-          newIndex = currentIndex < filteredDetections.length - 1 ? currentIndex + 1 : 0
-        }
-
-        setSelectedDetection(filteredDetections[newIndex])
-      }
-    }
-
-    window.addEventListener('keydown', handleKeyDown)
-    return () => window.removeEventListener('keydown', handleKeyDown)
-  }, [selectedDetection, filteredDetections, handleApproveDetection, handleRejectDetection])
-
-
   // Loading state
   if (loading && !dashboardStats) {
     return <LoadingState message="Loading dashboard data..." spinnerColor="text-rose-600" />
@@ -586,16 +351,17 @@ const QCTechnicianDashboard = () => {
   const pendingCount = stats.pendingAssignments || 0
   const approvedCount = stats.totalApproved || 0
   const rejectedCount = stats.totalRejected || 0
-  const needsReviewCount = filteredDetections.filter(d => d.needsReview).length
 
   return (
     <div className="p-6 space-y-6 max-w-7xl mx-auto">
       {/* Header */}
       <div className="flex items-center justify-between">
         <div>
-          <h1 className="text-2xl font-bold text-gray-900">QC Technician Dashboard</h1>
+          <h1 className="text-2xl font-bold text-gray-900">
+            {userData?.first_name ? `Welcome back, ${userData.first_name}` : 'QC Technician Dashboard'}
+          </h1>
           <p className="text-sm text-gray-500 mt-0.5">
-            {lastUpdated ? `Last updated: ${lastUpdated.toLocaleTimeString()}` : 'Review, annotate, and approve sewer inspection findings'}
+            {lastUpdated ? `Last updated: ${lastUpdated.toLocaleTimeString()}` : 'Overview of your quality control activity'}
           </p>
         </div>
         <button
@@ -608,7 +374,7 @@ const QCTechnicianDashboard = () => {
         </button>
       </div>
 
-      {/* Stats Grid - Compact 4-column */}
+      {/* Stats Grid */}
       <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
         <StatCard
           icon={Eye}
@@ -633,7 +399,6 @@ const QCTechnicianDashboard = () => {
           value={stats.totalReviewed || 0}
           label="Total Reviewed"
           color="purple"
-          trend={12}
         />
       </div>
 
@@ -646,34 +411,34 @@ const QCTechnicianDashboard = () => {
             <h3 className="text-sm font-semibold text-gray-900 mb-3">Quick Actions</h3>
             <div className="grid grid-cols-2 gap-3">
               <QuickAction
-                icon={FileText}
-                label="New Report"
-                onClick={() => { }}
+                icon={ClipboardCheck}
+                label="Quality Control"
+                onClick={() => router.push('/qc-technician/quality-control')}
+                color="rose"
+              />
+              <QuickAction
+                icon={FolderOpen}
+                label="Projects"
+                onClick={() => router.push('/qc-technician/project')}
                 color="blue"
               />
               <QuickAction
-                icon={Calendar}
-                label="Schedule"
-                onClick={() => { }}
-                color="purple"
-              />
-              <QuickAction
-                icon={RefreshCw}
-                label="Sync Data"
-                onClick={handleRefresh}
+                icon={FileText}
+                label="Reports"
+                onClick={() => router.push('/qc-technician/reports')}
                 color="green"
               />
               <QuickAction
-                icon={Video}
-                label="Uploads"
-                onClick={() => { }}
-                color="orange"
+                icon={Calendar}
+                label="Calendar"
+                onClick={() => router.push('/qc-technician/calendar')}
+                color="purple"
               />
             </div>
           </div>
 
-          {/* Pending Projects List */}
-          <div className="bg-white rounded-xl border border-gray-100 shadow-sm flex flex-col h-[600px]">
+          {/* Assigned Projects List */}
+          <div className="bg-white rounded-xl border border-gray-100 shadow-sm flex flex-col" style={{ maxHeight: '600px' }}>
             <div className="p-4 border-b border-gray-100 flex items-center justify-between">
               <h3 className="font-semibold text-gray-900">Assigned Projects</h3>
               <span className="text-xs bg-gray-100 text-gray-600 px-2 py-1 rounded-full">{pendingProjects.length}</span>
@@ -690,18 +455,15 @@ const QCTechnicianDashboard = () => {
                 pendingProjects.map((project) => (
                   <div
                     key={project.id}
-                    className={`p-3 rounded-xl cursor-pointer transition-all border ${selectedProject?.id === project.id
-                      ? 'border-rose-500 bg-rose-50 shadow-sm'
-                      : 'border-gray-100 hover:border-rose-200 hover:bg-gray-50'
-                      }`}
-                    onClick={() => setSelectedProject(project)}
+                    className="p-3 rounded-xl cursor-pointer transition-all border border-gray-100 hover:border-rose-200 hover:bg-gray-50 group"
+                    onClick={() => router.push('/qc-technician/quality-control')}
                   >
                     <div className="flex items-start justify-between mb-2">
                       <h4 className="font-medium text-gray-900 text-sm line-clamp-1">{project.projectName}</h4>
                       {project.aiProcessingComplete ? (
-                        <div className="w-2 h-2 bg-green-500 rounded-full"></div>
+                        <div className="w-2 h-2 bg-green-500 rounded-full flex-shrink-0"></div>
                       ) : (
-                        <div className="w-2 h-2 bg-yellow-500 rounded-full animate-pulse"></div>
+                        <div className="w-2 h-2 bg-yellow-500 rounded-full animate-pulse flex-shrink-0"></div>
                       )}
                     </div>
 
@@ -719,9 +481,12 @@ const QCTechnicianDashboard = () => {
                       </span>
                     </div>
 
-                    <div className="mt-2 text-xs font-medium text-gray-700 flex items-center gap-1">
-                      <AlertTriangle className="w-3 h-3 text-rose-500" />
-                      {project.totalDetections} alerts
+                    <div className="mt-2 flex items-center justify-between">
+                      <div className="text-xs font-medium text-gray-700 flex items-center gap-1">
+                        <AlertTriangle className="w-3 h-3 text-rose-500" />
+                        {project.totalDetections} detections
+                      </div>
+                      <ChevronRight className="w-3.5 h-3.5 text-gray-300 group-hover:text-rose-400 transition-colors" />
                     </div>
                   </div>
                 ))
@@ -730,10 +495,9 @@ const QCTechnicianDashboard = () => {
           </div>
         </div>
 
-        {/* Right Column - Charts & Work Area */}
+        {/* Right Column - Charts */}
         <div className="lg:col-span-2 space-y-6">
-
-          {/* Performance Chart */}
+          {/* QC Activity Chart */}
           <div className="bg-white rounded-xl border border-gray-100 p-6 shadow-sm relative overflow-hidden">
             <div className="flex items-center justify-between mb-6">
               <div>
@@ -748,200 +512,92 @@ const QCTechnicianDashboard = () => {
             <div className="h-64 relative z-10">
               <canvas ref={qcStatsChartRef}></canvas>
             </div>
-            {/* Decorative background element */}
             <div className="absolute -top-20 -right-20 w-64 h-64 bg-rose-50 rounded-full opacity-50 z-0 pointer-events-none"></div>
           </div>
 
-          {/* QC Review Interface (The Work Area) */}
-          <div className="bg-white rounded-xl border border-gray-100 shadow-sm flex flex-col h-[700px]">
-            {/* Review Header - Filters */}
-            <div className="p-4 border-b border-gray-100 flex flex-wrap items-center justify-between gap-4">
-              <div className="flex items-center gap-3">
-                <h3 className="font-semibold text-gray-900">
-                  {selectedProject ? 'Detection Review' : 'Select a Project'}
-                </h3>
-                {selectedProject && (
-                  <span className="text-xs bg-rose-100 text-rose-700 px-2 py-1 rounded-full font-medium">
-                    {selectedProject.projectName}
-                  </span>
-                )}
+          {/* Charts Row - Detection Types & Priority Distribution */}
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+            {/* Detection Type Distribution */}
+            <div className="bg-white rounded-xl border border-gray-100 p-6 shadow-sm">
+              <div className="mb-4">
+                <h3 className="text-base font-semibold text-gray-900">Detection Types</h3>
+                <p className="text-sm text-gray-500">Distribution by category</p>
               </div>
-
-              <div className="flex items-center gap-2">
-                <div className="relative">
-                  <Search className="absolute left-2.5 top-1/2 transform -translate-y-1/2 w-3.5 h-3.5 text-gray-400" />
-                  <input
-                    type="text"
-                    placeholder="Search..."
-                    value={searchTerm}
-                    onChange={(e) => setSearchTerm(e.target.value)}
-                    className="pl-8 pr-3 py-1.5 border border-gray-200 rounded-lg text-sm w-32 focus:outline-none focus:ring-2 focus:ring-rose-500/20 focus:border-rose-500"
-                  />
-                </div>
-                <select
-                  value={filterSeverity}
-                  onChange={(e) => setFilterSeverity(e.target.value)}
-                  className="py-1.5 pl-2 pr-6 border border-gray-200 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-rose-500/20 focus:border-rose-500 bg-white"
-                >
-                  <option value="all">Severity</option>
-                  <option value="critical">Critical</option>
-                  <option value="major">Major</option>
-                  <option value="minor">Minor</option>
-                </select>
-              </div>
-            </div>
-
-            {/* Split View Content */}
-            <div className="flex-1 flex overflow-hidden">
-              {/* Left: Detection List */}
-              <div className="w-1/3 border-r border-gray-100 flex flex-col">
-                {/* Bulk Actions */}
-                {selectedDetections.size > 0 && (
-                  <div className="p-2 bg-rose-50 border-b border-rose-100 flex flex-col gap-2">
-                    <div className="flex justify-between items-center px-1">
-                      <span className="text-xs font-semibold text-rose-700">{selectedDetections.size} selected</span>
-                      <button onClick={() => setSelectedDetections(new Set())} className="text-xs text-rose-600 hover:underline">Clear</button>
-                    </div>
-                    <div className="flex gap-2">
-                      <button onClick={handleBulkApprove} disabled={bulkActionLoading} className="flex-1 bg-white border border-rose-200 text-green-600 text-xs font-medium py-1.5 rounded hover:bg-green-50">Approve</button>
-                      <button onClick={handleBulkReject} disabled={bulkActionLoading} className="flex-1 bg-white border border-rose-200 text-red-600 text-xs font-medium py-1.5 rounded hover:bg-red-50">Reject</button>
-                    </div>
-                  </div>
-                )}
-
-                {/* List */}
-                <div className="flex-1 overflow-y-auto p-3 space-y-3 bg-gray-50/50">
-                  {filteredDetections.length === 0 ? (
-                    <div className="h-full flex flex-col items-center justify-center text-center p-4">
-                      <Search className="w-8 h-8 text-gray-300 mb-2" />
-                      <p className="text-sm text-gray-500">No detections found</p>
-                    </div>
-                  ) : (
-                    filteredDetections.map((detection) => (
-                      <div key={detection.id} className="flex items-start gap-2 group">
-                        <button
-                          onClick={(e) => { e.stopPropagation(); toggleDetectionSelection(detection.id); }}
-                          className="mt-3 text-gray-300 hover:text-rose-500 transition-colors flex-shrink-0"
-                        >
-                          {selectedDetections.has(detection.id) ?
-                            <CheckSquare className="w-4 h-4 text-rose-600" /> :
-                            <Square className="w-4 h-4" />
-                          }
-                        </button>
-                        <div className="flex-1 min-w-0">
-                          <DetectionCard
-                            detection={detection}
-                            isExpanded={false}
-                            isSelected={selectedDetection?.id === detection.id}
-                            onSelect={setSelectedDetection}
-                            // Simplified card props for list view
-                            onToggleExpand={() => setSelectedDetection(detection)} // Click expands/selects
-                            onApprove={handleApproveDetection}
-                            onReject={handleRejectDetection}
-                            getSeverityColor={getSeverityColor}
-                            getConfidenceColor={getConfidenceColor}
-                          />
-                        </div>
-                      </div>
-                    ))
-                  )}
-                </div>
-              </div>
-
-              {/* Right: Preview & Annotation */}
-              <div className="flex-1 overflow-y-auto bg-gray-50 p-6 flex flex-col">
-                {selectedDetection ? (
-                  <div className="bg-white rounded-xl border border-gray-200 shadow-sm overflow-hidden flex-1 flex flex-col">
-                    {/* Preview Image Area */}
-                    <div className="bg-black aspect-video relative flex items-center justify-center group">
-                      {/* Placeholder for Video/Image */}
-                      <div className="text-white/30 flex flex-col items-center">
-                        <Image className="w-12 h-12 mb-2" />
-                        <span className="text-xs">Frame Preview</span>
-                      </div>
-
-                      <div className="absolute inset-0 bg-gradient-to-t from-black/60 to-transparent opacity-0 group-hover:opacity-100 transition-opacity flex items-end justify-between p-4">
-                        <span className="text-white text-sm font-medium">{selectedDetection.frameTime}</span>
-                        <span className="bg-white/20 backdrop-blur-md text-white px-2 py-1 rounded text-xs">Confidence: {Math.round(selectedDetection.confidence)}%</span>
-                      </div>
-
-                      <div className="absolute top-4 right-4">
-                        <span className={`px-2 py-1 rounded text-xs font-semibold text-white ${selectedDetection.severity === 'Critical' ? 'bg-red-500 shadow-lg shadow-red-500/20' :
-                            selectedDetection.severity === 'Major' ? 'bg-orange-500' : 'bg-blue-500'
-                          }`}>
-                          {selectedDetection.type}
-                        </span>
-                      </div>
-                    </div>
-
-                    {/* Annotation Form */}
-                    <div className="p-6 flex-1 flex flex-col">
-                      <div className="flex items-center justify-between mb-4">
-                        <h4 className="font-semibold text-gray-900">Annotation Details</h4>
-                        <div className="flex gap-2">
-                          <button onClick={() => { }} className="p-1.5 text-gray-400 hover:text-gray-600 hover:bg-gray-100 rounded">
-                            <Clock className="w-4 h-4" />
-                          </button>
-                        </div>
-                      </div>
-
-                      <div className="grid grid-cols-2 gap-4 mb-4">
-                        <div>
-                          <label className="text-xs font-medium text-gray-500 mb-1 block">PACP Code</label>
-                          <select className="w-full text-sm border-gray-200 rounded-lg focus:ring-rose-500 focus:border-rose-500">
-                            <option>Select Code...</option>
-                            <option>FJ - Joint Defect</option>
-                            <option>FC - Circumferential Crack</option>
-                          </select>
-                        </div>
-                        <div>
-                          <label className="text-xs font-medium text-gray-500 mb-1 block">Severity Grade</label>
-                          <select className="w-full text-sm border-gray-200 rounded-lg focus:ring-rose-500 focus:border-rose-500">
-                            <option>Select Grade...</option>
-                            <option>1 - Minor</option>
-                            <option>2 - Moderate</option>
-                            <option>3 - Major</option>
-                            <option>4 - Critical</option>
-                          </select>
-                        </div>
-                      </div>
-
-                      <div className="mb-6 flex-1">
-                        <label className="text-xs font-medium text-gray-500 mb-1 block">Technician Notes</label>
-                        <textarea
-                          className="w-full h-full min-h-[100px] text-sm border-gray-200 rounded-lg focus:ring-rose-500 focus:border-rose-500 resize-none p-3"
-                          placeholder="Add specific observations..."
-                          defaultValue={selectedDetection.description}
-                        ></textarea>
-                      </div>
-
-                      <div className="flex gap-3 pt-4 border-t border-gray-100">
-                        <button
-                          onClick={() => handleRejectDetection(selectedDetection)}
-                          className="flex-1 py-2.5 border border-red-200 text-red-600 font-medium rounded-lg hover:bg-red-50 transition-colors text-sm"
-                        >
-                          Reject
-                        </button>
-                        <button
-                          onClick={() => handleApproveDetection(selectedDetection)}
-                          className="flex-[2] py-2.5 bg-gradient-to-r from-[#D76A84] to-rose-500 text-white font-medium rounded-lg hover:shadow-lg hover:shadow-rose-500/20 transition-all text-sm"
-                        >
-                          Confirm & Approve
-                        </button>
-                      </div>
-                    </div>
-                  </div>
+              <div className="h-48">
+                {detectionTypes.length > 0 ? (
+                  <canvas ref={detectionTrendChartRef}></canvas>
                 ) : (
-                  <div className="h-full flex flex-col items-center justify-center text-center">
-                    <div className="w-16 h-16 bg-white rounded-full flex items-center justify-center shadow-sm mb-4">
-                      <Eye className="w-8 h-8 text-rose-200" />
-                    </div>
-                    <h3 className="text-lg font-semibold text-gray-900">No Detection Selected</h3>
-                    <p className="text-sm text-gray-500 max-w-xs mx-auto mt-1">Select a detection from the list to view details, video frame, and start annotation.</p>
+                  <div className="h-full flex items-center justify-center text-sm text-gray-400">
+                    No detection data yet
                   </div>
                 )}
               </div>
             </div>
+
+            {/* Priority Distribution */}
+            <div className="bg-white rounded-xl border border-gray-100 p-6 shadow-sm">
+              <div className="mb-4">
+                <h3 className="text-base font-semibold text-gray-900">Priority Distribution</h3>
+                <p className="text-sm text-gray-500">Projects by priority level</p>
+              </div>
+              <div className="h-48">
+                {priorityDistribution.some(p => p.count > 0) ? (
+                  <canvas ref={priorityDistributionRef}></canvas>
+                ) : (
+                  <div className="h-full flex items-center justify-center text-sm text-gray-400">
+                    No priority data yet
+                  </div>
+                )}
+              </div>
+            </div>
+          </div>
+
+          {/* Recent Activity */}
+          <div className="bg-white rounded-xl border border-gray-100 p-6 shadow-sm">
+            <div className="flex items-center justify-between mb-4">
+              <div>
+                <h3 className="text-base font-semibold text-gray-900">Recent Assignments</h3>
+                <p className="text-sm text-gray-500">Latest project assignments</p>
+              </div>
+              <button
+                onClick={() => router.push('/qc-technician/quality-control')}
+                className="text-xs text-rose-600 hover:text-rose-700 font-medium flex items-center gap-1"
+              >
+                View All <ChevronRight className="w-3 h-3" />
+              </button>
+            </div>
+            {pendingProjects.length === 0 ? (
+              <div className="text-center py-8 text-gray-400">
+                <TrendingUp className="w-8 h-8 mx-auto mb-2 opacity-50" />
+                <p className="text-sm">No recent assignments</p>
+              </div>
+            ) : (
+              <div className="space-y-3">
+                {pendingProjects.map((project) => (
+                  <div
+                    key={project.id}
+                    className="flex items-center justify-between p-3 rounded-lg hover:bg-gray-50 transition-colors cursor-pointer"
+                    onClick={() => router.push('/qc-technician/quality-control')}
+                  >
+                    <div className="flex items-center gap-3">
+                      <div className={`w-2 h-2 rounded-full ${project.status === 'completed' ? 'bg-green-500' :
+                          project.status === 'in_review' ? 'bg-rose-500' : 'bg-yellow-500'
+                        }`} />
+                      <div>
+                        <p className="text-sm font-medium text-gray-900">{project.projectName}</p>
+                        <p className="text-xs text-gray-500">{project.operator} &middot; {project.uploadDate}</p>
+                      </div>
+                    </div>
+                    <div className="flex items-center gap-3">
+                      <span className={`px-2 py-0.5 rounded-full text-[10px] font-medium uppercase ${getStatusColor(project.status)}`}>
+                        {project.status.replace('_', ' ')}
+                      </span>
+                      <span className="text-xs text-gray-500">{project.totalDetections} detections</span>
+                    </div>
+                  </div>
+                ))}
+              </div>
+            )}
           </div>
         </div>
       </div>

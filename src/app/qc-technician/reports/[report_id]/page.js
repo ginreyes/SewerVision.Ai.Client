@@ -35,7 +35,7 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/com
 import { Button } from '@/components/ui/button'
 import { Badge } from '@/components/ui/badge'
 import { useRouter, useParams } from 'next/navigation'
-import reportsApi from '@/data/reportsApi'
+import { api } from '@/lib/helper'
 import { qcApi } from '@/data/qcApi'
 import Chart from 'chart.js/auto'
 
@@ -203,11 +203,15 @@ const ReportDetailView = () => {
       if (!report_id) return
       try {
         setLoading(true)
-        const reportData = await reportsApi.getReportById(report_id)
-        const actualReport = reportData
+        const response = await api(`/api/qc-technicians/reports/detail/${report_id}`, 'GET')
+        if (!response.ok) {
+          throw new Error(response.data?.error || 'Failed to fetch report')
+        }
+        const actualReport = response.data?.data || response.data
+        let fetchedDefects = response.data?.detections || []
 
-        let fetchedDefects = []
-        if (actualReport.projectId) {
+        // If detections not returned by the report endpoint, try fetching separately
+        if (fetchedDefects.length === 0 && actualReport.projectId) {
           const projectId = typeof actualReport.projectId === 'object' ? actualReport.projectId._id : actualReport.projectId
           if (projectId) {
             try {
@@ -283,11 +287,55 @@ const ReportDetailView = () => {
     setTimeout(() => setCopied(false), 2000)
   }
 
-  const handleDownload = () => {
-    if (report_id) {
-      reportsApi.downloadReport(report_id)
-        .then(() => {})
-        .catch((err) => console.error('Download failed:', err))
+  const handleDownload = async () => {
+    if (!report_id || !report) return
+    try {
+      const projectName = typeof report.projectId === 'object'
+        ? report.projectId?.name || 'Unknown'
+        : 'Unknown'
+
+      const downloadData = {
+        reportInfo: {
+          inspectionId: report.inspectionId || report_id,
+          reportType: report.reportType || 'PACP Condition Assessment',
+          status: report.status,
+          overallGrade: report.overallGrade || 'N/A',
+          date: report.date || report.createdAt,
+          generatedAt: new Date().toISOString()
+        },
+        project: {
+          name: projectName,
+          location: report.projectId?.location || report.location || 'N/A',
+          client: report.projectId?.client || 'N/A'
+        },
+        metrics: {
+          totalDefects: report.totalDefects || 0,
+          criticalDefects: report.criticalDefects || 0,
+          aiDetections: report.aiDetections || 0,
+          confidence: `${report.confidence || 0}%`,
+          footage: report.footage || 'N/A'
+        },
+        issues: report.issues || [],
+        defects: defects.map(d => ({
+          type: d.type,
+          severity: d.severity,
+          confidence: `${d.confidence}%`,
+          status: d.qcStatus,
+          location: d.location || d.distance || 'N/A'
+        }))
+      }
+
+      const blob = new Blob([JSON.stringify(downloadData, null, 2)], { type: 'application/json' })
+      const url = window.URL.createObjectURL(blob)
+      const link = document.createElement('a')
+      link.href = url
+      link.download = `report-${projectName.replace(/\s+/g, '-')}-${report.date || 'unknown'}.json`
+      document.body.appendChild(link)
+      link.click()
+      document.body.removeChild(link)
+      window.URL.revokeObjectURL(url)
+    } catch (err) {
+      console.error('Download failed:', err)
     }
   }
 
@@ -303,8 +351,11 @@ const ReportDetailView = () => {
         totalDefects: Number(editMeta.totalDefects) || 0,
         criticalDefects: Number(editMeta.criticalDefects) || 0,
       }
-      const updated = await reportsApi.updateReport(report_id, payload)
-      const updatedReport = updated?.data || updated
+      const response = await api(`/api/qc-technicians/reports/detail/${report_id}`, 'PUT', payload)
+      if (!response.ok) {
+        throw new Error(response.data?.error || 'Failed to update report')
+      }
+      const updatedReport = response.data?.data || response.data || payload
       setReport((prev) => ({ ...(prev || {}), ...(updatedReport || payload) }))
       setIsEditingMeta(false)
     } catch (err) {
