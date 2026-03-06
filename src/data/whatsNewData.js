@@ -1,10 +1,308 @@
 
 export const whatsNewData = [
     {
+        id: "v1.8.0",
+        date: "February 13 – March 7, 2026",
+        label: "Major Release",
+        isNew: true,
+        updates: {
+            admin: [
+                {
+                    type: 'feature',
+                    title: 'Notification System with Preference Persistence',
+                    description: 'Full notification system with real-time dropdown panel, role-based navigation, and per-user preference settings that save to the backend.',
+                    image: '/updates/admin/admin_notification_panel.png',
+                    details: [
+                        'NotificationPanel dropdown in navbar with mark-as-read, delete, and View All navigation',
+                        'Notification preferences (email, push, report ready, AI complete, status updates, QC review, defect alerts) persist via shared API routes',
+                        'Smart role-based URL rewriting — clicking a notification routes to the correct admin page',
+                        '30-second auto-polling with unread count badge in navbar'
+                    ]
+                },
+                {
+                    type: 'improvement',
+                    title: 'Settings – AI Learning Metrics from Real API Data',
+                    description: 'Admin settings AI Learning tab now fetches real performance metrics from the backend instead of displaying static values.',
+                    details: [
+                        'AI metrics pulled from settingsApi.getSettings() with live accuracy and false positive rate',
+                        'Avatar upload now instantly reflects in navbar across all pages via refetchUser()',
+                        'Fixed broken notificationApi import that had a stray space in the module path'
+                    ]
+                },
+                {
+                    type: 'feature',
+                    title: 'User Management – Admin-Set Passwords for New Accounts',
+                    description: 'Admins can now set custom passwords when creating new user accounts. Customer accounts automatically receive a default password.',
+                    image: '/updates/admin/admin_user_creation_password.png',
+                    details: [
+                        'Password field in the Add User modal for admin, management, operator, and QC technician roles',
+                        'Show/hide password toggle with eye icon for easy visibility control',
+                        'Customer accounts automatically use the default password "sewercustomer" with a clear info box',
+                        'Password validation: minimum 6 characters required for non-customer roles',
+                        'Welcome email sent to all new users with their login credentials',
+                        'Role-specific info box updates dynamically based on selected role'
+                    ]
+                },
+                {
+                    type: 'fix',
+                    title: 'Dashboard – AI Detection Distribution Now Shows All Types',
+                    description: 'Fixed the AI Detection Distribution chart that was showing no data due to hardcoded detection types that didn\'t match the AI model output.',
+                    image: '/updates/admin/admin_dashboard_ai_detection_distribution.png',
+                    details: [
+                        'Chart now dynamically displays ALL detection types found in the database instead of only 4 hardcoded ones',
+                        'Supports all AI model output types: fractures, cracks, blockage, corrosion, infiltration, deformation, pipe hole, manhole, and more',
+                        'Detection types are sorted by count (most common first) with proper display names',
+                        'New detection types from future AI model updates will appear automatically'
+                    ]
+                },
+                {
+                    type: 'imrovement',
+                    title:'User Management - Added password input field with show/hide toggle to the Add User modal for all roles, and set a default password for Customer accounts.',
+                    description:'Admins can now set custom passwords when creating new user accounts. Customer accounts automatically receive a default password.',
+                    image: '/updates/admin/admin_user_creation_password.png',
+                    details: [
+                        'Added a password input field to the Add User modal for admin, management, operator, and QC technician roles',
+                        'Implemented a show/hide toggle with an eye icon for the password field to allow admins to easily view the password they are entering',
+                        'For Customer accounts, the password field is hidden and a default password of "sewercustomer" is automatically assigned, with a clear info box explaining this behavior',
+                        'Added validation to ensure that passwords entered for non-customer roles meet a minimum length requirement (e.g., at least 6 characters)',
+                        'Upon successful user creation, a welcome email is sent to the new user with their login credentials, including the password set by the admin or the default password for customers',
+                        'The role-specific info box in the modal dynamically updates based on the selected role to provide relevant information about password requirements and defaults'
+                     ]
+                }
+            ],
+            user: [
+                {
+                    type: 'feature',
+                    title: 'Team Leader Notifications Page',
+                    description: 'Dedicated notifications page for the User (Team Lead) role with role-specific alert types and blue-themed UI.',
+                    details: [
+                        'New /user/notifications page with blue-themed UI matching the team leader color scheme',
+                        'Role-specific alert types: Report Ready, AI Complete, Status Updates, Task Assignments, Delete Requests',
+                        'Notification preferences load from and persist to the backend on each toggle',
+                        'Mark All as Read and Delete All bulk actions with confirmation dialogs'
+                    ]
+                },
+                {
+                    type: 'improvement',
+                    title: 'Settings – Avatar Upload Fix',
+                    description: 'Avatar upload in User settings now properly persists across the app — navbar and all pages reflect the new avatar immediately without a page reload.',
+                    details: [
+                        'Added refetchUser() call after successful avatar upload to update the global UserContext',
+                        'Avatar changes are now visible in the navbar, sidebar, and all pages instantly'
+                    ]
+                }
+            ],
+            qc: [
+                {
+                    type: 'feature',
+                    title: 'QC Dashboard – Pure Metrics Overview',
+                    description: 'Completely rebuilt dashboard as a clean metrics and overview page with real-time charts and quick actions.',
+                    image: '/updates/qc-tech/qc_dashboard_metrics.png',
+                    details: [
+                        'Stat cards: Pending QC, Approved, Rejected, Total Reviewed — all from real backend data',
+                        '3 interactive Chart.js charts: QC Activity (line), Detection Types (bar), Priority Distribution (pie)',
+                        'Quick Action navigation to Quality Control, Projects, Reports, and Calendar',
+                        'Assigned Projects list with status badges, priority indicators, and click-through to quality control',
+                        '30-second auto-polling via usePolling hook with last-updated timestamp',
+                        'Removed redundant detection review interface that duplicated the Quality Control page'
+                    ]
+                },
+                {
+                    type: 'feature',
+                    title: 'Quality Control – Detection Search & Severity Filter',
+                    description: 'Search and filter individual detections within a project by type, description, or severity level.',
+                    image: '/updates/qc-tech/qc_quality_control_search_filter.png',
+                    details: [
+                        'Search input filters detections by type, description, notes, or severity text in real-time',
+                        'Severity dropdown filter: All, Critical, Major, Moderate, Minor',
+                        'Filtered detection list with useMemo for performance — updates instantly as you type',
+                        'Keyboard shortcuts (A/R/Esc/Arrow keys) work correctly with the filtered list',
+                        'Post-review confirmation dialog with option to create a report after completing project review'
+                    ]
+                },
+                {
+                    type: 'feature',
+                    title: 'Reports System – Full Backend CRUD',
+                    description: 'Complete reports system with backend auto-calculations, JSON export, and full create/read/update/delete operations.',
+                    details: [
+                        'Backend createQCReport accepts all form fields (title, date, type, priority, weather, flow, equipment, notes)',
+                        'Auto-generates unique inspectionId from report title',
+                        'Auto-calculates totalDefects, criticalDefects, and overallGrade from AI detections',
+                        'New endpoints: GET/PUT/DELETE /reports/detail/:reportId with project detections included',
+                        'Real JSON download export (replaced placeholder alert())',
+                        'All API calls use QC-specific endpoints via api() helper'
+                    ]
+                },
+                {
+                    type: 'improvement',
+                    title: 'Settings – Real Dashboard Stats via TanStack Query',
+                    description: 'QC Settings page now shows real review statistics fetched from the backend instead of hardcoded placeholder values.',
+                    image: '/updates/qc-tech/qc_settings_real_stats.png',
+                    details: [
+                        'Replaced hardcoded stats (342 reviews, 189 reports, 99.2% accuracy, 410 hours) with real data',
+                        'Uses TanStack useQuery with qcApi.getDashboardStats() and 5-minute stale time for efficient caching',
+                        'Avatar upload now calls refetchUser() so changes reflect instantly in navbar'
+                    ]
+                },
+                {
+                    type: 'fix',
+                    title: 'Confidence Display & Timestamp Fixes',
+                    description: 'Fixed the 8400% confidence bug and raw seconds timestamp display in detection review.',
+                    details: [
+                        'Confidence normalization: values 0-1 are multiplied by 100, values 0-100 are displayed as-is',
+                        'Timestamp format: raw seconds (e.g. 125) now display as mm:ss (e.g. 2:05)',
+                        'Both fixes applied in the Quality Control detection review interface'
+                    ]
+                },
+                {
+                    type: 'feature',
+                    title: 'Notification Preferences with Backend Persistence',
+                    description: 'QC technician notification preferences now load from and save to the backend — toggles are remembered across sessions.',
+                    details: [
+                        'Preferences load via GET /api/notifications/preferences/:userId on page mount',
+                        'Each toggle immediately persists via PUT /api/notifications/preferences/:userId',
+                        'Optimistic UI update with automatic rollback if the API call fails',
+                        'Shared backend routes used across all roles for consistency'
+                    ]
+                }
+            ],
+            operator: [
+                {
+                    type: 'improvement',
+                    title: 'Settings – Real Dashboard Stats via TanStack Query',
+                    description: 'Operator settings now shows real inspection statistics from the backend instead of hardcoded mock values.',
+                    image: '/updates/operator/operator_settings_real_stats.png',
+                    details: [
+                        'Replaced hardcoded stats (142 inspections, 89 uploads, 98% completion, 320 hours) with real data',
+                        'Uses TanStack useQuery with operatorApi.getDashboardStats() and 5-minute stale time',
+                        'Avatar upload now calls refetchUser() so changes reflect instantly in navbar',
+                        'Removed stale console.log debug statement from settings page'
+                    ]
+                },
+                {
+                    type: 'feature',
+                    title: 'Notification Preferences with Backend Persistence',
+                    description: 'Operator notification preferences now load from and save to the backend — toggles are remembered across sessions.',
+                    details: [
+                        'Preferences load via GET /api/notifications/preferences/:userId on page mount',
+                        'Each toggle persists via PUT /api/notifications/preferences/:userId',
+                        'Optimistic UI update with rollback on failure',
+                        'Consistent behavior matching all other roles'
+                    ]
+                }
+            ],
+            customer: [],
+            other: [
+                {
+                    type: 'feature',
+                    title: 'TanStack Query v5 Integration',
+                    description: 'Integrated TanStack React Query across the application for efficient client-side data fetching and caching.',
+                    details: [
+                        'QueryProvider with 5-minute stale time and 30-minute garbage collection',
+                        'useQuery hooks for dashboard stats in QC and operator settings pages',
+                        'Automatic background refetching and cache invalidation',
+                        'Custom useQueryHooks.js for shared query patterns'
+                    ]
+                },
+                {
+                    type: 'feature',
+                    title: 'Shared Notification Preference API',
+                    description: 'New backend API routes for notification preferences shared across all user roles.',
+                    details: [
+                        'GET /api/notifications/preferences/:user_id — fetch or auto-create default preferences',
+                        'PUT /api/notifications/preferences/:user_id — upsert preferences with any combination of fields',
+                        'NotificationPreference model extended with taskAssignment and deleteRequest fields for team leader role',
+                        'All 4 roles (admin, user, qc-technician, operator) now persist preferences via the same API'
+                    ]
+                },
+                {
+                    type: 'fix',
+                    title: 'Route Conflict Resolution & API Fixes',
+                    description: 'Fixed Express route param conflicts and broken API imports across the frontend.',
+                    details: [
+                        'Fixed /reports/:reportId catching /reports/projects/:id — now uses /reports/detail/:reportId',
+                        'Specific paths ordered before parameterized routes to prevent conflicts',
+                        'Fixed admin notifications broken import (notificationApi with stray space in path)',
+                        'Fixed reports page reportsApi calls using wrong argument count — switched to QC-specific api() endpoints'
+                    ]
+                },
+                {
+                    type: 'improvement',
+                    title: 'Avatar Upload Persistence Across All Roles',
+                    description: 'Avatar uploads now instantly reflect in the navbar and all pages for every role — no page reload needed.',
+                    details: [
+                        'Added refetchUser() call after successful avatar upload in QC, operator, and user settings',
+                        'Admin settings already had this behavior — now all 4 roles are consistent',
+                        'UserContext refreshes globally so navbar, sidebar, and profile sections all update immediately'
+                    ]
+                },
+                {
+                    type: 'improvement',
+                    title: 'Codebase Cleanup & Refactoring',
+                    description: 'Removed unused code, standardized imports, and refactored components for better maintainability.',
+                    details: [
+                        'Removed unused imports and components across all modules',
+                        'Standardized import paths and component structures for better readability',
+                        'Refactored shared components to reduce duplication and improve consistency',
+                        'Improved code comments and documentation for key features and workflows'
+                    ]
+                },
+                {
+                    type: 'improvement',
+                    title:'Project Console – Observation Panel Availability During AI Processing',
+                    description:'The observation panel is now available and functional while videos are being processed by the AI.',
+                    image: '/updates/operator/operator_project_console_observation_panel.png',
+                    details: [
+                        'Observation panel is no longer hidden during AI processing — it remains accessible so users can review and add observations in real time',
+                        'Observations added during AI processing are saved and associated with the correct video and timestamp once processing completes',
+                        'UI adjustments to ensure the observation panel works smoothly alongside the AI processing modal without layout issues',
+                        'This improvement allows operators and QC techs to start reviewing footage and adding notes immediately, rather than waiting for AI processing to finish',
+                        'Add pagination to the observation panel to handle cases with many observations without overwhelming the UI'
+                    ]
+                },
+                {
+                    type: 'update',
+                    title:'SewerVision AI – Improved Detection Accuracy & Expanded Defect Types',
+                    description:'The SewerVision AI model has been updated with improved accuracy and now detects a wider range of sewer defects.',
+                    details: [
+                        'AI model retrained with a larger, more diverse dataset of sewer inspection footage, resulting in improved detection accuracy across all defect types',
+                        'Expanded defect type categories to include infiltration, deformation, pipe hole, manhole issues, and more — providing a more comprehensive analysis of sewer conditions',
+                        'Updated AI processing logic to handle the new defect types and ensure they are properly categorized and displayed in the project console',
+                        'Improved confidence scoring and filtering to reduce false positives and ensure that detected defects are more likely to be accurate',
+                        'These enhancements to the SewerVision AI will provide operators and QC techs with more reliable insights and a broader understanding of sewer conditions, ultimately leading to better maintenance decisions and improved infrastructure management'
+                        ]
+
+                },
+                {
+                    type: 'feature',
+                    title:'SewerVision Mobile app - Initial Development & Testing',
+                    description:'The initial version of the SewerVision Mobile app has been developed and is currently undergoing testing to ensure a seamless user experience on mobile devices.',
+                    details: [
+                        'Initial development of the SewerVision Mobile app completed with core functionality implemented',
+                        'Current testing phase focused on ensuring a seamless user experience on various mobile devices',
+                        'Feedback from initial testing sessions is being incorporated to improve performance and usability'
+                    ]
+                },
+                {
+                    type:'feature',
+                    title:'Whats New Data Structure & Future Update Planning',
+                    description:'The structure of the Whats New data has been updated to better organize and present upcoming features, improvements, and fixes across different user roles.',
+                    details: [
+                        'Whats New data structure updated to include separate sections for each user role (admin, user, qc, operator, customer) as well as a general "other" category for cross-cutting updates',
+                        'Each update entry now includes a type (feature, improvement, fix, ui, security, etc.) to categorize the nature of the update',
+                        'This new structure allows for clearer communication of updates relevant to each user role and helps users quickly identify changes that impact their experience',
+                        'Future updates will be planned and categorized using this structure to maintain consistency and clarity in our release notes',
+                        'Make the pictures and the data will be saved to the database and stored as part of the release notes for each version, allowing users to see visual representations of the updates alongside the descriptions'
+                        ]
+                }
+            ]
+        }
+    },
+    {
         id: "v1.7.0",
         date: "February 9-11, 2026",
         label: "Feature Update",
-        isNew: true,
+        isNew: false,
         updates: {
             admin: [
                 {

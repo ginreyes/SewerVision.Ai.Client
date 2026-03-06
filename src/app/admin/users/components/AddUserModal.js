@@ -34,7 +34,10 @@ import {
   CheckCircle2,
   User,
   Mail,
-  UserCircle
+  UserCircle,
+  Lock,
+  Eye,
+  EyeOff
 } from "lucide-react"
 
 const AddUserModal = ({ fetchUser }) => {
@@ -63,7 +66,9 @@ const AddUserModal = ({ fetchUser }) => {
     tax_id: "",
     billing_contact: "",
     managedMembers: [],
+    password: "",
   })
+  const [showPassword, setShowPassword] = useState(false)
   const [operatorOptions, setOperatorOptions] = useState([])
   const [qcOptions, setQcOptions] = useState([])
   const [loadingMembers, setLoadingMembers] = useState(false)
@@ -141,7 +146,9 @@ const AddUserModal = ({ fetchUser }) => {
       tax_id: "",
       billing_contact: "",
       managedMembers: [],
+      password: "",
     }))
+    setShowPassword(false)
     setStep(2)
   }
 
@@ -192,6 +199,17 @@ const AddUserModal = ({ fetchUser }) => {
       }
     }
 
+    // Validate password for non-customer roles
+    if (formData.role !== 'customer' && !formData.password.trim()) {
+      showAlert("Please set a password for this account", "warning")
+      return
+    }
+
+    if (formData.role !== 'customer' && formData.password.trim().length < 6) {
+      showAlert("Password must be at least 6 characters long", "warning")
+      return
+    }
+
     setIsSubmitting(true)
 
     try {
@@ -201,6 +219,8 @@ const AddUserModal = ({ fetchUser }) => {
         first_name: formData.first_name.trim(),
         last_name: formData.last_name.trim(),
         role: formData.role,
+        // For customer: backend uses 'sewercustomer' default; for others: admin-set password
+        ...(formData.role !== 'customer' && formData.password.trim() && { password: formData.password.trim() }),
       }
 
       // Add role-specific fields based on role
@@ -273,7 +293,9 @@ const AddUserModal = ({ fetchUser }) => {
       tax_id: "",
       billing_contact: "",
       managedMembers: [],
+      password: "",
     })
+    setShowPassword(false)
     setStep(1)
     setOpen(false)
   }
@@ -826,6 +848,44 @@ const AddUserModal = ({ fetchUser }) => {
                     </div>
                   </div>
                 </div>
+
+                {/* Password Field */}
+                {formData.role === 'customer' ? (
+                  <div className="bg-emerald-50 border border-emerald-200 rounded-lg p-3">
+                    <div className="flex items-center gap-2">
+                      <Lock className="w-4 h-4 text-emerald-600" />
+                      <span className="text-sm font-medium text-emerald-900">Default Password</span>
+                    </div>
+                    <p className="text-xs text-emerald-700 mt-1">
+                      Customer accounts are created with the default password <code className="bg-white px-1.5 py-0.5 rounded text-emerald-800 font-mono text-xs">sewercustomer</code>.
+                      An email with login credentials will be sent to the customer.
+                    </p>
+                  </div>
+                ) : (
+                  <div className="space-y-2">
+                    <Label htmlFor="password">Account Password *</Label>
+                    <div className="relative">
+                      <Lock className="absolute left-3 top-2.5 h-4 w-4 text-gray-400" />
+                      <Input
+                        name="password"
+                        type={showPassword ? "text" : "password"}
+                        value={formData.password}
+                        onChange={handleChange}
+                        required
+                        placeholder="Set account password"
+                        className="pl-9 pr-10 focus-visible:ring-rose-500"
+                      />
+                      <button
+                        type="button"
+                        onClick={() => setShowPassword(!showPassword)}
+                        className="absolute right-3 top-2.5 text-gray-400 hover:text-gray-600"
+                      >
+                        {showPassword ? <EyeOff className="h-4 w-4" /> : <Eye className="h-4 w-4" />}
+                      </button>
+                    </div>
+                    <p className="text-xs text-gray-500">Set the initial password for this account. The user will be prompted to change it on first login.</p>
+                  </div>
+                )}
               </div>
 
               {/* Role Specific Fields */}
@@ -842,8 +902,10 @@ const AddUserModal = ({ fetchUser }) => {
                   <div className="flex-1">
                     <p className="text-sm font-semibold text-blue-900 mb-1">Account Creation Notice</p>
                     <p className="text-xs text-blue-700 leading-relaxed">
-                      A temporary password will be automatically generated and sent to the user's email address. 
-                      The user will be prompted to change their password upon first login.
+                      {formData.role === 'customer'
+                        ? 'Customer accounts are created with a default password. An email with login credentials will be sent to the customer\'s email address. The user should change their password upon first login.'
+                        : 'The password you set above will be used for the account. A welcome email with login credentials will be sent to the user\'s email address. The user will be prompted to change their password upon first login.'
+                      }
                     </p>
                   </div>
                 </div>

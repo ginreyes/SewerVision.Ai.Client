@@ -35,6 +35,8 @@ import { Separator } from '@/components/ui/separator';
 import { useUser } from '@/components/providers/UserContext';
 import { useAlert } from '@/components/providers/AlertProvider';
 import { api, getCookie } from '@/lib/helper';
+import { useQuery } from '@tanstack/react-query';
+import { operatorApi } from '@/data/operatorApi';
 
 // --- Components ---
 
@@ -84,7 +86,7 @@ const ToggleSetting = ({ label, description, checked, onCheckedChange }) => (
 const OperatorSettingsContent = () => {
   const router = useRouter();
   const searchParams = useSearchParams();
-  const { userData, logout, updateUserData } = useUser();
+  const { userData, logout, updateUserData, refetchUser } = useUser();
   const { showAlert } = useAlert();
 
   const [activeTab, setActiveTab] = useState('profile');
@@ -103,7 +105,6 @@ const OperatorSettingsContent = () => {
     avatar: null
   });
 
-  console.log("User Data in Settings Page:", profile); 
 
   // Password Form State
   const [passwordForm, setPasswordForm] = useState({
@@ -145,12 +146,18 @@ const OperatorSettingsContent = () => {
     units: 'imperial'
   });
 
-  // Stats (Mock data for now, could be fetched)
+  // Fetch real stats via TanStack Query
+  const { data: dashboardData } = useQuery({
+    queryKey: ['operator', 'dashboard', userData?._id],
+    queryFn: () => operatorApi.getDashboardStats(userData?._id),
+    enabled: !!userData?._id,
+    staleTime: 5 * 60 * 1000,
+  });
   const stats = {
-    inspections: 142,
-    uploads: 89,
-    completionRate: 98,
-    hours: 320
+    inspections: dashboardData?.totalInspections || dashboardData?.stats?.totalInspections || 0,
+    uploads: dashboardData?.totalUploads || dashboardData?.stats?.totalUploads || 0,
+    completionRate: dashboardData?.completionRate || dashboardData?.stats?.completionRate || 0,
+    hours: dashboardData?.totalHours || dashboardData?.stats?.totalHours || 0
   };
 
   const fileInputRef = useRef(null);
@@ -271,6 +278,7 @@ const OperatorSettingsContent = () => {
         if (updateUserData) {
           updateUserData({ ...userData, avatar: data.avatarUrl });
         }
+        if (refetchUser) await refetchUser();
         showAlert('Avatar uploaded successfully', 'success');
       } else {
         throw new Error(data.message || 'Failed to upload avatar');

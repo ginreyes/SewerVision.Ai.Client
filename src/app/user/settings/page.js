@@ -62,7 +62,7 @@ const ToggleSetting = ({ label, description, checked, onCheckedChange, disabled 
 function UserSettingsContent() {
   const router = useRouter();
   const searchParams = useSearchParams();
-  const { userData, logout, updateUserData } = useUser();
+  const { userData, logout, updateUserData, refetchUser } = useUser();
   const { showAlert } = useAlert();
 
   const [activeTab, setActiveTab] = useState(searchParams.get('tab') || 'preferences');
@@ -222,6 +222,7 @@ function UserSettingsContent() {
         const avatarUrlWithBust = `${data.avatarUrl}${data.avatarUrl?.includes('?') ? '&' : '?'}t=${Date.now()}`;
         setProfile((prev) => ({ ...prev, avatar: avatarUrlWithBust }));
         if (updateUserData) updateUserData({ ...userData, avatar: data.avatarUrl });
+        if (refetchUser) await refetchUser();
         showAlert('Avatar uploaded successfully', 'success');
       } else {
         throw new Error(data.message || 'Failed to upload avatar');
