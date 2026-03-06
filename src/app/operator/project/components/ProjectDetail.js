@@ -27,11 +27,13 @@ import {
   Calendar,
   CheckCircle2,
   Zap,
+  Monitor,
 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from '@/components/ui/dialog';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
 import { Badge } from '@/components/ui/badge';
 import AddObservation from './AddObersavation';
@@ -55,6 +57,10 @@ const ProjectDetail = ({ project, setSelectedProject, onBack }) => {
   const [pacpCodes, setPacpCodes] = useState([]);
   const [snapshots, setSnapshots] = useState([]);
   const [projectMetadata, setProjectMetadata] = useState(null);
+  const [observations, setObservations] = useState([]);
+  const [obsPage, setObsPage] = useState(1);
+  const obsPageSize = 10;
+  const [obsTotal, setObsTotal] = useState(0);
   const [isAddMetadataOpen, setIsAddMetadataOpen] = useState(false);
   const [isEditMetadataOpen, setIsEditMetadataOpen] = useState(false);
   const [newMetadataKey, setNewMetadataKey] = useState('');
@@ -71,6 +77,9 @@ const ProjectDetail = ({ project, setSelectedProject, onBack }) => {
   const [isDeleteVideoOpen, setIsDeleteVideoOpen] = useState(false);
   const [videoToDelete, setVideoToDelete] = useState(null);
   const [deletingVideo, setDeletingVideo] = useState(false);
+  const [myDevices, setMyDevices] = useState([]);
+  const [selectedDeviceId, setSelectedDeviceId] = useState('');
+  const [updatingDevice, setUpdatingDevice] = useState(false);
 
   // Video upload state
   const [isUploading, setIsUploading] = useState(false);
@@ -287,6 +296,47 @@ const ProjectDetail = ({ project, setSelectedProject, onBack }) => {
     }
   }, [project?._id, project?.metadata]);
 
+  const fetchMyDevices = useCallback(async () => {
+    if (!userId) return;
+    try {
+      const { ok, data } = await api(`/api/devices/get-all-devices?operatorId=${userId}`, 'GET');
+      const list = data?.data ?? (Array.isArray(data) ? data : []);
+      setMyDevices(Array.isArray(list) ? list : []);
+    } catch (e) {
+      console.error('Fetch my devices:', e);
+      setMyDevices([]);
+    }
+  }, [userId]);
+
+  useEffect(() => {
+    fetchMyDevices();
+  }, [fetchMyDevices]);
+
+  useEffect(() => {
+    const deviceId = project?.assignedDevice?._id ?? project?.assignedDevice;
+    setSelectedDeviceId(deviceId || '');
+  }, [project?._id, project?.assignedDevice]);
+
+  const handleSetDevice = useCallback(async () => {
+    if (!project?._id || !user_id) return;
+    setUpdatingDevice(true);
+    try {
+      const form = new FormData();
+      form.append('projectData', JSON.stringify({ assignedDevice: selectedDeviceId || null }));
+      const { ok } = await api(`/api/projects/update-project/${project._id}/${user_id}`, 'PUT', form);
+      if (ok) {
+        showAlert('Device updated for this project', 'success');
+        setSelectedProject?.((p) => (p?._id === project._id ? { ...p, assignedDevice: myDevices.find((d) => d._id === selectedDeviceId) || p.assignedDevice } : p));
+      } else {
+        showAlert('Failed to update device', 'error');
+      }
+    } catch (e) {
+      showAlert(e?.message || 'Failed to update device', 'error');
+    } finally {
+      setUpdatingDevice(false);
+    }
+  }, [project?._id, user_id, selectedDeviceId, myDevices, showAlert, setSelectedProject]);
+
   // Fetch project videos
   const fetchProjectVideos = useCallback(async () => {
     if (!project?._id) return;
@@ -311,6 +361,71 @@ const ProjectDetail = ({ project, setSelectedProject, onBack }) => {
       setLoadingVideos(false);
     }
   }, [project?._id]);
+
+  // Fetch observations with pagination + fallback to AI detections
+  const fetchObservations = useCallback(async (page = 1) => {
+    if (!project?._id) return;
+    try {
+      const { ok, data } = await api(
+        `/api/observations/get-all-observations?projectId=${project._id}&page=${page}&limit=${obsPageSize}`,
+        'GET'
+      );
+      let list = [];
+      let total = 0;
+
+      if (ok && data?.data) {
+        list = Array.isArray(data.data) ? data.data : [];
+        total = data.pagination?.total ?? list.length;
+      } else if (Array.isArray(data)) {
+        list = data;
+        total = list.length;
+      }
+
+      if (!list.length) {
+        const detRes = await api(`/api/qc-technicians/projects/${project._id}/detections`, 'GET');
+        if (detRes.ok && detRes.data?.data && Array.isArray(detRes.data.data)) {
+          const dets = detRes.data.data;
+          list = dets.map((d) => {
+            const frameNumber = d.frameNumber || 0;
+            const seconds = Math.max(0, frameNumber - 1);
+            const hh = String(Math.floor(seconds / 3600)).padStart(2, '0');
+            const mm = String(Math.floor((seconds % 3600) / 60)).padStart(2, '0');
+            const ss = String(seconds % 60).padStart(2, '0');
+            const time = `${hh}:${mm}:${ss}`;
+
+            const label = d.type || 'AI detection';
+            const remarks =
+              d.severity || d.qcStatus
+                ? `${(d.severity || d.qcStatus).toString()} • ${(d.confidence ?? 0)}%`
+                : '';
+
+            return {
+              _id: d._id,
+              distance:
+                d.location && d.location.distance != null
+                  ? String(d.location.distance)
+                  : '0.0',
+              pacpCode:
+                d.pacpCode || (label || 'AI_DEFECT').toString().toUpperCase(),
+              observation: label,
+              time,
+              remarks,
+              snapshot: false,
+            };
+          });
+          total = list.length;
+        }
+      }
+
+      setObservations(list);
+      setObsTotal(total);
+      setObsPage(page);
+    } catch (error) {
+      console.error('Error fetching observations for project:', error);
+      setObservations([]);
+      setObsTotal(0);
+    }
+  }, [project?._id, obsPageSize]);
 
   // Handle video deletion (admin only)
   const handleDeleteVideo = async () => {
@@ -440,8 +555,9 @@ const ProjectDetail = ({ project, setSelectedProject, onBack }) => {
       fetchSnapshots();
       fetchProjectMetadata();
       fetchProjectVideos();
+      fetchObservations(1);
     }
-  }, [project?._id, fetchSnapshots, fetchProjectMetadata, fetchProjectVideos]);
+  }, [project?._id, fetchSnapshots, fetchProjectMetadata, fetchProjectVideos, fetchObservations]);
 
   // Real-time polling for processing updates
   useEffect(() => {
@@ -962,6 +1078,45 @@ const ProjectDetail = ({ project, setSelectedProject, onBack }) => {
                           </span>
                         </div>
                       )}
+                      <div className="flex items-center gap-2 bg-white/60 backdrop-blur-sm px-3 py-1.5 rounded-lg border border-gray-100 shadow-sm">
+                        <Monitor className="w-4 h-4 text-gray-500" />
+                        <span className="text-sm font-medium text-gray-700">
+                          Device: {project.assignedDevice?.name || (project.assignedDevice ? '—' : 'Not set')}
+                          {(project.assignedDevice?._id ?? project.assignedDevice) && userData?.role === 'operator' && (
+                            <Button
+                              type="button"
+                              variant="link"
+                              className="h-auto p-0 ml-1 text-blue-600 hover:text-blue-800 text-sm font-normal"
+                              onClick={() => router.push(`/operator/equipement/${project.assignedDevice?._id ?? project.assignedDevice}`)}
+                            >
+                              View device
+                            </Button>
+                          )}
+                        </span>
+                      </div>
+                      {userData?.role === 'operator' && myDevices.length > 0 && (
+                        <div className="flex items-center gap-2">
+                          <Select
+                            value={selectedDeviceId || '__none__'}
+                            onValueChange={(value) =>
+                              setSelectedDeviceId(value === '__none__' ? '' : value)
+                            }
+                          >
+                            <SelectTrigger className="h-9 w-[200px] bg-white/80 border-gray-200">
+                              <SelectValue placeholder="Select device..." />
+                            </SelectTrigger>
+                            <SelectContent>
+                              <SelectItem value="__none__">None</SelectItem>
+                              {myDevices.map((d) => (
+                                <SelectItem key={d._id} value={d._id}>{d.name} {d.serialNumber ? `(${d.serialNumber})` : ''}</SelectItem>
+                              ))}
+                            </SelectContent>
+                          </Select>
+                          <Button size="sm" onClick={handleSetDevice} disabled={updatingDevice}>
+                            {updatingDevice ? <Loader2 className="w-4 h-4 animate-spin" /> : 'Set device'}
+                          </Button>
+                        </div>
+                      )}
                     </div>
                   </div>
                   <div className="flex items-center space-x-4">
@@ -1119,10 +1274,25 @@ const ProjectDetail = ({ project, setSelectedProject, onBack }) => {
 
             {/* Observations Section */}
             <ObservationsPanel
-              observations={project.observations}
+              observations={observations}
               onAddObservation={observationOpen}
               pacpCodes={pacpCodes}
               projectId={project._id}
+              page={obsPage}
+              pageSize={obsPageSize}
+              total={obsTotal}
+              onPageChange={(nextPage) => {
+                if (nextPage < 1) return;
+                fetchObservations(nextPage);
+              }}
+              onGoToTime={(obs) => {
+                if (!videoRef.current || !obs?.time) return;
+                const parts = String(obs.time).split(':').map((p) => parseInt(p, 10) || 0);
+                const seconds = parts[0] * 3600 + parts[1] * 60 + parts[2];
+                videoRef.current.currentTime = seconds;
+                setIsPlaying(true);
+                videoRef.current.play().catch(() => {});
+              }}
             />
           </div>
 

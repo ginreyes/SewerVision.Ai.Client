@@ -120,6 +120,7 @@ export default function EditProjectPage() {
   const [loadingUsers, setLoadingUsers] = useState(false);
   const [customers, setCustomers] = useState([]);
   const [loadingCustomers, setLoadingCustomers] = useState(false);
+  const [devices, setDevices] = useState([]);
 
   // Form states
   const [formData, setFormData] = useState({
@@ -150,6 +151,7 @@ export default function EditProjectPage() {
       email: "",
       certification: "",
     },
+    assignedDevice: "",
     metadata: {
       recordingDate: "",
       upstreamMH: "",
@@ -224,6 +226,7 @@ export default function EditProjectPage() {
           email: project.qcTechnician?.email || "",
           certification: project.qcTechnician?.certification || "",
         },
+        assignedDevice: project.assignedDevice?._id?.toString?.() || project.assignedDevice?.toString?.() || "",
         metadata: {
           recordingDate: project.metadata?.recordingDate || "",
           upstreamMH: project.metadata?.upstreamMH || "",
@@ -298,11 +301,26 @@ export default function EditProjectPage() {
     }
   }, [showAlert]);
 
+  const fetchDevices = useCallback(async () => {
+    try {
+      const { ok, data } = await api("/api/devices/get-all-devices", "GET");
+      const list = data?.data ?? (Array.isArray(data) ? data : []);
+      setDevices(Array.isArray(list) ? list : []);
+    } catch (e) {
+      console.error("Fetch devices:", e);
+      setDevices([]);
+    }
+  }, []);
+
   useEffect(() => {
     fetchProject();
     fetchUsers();
     fetchCustomers();
   }, [fetchProject, fetchUsers, fetchCustomers]);
+
+  useEffect(() => {
+    fetchDevices();
+  }, [fetchDevices]);
 
   // Handle field changes
   const handleFieldChange = useCallback(
@@ -479,6 +497,7 @@ export default function EditProjectPage() {
           email: originalProject.qcTechnician?.email || "",
           certification: originalProject.qcTechnician?.certification || "",
         },
+        assignedDevice: originalProject.assignedDevice?._id?.toString?.() || originalProject.assignedDevice?.toString?.() || "",
         metadata: {
           recordingDate: originalProject.metadata?.recordingDate || "",
           upstreamMH: originalProject.metadata?.upstreamMH || "",
@@ -1106,6 +1125,31 @@ export default function EditProjectPage() {
                           </div>
                         )}
                       </div>
+                    </div>
+                    {/* Device used (optional) */}
+                    <div className="border border-gray-200 rounded-lg p-4 bg-gray-50">
+                      <h4 className="font-semibold text-gray-900 mb-4">Device used (optional)</h4>
+                      <Select
+                        value={formData.assignedDevice || "__none__"}
+                        onValueChange={(v) =>
+                          setFormData((prev) => ({
+                            ...prev,
+                            assignedDevice: v === "__none__" ? "" : v,
+                          }))
+                        }
+                      >
+                        <SelectTrigger className="h-10">
+                          <SelectValue placeholder="Select device..." />
+                        </SelectTrigger>
+                        <SelectContent>
+                          <SelectItem value="__none__">None</SelectItem>
+                          {devices.map((d) => (
+                            <SelectItem key={d._id} value={d._id}>
+                              {d.name} {d.serialNumber ? `(${d.serialNumber})` : ""}
+                            </SelectItem>
+                          ))}
+                        </SelectContent>
+                      </Select>
                     </div>
                   </>
                 )}

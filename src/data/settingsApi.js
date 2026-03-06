@@ -19,7 +19,10 @@ export const settingsApi = {
     if (!response.ok) {
       throw new Error('Failed to fetch settings');
     }
-    return response.data;
+    // Backend responds with shape: { status, data: settingsObject }
+    // Prefer unwrapped settings object for callers; fall back to raw data.
+    const raw = response.data;
+    return raw?.data ?? raw;
   },
 
   /**
@@ -34,7 +37,8 @@ export const settingsApi = {
     if (!response.ok) {
       throw new Error(`Failed to fetch ${section} settings`);
     }
-    return response.data;
+    const raw = response.data;
+    return raw?.data ?? raw;
   },
 
   /**

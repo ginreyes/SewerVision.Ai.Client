@@ -126,13 +126,65 @@ const OperatorCalendarPage = () => {
     notes: ''
   })
 
-  // Fetch events
+  // Fetch events (operator-owned + user-assigned from main calendar)
   const fetchEvents = useCallback(async () => {
     try {
-      const { data, ok } = await api(`/api/operator/calendar/events?userId=${userId}`, 'GET')
-      if (ok) {
-        setEvents(data.data || [])
+      const operatorResult = await api(`/api/operator/calendar/events?userId=${userId}`, 'GET')
+      const calendarResult = await api('/api/calendar/get-event', 'GET')
+
+      let combinedEvents = []
+
+      // Base operator events
+      if (operatorResult?.ok) {
+        const raw = operatorResult.data?.data ?? operatorResult.data
+        const baseEvents = Array.isArray(raw) ? raw : []
+        combinedEvents = baseEvents
       }
+
+      // Events assigned to this operator from the user calendar
+      if (calendarResult?.ok) {
+        const raw = calendarResult.data ?? calendarResult
+        const list = raw?.data ?? raw
+        const allEvents = Array.isArray(list) ? list : []
+
+        const assignedEvents = allEvents
+          .filter((event) => {
+            const assigned = event.assignedTo
+            if (!assigned || typeof assigned !== 'object') return false
+
+            const op = assigned.operator || assigned.assignedOperator
+            if (!op) return false
+
+            const assignedId = op.userId || op.user_id || op._id
+            return assignedId && String(assignedId) === String(userId)
+          })
+          .map((event) => {
+            const type =
+              event.type && eventTypes[event.type]
+                ? event.type
+                : 'other'
+
+            const status = event.status || 'scheduled'
+
+            const assignedToLabel =
+              (event.assignedTo &&
+                event.assignedTo.operator &&
+                (event.assignedTo.operator.name ||
+                  event.assignedTo.operator.email)) ||
+              'Assigned'
+
+            return {
+              ...event,
+              type,
+              status,
+              assignedTo: assignedToLabel
+            }
+          })
+
+        combinedEvents = [...combinedEvents, ...assignedEvents]
+      }
+
+      setEvents(combinedEvents)
     } catch (error) {
       console.error('Error fetching events:', error)
       showAlert('Failed to load events', 'error')

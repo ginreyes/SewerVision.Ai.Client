@@ -76,8 +76,26 @@ export const operatorApi = {
      * Get operator tasks/assignments (projects assigned to operator)
      */
     async getTasks(operatorId, status = 'all') {
-        const query = status !== 'all' ? `?status=${status}` : '';
-        const response = await api(`/api/projects/get-all-projects${query}&assignedOperator=${operatorId}`, 'GET');
+        // Build query params for backend:
+        // - We always filter by the current operator
+        // - We keep status filtering on the frontend (TasksPage) because
+        //   the backend uses project-level statuses (field-capture, ai-processing, etc.)
+        const params = new URLSearchParams();
+
+        if (operatorId) {
+            params.append('assignedOperatorId', operatorId);
+        }
+
+        // Optional: request a larger page size so operators see more tasks
+        // without having to worry about pagination in the tasks view.
+        params.append('limit', '100');
+
+        const queryString = params.toString();
+
+        const response = await api(
+            `/api/projects/get-all-projects${queryString ? `?${queryString}` : ''}`,
+            'GET'
+        );
 
         if (!response.ok) {
             throw new Error(response.data?.error || 'Failed to fetch operator tasks');

@@ -49,6 +49,7 @@ import { FileCard } from "./components/FileCard";
 import { getFileTypeIcon, getStatusColor } from "@/lib/utils";
 import BulkUploadModal from "./components/BulkUploadModal";
 import { useAlert } from "@/components/providers/AlertProvider";
+import { useAdminUploads, useAdminUploadStats } from "@/hooks/useQueryHooks";
 
 const AdminUploads = () => {
   const { showAlert } = useAlert();
@@ -100,58 +101,27 @@ const AdminUploads = () => {
     retentionBackup: "6months"
   });
 
-  const handleFetchUploads = useCallback(async () => {
-    try {
-      setLoading(true);
-      const data = await uploadsApi.getAllUploads({
-        status: filterStatus !== "all" ? filterStatus : undefined,
-        type: filterType !== "all" ? filterType : undefined,
-        search: searchQuery || undefined,
-      });
-      setUploads(data.uploads || []);
-    } catch (error) {
-      console.error(`Fetching Upload Error: ${error.message}`);
-      showAlert('Failed to fetch uploads', 'error');
-    } finally {
-      setLoading(false);
+  // TanStack Query: admin upload list & system stats
+  const {
+    data: uploadsData,
+    isLoading: uploadsLoading,
+    refetch: refetchUploads,
+  } = useAdminUploads(
+    {
+      status: filterStatus !== "all" ? filterStatus : undefined,
+      type: filterType !== "all" ? filterType : undefined,
+      search: searchQuery || undefined,
+    },
+    {
+      keepPreviousData: true,
     }
-  }, [filterStatus, filterType, searchQuery, showAlert]);
+  );
 
-  const fetchSystemStats = useCallback(async () => {
-    try {
-      // Fetch base stats
-      const result = await uploadsApi.getSystemStats();
-
-      // Fetch real-time active/processing counts to ensure accuracy
-      const activeData = await uploadsApi.getAllUploads({ status: 'uploading', limit: 1 });
-      const processingData = await uploadsApi.getAllUploads({ status: 'processing', limit: 1 });
-      // Also check for 'in_progress' or 'pending' for AI
-      const pendingData = await uploadsApi.getAllUploads({ status: 'pending', limit: 1 });
-
-      const realTimeActive = activeData.total || 0;
-      const realTimeProcessing = (processingData.total || 0) + (pendingData.total || 0);
-
-      setSystemStats(prev => ({
-        ...(result || {
-          totalStorage: "0 GB",
-          usedStorage: "0 GB",
-          storageUsage: 0,
-          totalFiles: 0,
-          monthlyUploads: 0,
-          failedUploads: 0,
-          videoFiles: 0,
-          documentFiles: 0,
-          archiveFiles: 0,
-          otherFiles: 0,
-        }),
-        activeUploads: realTimeActive, // Override with real-time count
-        aiProcessing: realTimeProcessing // Add specific AI processing stat
-      }));
-    } catch (error) {
-      console.error(`Fetching stats Error: ${error.message}`);
-      // Don't show alert here to avoid spamming if background refresh fails
-    }
-  }, []);
+  const {
+    data: statsData,
+    isLoading: statsLoading,
+    refetch: refetchStats,
+  } = useAdminUploadStats();
 
   const fetchMonitoringData = useCallback(async () => {
     try {
@@ -180,33 +150,65 @@ const AdminUploads = () => {
     }
   }, []);
 
+  // Sync TanStack Query results into local derived state
+  useEffect(() => {
+    if (uploadsData && Array.isArray(uploadsData.uploads)) {
+      setUploads(uploadsData.uploads);
+    }
+  }, [uploadsData]);
+
+  useEffect(() => {
+    if (statsData) {
+      setSystemStats((prev) => ({
+        ...prev,
+        ...statsData,
+      }));
+    }
+  }, [statsData]);
+
+  // Persist upload settings locally as a lightweight workaround until a backend endpoint exists
   const handleSaveSettings = async () => {
     try {
       setLoading(true);
-      // Simulate API call
-      await new Promise(resolve => setTimeout(resolve, 1000));
+      if (typeof window !== 'undefined') {
+        window.localStorage.setItem(
+          'adminUploadSettings',
+          JSON.stringify(uploadSettings)
+        );
+      }
       // In a real app: await uploadsApi.updateSettings(uploadSettings);
-      showAlert('Settings saved successfully', 'success');
+      showAlert('Upload settings saved on this browser', 'success');
     } catch (error) {
+      console.error('Failed to save upload settings:', error);
       showAlert('Failed to save settings', 'error');
     } finally {
       setLoading(false);
     }
   };
 
+  // Initial load: monitoring (when needed) and persisted upload settings
   useEffect(() => {
-    fetchSystemStats();
-    handleFetchUploads();
+    // Restore upload settings from localStorage if present
+    if (typeof window !== 'undefined') {
+      try {
+        const stored = window.localStorage.getItem('adminUploadSettings');
+        if (stored) {
+          const parsed = JSON.parse(stored);
+          if (parsed && typeof parsed === 'object') {
+            setUploadSettings((prev) => ({ ...prev, ...parsed }));
+          }
+        }
+      } catch (e) {
+        console.warn('Failed to parse stored upload settings:', e);
+      }
+    }
+
     if (activeTab === 'monitoring') {
       fetchMonitoringData();
       const interval = setInterval(fetchMonitoringData, 5000); // Refresh every 5 seconds
       return () => clearInterval(interval);
     }
-  }, [fetchSystemStats, handleFetchUploads, activeTab, fetchMonitoringData]);
-
-  useEffect(() => {
-    handleFetchUploads();
-  }, [handleFetchUploads]);
+  }, [activeTab, fetchMonitoringData]);
 
   // Auto-refresh when there are videos in AI processing
   useEffect(() => {
@@ -218,12 +220,12 @@ const AdminUploads = () => {
     if (!hasProcessingVideos) return; // Don't poll if nothing is processing
 
     const interval = setInterval(() => {
-      handleFetchUploads();
-      fetchSystemStats();
+      refetchUploads();
+      refetchStats();
     }, 10000); // Refresh every 10 seconds
 
     return () => clearInterval(interval);
-  }, [uploads, handleFetchUploads, fetchSystemStats]);
+  }, [uploads, refetchUploads, refetchStats]);
 
   const formatFileSize = (bytes) => {
     if (bytes === 0) return "0 Bytes";
@@ -271,7 +273,9 @@ const AdminUploads = () => {
       showAlert(`Successfully ${action}ed ${selectedFiles.length} file(s)`, 'success');
       setSelectedFiles([]);
       setShowBulkActions(false);
-      handleFetchUploads();
+      // Refresh list & stats via TanStack Query
+      refetchUploads();
+      refetchStats();
     } catch (error) {
       console.error('Bulk action error:', error);
       showAlert(`Failed to ${action} files: ${error.message}`, 'error');
@@ -279,8 +283,8 @@ const AdminUploads = () => {
   };
 
   const handleUploadComplete = () => {
-    handleFetchUploads();
-    fetchSystemStats();
+    refetchUploads();
+    refetchStats();
   };
 
   const StatCard = ({ title, value, subtitle, icon: Icon, color, trend }) => (

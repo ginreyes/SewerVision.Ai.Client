@@ -51,7 +51,7 @@ import {
 } from '@/components/ui/table';
 import { useUser } from '@/components/providers/UserContext';
 import { useAlert } from '@/components/providers/AlertProvider';
-import { api } from '@/lib/helper';
+import { api, getCookie } from '@/lib/helper';
 import settingsApi from '@/data/settingsApi';
 
 // --- Components ---
@@ -102,7 +102,6 @@ function SettingsPageContent() {
     avatar: null
   });
 
-  console.log('User data in SettingsPageContent:', userData);
   // Password Form State
   const [passwordForm, setPasswordForm] = useState({
     currentPassword: '',
@@ -210,37 +209,37 @@ function SettingsPageContent() {
   const fetchSettings = async () => {
     setLoading(true);
     try {
-      const response = await settingsApi.getSettings();
-      const settings = response.data || {};
+      // settingsApi.getSettings already unwraps the backend { status, data } shape
+      const settings = await settingsApi.getSettings();
 
-      if (settings.aiModels) {
+      if (settings?.aiModels) {
         setSelectedModels(settings.aiModels.selectedModels || {});
         setConfidenceThreshold([settings.aiModels.confidenceThreshold || 75]);
       }
-      if (settings.cloudStreaming) {
+      if (settings?.cloudStreaming) {
         setStreamQuality(settings.cloudStreaming.streamQuality || 'high');
         setAutoSaveEnabled(settings.cloudStreaming.autoSaveEnabled ?? true);
       }
-      if (settings.qcWorkflow) {
+      if (settings?.qcWorkflow) {
         setQcWorkflow(settings.qcWorkflow || {});
       }
-      if (settings.notifications) {
+      if (settings?.notifications) {
         setNotificationsEnabled(settings.notifications.notifyCustomerOnDeliverables ?? true);
         setNotificationChannels(settings.notifications.channels || {});
         setAdminAlerts(settings.notifications.adminAlerts || {});
       }
-      if (settings.aiLearning) {
+      if (settings?.aiLearning) {
         setFeedbackLoopEnabled(settings.aiLearning.feedbackLoopEnabled ?? true);
         setTrainingFrequency(settings.aiLearning.trainingFrequency || 'weekly');
         setMinAnnotations(settings.aiLearning.minAnnotationsPerDefect || 50);
         if (settings.aiLearning.performanceMetrics) {
           setPerformanceMetrics(prev => ({
             ...prev,
-            ...settings.aiLearning.performanceMetrics
+            ...settings.aiLearning.performanceMetrics,
           }));
         }
       }
-      if (settings.awsConfig) {
+      if (settings?.awsConfig) {
         setAwsConfig(prev => ({
           ...prev,
           bucket: settings.awsConfig.bucket || '',
@@ -249,7 +248,7 @@ function SettingsPageContent() {
           secretKey: settings.awsConfig.secretAccessKey || '',
         }));
       }
-      if (settings.systemAdmin) {
+      if (settings?.systemAdmin) {
         setModelVersion(settings.systemAdmin.currentModelVersion || 'v2.1.4');
         setSystemAdmin({
           maintenanceMode: settings.systemAdmin.maintenanceMode ?? false,
@@ -323,53 +322,69 @@ function SettingsPageContent() {
     fileInputRef.current?.click();
   };
 
-  // Avatar upload – same implementation as operator settings (username only, no auth)
+  // Avatar upload – use UserContext identity; avoid stale cookie userId
   const handleAvatarFileChange = async (e) => {
-    const file = e.target.files?.[0];
-    if (!file) return;
+  const file = e.target.files?.[0];
+  if (!file) return;
 
-    if (file.size > 5 * 1024 * 1024) {
-      showAlert('Image size must be less than 5MB', 'error');
-      return;
+  if (file.size > 5 * 1024 * 1024) {
+    showAlert('Image size must be less than 5MB', 'error');
+    return;
+  }
+
+  // Resolve user identity from reliable sources (context), not cookie userId
+  const uid = userData?._id || userId;
+  const uname = userData?.username || getCookie('username');
+
+  if (!uid && !uname) {
+    showAlert('User data not loaded yet. Please refresh and try again.', 'error');
+    if (fileInputRef.current) fileInputRef.current.value = '';
+    return;
+  }
+
+  try {
+    setSaving(true);
+    const formData = new FormData();
+    formData.append('avatar', file);
+    if (uname) formData.append('username', uname);
+    if (uid) formData.append('userId', uid);
+
+    const token = getCookie('authToken');
+    const backendUrl = process.env.NEXT_PUBLIC_BACKEND_URL || 'http://localhost:5000';
+
+    // Always put userId in the URL path when available — don't rely on multipart body alone
+    // Prefer URL userId when we have a trusted id; otherwise let backend resolve by username
+    const uploadUrl = uid
+      ? `${backendUrl}/api/users/upload-avatar/${uid}`
+      : `${backendUrl}/api/users/upload-avatar`;
+
+    const res = await fetch(uploadUrl, {
+      method: 'POST',
+      headers: token ? { Authorization: `Bearer ${token}` } : {},
+      body: formData,
+    });
+
+    const data = await res.json();
+
+    if (res.ok && data.avatarUrl) {
+      const avatarUrlWithBust = `${data.avatarUrl}${data.avatarUrl.includes('?') ? '&' : '?'}t=${Date.now()}`;
+      setProfile((prev) => ({ ...prev, avatar: avatarUrlWithBust }));
+
+      if (updateUserData) updateUserData({ ...userData, avatar: data.avatarUrl });
+      refetchUser?.();
+      showAlert('Avatar uploaded successfully', 'success');
+    } else {
+      // Surface backend message like "User not found."
+      throw new Error(data?.message || 'Failed to upload avatar');
     }
-
-    const username = localStorage.getItem('username');
-    if (!username) {
-      showAlert('No username found', 'error');
-      return;
-    }
-
-    try {
-      setSaving(true);
-      const formData = new FormData();
-      formData.append('avatar', file);
-      formData.append('username', username);
-
-      const backendUrl = process.env.NEXT_PUBLIC_BACKEND_URL || 'http://localhost:5000';
-      const res = await fetch(`${backendUrl}/api/users/upload-avatar`, {
-        method: 'POST',
-        body: formData,
-      });
-
-      const data = await res.json();
-
-      if (res.ok) {
-        const avatarUrlWithBust = `${data.avatarUrl}${data.avatarUrl.includes('?') ? '&' : '?'}t=${Date.now()}`;
-        setProfile(prev => ({ ...prev, avatar: avatarUrlWithBust }));
-        if (updateUserData) updateUserData({ ...userData, avatar: data.avatarUrl });
-        refetchUser?.();
-        showAlert('Avatar uploaded successfully', 'success');
-      } else {
-        throw new Error(data.message || 'Failed to upload avatar');
-      }
-    } catch (error) {
-      console.error('Avatar upload error:', error);
-      showAlert(error.message || 'Failed to upload avatar', 'error');
-    } finally {
-      setSaving(false);
-      if (fileInputRef.current) fileInputRef.current.value = '';
-    }
-  };
+  } catch (error) {
+    console.error('Avatar upload error:', error);
+    showAlert(error.message || 'Failed to upload avatar', 'error');
+  } finally {
+    setSaving(false);
+    if (fileInputRef.current) fileInputRef.current.value = '';
+  }
+};
 
   const handlePasswordChange = async (e) => {
     e.preventDefault();

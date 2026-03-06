@@ -21,6 +21,7 @@ import { Label } from '@/components/ui/label';
 import { useUser } from '@/components/providers/UserContext';
 import { useNotifications } from '@/components/providers/NotificationProvider';
 import { useAlert } from '@/components/providers/AlertProvider';
+import { api } from '@/lib/helper';
 
 // Helper Icons
 const FileTextIcon = () => <FileText className="h-4 w-4 text-rose-500" />;
@@ -37,8 +38,10 @@ const NotificationPageQCTechnician = () => {
     markAsRead,
     markAllAsRead,
     deleteNotification,
+    deleteAllNotifications,
     fetchNotifications,
   } = useNotifications();
+  const [deletingAll, setDeletingAll] = useState(false);
   
   const [preferences, setPreferences] = useState({
     email: true,
@@ -50,9 +53,31 @@ const NotificationPageQCTechnician = () => {
     defectFound: true,
   });
 
+  // Load notifications and preferences on mount
   useEffect(() => {
     if (userId) {
       fetchNotifications(true);
+      // Load notification preferences from backend
+      const loadPreferences = async () => {
+        try {
+          const response = await api(`/api/notifications/preferences/${userId}`, 'GET');
+          if (response.ok && response.data?.data) {
+            const prefs = response.data.data;
+            setPreferences({
+              email: prefs.email ?? true,
+              push: prefs.push ?? true,
+              reportReady: prefs.reportReady ?? true,
+              aiComplete: prefs.aiComplete ?? true,
+              statusUpdate: prefs.statusUpdate ?? true,
+              qcReview: prefs.qcReview ?? true,
+              defectFound: prefs.defectFound ?? true,
+            });
+          }
+        } catch (err) {
+          console.warn('Could not load notification preferences:', err);
+        }
+      };
+      loadPreferences();
     }
   }, [userId, fetchNotifications]);
 
@@ -86,6 +111,21 @@ const NotificationPageQCTechnician = () => {
     }
   };
 
+  const handleDeleteAll = async () => {
+    if (notifications.length === 0) return;
+    if (typeof window !== 'undefined' && !window.confirm('Delete all notifications? This cannot be undone.')) return;
+    try {
+      setDeletingAll(true);
+      await deleteAllNotifications();
+      showAlert('All notifications deleted', 'success');
+    } catch (err) {
+      console.error('Error deleting all notifications:', err);
+      showAlert('Failed to delete all notifications', 'error');
+    } finally {
+      setDeletingAll(false);
+    }
+  };
+
   const togglePreference = async (key) => {
     const newPreferences = {
       ...preferences,
@@ -95,8 +135,12 @@ const NotificationPageQCTechnician = () => {
     setPreferences(newPreferences);
 
     try {
-      // TODO: Add API call to update preferences
-      showAlert('Preferences updated', 'success');
+      const response = await api(`/api/notifications/preferences/${userId}`, 'PUT', newPreferences);
+      if (response.ok) {
+        showAlert('Preferences updated', 'success');
+      } else {
+        throw new Error(response.data?.message || 'Failed to update');
+      }
     } catch (err) {
       console.error('Error updating preferences:', err);
       showAlert('Failed to update preferences', 'error');
@@ -145,10 +189,22 @@ const NotificationPageQCTechnician = () => {
           </h1>
           <p className="text-muted-foreground">Manage alerts and view recent updates</p>
         </div>
-        <Button variant="outline" size="sm" onClick={handleMarkAllAsRead} disabled={unreadCount === 0}>
-          <Check className="h-4 w-4 mr-2" />
-          Mark All as Read
-        </Button>
+        <div className="flex items-center gap-2">
+          <Button variant="outline" size="sm" onClick={handleMarkAllAsRead} disabled={unreadCount === 0}>
+            <Check className="h-4 w-4 mr-2" />
+            Mark All as Read
+          </Button>
+          <Button
+            variant="outline"
+            size="sm"
+            onClick={handleDeleteAll}
+            disabled={notifications.length === 0 || deletingAll}
+            className="text-destructive hover:text-destructive hover:bg-destructive/10"
+          >
+            {deletingAll ? <Loader2 className="h-4 w-4 mr-2 animate-spin" /> : <Trash2 className="h-4 w-4 mr-2" />}
+            Delete All
+          </Button>
+        </div>
       </div>
 
       <div className="grid gap-6 md:grid-cols-3">

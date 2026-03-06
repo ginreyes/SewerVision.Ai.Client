@@ -12,6 +12,9 @@ import {
   Monitor,
   ChevronRight,
   Folder,
+  BookOpen,
+  Calendar,
+  Settings2,
 } from 'lucide-react';
 import { cn } from '@/lib/utils';
 
@@ -32,6 +35,8 @@ const UserSidebar = ({ isOpen, role, userRoleMeta }) => {
       '/user/team': 'Team Management',
       '/user/device-assignments': 'Device Assignments',
       '/user/inbox': 'Inbox',
+      '/user/reports': 'Reports',
+      '/user/calendar': 'Calendar',
     };
 
     for (const [path, label] of Object.entries(map)) {
@@ -48,7 +53,8 @@ const UserSidebar = ({ isOpen, role, userRoleMeta }) => {
       items: [
         { label: 'Dashboard', icon: LayoutDashboard, path: '/user/dashboard' },
         { label: 'My Projects', icon: Folder, path: '/user/project' },
-        { label: 'Track Tasks', icon: ClipboardList, path: '/user/tasks' },
+        { label: 'Task Management', icon: ClipboardList, path: '/user/tasks' },
+        { label: 'Inbox', icon: Inbox, path: '/user/inbox' },
       ],
     },
     {
@@ -56,8 +62,17 @@ const UserSidebar = ({ isOpen, role, userRoleMeta }) => {
       items: [
         { label: 'Team Management', icon: Users, path: '/user/team' },
         { label: 'Device Assignments', icon: Monitor, path: '/user/device-assignments' },
-        { label: 'Inbox', icon: Inbox, path: '/user/inbox' },
+
       ],
+    },
+    {
+      label: 'Tools & Settings',
+      items: [
+        { label: 'Reports', icon: BookOpen, path: '/user/reports' },
+        { label: 'Calendar', icon: Calendar, path: '/user/calendar' },
+        { label: 'Settings', icon: Settings2, path: '/user/settings' },
+      ]
+
     },
   ];
 

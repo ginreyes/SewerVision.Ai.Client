@@ -90,11 +90,10 @@ const AdminDashboard = () => {
       // Safely extract and log error
       try {
         const errorMsg = err?.message || err?.toString() || 'Failed to load dashboard data';
-        // Use console.log instead of console.error to avoid Next.js error handler interception
         console.log('Error fetching dashboard data:', errorMsg);
         setError(errorMsg);
-      } catch (logError) {
-        // If we can't extract error, set a generic message
+      } 
+      catch (logError) {
         setError('Failed to load dashboard data');
       }
     } finally {

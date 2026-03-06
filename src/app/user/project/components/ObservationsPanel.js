@@ -24,16 +24,107 @@ import ObservationAction from "./ObservationAction";
 import { useRouter } from "next/navigation";
 
 const ObservationsPanel = (props) => {
-  const { observations = [], onAddObservation, pacpCodes , projectId } = props;
+  const {
+    observations = [],
+    onAddObservation,
+    pacpCodes,
+    projectId,
+    page = 1,
+    pageSize = 20,
+    total = 0,
+    onPageChange,
+    onGoToTime,
+  } = props;
 
-  const project_id = projectId
+  const project_id = projectId;
 
   //states
   const [isExpanded, setIsExpanded] = useState(true);
   const [showFilter, setShowFilter] = useState(false);
   const [showActions, setShowActions] = useState(false);
+  const [searchTerm, setSearchTerm] = useState('');
+  const [filterCode, setFilterCode] = useState('');
+  const [filterSeverity, setFilterSeverity] = useState('');
+  const [selectedRowId, setSelectedRowId] = useState(null);
+  const [denseRows, setDenseRows] = useState(false);
 
   const router = useRouter();
+
+  const headerCellClass = denseRows
+    ? 'text-left py-2 px-3 text-xs font-medium text-gray-700'
+    : 'text-left py-3 px-4 text-sm font-medium text-gray-700';
+
+  const bodyCellClass = denseRows
+    ? 'py-1.5 px-3 text-xs'
+    : 'py-3 px-4 text-sm';
+
+  const filteredObservations = observations.filter((obs) => {
+    if (filterCode) {
+      const code = String(obs.pacpCode || '').toUpperCase();
+      const target = String(filterCode).toUpperCase();
+      if (!code.startsWith(target)) return false;
+    }
+    if (filterSeverity) {
+      const sev = String(obs.severity || '').toLowerCase();
+      if (!sev.includes(filterSeverity.toLowerCase())) return false;
+    }
+    if (searchTerm) {
+      const q = searchTerm.toLowerCase();
+      return (
+        (obs.observation || '').toLowerCase().includes(q) ||
+        (obs.remarks || '').toLowerCase().includes(q) ||
+        (obs.pacpCode || '').toLowerCase().includes(q)
+      );
+    }
+    return true;
+  });
+
+  const handleCopyAll = async () => {
+    try {
+      if (!filteredObservations.length) {
+        setShowActions(false);
+        return;
+      }
+
+      const header = ['#', 'Distance', 'PACP Code', 'Observation', 'Time', 'Remarks'];
+      const lines = filteredObservations.map((obs, idx) => {
+        const rowIndex = idx + 1 + (page - 1) * pageSize;
+        const fields = [
+          rowIndex,
+          obs.distance ?? '',
+          obs.pacpCode ?? '',
+          obs.observation ?? '',
+          obs.time ?? '',
+          obs.remarks ?? '',
+        ];
+        return fields.join('\t');
+      });
+
+      const text = [header.join('\t'), ...lines].join('\n');
+
+      if (typeof navigator !== 'undefined' && navigator.clipboard?.writeText) {
+        await navigator.clipboard.writeText(text);
+      } else if (typeof document !== 'undefined') {
+        const textarea = document.createElement('textarea');
+        textarea.value = text;
+        textarea.style.position = 'fixed';
+        textarea.style.opacity = '0';
+        document.body.appendChild(textarea);
+        textarea.select();
+        document.execCommand('copy');
+        document.body.removeChild(textarea);
+      }
+    } catch (err) {
+      console.error('Failed to copy observations:', err);
+    } finally {
+      setShowActions(false);
+    }
+  };
+
+  const handleTableSettings = () => {
+    setDenseRows((prev) => !prev);
+    setShowActions(false);
+  };
 
   return (
     <div className="bg-white rounded-lg shadow-sm">
@@ -75,6 +166,8 @@ const ObservationsPanel = (props) => {
               <input
                 type="text"
                 placeholder="Search observations..."
+                value={searchTerm}
+                onChange={(e) => setSearchTerm(e.target.value)}
                 className="w-full pl-10 pr-20 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
               />
               <div className="absolute right-2 top-1/2 transform -translate-y-1/2">
@@ -90,7 +183,14 @@ const ObservationsPanel = (props) => {
                   {showFilter && (
                     <ObservationFilterPopover
                       pacpCodes={pacpCodes}
+                      code={filterCode}
+                      severity={filterSeverity}
                       onClose={() => setShowFilter(!showFilter)}
+                      onApply={(code, severity) => {
+                        setFilterCode(code || '');
+                        setFilterSeverity(severity || '');
+                        setShowFilter(false);
+                      }}
                     />
                   )}
                 </div>
@@ -108,10 +208,10 @@ const ObservationsPanel = (props) => {
               {showActions && (
                 <ObservationAction
                   onClose={() => setShowActions(false)}
-                  onExport={() => console.log("Export")}
-                  onCopy={() => console.log("Copy")}
-                  onShare={() => console.log("Share")}
-                  onSettings={() => console.log("Settings")}
+                  onExport={() => console.log('Export')}
+                  onCopy={handleCopyAll}
+                  onShare={() => console.log('Share')}
+                  onSettings={handleTableSettings}
                 />
               )}
             </div>
@@ -134,7 +234,7 @@ const ObservationsPanel = (props) => {
                   ].map((head) => (
                     <th
                       key={head}
-                      className="text-left py-3 px-4 text-sm font-medium text-gray-700"
+                      className={headerCellClass}
                     >
                       {head}
                     </th>
@@ -142,22 +242,27 @@ const ObservationsPanel = (props) => {
                 </tr>
               </thead>
               <tbody>
-                {observations.map((obs, index) => (
+                {filteredObservations.map((obs, index) => (
                   <tr
                     key={obs._id}
-                    className="border-b border-gray-100 hover:bg-gray-50"
+                    onClick={() => setSelectedRowId(obs._id)}
+                    className={`border-b border-gray-100 hover:bg-gray-50 cursor-pointer ${
+                      selectedRowId === obs._id ? 'bg-blue-50' : ''
+                    }`}
                   >
-                    <td className="py-3 px-4 text-sm">{obs._id}</td>
-                    <td className="py-3 px-4 text-sm">{obs.distance}</td>
-                    <td className="py-3 px-4 text-sm">
+                    <td className={bodyCellClass}>
+                      {index + 1 + (page - 1) * pageSize}
+                    </td>
+                    <td className={bodyCellClass}>{obs.distance}</td>
+                    <td className={bodyCellClass}>
                       <span className="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-blue-100 text-blue-800">
                         {obs.pacpCode}
                       </span>
                     </td>
-                    <td className="py-3 px-4 text-sm">{obs.observation}</td>
-                    <td className="py-3 px-4 text-sm">{obs.time}</td>
-                    <td className="py-3 px-4 text-sm">{obs.remarks}</td>
-                    <td className="py-3 px-4 text-sm">
+                    <td className={bodyCellClass}>{obs.observation}</td>
+                    <td className={bodyCellClass}>{obs.time}</td>
+                    <td className={bodyCellClass}>{obs.remarks}</td>
+                    <td className={bodyCellClass}>
                       {obs.snapshot ? (
                         <button className="p-1 hover:bg-gray-100 rounded transition-colors">
                           <PlayCircle className="h-4 w-4 text-blue-600" />
@@ -168,7 +273,7 @@ const ObservationsPanel = (props) => {
                         </span>
                       )}
                     </td>
-                    <td className="py-3 px-4 text-sm">
+                    <td className={bodyCellClass}>
                       <Popover>
                         <PopoverTrigger asChild>
                           <button className="p-1 hover:bg-gray-100 rounded">
@@ -191,9 +296,14 @@ const ObservationsPanel = (props) => {
                           <DropdownItem
                             icon={<PlayCircle />}
                             label="Go to Time"
+                            onClick={() => {
+                              if (typeof onGoToTime === 'function') {
+                                onGoToTime(obs);
+                              }
+                            }}
                           />
                           <hr className="my-1" />
-                          
+
                         </PopoverContent>
                       </Popover>
                     </td>
@@ -202,6 +312,40 @@ const ObservationsPanel = (props) => {
               </tbody>
             </table>
           </div>
+
+          {/* Pagination */}
+          {onPageChange && total > pageSize && (
+            <div className="flex items-center justify-between mt-4 text-xs text-gray-600">
+              <div>
+                Showing{' '}
+                {Math.min(1 + (page - 1) * pageSize, total)}–
+                {Math.min(page * pageSize, total)} of {total} observations
+              </div>
+              <div className="flex items-center gap-2">
+                <Button
+                  variant="outline"
+                  size="sm"
+                  className="h-7 px-2 text-xs"
+                  disabled={page <= 1}
+                  onClick={() => onPageChange(page - 1)}
+                >
+                  Previous
+                </Button>
+                <span>
+                  Page {page}
+                </span>
+                <Button
+                  variant="outline"
+                  size="sm"
+                  className="h-7 px-2 text-xs"
+                  disabled={page * pageSize >= total}
+                  onClick={() => onPageChange(page + 1)}
+                >
+                  Next
+                </Button>
+              </div>
+            </div>
+          )}
         </div>
       )}
     </div>

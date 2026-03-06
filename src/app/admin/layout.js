@@ -3,7 +3,7 @@
 import Navbar from "@/components/ui/navbar";
 import Sidebar from "@/components/ui/sidebar";
 import { useEffect, useState } from "react";
-import { usePathname, useRouter } from "next/navigation";
+import { useRouter } from "next/navigation";
 import { api, getCookie, deleteCookie } from "@/lib/helper";
 import AdminSidebar from "@/components/ui/AdminSidebar";
 import { TourGuide, useTourGuide } from "@/components/TourGuide";
@@ -12,7 +12,6 @@ export default function AdminLayout({ children }) {
   const [openSidebar, setOpenSidebar] = useState(true);
   const [role, setRole] = useState(null);
   const router = useRouter();
-  const pathname = usePathname();
 
   // Tour Guide state
   const { showTour, openTour, closeTour } = useTourGuide('admin');
@@ -28,8 +27,8 @@ export default function AdminLayout({ children }) {
     return () => window.removeEventListener('openTourGuide', handleOpenTour);
   }, [openTour]);
 
+  // Strict role-gating for all /admin pages
   useEffect(() => {
-    // If we already have a role, don't re-fetch unnecessarily
     if (role) return;
 
     const fetchUserRole = async () => {
@@ -37,7 +36,6 @@ export default function AdminLayout({ children }) {
         const storedUsername = getCookie("username");
         const token = getCookie("authToken");
         if (!storedUsername || !token) {
-          // Only redirect if we definitely don't have a user
           router.push("/login");
           return;
         }
@@ -45,24 +43,20 @@ export default function AdminLayout({ children }) {
         const { data, error } = await api(`/api/users/role/${storedUsername}`, "GET");
 
         if (!error && data?.role) {
-          setRole(data.role);
-
-          // Redirect based on role if needed, but only if strictly necessary
-          if (data.role === "customer" && pathname.startsWith("/admin")) {
-            router.push("/viewer/dashboard");
-          } else if (data.role === "admin" && pathname.startsWith("/viewer")) {
-            router.push("/admin/dashboard");
+          if (data.role !== "admin") {
+            // Non-admin users are redirected to their own dashboard
+            router.push(`/${data.role}/dashboard`);
+            return;
           }
+          setRole("admin");
         } else {
           console.error("Role check failed:", error || "No role returned");
-          // Auth failed: Clear session cookies and redirect to login
           deleteCookie("authToken");
           deleteCookie("username");
           deleteCookie("role");
           router.push("/login");
         }
-      } 
-      catch (error) {
+      } catch (error) {
         console.error("Failed to fetch role", error);
         deleteCookie("authToken");
         deleteCookie("username");
@@ -72,16 +66,7 @@ export default function AdminLayout({ children }) {
     };
 
     fetchUserRole();
-  }, []); 
-
-  // Secondary effect to handle route protection AFTER role is loaded
-  useEffect(() => {
-    if (!role) return;
-
-    if (role === "customer" && pathname.startsWith("/admin")) {
-      router.push("/viewer/dashboard");
-    }
-  }, [role, pathname, router]);
+  }, [role, router]);
 
   if (!role) return null;
 

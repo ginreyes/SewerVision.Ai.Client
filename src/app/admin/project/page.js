@@ -28,6 +28,7 @@ const SewerVisionInspectionModuleContent = () => {
   const pathname = usePathname();
   const router = useRouter();
   const selectedProjectId = searchParams.get('selectedProject');
+  const initialTime = searchParams.get('time');
 
   const isOperatorRoute = pathname?.startsWith('/operator');
 
@@ -168,6 +169,7 @@ const SewerVisionInspectionModuleContent = () => {
                 project={selectedProject}
                 setSelectedProject={setSelectedProject}
                 onBack={handleBackToProjects}
+                initialSeekTime={initialTime}
               />
             </div>
           </>

@@ -264,10 +264,10 @@ const AddObservation = (props) => {
     try {
       if (!validateForm()) return;
 
-      // Prepare observation data with captured frame
+      // Prepare observation data; we'll enrich with snapshotUrl if snapshot is saved
       const observationData = {
         ...formData,
-        capturedFrame: capturedFrame, // Include captured frame if available
+        capturedFrame: capturedFrame,
       };
 
       // If snapshot is enabled and we have a captured frame, save it as snapshot
@@ -288,7 +288,12 @@ const AddObservation = (props) => {
           );
 
           if (snapshotResponse.ok) {
-            console.log('Snapshot saved:', snapshotResponse.data);
+            const raw = snapshotResponse.data;
+            const savedSnapshot = raw?.data || raw;
+            if (savedSnapshot?.imageUrl) {
+              observationData.snapshot = true;
+              observationData.snapshotUrl = savedSnapshot.imageUrl;
+            }
           }
         } catch (snapshotError) {
           console.error('Error saving snapshot:', snapshotError);
@@ -431,7 +436,7 @@ const AddObservation = (props) => {
                         </SelectItem>
                       ))
                     ) : (
-                      <SelectItem value="" disabled>No PACP codes available</SelectItem>
+                      <SelectItem value="no-pacp-codes" disabled>No PACP codes available</SelectItem>
                     )}
                   </SelectContent>
                 </Select>

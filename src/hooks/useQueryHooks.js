@@ -8,6 +8,8 @@ import { reportsApi } from '@/data/reportsApi';
 import { settingsApi } from '@/data/settingsApi';
 import { uploadsApi } from '@/data/uploadsApi';
 import { operatorApi } from '@/data/operatorApi';
+import { devicesApi } from '@/data/devicesApi';
+import notificationApi from '@/data/notificationApi ';
 
 /**
  * Query Keys - Centralized key management for cache invalidation
@@ -47,10 +49,35 @@ export const queryKeys = {
     userSettings: (userId) => ['settings', userId],
     userPreferences: (userId) => ['settings', 'preferences', userId],
 
-    // Uploads/Projects
+    // Projects (shared)
     projects: ['projects'],
     project: (projectId) => ['projects', projectId],
     projectMedia: (projectId) => ['projects', projectId, 'media'],
+    projectVideos: (projectId) => ['projects', projectId, 'videos'],
+
+    // Admin uploads
+    adminUploads: (params) => ['admin', 'uploads', params ?? {}],
+    adminUploadStats: ['admin', 'uploads', 'stats'],
+
+    // Admin reports
+    adminReports: (filters) => ['admin', 'reports', filters ?? {}],
+    adminReport: (reportId) => ['admin', 'report', reportId],
+
+    // Admin maintenance tasks
+    adminTasks: (filters) => ['admin', 'tasks', filters ?? {}],
+    adminTask: (taskId) => ['admin', 'task', taskId],
+
+    // User inbox / notifications
+    userInbox: (userId, filters) => ['user', 'inbox', userId, filters ?? {}],
+    userUnreadCount: (userId) => ['user', 'inbox', userId, 'unread-count'],
+
+    // Customer views
+    customerDashboard: (customerId) => ['customer', 'dashboard', customerId],
+    customerProjects: (customerId, filters) => ['customer', 'projects', customerId, filters ?? {}],
+
+    // Devices (admin)
+    devices: (params) => ['devices', params ?? {}],
+    device: (deviceId) => ['devices', deviceId],
 };
 
 /**
@@ -191,6 +218,30 @@ export function useQCAssignment(assignmentId, options = {}) {
 }
 
 /**
+ * Hook for fetching a single project (by ID)
+ */
+export function useProject(projectId, options = {}) {
+    return useQuery({
+        queryKey: queryKeys.project(projectId),
+        queryFn: () => qcApi.getProject(projectId),
+        enabled: !!projectId,
+        ...options,
+    });
+}
+
+/**
+ * Hook for fetching project videos
+ */
+export function useProjectVideos(projectId, options = {}) {
+    return useQuery({
+        queryKey: queryKeys.projectVideos(projectId),
+        queryFn: () => qcApi.getProjectVideos(projectId),
+        enabled: !!projectId,
+        ...options,
+    });
+}
+
+/**
  * Hook for fetching project detections
  */
 export function useProjectDetections(projectId, qcStatus = 'all', options = {}) {
@@ -236,10 +287,39 @@ export function useReviewDetection() {
         mutationFn: ({ detectionId, reviewData }) =>
             qcApi.reviewDetection(detectionId, reviewData),
         onSuccess: (data, variables) => {
-            // Invalidate related queries
             queryClient.invalidateQueries({ queryKey: ['qc', 'detection', variables.detectionId] });
             queryClient.invalidateQueries({ queryKey: ['qc', 'detections'] });
             queryClient.invalidateQueries({ queryKey: ['qc', 'dashboard'] });
+        },
+    });
+}
+
+/**
+ * Hook for creating a manual detection
+ */
+export function useCreateManualDetection() {
+    const queryClient = useQueryClient();
+
+    return useMutation({
+        mutationFn: ({ projectId, payload }) => qcApi.createManualDetection(projectId, payload),
+        onSuccess: (data, variables) => {
+            queryClient.invalidateQueries({ queryKey: queryKeys.qcDetections(variables.projectId) });
+            queryClient.invalidateQueries({ queryKey: ['qc', 'detections'] });
+        },
+    });
+}
+
+/**
+ * Hook for completing a QC assignment
+ */
+export function useCompleteQCAssignment() {
+    const queryClient = useQueryClient();
+
+    return useMutation({
+        mutationFn: (projectId) => qcApi.completeAssignment(projectId),
+        onSuccess: (data, variables) => {
+            queryClient.invalidateQueries({ queryKey: ['qc', 'assignments'] });
+            queryClient.invalidateQueries({ queryKey: queryKeys.project(variables) });
         },
     });
 }
@@ -425,6 +505,171 @@ export function useDeleteNote() {
 }
 
 /**
+ * ============ ADMIN UPLOADS HOOKS ============
+ */
+
+export function useAdminUploads(params = {}, options = {}) {
+    return useQuery({
+        queryKey: queryKeys.adminUploads(params),
+        queryFn: () => uploadsApi.getAllUploads(params),
+        staleTime: 1000 * 30, // uploads list changes fairly often
+        ...options,
+    });
+}
+
+export function useAdminUploadStats(options = {}) {
+    return useQuery({
+        queryKey: queryKeys.adminUploadStats,
+        queryFn: () => uploadsApi.getSystemStats(),
+        staleTime: 1000 * 30,
+        ...options,
+    });
+}
+
+/**
+ * ============ ADMIN REPORTS HOOKS ============
+ */
+
+export function useAdminReports(filters = {}, options = {}) {
+    return useQuery({
+        queryKey: queryKeys.adminReports(filters),
+        queryFn: () => reportsApi.getReports(filters),
+        ...options,
+    });
+}
+
+export function useAdminReport(reportId, options = {}) {
+    return useQuery({
+        queryKey: queryKeys.adminReport(reportId),
+        queryFn: () => reportsApi.getReportById(reportId),
+        enabled: !!reportId,
+        ...options,
+    });
+}
+
+/**
+ * ============ USER INBOX HOOKS ============
+ */
+
+export function useUserInbox(userId, filters = {}, options = {}) {
+    return useQuery({
+        queryKey: queryKeys.userInbox(userId, filters),
+        queryFn: () => notificationApi.getNotifications(userId, filters),
+        enabled: !!userId,
+        staleTime: 1000 * 10,
+        ...options,
+    });
+}
+
+export function useUserUnreadCount(userId, options = {}) {
+    return useQuery({
+        queryKey: queryKeys.userUnreadCount(userId),
+        queryFn: () => notificationApi.getUnreadCount(userId),
+        enabled: !!userId,
+        staleTime: 1000 * 10,
+        ...options,
+    });
+}
+
+/**
+ * ============ DEVICES HOOKS (Admin) ============
+ */
+
+export function useDevices(params = {}, options = {}) {
+    return useQuery({
+        queryKey: queryKeys.devices(params),
+        queryFn: () => devicesApi.getDevices(params),
+        staleTime: 1000 * 60 * 2,
+        ...options,
+    });
+}
+
+export function useDevice(deviceId, options = {}) {
+    return useQuery({
+        queryKey: queryKeys.device(deviceId),
+        queryFn: () => devicesApi.getDeviceById(deviceId),
+        enabled: !!deviceId,
+        ...options,
+    });
+}
+
+export function useCreateDevice(options = {}) {
+    const queryClient = useQueryClient();
+    return useMutation({
+        mutationFn: (payload) => devicesApi.createDevice(payload),
+        onSuccess: () => {
+            queryClient.invalidateQueries({ queryKey: ['devices'] });
+        },
+        ...options,
+    });
+}
+
+export function useUpdateDevice(options = {}) {
+    const queryClient = useQueryClient();
+    return useMutation({
+        mutationFn: ({ id, payload }) => devicesApi.updateDevice(id, payload),
+        onSuccess: (_, variables) => {
+            queryClient.invalidateQueries({ queryKey: ['devices'] });
+            queryClient.invalidateQueries({ queryKey: queryKeys.device(variables.id) });
+        },
+        ...options,
+    });
+}
+
+export function useDeleteDevice(options = {}) {
+    const queryClient = useQueryClient();
+    return useMutation({
+        mutationFn: (id) => devicesApi.deleteDevice(id),
+        onSuccess: () => {
+            queryClient.invalidateQueries({ queryKey: ['devices'] });
+        },
+        ...options,
+    });
+}
+
+export function useAssignDeviceToTeamLeader(options = {}) {
+    const queryClient = useQueryClient();
+    return useMutation({
+        mutationFn: ({ deviceId, teamLeaderId }) =>
+            devicesApi.assignToTeamLeader(deviceId, teamLeaderId),
+        onSuccess: () => {
+            queryClient.invalidateQueries({ queryKey: ['devices'] });
+        },
+        ...options,
+    });
+}
+
+/**
+ * ============ MUTATION HOOKS (Admin uploads & reports) ============
+ */
+
+export function useBulkUploadAction(options = {}) {
+    const queryClient = useQueryClient();
+    return useMutation({
+        mutationFn: ({ action, uploadIds }) => uploadsApi.bulkAction(action, uploadIds),
+        onSuccess: () => {
+            // Refresh admin uploads lists and stats
+            queryClient.invalidateQueries({ queryKey: ['admin', 'uploads'] });
+            queryClient.invalidateQueries({ queryKey: queryKeys.adminUploadStats });
+        },
+        ...options,
+    });
+}
+
+export function useUpdateReport(options = {}) {
+    const queryClient = useQueryClient();
+    return useMutation({
+        mutationFn: ({ reportId, data }) => reportsApi.updateReport(reportId, data),
+        onSuccess: (_data, variables) => {
+            // Refresh specific report and any admin reports lists
+            queryClient.invalidateQueries({ queryKey: queryKeys.adminReport(variables.reportId) });
+            queryClient.invalidateQueries({ queryKey: ['admin', 'reports'] });
+        },
+        ...options,
+    });
+}
+
+/**
  * ============ CACHE UTILITIES ============
  */
 
@@ -499,8 +744,12 @@ export default {
     useQCDashboardStats,
     useQCAssignments,
     useQCAssignment,
+    useProject,
+    useProjectVideos,
     useProjectDetections,
     useDetection,
+    useCreateManualDetection,
+    useCompleteQCAssignment,
     useDetectionComments,
     useReviewDetection,
     useStartQCSession,
@@ -516,6 +765,12 @@ export default {
     useCreateNote,
     useUpdateNote,
     useDeleteNote,
+    useDevices,
+    useDevice,
+    useCreateDevice,
+    useUpdateDevice,
+    useDeleteDevice,
+    useAssignDeviceToTeamLeader,
     useQueryUtilities,
     queryKeys,
 };

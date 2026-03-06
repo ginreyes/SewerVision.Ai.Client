@@ -241,7 +241,11 @@ const ObservationDetailsPageContent = () => {
   }, [showAlert]);
 
   const handleGoToTime = () => {
-    console.log("Navigate to time:", observation.time);
+    if (!projectId || !observation?.time) {
+      return;
+    }
+    const encodedTime = encodeURIComponent(observation.time);
+    router.push(`/admin/project?selectedProject=${projectId}&time=${encodedTime}`);
   };
 
   useEffect(() => {
@@ -712,9 +716,41 @@ const ObservationDetailsPageContent = () => {
                       Observation Snapshot
                     </span>
                   </div>
-                  <Button variant="ghost" size="sm">
-                    <Download className="h-4 w-4" />
-                  </Button>
+                  <div className="flex items-center space-x-3">
+                    {observation.snapshotUrl ? (
+                      <a
+                        href={observation.snapshotUrl}
+                        target="_blank"
+                        rel="noopener noreferrer"
+                        className="block w-24 h-16 overflow-hidden rounded border border-gray-200 bg-gray-50"
+                      >
+                        <img
+                          src={observation.snapshotUrl}
+                          alt="Observation snapshot"
+                          className="w-full h-full object-cover"
+                        />
+                      </a>
+                    ) : (
+                      <span className="text-xs text-gray-400">
+                        Snapshot image not available
+                      </span>
+                    )}
+                    {observation.snapshotUrl && (
+                      <Button
+                        variant="ghost"
+                        size="sm"
+                        asChild
+                      >
+                        <a
+                          href={observation.snapshotUrl}
+                          download={`observation-${observation._id}-snapshot.jpg`}
+                        >
+                          <Download className="h-4 w-4 mr-1" />
+                          Download
+                        </a>
+                      </Button>
+                    )}
+                  </div>
                 </div>
               </div>
             )}

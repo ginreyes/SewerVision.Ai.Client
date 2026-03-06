@@ -4,7 +4,7 @@ import { Download, Copy, Share2, Settings } from 'lucide-react';
 
 const ObservationAction = ({ onClose, onExport, onCopy, onShare, onSettings }) => {
   return (
-    <div className="absolute right-0 top-full mt-1 w-48 bg-white border border-gray-200 rounded-lg shadow-lg z-10">
+    <div className="absolute right-0 top-full mt-1 w-48 bg-white border border-gray-200 rounded-lg shadow-lg z-50">
       <div className="py-1">
         <DropdownItem icon={<Download />} label="Export Observations" onClick={onExport} />
         <DropdownItem icon={<Copy />} label="Copy All" onClick={onCopy} />

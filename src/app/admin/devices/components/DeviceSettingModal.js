@@ -1,6 +1,6 @@
 'use client'
 
-import React, { useState, useEffect } from 'react' 
+import React, { useState, useEffect } from 'react'
 import {
   Settings,
   Wifi,
@@ -11,7 +11,12 @@ import {
   Save,
   RotateCcw,
   Trash2,
-  Info
+  Info,
+  Loader2,
+  User,
+  Upload,
+  Copy,
+  Check
 } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
@@ -25,21 +30,52 @@ import { Alert, AlertDescription } from '@/components/ui/alert'
 import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle, DialogFooter } from '@/components/ui/dialog'
 import { Separator } from '@/components/ui/separator'
 import { Label } from '@/components/ui/label'
+import { QRCodeSVG } from 'qrcode.react'
+import { api } from '@/lib/helper'
+import { devicesApi } from '@/data/devicesApi'
+import { useAssignDeviceToTeamLeader } from '@/hooks/useQueryHooks'
+import { useAlert } from '@/components/providers/AlertProvider'
 
 const DeviceSettingsModal = (props) => {
-  const { isOpen, onClose, device } = props
+  const { isOpen, onClose, device, onSaved } = props
+  const { showAlert } = useAlert()
+  const assignToTeamLeader = useAssignDeviceToTeamLeader()
 
   const [settings, setSettings] = useState({})
   const [hasChanges, setHasChanges] = useState(false)
+  const [saving, setSaving] = useState(false)
   const [showResetDialog, setShowResetDialog] = useState(false)
+  const [teamLeaders, setTeamLeaders] = useState([])
+  const [selectedTeamLeaderId, setSelectedTeamLeaderId] = useState('')
+  const [generatedSecret, setGeneratedSecret] = useState(null)
+  const [generatingSecret, setGeneratingSecret] = useState(false)
+  const [secretCopied, setSecretCopied] = useState(false)
+  const [showDeleteDialog, setShowDeleteDialog] = useState(false)
+  const [deleting, setDeleting] = useState(false)
+
+  useEffect(() => {
+    const fetchTeamLeaders = async () => {
+      try {
+        const { ok, data } = await api('/api/users/get-all-user', 'GET')
+        if (!ok || !Array.isArray(data?.users)) return
+        setTeamLeaders(data.users.filter((u) => String(u.role || '').toLowerCase() === 'user'))
+      } catch (e) {
+        console.error('Fetch team leaders:', e)
+      }
+    }
+    fetchTeamLeaders()
+  }, [])
 
   useEffect(() => {
     if (!device) return
+    const tl = device.teamLeader
+    setSelectedTeamLeaderId(tl ? (typeof tl === 'object' ? tl._id : tl) : '')
 
     const newSettings = {
       deviceName: device.name || '',
       location: device.location || '',
       operator: device.operator || '',
+      teamLeader: device.teamLeader || '',
       
       wifiEnabled: true,
       wifiSSID: 'SewerVision-Field',
@@ -122,10 +158,53 @@ const DeviceSettingsModal = (props) => {
     setHasChanges(true)
   }
 
-  const handleSave = () => {
-    console.log('Saving device settings:', settings)
-    setHasChanges(false)
-    onClose()
+  const handleSave = async () => {
+    if (!device?._id) return
+    setSaving(true)
+    try {
+      const payload = {
+        name: settings.deviceName || device.name,
+        location: settings.location || device.location,
+        ipAddress: settings.ipAddress || device.ipAddress,
+        specifications: {
+          ...(device.specifications || {}),
+          resolution: settings.videoQuality || device.specifications?.resolution,
+        },
+        settings: {
+          aiEnabled: settings.aiEnabled ?? device.settings?.aiEnabled ?? true,
+          autoUpload: settings.autoUpload ?? device.settings?.autoUpload ?? true,
+          qualityThreshold: device.settings?.qualityThreshold ?? 80,
+          confidenceThreshold: settings.aiConfidenceThreshold?.[0] ?? device.settings?.confidenceThreshold ?? 85,
+        },
+        firmwareVersion: settings.firmwareVersion || device.firmwareVersion,
+      }
+      const result = await devicesApi.updateDevice(device._id, payload)
+      const updated = result?.data ?? result
+      showAlert('Device settings saved', 'success')
+      setHasChanges(false)
+      onSaved?.(updated)
+      onClose()
+    } catch (err) {
+      showAlert(err?.message || 'Failed to save device settings', 'error')
+    } finally {
+      setSaving(false)
+    }
+  }
+
+  const handleDeleteDevice = async () => {
+    if (!device?._id) return
+    setDeleting(true)
+    try {
+      await devicesApi.deleteDevice(device._id)
+      showAlert('Device deleted', 'success')
+      onSaved?.()
+      onClose()
+    } catch (err) {
+      showAlert(err?.message || 'Failed to delete device', 'error')
+    } finally {
+      setDeleting(false)
+      setShowDeleteDialog(false)
+    }
   }
 
   const handleReset = () => {
@@ -243,6 +322,7 @@ const DeviceSettingsModal = (props) => {
               <TabsTrigger value="ai">AI & Processing</TabsTrigger>
               {isFieldDevice && <TabsTrigger value="power">Power</TabsTrigger>}
               <TabsTrigger value="advanced">Advanced</TabsTrigger>
+              <TabsTrigger value="ingest">Device data</TabsTrigger>
             </TabsList>
 
             {/* General Settings */}
@@ -276,12 +356,41 @@ const DeviceSettingsModal = (props) => {
 
                   {isFieldDevice && (
                     <div className="space-y-2">
-                      <Label htmlFor="operator">Assigned Operator</Label>
-                      <Input
-                        id="operator"
-                        value={settings.operator || ''}
-                        onChange={(e) => handleSettingChange('operator', e.target.value)}
-                      />
+                      <Label>Assigned Team Leader</Label>
+                      <div className="flex gap-2">
+                        <Select
+                          value={selectedTeamLeaderId || '__none__'}
+                          onValueChange={(v) => setSelectedTeamLeaderId(v === '__none__' ? '' : v)}
+                        >
+                          <SelectTrigger className="flex-1">
+                            <SelectValue placeholder="Select team leader" />
+                          </SelectTrigger>
+                          <SelectContent>
+                            <SelectItem value="__none__">Unassigned</SelectItem>
+                            {teamLeaders.map((tl) => (
+                              <SelectItem key={tl._id} value={tl._id}>
+                                {[tl.first_name, tl.last_name].filter(Boolean).join(' ') || tl.username || 'Team Leader'}
+                              </SelectItem>
+                            ))}
+                          </SelectContent>
+                        </Select>
+                        <Button
+                          size="sm"
+                          disabled={assignToTeamLeader.isPending || !selectedTeamLeaderId || selectedTeamLeaderId === (device.teamLeader?._id || device.teamLeader)}
+                          onClick={async () => {
+                            if (!device?._id || !selectedTeamLeaderId) return
+                            try {
+                              await assignToTeamLeader.mutateAsync({ deviceId: device._id, teamLeaderId: selectedTeamLeaderId })
+                              showAlert('Team leader updated', 'success')
+                            } catch (err) {
+                              showAlert(err?.message || 'Failed to update team leader', 'error')
+                            }
+                          }}
+                        >
+                          {assignToTeamLeader.isPending ? <Loader2 className="w-4 h-4 animate-spin" /> : 'Update'}
+                        </Button>
+                      </div>
+                      <p className="text-xs text-gray-500">Team leaders assign this device to QC and operators.</p>
                     </div>
                   )}
 
@@ -663,7 +772,7 @@ const DeviceSettingsModal = (props) => {
 
                   <div className="space-y-2">
                     <Label className="text-red-600">Danger Zone</Label>
-                    <div className="flex space-x-2">
+                    <div className="flex flex-wrap gap-2">
                       <Button 
                         variant="outline" 
                         onClick={() => setShowResetDialog(true)}
@@ -676,11 +785,149 @@ const DeviceSettingsModal = (props) => {
                         variant="outline"
                         className="text-red-600 border-red-200 hover:bg-red-50"
                       >
-                        <Trash2 className="w-4 h-4 mr-2" />
+                        <AlertTriangle className="w-4 h-4 mr-2" />
                         Factory Reset
+                      </Button>
+                      <Button 
+                        variant="outline"
+                        onClick={() => setShowDeleteDialog(true)}
+                        className="text-red-600 border-red-200 hover:bg-red-50 hover:text-red-700"
+                      >
+                        <Trash2 className="w-4 h-4 mr-2" />
+                        Delete device
                       </Button>
                     </div>
                   </div>
+                </CardContent>
+              </Card>
+            </TabsContent>
+
+            {/* Device data ingest — device can send data without user login */}
+            <TabsContent value="ingest" className="space-y-6">
+              <Card>
+                <CardHeader>
+                  <CardTitle className="flex items-center space-x-2">
+                    <Upload className="w-5 h-5" />
+                    <span>Device sends data to Concertina</span>
+                  </CardTitle>
+                  <p className="text-sm text-gray-500 font-normal">
+                    Any device (phone, tablet, inspection unit) can push battery, signal, and status to Concertina without a user logged in. Generate a secret and use it in the device app or script.
+                  </p>
+                </CardHeader>
+                <CardContent className="space-y-4">
+                  <div className="flex flex-wrap items-center gap-2">
+                    <Button
+                      variant="outline"
+                      size="sm"
+                      disabled={generatingSecret || !device?._id}
+                      onClick={async () => {
+                        if (!device?._id) return
+                        setGeneratingSecret(true)
+                        setGeneratedSecret(null)
+                        setSecretCopied(false)
+                        try {
+                          const res = await devicesApi.generateDeviceSecret(device._id)
+                          const secret = res?.data?.deviceSecret
+                          setGeneratedSecret(secret || null)
+                          if (secret) showAlert('Secret generated. Copy it and store it securely.', 'success')
+                        } catch (err) {
+                          showAlert(err?.message || 'Failed to generate secret', 'error')
+                        } finally {
+                          setGeneratingSecret(false)
+                        }
+                      }}
+                    >
+                      {generatingSecret ? <Loader2 className="w-4 h-4 animate-spin mr-2" /> : null}
+                      Generate device secret
+                    </Button>
+                  </div>
+                  {generatedSecret && (
+                    <>
+                      <div className="flex items-center gap-2">
+                        <Input
+                          readOnly
+                          value={generatedSecret}
+                          className="font-mono text-sm"
+                        />
+                        <Button
+                          variant="outline"
+                          size="sm"
+                          onClick={() => {
+                            navigator.clipboard?.writeText(generatedSecret)
+                            setSecretCopied(true)
+                            showAlert('Copied to clipboard', 'success')
+                            setTimeout(() => setSecretCopied(false), 2000)
+                          }}
+                        >
+                          {secretCopied ? <Check className="w-4 h-4" /> : <Copy className="w-4 h-4" />}
+                        </Button>
+                      </div>
+                      <div className="rounded-lg bg-gray-900 text-gray-100 p-3 text-xs font-mono overflow-x-auto">
+                        <p className="text-gray-400 mb-1">Example (replace BASE_URL and DEVICE_ID):</p>
+                        <pre className="whitespace-pre break-all">
+{`curl -X POST BASE_URL/api/devices/DEVICE_ID/ingest \\
+  -H "Content-Type: application/json" \\
+  -d '{"deviceSecret":"YOUR_SECRET","battery":85,"signal":"strong","status":"active"}'`}
+                        </pre>
+                        <p className="text-gray-400 mt-2">
+                          BASE_URL = your backend (e.g. http://192.168.100.12:5000). DEVICE_ID = {device?._id || 'this device id'}.
+                        </p>
+                      </div>
+                      <Separator className="my-4" />
+                      <div>
+                        <Label className="text-sm font-medium">Connect this device: scan QR or open link</Label>
+                        <p className="text-xs text-gray-500 mt-1 mb-3">
+                          On the device (e.g. phone), scan the QR code or open the link. For accurate serial/model/MAC, use the &quot;Download Concertina Device app&quot; on the connection page.
+                        </p>
+                        <div className="flex flex-wrap items-start gap-4">
+                          <div className="rounded-lg border bg-white p-3">
+                            <QRCodeSVG
+                              value={(() => {
+                                const base = typeof window !== 'undefined' ? (process.env.NEXT_PUBLIC_APP_URL || window.location.origin) : (process.env.NEXT_PUBLIC_APP_URL || '')
+                                const params = 'deviceId=' + encodeURIComponent(device?._id || '') + '&secret=' + encodeURIComponent(generatedSecret || '')
+                                const apiBase = process.env.NEXT_PUBLIC_BACKEND_URL
+                                const qs = apiBase ? params + '&apiBase=' + encodeURIComponent(apiBase) : params
+                                return base + '/device-connect?' + qs
+                              })()}
+                              size={140}
+                              level="M"
+                            />
+                          </div>
+                          <div className="flex-1 min-w-0 space-y-2">
+                            <div className="flex items-center gap-2">
+                              <Input
+                                readOnly
+                                className="font-mono text-xs"
+                                value={(() => {
+                                  const base = typeof window !== 'undefined' ? (process.env.NEXT_PUBLIC_APP_URL || window.location.origin) : (process.env.NEXT_PUBLIC_APP_URL || '')
+                                  const params = 'deviceId=' + encodeURIComponent(device?._id || '') + '&secret=' + encodeURIComponent(generatedSecret || '')
+                                  const apiBase = process.env.NEXT_PUBLIC_BACKEND_URL
+                                  const qs = apiBase ? params + '&apiBase=' + encodeURIComponent(apiBase) : params
+                                  return base + '/device-connect?' + qs
+                                })()}
+                              />
+                              <Button
+                                variant="outline"
+                                size="sm"
+                                onClick={() => {
+                                  const base = typeof window !== 'undefined' ? (process.env.NEXT_PUBLIC_APP_URL || window.location.origin) : ''
+                                  const params = 'deviceId=' + encodeURIComponent(device?._id || '') + '&secret=' + encodeURIComponent(generatedSecret || '')
+                                  const apiBase = process.env.NEXT_PUBLIC_BACKEND_URL
+                                  const qs = apiBase ? params + '&apiBase=' + encodeURIComponent(apiBase) : params
+                                  const url = base + '/device-connect?' + qs
+                                  navigator.clipboard?.writeText(url)
+                                  showAlert('Link copied. Open it on the device.', 'success')
+                                }}
+                              >
+                                <Copy className="w-4 h-4" />
+                              </Button>
+                            </div>
+                            <p className="text-xs text-gray-500">Open this link on the device to connect. Paste the same link in the Concertina Device app for accurate device info.</p>
+                          </div>
+                        </div>
+                      </div>
+                    </>
+                  )}
                 </CardContent>
               </Card>
             </TabsContent>
@@ -698,8 +945,8 @@ const DeviceSettingsModal = (props) => {
               <Button variant="outline" onClick={onClose}>
                 Cancel
               </Button>
-              <Button onClick={handleSave} disabled={!hasChanges}>
-                <Save className="w-4 h-4 mr-2" />
+              <Button onClick={handleSave} disabled={!hasChanges || saving}>
+                {saving ? <Loader2 className="w-4 h-4 mr-2 animate-spin" /> : <Save className="w-4 h-4 mr-2" />}
                 Save Settings
               </Button>
             </div>
@@ -722,6 +969,48 @@ const DeviceSettingsModal = (props) => {
             </Button>
             <Button variant="destructive" onClick={handleReset}>
               Reset Settings
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+
+      {/* Delete device confirmation — prompt and inform assigned */}
+      <Dialog open={showDeleteDialog} onOpenChange={setShowDeleteDialog}>
+        <DialogContent>
+          <DialogHeader>
+            <DialogTitle className="flex items-center gap-2 text-red-600">
+              <Trash2 className="w-5 h-5" />
+              Delete device
+            </DialogTitle>
+            <DialogDescription asChild>
+              <div className="space-y-2">
+                <p>
+                  This will permanently remove <strong>{device?.name}</strong> from Concertina. All data for this device will be removed. This action cannot be undone.
+                </p>
+                {device?.teamLeader && (
+                  <div className="rounded-lg bg-amber-50 border border-amber-200 p-3 text-sm text-amber-800">
+                    <p className="font-medium">Assigned team leader</p>
+                    <p className="mt-0.5">
+                      This device is assigned to{' '}
+                      <strong>
+                        {typeof device.teamLeader === 'object'
+                          ? [device.teamLeader.first_name, device.teamLeader.last_name].filter(Boolean).join(' ') || device.teamLeader.username || 'Team Leader'
+                          : 'a team leader'}
+                      </strong>
+                      . They will no longer have access to this device after it is deleted.
+                    </p>
+                  </div>
+                )}
+              </div>
+            </DialogDescription>
+          </DialogHeader>
+          <DialogFooter>
+            <Button variant="outline" onClick={() => setShowDeleteDialog(false)} disabled={deleting}>
+              Cancel
+            </Button>
+            <Button variant="destructive" onClick={handleDeleteDevice} disabled={deleting}>
+              {deleting ? <Loader2 className="w-4 h-4 mr-2 animate-spin" /> : <Trash2 className="w-4 h-4 mr-2" />}
+              Delete device
             </Button>
           </DialogFooter>
         </DialogContent>

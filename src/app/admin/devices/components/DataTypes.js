@@ -2,6 +2,7 @@ import { Camera, Tablet, Monitor, Smartphone, Truck, Brain, Cloud, FileText, Wif
 
 export const deviceTypes = {
   field: [
+    { id: 'concertina-device-app', name: 'Concertina Device app', icon: Smartphone, description: 'Phone/tablet using the Concertina Device agent app' },
     { id: 'inspection-camera', name: 'CCTV Inspection Camera', icon: Camera, description: 'Main pipeline inspection equipment' },
     { id: 'tablet', name: 'Mobile Tablet', icon: Tablet, description: 'Portable data collection device' },
     { id: 'console', name: 'Truck Console', icon: Monitor, description: 'Vehicle-mounted control system' },

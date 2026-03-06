@@ -343,6 +343,13 @@ const NotificationPanel = ({ onClose }) => {
         '/admin/dashboard': '/customer/dashboard',
         '/admin/reports': '/customer/reports',
       },
+      '/user': {
+        '/admin/project': '/user/project',
+        '/admin/projects': '/user/dashboard',
+        '/admin/dashboard': '/user/dashboard',
+        '/admin/reports': '/user/reports',
+        '/admin/quality-control': '/user/dashboard',
+      },
     };
 
     // Check if we need to rewrite the URL
@@ -414,7 +421,7 @@ const NotificationPanel = ({ onClose }) => {
               size="icon"
               onClick={() => {
                 const basePath = pathname.split('/').slice(0, 2).join('/');
-                router.push(`${basePath}/settings?tab=preferences`);
+                router.push(`${basePath}/notifications`);
               }}
               className="h-8 w-8 text-gray-500 hover:text-gray-700"
             >
