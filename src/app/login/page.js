@@ -8,6 +8,7 @@ const Login = () => {
   return (
     <div className="min-h-screen flex bg-white font-sans">
 
+      {/* Left Side: Brand & Feature Showcase (Hidden on Mobile) */}
       <div className="hidden lg:flex lg:w-1/2 relative bg-gray-50 flex-col justify-between p-12 overflow-hidden">
         {/* Background Decoration */}
         <div className="absolute top-0 right-0 w-[800px] h-[800px] bg-rose-100/50 rounded-full blur-3xl -translate-y-1/2 translate-x-1/2 pointer-events-none"></div>
