@@ -63,6 +63,7 @@ const AdminDashboard = () => {
     aiAccuracy: 0
   });
   const [recentProjects, setRecentProjects] = useState([]);
+  const [qcReviewProjects, setQcReviewProjects] = useState([]);
   const [aiDetections, setAiDetections] = useState([]);
   const [productivityData, setProductivityData] = useState([]);
   const [workflowData, setWorkflowData] = useState([]);
@@ -81,6 +82,7 @@ const AdminDashboard = () => {
 
       setProjectStats(data.projectStats);
       setRecentProjects(data.recentProjects || []);
+      setQcReviewProjects(data.qcReviewProjects || []);
       setAiDetections(data.aiDetections || []);
       setProductivityData(data.productivityData || []);
       setWorkflowData(data.workflowData || []);
@@ -827,12 +829,12 @@ const AdminDashboard = () => {
               </button>
             </div>
 
-            <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
+            <div className="grid grid-cols-1 md:grid-cols-4 gap-6">
               <div className="bg-white rounded-xl shadow-sm p-6 border border-gray-100">
                 <div className="flex items-center justify-between">
                   <div>
-                    <p className="text-sm font-medium text-gray-600">Pending Reviews</p>
-                    <p className="text-3xl font-bold text-gray-900">{projectStats.pendingQC}</p>
+                    <p className="text-sm font-medium text-gray-600">Projects in QC</p>
+                    <p className="text-3xl font-bold text-gray-900">{qcReviewProjects.length}</p>
                   </div>
                   <div className="w-12 h-12 bg-amber-100 rounded-lg flex items-center justify-center">
                     <Clock className="w-6 h-6 text-amber-600" />
@@ -846,9 +848,26 @@ const AdminDashboard = () => {
               <div className="bg-white rounded-xl shadow-sm p-6 border border-gray-100">
                 <div className="flex items-center justify-between">
                   <div>
-                    <p className="text-sm font-medium text-gray-600">In Review</p>
+                    <p className="text-sm font-medium text-gray-600">Total Defects</p>
                     <p className="text-3xl font-bold text-gray-900">
-                      {recentProjects.filter(p => p.status === 'qc-review').length}
+                      {qcReviewProjects.reduce((sum, p) => sum + (p.defects || 0), 0)}
+                    </p>
+                  </div>
+                  <div className="w-12 h-12 bg-red-100 rounded-lg flex items-center justify-center">
+                    <AlertTriangle className="w-6 h-6 text-red-600" />
+                  </div>
+                </div>
+                <div className="mt-4">
+                  <span className="text-sm text-red-600 font-medium">Across all QC projects</span>
+                </div>
+              </div>
+
+              <div className="bg-white rounded-xl shadow-sm p-6 border border-gray-100">
+                <div className="flex items-center justify-between">
+                  <div>
+                    <p className="text-sm font-medium text-gray-600">Pending Detections</p>
+                    <p className="text-3xl font-bold text-gray-900">
+                      {qcReviewProjects.reduce((sum, p) => sum + (p.pending || 0), 0)}
                     </p>
                   </div>
                   <div className="w-12 h-12 bg-blue-100 rounded-lg flex items-center justify-center">
@@ -856,7 +875,7 @@ const AdminDashboard = () => {
                   </div>
                 </div>
                 <div className="mt-4">
-                  <span className="text-sm text-blue-600 font-medium">Currently being reviewed</span>
+                  <span className="text-sm text-blue-600 font-medium">Still need review</span>
                 </div>
               </div>
 
@@ -871,7 +890,7 @@ const AdminDashboard = () => {
                   </div>
                 </div>
                 <div className="mt-4">
-                  <span className="text-sm text-green-600 font-medium">QC approved</span>
+                  <span className="text-sm text-green-600 font-medium">QC approved projects</span>
                 </div>
               </div>
             </div>
@@ -880,20 +899,18 @@ const AdminDashboard = () => {
               <div className="p-6 border-b border-gray-200">
                 <div className="flex items-center justify-between">
                   <h3 className="text-lg font-semibold text-gray-900">Projects Pending QC Review</h3>
+                  <span className="text-sm text-gray-500">{qcReviewProjects.length} project{qcReviewProjects.length !== 1 ? 's' : ''}</span>
                 </div>
               </div>
               <div className="p-6">
-                {recentProjects.filter(p => p.status === 'qc-review' || p.status === 'ai-processing').length === 0 ? (
+                {qcReviewProjects.length === 0 ? (
                   <div className="text-center py-8 text-gray-500">
                     <Shield className="w-12 h-12 mx-auto mb-3 text-gray-400" />
                     <p>No projects pending QC review</p>
                   </div>
                 ) : (
                   <div className="space-y-4">
-                    {recentProjects
-                      .filter(p => p.status === 'qc-review' || p.status === 'ai-processing')
-                      .slice(0, 5)
-                      .map((project) => (
+                    {qcReviewProjects.map((project) => (
                         <div
                           key={project.id}
                           className="flex items-center justify-between p-4 border border-gray-200 rounded-lg hover:bg-gray-50 cursor-pointer"
@@ -906,14 +923,29 @@ const AdminDashboard = () => {
                             </p>
                             <div className="flex items-center space-x-2 mt-2">
                               <span className="text-xs px-2 py-1 bg-amber-100 text-amber-800 rounded">
-                                {project.defects || 0} defects found
+                                {project.defects || 0} detections
                               </span>
+                              {project.pending > 0 && (
+                                <span className="text-xs px-2 py-1 bg-blue-100 text-blue-800 rounded">
+                                  {project.pending} pending
+                                </span>
+                              )}
+                              {project.approved > 0 && (
+                                <span className="text-xs px-2 py-1 bg-green-100 text-green-800 rounded">
+                                  {project.approved} approved
+                                </span>
+                              )}
+                              {project.rejected > 0 && (
+                                <span className="text-xs px-2 py-1 bg-red-100 text-red-800 rounded">
+                                  {project.rejected} rejected
+                                </span>
+                              )}
                             </div>
                           </div>
                           <button
                             onClick={(e) => {
                               e.stopPropagation()
-                              router.push(`/admin/project/${project.id}`)
+                              router.push(`/admin/qc-review/${project.id}`)
                             }}
                             className="ml-4 px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 text-sm"
                           >

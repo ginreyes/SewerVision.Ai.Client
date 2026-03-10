@@ -7,8 +7,8 @@ import { Label } from "@/components/ui/label";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Loader2, Tag, Pin, AlertTriangle, FileText, CheckCircle, Settings, Eye, Bold, Italic, List, ListOrdered, Link, Code } from "lucide-react";
 
-export default function AddNoteModal({ isOpen, onClose, onSave, loading }) {
-    const [formData, setFormData] = useState({
+export default function AddNoteModal({ isOpen, onClose, onSave, loading, editData = null }) {
+    const defaultForm = {
         title: '',
         content: '',
         category: 'general',
@@ -17,9 +17,32 @@ export default function AddNoteModal({ isOpen, onClose, onSave, loading }) {
         isPinned: false,
         location: '',
         metadata: {}
-    });
+    };
+
+    const [formData, setFormData] = useState(defaultForm);
+    const [initialized, setInitialized] = useState(false);
 
     const textareaRef = useRef(null);
+
+    // Populate form when editing
+    React.useEffect(() => {
+        if (isOpen && editData && !initialized) {
+            setFormData({
+                title: editData.title || '',
+                content: editData.content || '',
+                category: editData.category || 'general',
+                priority: editData.priority || 'medium',
+                tags: Array.isArray(editData.tags) ? editData.tags.join(', ') : (editData.tags || ''),
+                isPinned: editData.isPinned || false,
+                location: editData.location || '',
+                metadata: editData.metadata || {}
+            });
+            setInitialized(true);
+        }
+        if (!isOpen) {
+            setInitialized(false);
+        }
+    }, [isOpen, editData, initialized]);
 
     const categories = [
         { value: 'general', label: 'General', icon: FileText },
@@ -35,16 +58,9 @@ export default function AddNoteModal({ isOpen, onClose, onSave, loading }) {
             ...formData,
             tags: formData.tags.split(',').map(t => t.trim()).filter(Boolean)
         });
-        setFormData({ 
-            title: '', 
-            content: '', 
-            category: 'general', 
-            priority: 'medium', 
-            tags: '', 
-            isPinned: false,
-            location: '',
-            metadata: {}
-        });
+        if (!editData) {
+            setFormData(defaultForm);
+        }
     };
 
     const insertFormatting = (prefix, suffix = '') => {
@@ -81,10 +97,10 @@ export default function AddNoteModal({ isOpen, onClose, onSave, loading }) {
                         <div className="p-2 bg-white rounded-lg shadow-sm">
                             <FileText className="w-5 h-5 text-blue-600" />
                         </div>
-                        New Note
+                        {editData ? 'Edit Note' : 'New Note'}
                     </DialogTitle>
                     <p className="text-sm text-gray-500 mt-1">
-                        Create a new note, observation, or report entry
+                        {editData ? 'Update this note\'s details' : 'Create a new note, observation, or report entry'}
                     </p>
                 </DialogHeader>
 
@@ -239,7 +255,7 @@ You can use:
                                     Saving...
                                 </>
                             ) : (
-                                'Create Note'
+                                editData ? 'Update Note' : 'Create Note'
                             )}
                         </Button>
                     </DialogFooter>

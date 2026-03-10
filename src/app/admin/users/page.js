@@ -2,6 +2,7 @@
 import React, { useState, useEffect } from "react";
 import AddUserModal from "./components/AddUserModal";
 import SendEmailModal from "./components/SendEmailModal";
+import ChangePasswordModal from "./components/ChangePasswordModal";
 import { api, getCookie } from "@/lib/helper";
 import { useAlert } from "@/components/providers/AlertProvider";
 import { useDialog } from "@/components/providers/DialogProvider";
@@ -102,6 +103,8 @@ const UserPage = () => {
 
   const [emailModalOpen, setEmailModalOpen] = useState(false);
   const [selectedUserForEmail, setSelectedUserForEmail] = useState(null);
+  const [passwordModalOpen, setPasswordModalOpen] = useState(false);
+  const [selectedUserForPassword, setSelectedUserForPassword] = useState(null);
   const [selectedUsers, setSelectedUsers] = useState([]);
   const [activeTab, setActiveTab] = useState("users");
 
@@ -164,6 +167,25 @@ const UserPage = () => {
     } catch (err) {
       console.error(err);
       showAlert("Error sending email", "error");
+    }
+  }
+
+  const handleOpenPasswordModal = (item) => {
+    setSelectedUserForPassword(item);
+    setPasswordModalOpen(true);
+  }
+
+  const handleChangePassword = async (newPassword) => {
+    if (!selectedUserForPassword) return;
+    const { ok, data } = await api('/api/users/admin-change-password', 'POST', {
+      user_id: selectedUserForPassword.user.user_id,
+      newPassword
+    });
+
+    if (ok) {
+      showAlert("Password changed successfully. User has been notified via email.", "success");
+    } else {
+      throw new Error(data?.message || "Failed to change password");
     }
   }
 
@@ -498,6 +520,7 @@ const UserPage = () => {
                 onDelete={handleDelete}
                 onDisable={handleDisable}
                 onEmail={handleOpenEmailModal}
+                onChangePassword={handleOpenPasswordModal}
                 onView={(item) => {
                   router.push(`/admin/users/${item.user.user_id}`);
                 }}
@@ -617,6 +640,13 @@ const UserPage = () => {
         onClose={() => setEmailModalOpen(false)}
         onSend={handleSendEmail}
         recipientName={selectedUserForEmail?.user?.name || "User"}
+      />
+
+      <ChangePasswordModal
+        isOpen={passwordModalOpen}
+        onClose={() => setPasswordModalOpen(false)}
+        onSubmit={handleChangePassword}
+        user={selectedUserForPassword}
       />
     </div>
   );

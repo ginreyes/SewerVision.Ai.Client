@@ -7,7 +7,8 @@ import {
   Mail,
   Power,
   MoreVertical,
-  Edit
+  Edit,
+  Lock
 } from "lucide-react"
 import {
   Select,
@@ -52,6 +53,7 @@ const SewerTable = (props) => {
     onView = () => { },
     onDisable = null,
     onEmail = null,
+    onChangePassword = null,
     selectedRows: externalSelectedRows = [],
     onSelectionChange = null,
   } = props
@@ -310,7 +312,7 @@ const SewerTable = (props) => {
                             )}
                             
                             {onEmail && (
-                              <DropdownMenuItem 
+                              <DropdownMenuItem
                                 onClick={() => onEmail(item)}
                                 className="cursor-pointer"
                               >
@@ -318,7 +320,17 @@ const SewerTable = (props) => {
                                 <span>Send Email</span>
                               </DropdownMenuItem>
                             )}
-                            
+
+                            {onChangePassword && (
+                              <DropdownMenuItem
+                                onClick={() => onChangePassword(item)}
+                                className="cursor-pointer"
+                              >
+                                <Lock className="mr-2 h-4 w-4 text-purple-600" />
+                                <span>Change Password</span>
+                              </DropdownMenuItem>
+                            )}
+
                             {onDisable && (
                               <DropdownMenuItem 
                                 onClick={() => onDisable(item)}
