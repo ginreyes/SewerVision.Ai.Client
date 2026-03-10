@@ -262,21 +262,13 @@ const ProjectDetail = ({ project, setSelectedProject, onBack, initialSeekTime })
 
   const fetchSnapshots = useCallback(async () => {
     if (!project?._id) return;
+    const backendUrl = process.env.NEXT_PUBLIC_BACKEND_URL || 'http://localhost:5000';
     try {
+      // Fetch manual snapshots
+      let manualSnapshots = [];
       const { ok, data } = await api(`/api/snapshots/get-all-snapshots?projectId=${project._id}`, 'GET');
-      if (ok && data) {
-        const formattedSnapshots = Array.isArray(data) ? data.map((snapshot) => ({
-          id: snapshot._id || snapshot.id,
-          distance: snapshot.distance || 'N/A',
-          label: snapshot.label || 'Unlabeled',
-          timestamp: snapshot.timestamp || snapshot.created_at || snapshot.createdAt,
-          color: snapshot.color || getSnapshotColor(snapshot.label),
-          imageUrl: snapshot.imageUrl,
-        })) : [];
-        setSnapshots(formattedSnapshots);
-      } else if (project?.snapshots && Array.isArray(project.snapshots)) {
-        // Fallback to project snapshots if API fails
-        const formattedSnapshots = project.snapshots.map((snapshot) => ({
+      if (ok && data && Array.isArray(data)) {
+        manualSnapshots = data.map((snapshot) => ({
           id: snapshot._id || snapshot.id,
           distance: snapshot.distance || 'N/A',
           label: snapshot.label || 'Unlabeled',
@@ -284,11 +276,43 @@ const ProjectDetail = ({ project, setSelectedProject, onBack, initialSeekTime })
           color: snapshot.color || getSnapshotColor(snapshot.label),
           imageUrl: snapshot.imageUrl,
         }));
-        setSnapshots(formattedSnapshots);
+      } else if (project?.snapshots && Array.isArray(project.snapshots)) {
+        manualSnapshots = project.snapshots.map((snapshot) => ({
+          id: snapshot._id || snapshot.id,
+          distance: snapshot.distance || 'N/A',
+          label: snapshot.label || 'Unlabeled',
+          timestamp: snapshot.timestamp || snapshot.created_at || snapshot.createdAt,
+          color: snapshot.color || getSnapshotColor(snapshot.label),
+          imageUrl: snapshot.imageUrl,
+        }));
       }
+
+      // Fetch AI detection snapshots (detections that have images)
+      let detectionSnapshots = [];
+      try {
+        const detRes = await api(`/api/qc-technicians/projects/${project._id}/detections`, 'GET');
+        if (detRes.ok && detRes.data?.data && Array.isArray(detRes.data.data)) {
+          detectionSnapshots = detRes.data.data
+            .filter((d) => d.images && d.images.length > 0 && d.images[0].url)
+            .map((d) => ({
+              id: d._id,
+              distance: d.location?.distance != null ? String(d.location.distance) : `Frame ${d.frameNumber || 0}`,
+              label: d.type || 'AI Detection',
+              timestamp: d.detectedAt || d.createdAt,
+              color: getSnapshotColor(d.type || ''),
+              imageUrl: `${backendUrl}/api/videos/snapshot/${d.images[0].url}`,
+              confidence: d.confidence,
+              severity: d.severity,
+              isAiDetection: true,
+            }));
+        }
+      } catch (detErr) {
+        console.warn('Could not fetch detection snapshots:', detErr.message);
+      }
+
+      setSnapshots([...manualSnapshots, ...detectionSnapshots]);
     } catch (error) {
       console.error('Error fetching snapshots:', error);
-      // Fallback to project snapshots if available
       if (project?.snapshots && Array.isArray(project.snapshots)) {
         const formattedSnapshots = project.snapshots.map((snapshot) => ({
           id: snapshot._id || snapshot.id,
@@ -1389,6 +1413,11 @@ const ProjectDetail = ({ project, setSelectedProject, onBack, initialSeekTime })
                     {isSnapshotsExpanded ? <ChevronUp className="h-4 w-4" /> : <ChevronDown className="h-4 w-4" />}
                     <span className="font-medium">SNAPSHOTS</span>
                   </button>
+                  {displaySnapshots.length > 0 && (
+                    <span className="text-xs bg-gray-100 text-gray-600 px-2 py-0.5 rounded-full font-medium">
+                      {displaySnapshots.length}
+                    </span>
+                  )}
                 </div>
                 <button className="p-1 hover:bg-gray-100 rounded">
                   <MoreHorizontal className="h-4 w-4" />
@@ -1396,35 +1425,50 @@ const ProjectDetail = ({ project, setSelectedProject, onBack, initialSeekTime })
               </div>
 
               {isSnapshotsExpanded && (
-                <div className="space-y-2">
+                <div>
                   {displaySnapshots.length === 0 ? (
                     <div className="text-center py-8 text-gray-500">
                       <div className="text-sm">No snapshots available</div>
                     </div>
                   ) : (
-                    <div className="relative">
+                    <div className="relative max-h-[500px] overflow-y-auto pr-1 custom-scrollbar">
                       {/* Vertical timeline line */}
                       <div className="absolute left-4 top-0 bottom-0 w-0.5 bg-gray-200"></div>
                       {displaySnapshots.map((snapshot, index) => (
-                        <div key={`snapshot-${snapshot.id}-${index}`} className="relative flex items-center space-x-3 py-3">
+                        <div key={`snapshot-${snapshot.id}-${index}`} className="relative flex items-start space-x-3 py-3">
                           {/* Snapshot dot with color */}
-                          <div className={`w-3 h-3 rounded-full ${snapshot.color} relative z-10 border-2 border-white shadow-sm`}></div>
+                          <div className={`w-3 h-3 rounded-full ${snapshot.color} relative z-10 border-2 border-white shadow-sm mt-1 shrink-0`}></div>
 
                           {/* Snapshot content */}
-                          <div className="flex-1 min-w-0 bg-gray-50 rounded-lg p-3 hover:bg-gray-100 transition-colors">
-                            <div className="flex items-center justify-between">
-                              <div>
-                                <div className="text-sm font-medium text-gray-900">{snapshot.distance || 'N/A'}</div>
-                                <div className="text-xs text-gray-500">{snapshot.label}</div>
-                                {snapshot.timestamp && (
-                                  <div className="text-xs text-gray-400 mt-1">
-                                    {new Date(snapshot.timestamp).toLocaleString()}
-                                  </div>
-                                )}
+                          <div className="flex-1 min-w-0 bg-gray-50 rounded-lg overflow-hidden hover:bg-gray-100 transition-colors">
+                            {/* Snapshot image */}
+                            {snapshot.imageUrl && (
+                              <img
+                                src={snapshot.imageUrl}
+                                alt={snapshot.label}
+                                className="w-full h-32 object-cover cursor-pointer"
+                                onClick={() => window.open(snapshot.imageUrl, '_blank')}
+                                loading="lazy"
+                              />
+                            )}
+                            <div className="p-3">
+                              <div className="flex items-center justify-between">
+                                <div>
+                                  <div className="text-sm font-medium text-gray-900">{snapshot.distance || 'N/A'}</div>
+                                  <div className="text-xs text-gray-500">{snapshot.label}</div>
+                                  {snapshot.confidence && (
+                                    <div className="text-xs text-gray-500 mt-0.5">{snapshot.confidence}% confidence</div>
+                                  )}
+                                  {snapshot.timestamp && (
+                                    <div className="text-xs text-gray-400 mt-1">
+                                      {new Date(snapshot.timestamp).toLocaleString()}
+                                    </div>
+                                  )}
+                                </div>
+                                <button className="p-1 hover:bg-white rounded-full transition-colors">
+                                  <PlayCircle className="h-4 w-4 text-blue-600" />
+                                </button>
                               </div>
-                              <button className="p-1 hover:bg-white rounded-full transition-colors">
-                                <PlayCircle className="h-4 w-4 text-blue-600" />
-                              </button>
                             </div>
                           </div>
 

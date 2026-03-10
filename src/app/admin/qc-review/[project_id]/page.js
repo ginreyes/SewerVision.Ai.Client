@@ -20,7 +20,12 @@ import {
   Loader2,
   FileText,
   Filter,
+  Camera,
+  X,
+  ZoomIn,
 } from "lucide-react"
+
+const API_URL = process.env.NEXT_PUBLIC_BACKEND_URL || "http://localhost:5000"
 
 const QCReviewPage = () => {
   const { project_id } = useParams()
@@ -30,6 +35,7 @@ const QCReviewPage = () => {
   const [project, setProject] = useState(null)
   const [detections, setDetections] = useState([])
   const [loading, setLoading] = useState(true)
+  const [lightboxUrl, setLightboxUrl] = useState(null)
   const [searchQuery, setSearchQuery] = useState("")
   const [severityFilter, setSeverityFilter] = useState("all")
   const [statusFilter, setStatusFilter] = useState("all")
@@ -281,6 +287,28 @@ const QCReviewPage = () => {
           {filteredDetections.map((detection, index) => (
             <Card key={detection._id || index} className="hover:shadow-md transition-shadow">
               <CardContent className="p-4">
+                {/* Snapshot Image */}
+                {detection.images?.[0]?.url && (
+                  <div className="mb-3 relative group">
+                    <img
+                      src={`${API_URL}/api/videos/snapshot/${detection.images[0].url}`}
+                      alt={`Detection - ${detection.type}`}
+                      className="w-full h-48 object-cover rounded-lg border border-gray-200 cursor-pointer"
+                      onClick={() => setLightboxUrl(`${API_URL}/api/videos/snapshot/${detection.images[0].url}`)}
+                      loading="lazy"
+                    />
+                    <button
+                      onClick={() => setLightboxUrl(`${API_URL}/api/videos/snapshot/${detection.images[0].url}`)}
+                      className="absolute top-2 right-2 p-1 bg-black/50 rounded-full text-white opacity-0 group-hover:opacity-100 transition-opacity"
+                    >
+                      <ZoomIn className="h-4 w-4" />
+                    </button>
+                    <div className="absolute bottom-2 left-2 flex items-center gap-1 px-2 py-0.5 bg-black/50 rounded text-white text-xs">
+                      <Camera className="h-3 w-3" /> Frame {detection.frameNumber || formatTimestamp(detection.timestamp)}
+                    </div>
+                  </div>
+                )}
+
                 <div className="flex items-start justify-between">
                   <div className="flex-1">
                     <div className="flex items-center gap-3 mb-2">
@@ -325,6 +353,28 @@ const QCReviewPage = () => {
           <FileText className="w-4 h-4 mr-2" /> Open Project Console
         </Button>
       </div>
+
+      {/* Snapshot Lightbox */}
+      {lightboxUrl && (
+        <div
+          className="fixed inset-0 z-50 flex items-center justify-center bg-black/80"
+          onClick={() => setLightboxUrl(null)}
+        >
+          <div className="relative max-w-4xl max-h-[90vh] m-4" onClick={(e) => e.stopPropagation()}>
+            <img
+              src={lightboxUrl}
+              alt="Detection snapshot"
+              className="max-w-full max-h-[85vh] object-contain rounded-lg"
+            />
+            <button
+              onClick={() => setLightboxUrl(null)}
+              className="absolute -top-3 -right-3 p-1.5 bg-white rounded-full shadow-lg hover:bg-gray-100 transition-colors"
+            >
+              <X className="h-4 w-4 text-gray-700" />
+            </button>
+          </div>
+        </div>
+      )}
     </div>
   )
 }
