@@ -1,7 +1,6 @@
 'use client';
 
-import { useEffect, useState } from 'react';
-import { useRouter, useSearchParams } from 'next/navigation';
+import { useRouter, useParams } from 'next/navigation';
 import {
   FileText,
   MapPin,
@@ -9,51 +8,30 @@ import {
   AlertCircle,
   Download,
   ChevronLeft,
-  Info,
 } from 'lucide-react';
 
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { Skeleton } from '@/components/ui/skeleton';
-import { api } from '@/lib/helper';
+import { useUser } from '@/components/providers/UserContext';
+import { getSeverityConfig } from '@/components/customer/constants';
+import { useCustomerReport } from '@/hooks/useQueryHooks';
 
+import InfoRow from '@/components/customer/report-detail/InfoRow';
+import DefectStat from '@/components/customer/report-detail/DefectStat';
 
-
-const getSeverityConfig = (count) => {
-  if (count > 20) return { label: 'High', variant: 'destructive' };
-  if (count > 10) return { label: 'Medium', variant: 'warning' };
-  return { label: 'Low', variant: 'success' };
-};
-
-export default function ReportDetailPage({params}) {
-  const { id } = params;
+export default function ReportDetailPage() {
+  const params = useParams();
+  const id = params?.id;
   const router = useRouter();
+  const { userId } = useUser();
 
-
-  const [report, setReport] = useState(null);
-  const [loading, setLoading] = useState(true);
-  const [error, setError] = useState(null);
-
-  useEffect(() => {
-    if (!id) return;
-
-    const loadReport = async () => {
-      try {
-        const response = await api(`/api/customer/get-report/${id}`, 'GET');
-        const data = response.data.data;
-        setReport(data);
-        setError(null);
-      } catch (err) {
-        console.error('Failed to load report:', err);
-        setError('Report not found or access denied.');
-      } finally {
-        setLoading(false);
-      }
-    };
-
-    loadReport();
-  }, [id]);
+  const {
+    data: report,
+    isLoading: loading,
+    error,
+  } = useCustomerReport(userId, id);
 
   const handleDownload = () => {
     alert(`Downloading full PDF report for "${report?.name}"`);
@@ -99,7 +77,7 @@ export default function ReportDetailPage({params}) {
     );
   }
 
-  if (error) {
+  if (error || !report) {
     return (
       <div className="space-y-6 p-4 md:p-6">
         <Button variant="ghost" size="sm" onClick={goBack}>
@@ -109,7 +87,7 @@ export default function ReportDetailPage({params}) {
         <Card>
           <CardContent className="py-12 text-center">
             <AlertCircle className="mx-auto h-12 w-12 text-destructive" />
-            <p className="mt-3 text-destructive">{error}</p>
+            <p className="mt-3 text-destructive">{error?.message || 'Report not found or access denied.'}</p>
           </CardContent>
         </Card>
       </div>
@@ -176,16 +154,8 @@ export default function ReportDetailPage({params}) {
         <CardContent>
           <div className="grid grid-cols-2 sm:grid-cols-4 gap-4">
             <DefectStat label="Cracks" value={report.aiDetections.cracks} color="text-blue-600" />
-            <DefectStat
-              label="Fractures"
-              value={report.aiDetections.fractures}
-              color="text-orange-600"
-            />
-            <DefectStat
-              label="Broken Pipes"
-              value={report.aiDetections.broken_pipes}
-              color="text-red-600"
-            />
+            <DefectStat label="Fractures" value={report.aiDetections.fractures} color="text-orange-600" />
+            <DefectStat label="Broken Pipes" value={report.aiDetections.broken_pipes} color="text-red-600" />
             <DefectStat label="Root Intrusion" value={report.aiDetections.roots} color="text-green-600" />
           </div>
         </CardContent>
@@ -221,27 +191,6 @@ export default function ReportDetailPage({params}) {
           </div>
         </CardContent>
       </Card>
-    </div>
-  );
-}
-
-function InfoRow({ label, value, icon }) {
-  return (
-    <div className="flex items-start gap-2">
-      {icon && <span className="mt-0.5 text-muted-foreground">{icon}</span>}
-      <div>
-        <p className="text-sm text-muted-foreground">{label}</p>
-        <p className="font-medium">{value}</p>
-      </div>
-    </div>
-  );
-}
-
-function DefectStat({ label, value, color }) {
-  return (
-    <div className="text-center p-3 rounded-lg bg-muted">
-      <p className={`text-lg font-bold ${color}`}>{value}</p>
-      <p className="text-sm text-muted-foreground mt-1">{label}</p>
     </div>
   );
 }

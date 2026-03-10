@@ -1,20 +1,10 @@
 'use client';
 
-import { useEffect, useState } from 'react';
+import { useState } from 'react';
 import { useRouter } from 'next/navigation';
-import {
-  Search,
-  MapPin,
-  Calendar,
-  AlertCircle,
-  ChevronRight,
-  FileText,
-  CheckCircle,
-  Clock,
-  Loader2,
-} from 'lucide-react';
+import { Search, FileText, AlertCircle, Loader2 } from 'lucide-react';
 
-import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
+import { Card, CardContent } from '@/components/ui/card';
 import { Input } from '@/components/ui/input';
 import {
   Select,
@@ -23,68 +13,23 @@ import {
   SelectTrigger,
   SelectValue,
 } from '@/components/ui/select';
-import { Badge } from '@/components/ui/badge';
 import { useUser } from '@/components/providers/UserContext';
-import { api } from '@/lib/helper';
+import { useCustomerProjects } from '@/hooks/useQueryHooks';
 
-// Helper: status config
-const statusConfig = {
-  completed: { label: 'Ready for Review', color: 'success' },
-  'customer-notified': { label: 'Completed', color: 'purple' },
-  'qc-review': { label: 'QC Review', color: 'warning' },
-  'ai-processing': { label: 'Processing', color: 'secondary' },
-  'field-capture': { label: 'Field Capture', color: 'default' },
-  uploading: { label: 'Uploading', color: 'secondary' },
-  'on-hold': { label: 'On Hold', color: 'destructive' },
-  planning: { label: 'Planning', color: 'outline' },
-};
-
-// Helper: severity config
-const getSeverityConfig = (count) => {
-  if (count > 20) return { label: 'High', variant: 'destructive' };
-  if (count > 10) return { label: 'Medium', variant: 'warning' };
-  return { label: 'Low', variant: 'success' };
-};
+import StatsCards from '@/components/customer/dashboard/StatsCards';
+import ProjectListCard from '@/components/customer/dashboard/ProjectListCard';
 
 export default function CustomerDashboard() {
-  const [projects, setProjects] = useState([]);
-  const [loading, setLoading] = useState(true);
-  const [error, setError] = useState(null);
   const [searchQuery, setSearchQuery] = useState('');
   const [filterStatus, setFilterStatus] = useState('all');
   const router = useRouter();
   const { userId } = useUser();
 
-  useEffect(() => {
-  const fetchProjects = async () => {
-    try {
-      setLoading(true);
-      setError(null);
-      
-      const { data, ok, error: apiError } = await api(
-        `/api/customer/get-all-projects/${userId}?page=1&limit=20&status=${filterStatus !== 'all' ? filterStatus : ''}`,
-        'GET'
-      );
-      
-      if (!ok || apiError) {
-        console.error('Error fetching projects:', apiError);
-        setError(apiError || 'Failed to load projects');
-        return;
-      }
-
-      setProjects(data.data || []);
-    } catch (err) {
-      console.error('Fetch error:', err);
-      setError('Failed to load projects');
-    } finally {
-      setLoading(false);
-    }
-  };
-
-    if (userId) {
-      fetchProjects();
-    }
-  }, [userId]);
+  const {
+    data: projects = [],
+    isLoading: loading,
+    error,
+  } = useCustomerProjects(userId);
 
   // Filter projects
   const filteredProjects = projects.filter((project) => {
@@ -104,10 +49,8 @@ export default function CustomerDashboard() {
     inReview: projects.filter((p) => p.status === 'qc-review').length,
   };
 
-  // Render status badge
-  const renderStatusBadge = (status) => {
-    const config = statusConfig[status] || { label: 'In Progress', color: 'outline' };
-    return <Badge variant={config.color}>{config.label}</Badge>;
+  const handleNavigate = (projectId) => {
+    router.push(`/customer/projects/${projectId}`);
   };
 
   // Loading state
@@ -122,11 +65,8 @@ export default function CustomerDashboard() {
         <div className="grid gap-4 md:grid-cols-3">
           {[1, 2, 3].map((i) => (
             <Card key={i}>
-              <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-                <div className="h-4 w-24 bg-gray-200 rounded animate-pulse" />
-                <div className="h-4 w-4 bg-gray-200 rounded animate-pulse" />
-              </CardHeader>
-              <CardContent>
+              <CardContent className="pt-6">
+                <div className="h-4 w-24 bg-gray-200 rounded animate-pulse mb-2" />
                 <div className="h-8 w-16 bg-gray-200 rounded animate-pulse" />
               </CardContent>
             </Card>
@@ -154,7 +94,7 @@ export default function CustomerDashboard() {
           <CardContent className="py-12 text-center">
             <AlertCircle className="h-12 w-12 text-destructive mx-auto mb-4" />
             <p className="text-destructive mb-4">
-              {typeof error === 'string' ? error : 'Failed to load projects'}
+              {error?.message || 'Failed to load projects'}
             </p>
             <button
               onClick={() => window.location.reload()}
@@ -177,38 +117,10 @@ export default function CustomerDashboard() {
       </div>
 
       {/* Stats Cards */}
-      <div className="grid gap-4 md:grid-cols-3">
-        <Card>
-          <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-            <CardTitle className="text-sm font-medium">Total Projects</CardTitle>
-            <FileText className="h-4 w-4 text-muted-foreground" />
-          </CardHeader>
-          <CardContent>
-            <div className="text-2xl font-bold">{stats.total}</div>
-          </CardContent>
-        </Card>
-        <Card>
-          <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-            <CardTitle className="text-sm font-medium">Completed</CardTitle>
-            <CheckCircle className="h-4 w-4 text-green-500" />
-          </CardHeader>
-          <CardContent>
-            <div className="text-2xl font-bold">{stats.completed}</div>
-          </CardContent>
-        </Card>
-        <Card>
-          <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-            <CardTitle className="text-sm font-medium">In Review</CardTitle>
-            <Clock className="h-4 w-4 text-yellow-500" />
-          </CardHeader>
-          <CardContent>
-            <div className="text-2xl font-bold">{stats.inReview}</div>
-          </CardContent>
-        </Card>
-      </div>
+      <StatsCards stats={stats} />
 
       {/* Search & Filter */}
-      <div className="flex flex-col gap-4 md:flex-row">
+      <div className="flex flex-col gap-4 md:flex-row" data-tour="customer-search-filter">
         <div className="relative flex-grow">
           <Search className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
           <Input
@@ -237,14 +149,14 @@ export default function CustomerDashboard() {
       </div>
 
       {/* Projects List */}
-      <div className="space-y-4">
+      <div className="space-y-4" data-tour="customer-projects-list">
         {filteredProjects.length === 0 ? (
           <Card>
             <CardContent className="py-12 text-center">
               <FileText className="h-12 w-12 text-muted-foreground mx-auto mb-4" />
               <p className="text-muted-foreground">
-                {searchQuery || filterStatus !== 'all' 
-                  ? 'No projects match your filters' 
+                {searchQuery || filterStatus !== 'all'
+                  ? 'No projects match your filters'
                   : 'No projects found'}
               </p>
               {(searchQuery || filterStatus !== 'all') && (
@@ -262,45 +174,11 @@ export default function CustomerDashboard() {
           </Card>
         ) : (
           filteredProjects.map((project) => (
-            <Card
+            <ProjectListCard
               key={project._id}
-              className="cursor-pointer transition-shadow hover:shadow-md"
-              onClick={() => router.push(`/customer/projects/${project._id}`)}
-            >
-              <CardContent className="p-6">
-                <div className="flex items-start justify-between">
-                  <div className="space-y-2">
-                    <div className="flex items-center gap-2">
-                      <h3 className="font-semibold">{project.name}</h3>
-                      {renderStatusBadge(project.status)}
-                    </div>
-                    <div className="flex flex-wrap items-center gap-4 text-sm text-muted-foreground">
-                      <div className="flex items-center gap-1">
-                        <MapPin className="h-3.5 w-3.5" />
-                        {project.location}
-                      </div>
-                      <div className="flex items-center gap-1">
-                        <Calendar className="h-3.5 w-3.5" />
-                        {new Date(project.created_at).toLocaleDateString()}
-                      </div>
-                      <div className="flex items-center gap-1">
-                        <AlertCircle className="h-3.5 w-3.5" />
-                        {project.aiDetections?.total || 0} defects
-                      </div>
-                    </div>
-                    {project.aiDetections?.total > 0 && (
-                      <div className="mt-2 flex items-center gap-2">
-                        <span className="text-sm text-muted-foreground">Severity:</span>
-                        <Badge variant={getSeverityConfig(project.aiDetections.total).variant}>
-                          {getSeverityConfig(project.aiDetections.total).label}
-                        </Badge>
-                      </div>
-                    )}
-                  </div>
-                  <ChevronRight className="h-5 w-5 text-muted-foreground" />
-                </div>
-              </CardContent>
-            </Card>
+              project={project}
+              onNavigate={handleNavigate}
+            />
           ))
         )}
       </div>

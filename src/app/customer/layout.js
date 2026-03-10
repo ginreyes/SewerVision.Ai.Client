@@ -1,11 +1,12 @@
 'use client';
 
 import Navbar from "@/components/ui/navbar";
-import { useEffect, useState } from "react";
+import { useEffect, useState, useCallback } from "react";
 import { usePathname, useRouter } from "next/navigation";
 import { api, getCookie, deleteCookie } from "@/lib/helper";
-import CustomerSidebar from "./components/CustomerSidebar";
+import CustomerSidebar from "@/components/customer/CustomerSidebar";
 import { TourGuide, useTourGuide } from "@/components/TourGuide";
+import CustomerReactTour, { useCustomerReactTour } from "@/components/customer/CustomerReactTour";
 
 export default function CustomerLayout({ children }) {
   const [openSidebar, setOpenSidebar] = useState(true);
@@ -13,8 +14,11 @@ export default function CustomerLayout({ children }) {
   const router = useRouter();
   const pathname = usePathname();
 
-  // Tour Guide state
+  // Tour Guide state (existing modal-based tour)
   const { showTour, openTour, closeTour } = useTourGuide('customer');
+
+  // React Tour state (new element-highlighting tour)
+  const { shouldOpen, setShouldOpen, openTour: openReactTour } = useCustomerReactTour();
 
   const handleToggleSidebar = () => {
     setOpenSidebar(prev => !prev);
@@ -27,6 +31,13 @@ export default function CustomerLayout({ children }) {
     return () => window.removeEventListener('openTourGuide', handleOpenTour);
   }, [openTour]);
 
+  // Listen for react tour trigger
+  useEffect(() => {
+    const handleOpenReactTour = () => openReactTour();
+    window.addEventListener('openReactTour', handleOpenReactTour);
+    return () => window.removeEventListener('openReactTour', handleOpenReactTour);
+  }, [openReactTour]);
+
   useEffect(() => {
     const fetchUserRole = async () => {
       try {
@@ -38,7 +49,6 @@ export default function CustomerLayout({ children }) {
         }
 
         const { data, error } = await api(`/api/users/role/${storedUsername}`, "GET");
-
 
         if (!error && data.role) {
           if (data.role !== 'customer') {
@@ -64,31 +74,37 @@ export default function CustomerLayout({ children }) {
     fetchUserRole();
   }, [pathname, router]);
 
+  const handleTourOpened = useCallback(() => {
+    setShouldOpen(false);
+  }, [setShouldOpen]);
+
   if (!role) return null;
 
   return (
-    <div className="flex">
-      <div
-        className={`fixed top-0 left-0 h-full transition-all duration-300 border-2  ${openSidebar ? "w-[270px]" : "w-[90px]"
-          }`}
-      >
-        <CustomerSidebar isOpen={openSidebar} />
-      </div>
+    <CustomerReactTour shouldOpen={shouldOpen} onOpened={handleTourOpened}>
+      <div className="flex">
+        <div
+          className={`fixed top-0 left-0 h-full transition-all duration-300 border-2  ${openSidebar ? "w-[270px]" : "w-[90px]"
+            }`}
+        >
+          <CustomerSidebar isOpen={openSidebar} />
+        </div>
 
-      <div
-        className={`flex-1 transition-all duration-300 ${openSidebar ? "ml-[270px]" : "ml-[90px]"
-          }`}
-      >
-        <Navbar openSideBar={handleToggleSidebar} role="customer" />
-        <main className="p-4  min-h-screen">{children}</main>
-      </div>
+        <div
+          className={`flex-1 transition-all duration-300 ${openSidebar ? "ml-[270px]" : "ml-[90px]"
+            }`}
+        >
+          <Navbar openSideBar={handleToggleSidebar} role="customer" />
+          <main className="p-4  min-h-screen">{children}</main>
+        </div>
 
-      {/* Tour Guide Modal */}
-      <TourGuide
-        isOpen={showTour}
-        onClose={closeTour}
-        role="customer"
-      />
-    </div>
+        {/* Tour Guide Modal (existing) */}
+        <TourGuide
+          isOpen={showTour}
+          onClose={closeTour}
+          role="customer"
+        />
+      </div>
+    </CustomerReactTour>
   );
 }

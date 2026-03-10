@@ -6,8 +6,6 @@ import Link from 'next/link';
 import { Bell, FileText, FolderOpen, Headset, LayoutDashboard, Loader2 } from 'lucide-react';
 import ModuleLoading from '@/components/ui/SewerVisionLoadingAnimation';
 
-
-
 const CustomerSidebar = ({ isOpen }) => {
   const [activeItem, setActiveItem] = useState("Dashboard");
   const [loadingItem, setLoadingItem] = useState(null);
@@ -24,17 +22,18 @@ const CustomerSidebar = ({ isOpen }) => {
   const activeStyle = "bg-[#826AF91A] text-[#2D99FF] font-semibold";
   const inactiveStyle = "text-gray-700";
 
-const customerMenuItems = [
-  { label: "Dashboard", icon: LayoutDashboard, path: "/customer/dashboard" },
-  { label: "Projects", icon: FolderOpen, path: "/customer/projects" },
-  { label: "Reports", icon: FileText, path: "/customer/reports" },
-  { label: "Notifications", icon: Bell, path: "/customer/notifications" },
-  { label: "Support", icon: Headset, path: "/customer/support" },
-];
+  const customerMenuItems = [
+    { label: "Dashboard", icon: LayoutDashboard, path: "/customer/dashboard", tourId: "customer-sidebar-dashboard" },
+    { label: "Projects", icon: FolderOpen, path: "/customer/projects", tourId: "customer-sidebar-projects" },
+    { label: "Reports", icon: FileText, path: "/customer/reports", tourId: "customer-sidebar-reports" },
+    { label: "Notifications", icon: Bell, path: "/customer/notifications", tourId: "customer-sidebar-notifications" },
+    { label: "Support", icon: Headset, path: "/customer/support", tourId: "customer-sidebar-support" },
+  ];
+
   return (
     <>
       <ModuleLoading isVisible={!!loadingItem} />
-      <nav className="h-full bg-gray-200 p-4">
+      <nav className="h-full bg-gray-200 p-4" data-tour="customer-sidebar">
         <div className={`flex items-center gap-2 mb-6 transition-all duration-300 ${isOpen ? 'justify-start' : 'justify-center'}`}>
           <Image src="/logo.png" alt="Logo" width={32} height={30} />
           {isOpen && <span className="text-lg font-bold">SewerVision</span>}
@@ -44,6 +43,7 @@ const customerMenuItems = [
           {customerMenuItems.map((item, index) => (
             <Link key={item.label} href={item.path}>
               <div
+                data-tour={item.tourId}
                 className={`flex items-center space-x-3 h-[56px] px-4 rounded-2xl cursor-pointer transition-all duration-200 transform hover:scale-105 relative
                   ${activeItem === item.label ? activeStyle : `${inactiveStyle} hover:bg-gray-300 hover:shadow-sm`}
                   ${loadingItem === item.label ? 'pointer-events-none opacity-70' : ''}`}
@@ -60,9 +60,9 @@ const customerMenuItems = [
                   {loadingItem === item.label ? (
                     <Loader2 className="w-6 h-6 animate-spin text-[#2D99FF]" />
                   ) : (
-                   <item.icon 
-                      size={24} 
-                      className="text-gray-700" 
+                   <item.icon
+                      size={24}
+                      className="text-gray-700"
                     />
                   )}
                 </div>

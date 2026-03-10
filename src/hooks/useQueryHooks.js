@@ -10,6 +10,7 @@ import { uploadsApi } from '@/data/uploadsApi';
 import { operatorApi } from '@/data/operatorApi';
 import { devicesApi } from '@/data/devicesApi';
 import notificationApi from '@/data/notificationApi ';
+import { customerApi } from '@/data/customerApi';
 
 /**
  * Query Keys - Centralized key management for cache invalidation
@@ -74,6 +75,13 @@ export const queryKeys = {
     // Customer views
     customerDashboard: (customerId) => ['customer', 'dashboard', customerId],
     customerProjects: (customerId, filters) => ['customer', 'projects', customerId, filters ?? {}],
+    customerProject: (projectId, userId) => ['customer', 'project', projectId, userId],
+    customerObservations: (projectId) => ['customer', 'observations', projectId],
+    customerSnapshots: (projectId) => ['customer', 'snapshots', projectId],
+    customerReports: (userId) => ['customer', 'reports', userId],
+    customerReport: (userId, reportId) => ['customer', 'report', userId, reportId],
+    customerNotifications: (userId) => ['customer', 'notifications', userId],
+    customerNotificationPreferences: (userId) => ['customer', 'notification-preferences', userId],
 
     // Devices (admin)
     devices: (params) => ['devices', params ?? {}],
@@ -739,6 +747,189 @@ export function useQueryUtilities() {
     };
 }
 
+/**
+ * ============ CUSTOMER HOOKS ============
+ */
+
+/**
+ * Hook for fetching all customer projects
+ */
+export function useCustomerProjects(userId, { page = 1, limit = 100, status = '' } = {}, options = {}) {
+    return useQuery({
+        queryKey: queryKeys.customerProjects(userId, { page, limit, status }),
+        queryFn: () => customerApi.getAllProjects(userId, { page, limit, status }),
+        enabled: !!userId,
+        staleTime: 1000 * 60 * 5,
+        ...options,
+    });
+}
+
+/**
+ * Hook for fetching a single customer project
+ */
+export function useCustomerProject(projectId, userId, options = {}) {
+    return useQuery({
+        queryKey: queryKeys.customerProject(projectId, userId),
+        queryFn: () => customerApi.getProject(projectId, userId),
+        enabled: !!projectId && !!userId,
+        staleTime: 1000 * 60 * 5,
+        ...options,
+    });
+}
+
+/**
+ * Hook for fetching project observations/defects
+ */
+export function useCustomerObservations(projectId, { limit = 100 } = {}, options = {}) {
+    return useQuery({
+        queryKey: queryKeys.customerObservations(projectId),
+        queryFn: () => customerApi.getProjectObservations(projectId, { limit }),
+        enabled: !!projectId,
+        staleTime: 1000 * 60 * 5,
+        ...options,
+    });
+}
+
+/**
+ * Hook for fetching project snapshots
+ */
+export function useCustomerSnapshots(projectId, { limit = 100 } = {}, options = {}) {
+    return useQuery({
+        queryKey: queryKeys.customerSnapshots(projectId),
+        queryFn: () => customerApi.getProjectSnapshots(projectId, { limit }),
+        enabled: !!projectId,
+        staleTime: 1000 * 60 * 5,
+        ...options,
+    });
+}
+
+/**
+ * Hook for fetching all customer reports
+ */
+export function useCustomerReports(userId, options = {}) {
+    return useQuery({
+        queryKey: queryKeys.customerReports(userId),
+        queryFn: () => customerApi.getAllReports(userId),
+        enabled: !!userId,
+        staleTime: 1000 * 60 * 5,
+        ...options,
+    });
+}
+
+/**
+ * Hook for fetching a single report
+ */
+export function useCustomerReport(userId, reportId, options = {}) {
+    return useQuery({
+        queryKey: queryKeys.customerReport(userId, reportId),
+        queryFn: () => customerApi.getReport(userId, reportId),
+        enabled: !!userId && !!reportId,
+        staleTime: 1000 * 60 * 5,
+        ...options,
+    });
+}
+
+/**
+ * Hook for fetching customer notifications
+ */
+export function useCustomerNotifications(userId, { limit = 50 } = {}, options = {}) {
+    return useQuery({
+        queryKey: queryKeys.customerNotifications(userId),
+        queryFn: () => customerApi.getNotifications(userId, { limit }),
+        enabled: !!userId,
+        staleTime: 1000 * 60 * 2,
+        ...options,
+    });
+}
+
+/**
+ * Hook for fetching notification preferences
+ */
+export function useCustomerNotificationPreferences(userId, options = {}) {
+    return useQuery({
+        queryKey: queryKeys.customerNotificationPreferences(userId),
+        queryFn: () => customerApi.getNotificationPreferences(userId),
+        enabled: !!userId,
+        staleTime: 1000 * 60 * 10,
+        ...options,
+    });
+}
+
+/**
+ * Mutation: Mark a single notification as read
+ */
+export function useMarkCustomerNotificationRead() {
+    const queryClient = useQueryClient();
+    return useMutation({
+        mutationFn: ({ notificationId, userId }) =>
+            customerApi.markNotificationRead(notificationId, userId),
+        onSuccess: (_data, { userId }) => {
+            queryClient.invalidateQueries({ queryKey: queryKeys.customerNotifications(userId) });
+        },
+    });
+}
+
+/**
+ * Mutation: Mark all notifications as read
+ */
+export function useMarkAllCustomerNotificationsRead() {
+    const queryClient = useQueryClient();
+    return useMutation({
+        mutationFn: ({ userId }) => customerApi.markAllNotificationsRead(userId),
+        onSuccess: (_data, { userId }) => {
+            queryClient.invalidateQueries({ queryKey: queryKeys.customerNotifications(userId) });
+        },
+    });
+}
+
+/**
+ * Mutation: Delete a notification
+ */
+export function useDeleteCustomerNotification() {
+    const queryClient = useQueryClient();
+    return useMutation({
+        mutationFn: ({ notificationId, userId }) =>
+            customerApi.deleteNotification(notificationId, userId),
+        onSuccess: (_data, { userId }) => {
+            queryClient.invalidateQueries({ queryKey: queryKeys.customerNotifications(userId) });
+        },
+    });
+}
+
+/**
+ * Mutation: Update notification preferences
+ */
+export function useUpdateCustomerNotificationPreferences() {
+    const queryClient = useQueryClient();
+    return useMutation({
+        mutationFn: ({ userId, preferences }) =>
+            customerApi.updateNotificationPreferences(userId, preferences),
+        onSuccess: (_data, { userId }) => {
+            queryClient.invalidateQueries({ queryKey: queryKeys.customerNotificationPreferences(userId) });
+        },
+    });
+}
+
+/**
+ * Mutation: Submit support ticket
+ */
+export function useSubmitCustomerSupportTicket() {
+    return useMutation({
+        mutationFn: ({ userId, subject, category, message }) =>
+            customerApi.submitSupportTicket(userId, { subject, category, message }),
+    });
+}
+
+/**
+ * Mutation: Download project report
+ */
+export function useDownloadCustomerReport() {
+    return useMutation({
+        mutationFn: ({ projectId, userId }) =>
+            customerApi.downloadReport(projectId, userId),
+    });
+}
+
 export default {
     useDashboardStats,
     useQCDashboardStats,
@@ -772,5 +963,20 @@ export default {
     useDeleteDevice,
     useAssignDeviceToTeamLeader,
     useQueryUtilities,
+    // Customer hooks
+    useCustomerProjects,
+    useCustomerProject,
+    useCustomerObservations,
+    useCustomerSnapshots,
+    useCustomerReports,
+    useCustomerReport,
+    useCustomerNotifications,
+    useCustomerNotificationPreferences,
+    useMarkCustomerNotificationRead,
+    useMarkAllCustomerNotificationsRead,
+    useDeleteCustomerNotification,
+    useUpdateCustomerNotificationPreferences,
+    useSubmitCustomerSupportTicket,
+    useDownloadCustomerReport,
     queryKeys,
 };
