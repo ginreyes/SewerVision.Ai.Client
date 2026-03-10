@@ -704,56 +704,57 @@ const ObservationDetailsPageContent = () => {
             </EditableSection>
 
             {/* Snapshot Section */}
-            {observation.snapshot && (
-              <div className="bg-white rounded-lg shadow-sm p-6">
-                <h2 className="text-lg font-semibold text-gray-900 mb-4">
-                  Snapshot
-                </h2>
-                <div className="flex items-center justify-between border rounded-lg p-4">
-                  <div className="flex items-center space-x-3">
-                    <PlayCircle className="h-5 w-5 text-blue-600" />
-                    <span className="text-sm font-medium">
-                      Observation Snapshot
-                    </span>
-                  </div>
-                  <div className="flex items-center space-x-3">
-                    {observation.snapshotUrl ? (
-                      <a
-                        href={observation.snapshotUrl}
-                        target="_blank"
-                        rel="noopener noreferrer"
-                        className="block w-24 h-16 overflow-hidden rounded border border-gray-200 bg-gray-50"
-                      >
+            {observation.snapshot && (() => {
+              const backendUrl = process.env.NEXT_PUBLIC_BACKEND_URL || 'http://localhost:5000';
+              // snapshotUrl may be a B2 filename or a full URL — build the streaming URL accordingly
+              const rawUrl = observation.snapshotUrl || '';
+              const snapshotSrc = rawUrl.startsWith('http')
+                ? rawUrl
+                : rawUrl
+                  ? `${backendUrl}/api/videos/snapshot/${rawUrl}`
+                  : '';
+              return (
+                <div className="bg-white rounded-lg shadow-sm p-6">
+                  <h2 className="text-lg font-semibold text-gray-900 mb-4">
+                    Snapshot
+                  </h2>
+                  {snapshotSrc ? (
+                    <div className="space-y-3">
+                      <a href={snapshotSrc} target="_blank" rel="noopener noreferrer" className="block">
                         <img
-                          src={observation.snapshotUrl}
+                          src={snapshotSrc}
                           alt="Observation snapshot"
-                          className="w-full h-full object-cover"
+                          className="w-full h-56 object-cover rounded-lg border border-gray-200 cursor-pointer hover:opacity-90 transition-opacity"
+                          loading="lazy"
                         />
                       </a>
-                    ) : (
-                      <span className="text-xs text-gray-400">
-                        Snapshot image not available
-                      </span>
-                    )}
-                    {observation.snapshotUrl && (
-                      <Button
-                        variant="ghost"
-                        size="sm"
-                        asChild
-                      >
-                        <a
-                          href={observation.snapshotUrl}
-                          download={`observation-${observation._id}-snapshot.jpg`}
-                        >
-                          <Download className="h-4 w-4 mr-1" />
-                          Download
-                        </a>
-                      </Button>
-                    )}
-                  </div>
+                      <div className="flex items-center justify-between">
+                        <span className="text-xs text-gray-500">
+                          {observation.aiGenerated ? 'AI-generated detection frame' : 'Manual observation snapshot'}
+                        </span>
+                        <Button variant="ghost" size="sm" asChild>
+                          <a
+                            href={snapshotSrc}
+                            download={`observation-${observation._id}-snapshot.jpg`}
+                          >
+                            <Download className="h-4 w-4 mr-1" />
+                            Download
+                          </a>
+                        </Button>
+                      </div>
+                    </div>
+                  ) : (
+                    <div className="flex items-center justify-between border rounded-lg p-4">
+                      <div className="flex items-center space-x-3">
+                        <PlayCircle className="h-5 w-5 text-blue-600" />
+                        <span className="text-sm font-medium">Observation Snapshot</span>
+                      </div>
+                      <span className="text-xs text-gray-400">Snapshot image not available</span>
+                    </div>
+                  )}
                 </div>
-              </div>
-            )}
+              );
+            })()}
           </div>
 
           {/* Sidebar */}

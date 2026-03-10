@@ -15,20 +15,31 @@ import {
     MapPin,
     User as UserIcon,
     Loader2,
-    BookOpen
+    BookOpen,
+    Pencil,
+    Trash2
 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { useUser } from '@/components/providers/UserContext';
 import { useAlert } from '@/components/providers/AlertProvider';
+import { useDialog } from '@/components/providers/DialogProvider';
 import { notesApi } from '@/data/notesApi';
 import AddNoteModal from './AddNoteModal';
 import { Input } from '@/components/ui/input';
 import { Select, SelectTrigger, SelectValue, SelectContent, SelectItem } from '@/components/ui/select';
 import { Card, CardContent } from '@/components/ui/card';
+import {
+    DropdownMenu,
+    DropdownMenuContent,
+    DropdownMenuItem,
+    DropdownMenuSeparator,
+    DropdownMenuTrigger,
+} from '@/components/ui/dropdown-menu';
 
 const NotesPage = () => {
     const { userId, userData } = useUser();
     const { showAlert } = useAlert();
+    const { showDelete } = useDialog();
 
     const [notes, setNotes] = useState([]);
     const [loading, setLoading] = useState(true);
@@ -38,6 +49,9 @@ const NotesPage = () => {
     const [showCreateModal, setShowCreateModal] = useState(false);
     const [creating, setCreating] = useState(false);
     const [stats, setStats] = useState({ total: 0, pinned: 0, archived: 0, aiGenerated: 0, critical: 0 });
+    const [selectedNote, setSelectedNote] = useState(null);
+    const [showDetailModal, setShowDetailModal] = useState(false);
+    const [editingNote, setEditingNote] = useState(null);
 
     const fetchNotes = useCallback(async () => {
         if (!userId) return;
@@ -90,6 +104,62 @@ const NotesPage = () => {
             showAlert('Failed to create note', 'error');
         } finally {
             setCreating(false);
+        }
+    };
+
+    const handleViewDetails = (note) => {
+        setSelectedNote(note);
+        setShowDetailModal(true);
+    };
+
+    const handleEditNote = (note) => {
+        setEditingNote(note);
+        setShowCreateModal(true);
+    };
+
+    const handleUpdateNote = async (noteData) => {
+        if (!editingNote) return handleCreateNote(noteData);
+        try {
+            setCreating(true);
+            await notesApi.updateNote(editingNote._id, noteData);
+            showAlert('Note updated successfully', 'success');
+            setShowCreateModal(false);
+            setEditingNote(null);
+            fetchNotes();
+        } catch (error) {
+            console.error('Error updating note:', error);
+            showAlert('Failed to update note', 'error');
+        } finally {
+            setCreating(false);
+        }
+    };
+
+    const handleDeleteNote = (note) => {
+        showDelete({
+            title: 'Delete Note',
+            description: `Are you sure you want to delete "${note.title}"? This action cannot be undone.`,
+            onConfirm: async () => {
+                try {
+                    await notesApi.deleteNote(note._id);
+                    showAlert('Note deleted successfully', 'success');
+                    fetchNotes();
+                } catch (error) {
+                    console.error('Error deleting note:', error);
+                    showAlert('Failed to delete note', 'error');
+                }
+            },
+            onCancel: () => {},
+        });
+    };
+
+    const handleTogglePin = async (note) => {
+        try {
+            await notesApi.updateNote(note._id, { isPinned: !note.isPinned });
+            showAlert(note.isPinned ? 'Note unpinned' : 'Note pinned', 'success');
+            fetchNotes();
+        } catch (error) {
+            console.error('Error toggling pin:', error);
+            showAlert('Failed to update note', 'error');
         }
     };
 
@@ -318,9 +388,32 @@ const NotesPage = () => {
                                                     </p>
                                                 </div>
                                             </div>
-                                            <Button variant="ghost" size="icon" className="h-7 w-7 text-gray-400 hover:text-gray-900">
-                                                <MoreHorizontal className="w-4 h-4" />
-                                            </Button>
+                                            <DropdownMenu>
+                                                <DropdownMenuTrigger asChild>
+                                                    <Button variant="ghost" size="icon" className="h-7 w-7 text-gray-400 hover:text-gray-900">
+                                                        <MoreHorizontal className="w-4 h-4" />
+                                                    </Button>
+                                                </DropdownMenuTrigger>
+                                                <DropdownMenuContent align="end" className="w-40">
+                                                    <DropdownMenuItem onClick={() => handleViewDetails(note)} className="cursor-pointer">
+                                                        <Eye className="mr-2 h-4 w-4 text-blue-600" />
+                                                        <span>View Details</span>
+                                                    </DropdownMenuItem>
+                                                    <DropdownMenuItem onClick={() => handleEditNote(note)} className="cursor-pointer">
+                                                        <Pencil className="mr-2 h-4 w-4 text-amber-600" />
+                                                        <span>Edit</span>
+                                                    </DropdownMenuItem>
+                                                    <DropdownMenuItem onClick={() => handleTogglePin(note)} className="cursor-pointer">
+                                                        <Pin className="mr-2 h-4 w-4 text-orange-500" />
+                                                        <span>{note.isPinned ? 'Unpin' : 'Pin'}</span>
+                                                    </DropdownMenuItem>
+                                                    <DropdownMenuSeparator />
+                                                    <DropdownMenuItem onClick={() => handleDeleteNote(note)} className="cursor-pointer text-red-600 focus:text-red-600 focus:bg-red-50">
+                                                        <Trash2 className="mr-2 h-4 w-4" />
+                                                        <span>Delete</span>
+                                                    </DropdownMenuItem>
+                                                </DropdownMenuContent>
+                                            </DropdownMenu>
                                         </div>
 
                                         <p className="text-sm text-gray-600 mb-3 line-clamp-3 leading-relaxed">
@@ -357,10 +450,79 @@ const NotesPage = () => {
 
             <AddNoteModal
                 isOpen={showCreateModal}
-                onClose={() => setShowCreateModal(false)}
-                onSave={handleCreateNote}
+                onClose={() => {
+                    setShowCreateModal(false);
+                    setEditingNote(null);
+                }}
+                onSave={editingNote ? handleUpdateNote : handleCreateNote}
                 loading={creating}
+                editData={editingNote}
             />
+
+            {/* View Details Modal */}
+            {showDetailModal && selectedNote && (
+                <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50" onClick={() => setShowDetailModal(false)}>
+                    <div className="bg-white rounded-xl shadow-xl max-w-lg w-full mx-4 max-h-[80vh] overflow-y-auto" onClick={(e) => e.stopPropagation()}>
+                        <div className="p-6 border-b border-gray-200">
+                            <div className="flex items-start justify-between">
+                                <div className="flex items-start gap-3">
+                                    <div className={`p-2 rounded-lg ${getCategoryColor(selectedNote.category)} text-white`}>
+                                        {React.createElement(getCategoryIcon(selectedNote.category), { className: "w-5 h-5" })}
+                                    </div>
+                                    <div>
+                                        <h2 className="text-lg font-bold text-gray-900">{selectedNote.title}</h2>
+                                        <p className="text-sm text-gray-500 capitalize">{selectedNote.category} Note</p>
+                                    </div>
+                                </div>
+                                <button onClick={() => setShowDetailModal(false)} className="text-gray-400 hover:text-gray-600 text-xl font-bold">&times;</button>
+                            </div>
+                        </div>
+                        <div className="p-6 space-y-4">
+                            <div>
+                                <p className="text-sm font-medium text-gray-700 mb-1">Content</p>
+                                <p className="text-sm text-gray-600 whitespace-pre-wrap leading-relaxed">{selectedNote.content}</p>
+                            </div>
+                            {selectedNote.tags && selectedNote.tags.length > 0 && (
+                                <div>
+                                    <p className="text-sm font-medium text-gray-700 mb-2">Tags</p>
+                                    <div className="flex flex-wrap gap-1.5">
+                                        {selectedNote.tags.map((tag, i) => (
+                                            <span key={i} className="px-2.5 py-1 bg-gray-100 text-gray-700 rounded-full text-xs">#{tag}</span>
+                                        ))}
+                                    </div>
+                                </div>
+                            )}
+                            <div className="grid grid-cols-2 gap-4 pt-3 border-t border-gray-100">
+                                <div>
+                                    <p className="text-xs text-gray-500">Created</p>
+                                    <p className="text-sm text-gray-700">{new Date(selectedNote.createdAt).toLocaleString()}</p>
+                                </div>
+                                <div>
+                                    <p className="text-xs text-gray-500">Updated</p>
+                                    <p className="text-sm text-gray-700">{new Date(selectedNote.updatedAt).toLocaleString()}</p>
+                                </div>
+                                {selectedNote.projectId && (
+                                    <div className="col-span-2">
+                                        <p className="text-xs text-gray-500">Location</p>
+                                        <p className="text-sm text-gray-700 flex items-center gap-1">
+                                            <MapPin className="w-3 h-3" />
+                                            {selectedNote.projectId.location || 'Unknown'}
+                                        </p>
+                                    </div>
+                                )}
+                            </div>
+                        </div>
+                        <div className="p-4 border-t border-gray-200 flex justify-end gap-2">
+                            <Button variant="outline" size="sm" onClick={() => { setShowDetailModal(false); handleEditNote(selectedNote); }}>
+                                <Pencil className="w-3 h-3 mr-1" /> Edit
+                            </Button>
+                            <Button variant="outline" size="sm" onClick={() => setShowDetailModal(false)}>
+                                Close
+                            </Button>
+                        </div>
+                    </div>
+                </div>
+            )}
         </div>
     );
 };

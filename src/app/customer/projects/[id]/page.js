@@ -346,15 +346,20 @@ export default function ProjectPageViewDetails() {
                 key={observation._id}
                 className="overflow-hidden hover:shadow-md transition-shadow"
               >
-                {observation.snapshotUrl ? (
-                  <div className="aspect-video bg-muted overflow-hidden">
-                    <img
-                      src={observation.snapshotUrl}
-                      alt={observation.defectType}
-                      className="w-full h-full object-cover"
-                    />
-                  </div>
-                ) : (
+                {observation.snapshotUrl ? (() => {
+                  const backendUrl = process.env.NEXT_PUBLIC_BACKEND_URL || 'http://localhost:5000';
+                  const rawUrl = observation.snapshotUrl;
+                  const snapshotSrc = rawUrl.startsWith('http') ? rawUrl : `${backendUrl}/api/videos/snapshot/${rawUrl}`;
+                  return (
+                    <div className="aspect-video bg-muted overflow-hidden">
+                      <img
+                        src={snapshotSrc}
+                        alt={observation.defectType}
+                        className="w-full h-full object-cover"
+                      />
+                    </div>
+                  );
+                })() : (
                   <div className="aspect-video bg-muted flex items-center justify-center">
                     <ImageIcon className="h-12 w-12 text-muted-foreground" />
                   </div>

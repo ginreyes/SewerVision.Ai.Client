@@ -22,7 +22,8 @@ import {
   ArrowRight,
   Play,
   Hash,
-  Ruler
+  Ruler,
+  Camera,
 } from 'lucide-react';
 import { api } from '@/lib/helper';
 import { useUser } from '@/components/providers/UserContext';
@@ -613,6 +614,25 @@ const QualityControlPage = () => {
 
                           {/* Detail Body */}
                           <div className="p-5 space-y-4">
+                            {/* Snapshot Image */}
+                            {selectedDetection.images?.[0]?.url && (
+                              <div>
+                                <span className="text-[10px] font-semibold text-gray-400 uppercase tracking-wider block mb-1.5">Detection Snapshot</span>
+                                <div className="relative group">
+                                  <img
+                                    src={`${process.env.NEXT_PUBLIC_BACKEND_URL || 'http://localhost:5000'}/api/videos/snapshot/${selectedDetection.images[0].url}`}
+                                    alt={`Detection - ${selectedDetection.type}`}
+                                    className="w-full h-56 object-cover rounded-lg border border-gray-200 cursor-pointer"
+                                    onClick={() => window.open(`${process.env.NEXT_PUBLIC_BACKEND_URL || 'http://localhost:5000'}/api/videos/snapshot/${selectedDetection.images[0].url}`, '_blank')}
+                                    loading="lazy"
+                                  />
+                                  <div className="absolute bottom-2 left-2 flex items-center gap-1 px-2 py-0.5 bg-black/50 rounded text-white text-xs">
+                                    <Camera className="h-3 w-3" /> Frame #{selectedDetection.frameNumber || '0'}
+                                  </div>
+                                </div>
+                              </div>
+                            )}
+
                             {/* Analysis Notes */}
                             <div>
                               <span className="text-[10px] font-semibold text-gray-400 uppercase tracking-wider block mb-1.5">Analysis Notes</span>

@@ -1,7 +1,9 @@
 'use client'
 
-import React, { memo, useCallback } from 'react'
-import { AlertTriangle, CheckCircle, XCircle, ChevronDown, ChevronRight, Video, Clock, MapPin } from 'lucide-react'
+import React, { memo, useCallback, useState } from 'react'
+import { AlertTriangle, CheckCircle, XCircle, ChevronDown, ChevronRight, Video, Clock, MapPin, Camera, X, ZoomIn } from 'lucide-react'
+
+const API_URL = process.env.NEXT_PUBLIC_BACKEND_URL || 'http://localhost:5000'
 
 /**
  * @typedef {Object} Detection
@@ -116,6 +118,12 @@ const DetectionCard = memo(({
   disabled = false,
   className = ''
 }) => {
+  const [showLightbox, setShowLightbox] = useState(false)
+
+  // Build snapshot URL from detection images
+  const snapshotUrl = detection.images?.[0]?.url
+    ? `${API_URL}/api/videos/snapshot/${detection.images[0].url}`
+    : null
   // Handle card click
   const handleClick = useCallback(() => {
     if (disabled) return
@@ -236,12 +244,35 @@ const DetectionCard = memo(({
       {/* Expanded Content */}
       {isExpanded && showActions && (
         <div className="mt-3 pt-3 border-t border-gray-100">
+          {/* Snapshot Image */}
+          {snapshotUrl && (
+            <div className="mb-3 relative group">
+              <img
+                src={snapshotUrl}
+                alt={`Detection snapshot - ${detection.type}`}
+                className="w-full h-40 object-cover rounded-lg border border-gray-200 cursor-pointer"
+                onClick={(e) => { e.stopPropagation(); setShowLightbox(true) }}
+                loading="lazy"
+              />
+              <button
+                onClick={(e) => { e.stopPropagation(); setShowLightbox(true) }}
+                className="absolute top-2 right-2 p-1 bg-black/50 rounded-full text-white opacity-0 group-hover:opacity-100 transition-opacity"
+                aria-label="View full size"
+              >
+                <ZoomIn className="h-3.5 w-3.5" />
+              </button>
+              <div className="absolute bottom-2 left-2 flex items-center gap-1 px-2 py-0.5 bg-black/50 rounded text-white text-xs">
+                <Camera className="h-3 w-3" /> Frame {detection.frameNumber || detection.frameTime}
+              </div>
+            </div>
+          )}
+
           {/* Action Buttons */}
           <div className="flex gap-2 mb-3">
             <button
               onClick={handleApprove}
               disabled={disabled}
-              className="flex-1 px-3 py-2 bg-green-600 text-white text-xs rounded-lg hover:bg-green-700 
+              className="flex-1 px-3 py-2 bg-green-600 text-white text-xs rounded-lg hover:bg-green-700
                          flex items-center justify-center gap-1 transition-colors
                          disabled:opacity-50 disabled:cursor-not-allowed"
               aria-label="Approve detection"
@@ -251,7 +282,7 @@ const DetectionCard = memo(({
             <button
               onClick={handleReject}
               disabled={disabled}
-              className="flex-1 px-3 py-2 bg-red-600 text-white text-xs rounded-lg hover:bg-red-700 
+              className="flex-1 px-3 py-2 bg-red-600 text-white text-xs rounded-lg hover:bg-red-700
                          flex items-center justify-center gap-1 transition-colors
                          disabled:opacity-50 disabled:cursor-not-allowed"
               aria-label="Reject detection"
@@ -264,13 +295,39 @@ const DetectionCard = memo(({
           <button
             onClick={handleJumpToFrame}
             disabled={disabled}
-            className="w-full text-xs text-rose-600 hover:text-rose-800 font-medium 
+            className="w-full text-xs text-rose-600 hover:text-rose-800 font-medium
                        flex items-center justify-center gap-1 py-1 transition-colors
                        disabled:opacity-50 disabled:cursor-not-allowed"
             aria-label="Jump to frame in video"
           >
             <Video className="h-3.5 w-3.5" /> Jump to Frame
           </button>
+        </div>
+      )}
+
+      {/* Snapshot Lightbox */}
+      {showLightbox && snapshotUrl && (
+        <div
+          className="fixed inset-0 z-50 flex items-center justify-center bg-black/80"
+          onClick={(e) => { e.stopPropagation(); setShowLightbox(false) }}
+        >
+          <div className="relative max-w-4xl max-h-[90vh] m-4" onClick={(e) => e.stopPropagation()}>
+            <img
+              src={snapshotUrl}
+              alt={`Detection snapshot - ${detection.type}`}
+              className="max-w-full max-h-[85vh] object-contain rounded-lg"
+            />
+            <button
+              onClick={(e) => { e.stopPropagation(); setShowLightbox(false) }}
+              className="absolute -top-3 -right-3 p-1.5 bg-white rounded-full shadow-lg hover:bg-gray-100 transition-colors"
+              aria-label="Close"
+            >
+              <X className="h-4 w-4 text-gray-700" />
+            </button>
+            <div className="absolute bottom-4 left-4 px-3 py-1.5 bg-black/60 rounded-lg text-white text-sm">
+              {detection.type} — {detection.severity} — {detection.confidence}% confidence
+            </div>
+          </div>
         </div>
       )}
     </div>
