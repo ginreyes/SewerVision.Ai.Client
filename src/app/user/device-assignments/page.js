@@ -1,7 +1,6 @@
 'use client';
 
-import React, { useEffect, useState, useCallback, useMemo } from 'react';
-import { api } from '@/lib/helper';
+import React, { useState, useMemo } from 'react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import {
@@ -32,6 +31,7 @@ import {
 } from 'lucide-react';
 import { useAlert } from '@/components/providers/AlertProvider';
 import { useUser } from '@/components/providers/UserContext';
+import { useUserDevices, useUserTeamMembers, useUpdateDeviceAssignment } from '@/hooks/useQueryHooks';
 
 const STATUS_CONFIG = {
   online: {
@@ -70,74 +70,36 @@ export default function UserDeviceAssignmentsPage() {
   const { showAlert } = useAlert();
   const { userId, userData } = useUser() || {};
 
-  const [devices, setDevices] = useState([]);
-  const [loading, setLoading] = useState(true);
-  const [operators, setOperators] = useState([]);
-  const [qcTechnicians, setQcTechnicians] = useState([]);
-  const [loadingUsers, setLoadingUsers] = useState(false);
-
   const [expandedDeviceId, setExpandedDeviceId] = useState(null);
   const [selectedOperatorId, setSelectedOperatorId] = useState('');
   const [selectedQcId, setSelectedQcId] = useState('');
-  const [savingAssignment, setSavingAssignment] = useState(false);
 
   const [searchQuery, setSearchQuery] = useState('');
   const [statusFilter, setStatusFilter] = useState('all');
 
-  /* ──────────── data fetching ──────────── */
+  // ── Data fetching via TanStack Query ──
+  const { data: devices = [], isLoading: loading } = useUserDevices(userId, userData?.role);
+  const { data: allUsers = [], isLoading: loadingUsers } = useUserTeamMembers();
+  const updateAssignmentMutation = useUpdateDeviceAssignment();
+  const savingAssignment = updateAssignmentMutation.isPending;
 
-  const fetchDevices = useCallback(async () => {
-    try {
-      setLoading(true);
-      const basePath = '/api/devices/get-all-devices';
-      const path =
-        userData?.role === 'user' && userId
-          ? `${basePath}?teamLeaderId=${userId}`
-          : basePath;
-      const { ok, data } = await api(path, 'GET');
-      const list = data?.data ?? (Array.isArray(data) ? data : []);
-      setDevices(ok && Array.isArray(list) ? list : []);
-    } catch (err) {
-      console.error('Failed to load devices:', err);
-      showAlert('Failed to load devices', 'error');
-    } finally {
-      setLoading(false);
+  const operators = useMemo(() => {
+    let ops = allUsers.filter((u) => u.role === 'operator');
+    if (userData?.role === 'user' && Array.isArray(userData.managedMembers) && userData.managedMembers.length > 0) {
+      const managedIds = new Set(userData.managedMembers.map((id) => String(id)));
+      ops = ops.filter((u) => u._id && managedIds.has(String(u._id)));
     }
-  }, [showAlert, userData?.role, userId]);
+    return ops;
+  }, [allUsers, userData?.role, userData?.managedMembers]);
 
-  const fetchUsers = useCallback(async () => {
-    try {
-      setLoadingUsers(true);
-      const { ok, data } = await api('/api/users/get-all-user', 'GET');
-      if (!ok || !Array.isArray(data?.users)) return;
-
-      let operatorUsers = data.users.filter((u) => u.role === 'operator');
-      let qcUsers = data.users.filter((u) => u.role === 'qc-technician');
-
-      if (
-        userData?.role === 'user' &&
-        Array.isArray(userData.managedMembers) &&
-        userData.managedMembers.length > 0
-      ) {
-        const managedIds = new Set(userData.managedMembers.map((id) => String(id)));
-        operatorUsers = operatorUsers.filter((u) => u._id && managedIds.has(String(u._id)));
-        qcUsers = qcUsers.filter((u) => u._id && managedIds.has(String(u._id)));
-      }
-
-      setOperators(operatorUsers);
-      setQcTechnicians(qcUsers);
-    } catch (err) {
-      console.error('Failed to load users:', err);
-      showAlert('Failed to load team members', 'error');
-    } finally {
-      setLoadingUsers(false);
+  const qcTechnicians = useMemo(() => {
+    let qcs = allUsers.filter((u) => u.role === 'qc-technician');
+    if (userData?.role === 'user' && Array.isArray(userData.managedMembers) && userData.managedMembers.length > 0) {
+      const managedIds = new Set(userData.managedMembers.map((id) => String(id)));
+      qcs = qcs.filter((u) => u._id && managedIds.has(String(u._id)));
     }
-  }, [showAlert, userData?.role, userData?.managedMembers]);
-
-  useEffect(() => {
-    fetchDevices();
-    fetchUsers();
-  }, [fetchDevices, fetchUsers]);
+    return qcs;
+  }, [allUsers, userData?.role, userData?.managedMembers]);
 
   /* ──────────── derived / filtered ──────────── */
 
@@ -199,31 +161,27 @@ export default function UserDeviceAssignmentsPage() {
     setSelectedQcId(qcId || '');
   };
 
-  const handleSaveAssignments = async () => {
+  const handleSaveAssignments = () => {
     const device = devices.find((d) => d._id === expandedDeviceId);
     if (!device) return;
-    try {
-      setSavingAssignment(true);
-      const body = {
-        operator: selectedOperatorId || null,
-        qcTechnician: selectedQcId || null,
-      };
-      const res = await api(`/api/devices/update-device/${device._id}`, 'PUT', body);
-      if (!res.ok) {
-        const msg =
-          res.data?.message || res.data?.error?.message || 'Failed to update assignments';
-        throw new Error(typeof msg === 'string' ? msg : 'Failed to update assignments');
+    updateAssignmentMutation.mutate(
+      {
+        deviceId: device._id,
+        assignments: {
+          operator: selectedOperatorId || null,
+          qcTechnician: selectedQcId || null,
+        },
+      },
+      {
+        onSuccess: () => {
+          setExpandedDeviceId(null);
+          showAlert('Device assignments updated', 'success');
+        },
+        onError: (err) => {
+          showAlert(err?.message || 'Failed to update assignments', 'error');
+        },
       }
-      const updated = res.data?.data ?? res.data;
-      setDevices((prev) => prev.map((d) => (d._id === updated._id ? updated : d)));
-      setExpandedDeviceId(null);
-      showAlert('Device assignments updated', 'success');
-    } catch (err) {
-      console.error('Failed to update assignments:', err);
-      showAlert(err?.message || 'Failed to update assignments', 'error');
-    } finally {
-      setSavingAssignment(false);
-    }
+    );
   };
 
   /* ──────────── sub-components ──────────── */

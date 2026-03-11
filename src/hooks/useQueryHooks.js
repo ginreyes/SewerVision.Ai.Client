@@ -11,6 +11,7 @@ import { operatorApi } from '@/data/operatorApi';
 import { devicesApi } from '@/data/devicesApi';
 import notificationApi from '@/data/notificationApi ';
 import { customerApi } from '@/data/customerApi';
+import { userApi } from '@/data/userApi';
 
 /**
  * Query Keys - Centralized key management for cache invalidation
@@ -86,6 +87,17 @@ export const queryKeys = {
     // Devices (admin)
     devices: (params) => ['devices', params ?? {}],
     device: (deviceId) => ['devices', deviceId],
+
+    // User (Team Lead)
+    userDashboard: (userId) => ['user', 'dashboard', userId],
+    userProjects: (userId, filters) => ['user', 'projects', userId, filters ?? {}],
+    userProject: (projectId) => ['user', 'project', projectId],
+    userTeamMembers: () => ['user', 'team-members'],
+    userTeamMemberDetail: (memberId) => ['user', 'team-member', memberId],
+    userTeamMemberDashboard: (memberId) => ['user', 'team-member-dashboard', memberId],
+    userDevices: (userId) => ['user', 'devices', userId],
+    userEvents: () => ['user', 'events'],
+    userNotificationPreferences: (userId) => ['user', 'notification-preferences', userId],
 };
 
 /**
@@ -678,6 +690,228 @@ export function useUpdateReport(options = {}) {
 }
 
 /**
+ * ============ USER (TEAM LEAD) HOOKS ============
+ */
+
+export function useUserDashboard(userId, options = {}) {
+    return useQuery({
+        queryKey: queryKeys.userDashboard(userId),
+        queryFn: () => userApi.getDashboardData(userId),
+        enabled: !!userId,
+        staleTime: 1000 * 60 * 2,
+        ...options,
+    });
+}
+
+export function useUserProjects(userId, { page = 1, limit = 20, search = '', status = '' } = {}, options = {}) {
+    return useQuery({
+        queryKey: queryKeys.userProjects(userId, { page, limit, search, status }),
+        queryFn: () => userApi.getAllProjects(userId, { page, limit, search, status }),
+        enabled: !!userId,
+        staleTime: 1000 * 60 * 5,
+        ...options,
+    });
+}
+
+export function useUserProject(projectId, options = {}) {
+    return useQuery({
+        queryKey: queryKeys.userProject(projectId),
+        queryFn: () => userApi.getProject(projectId),
+        enabled: !!projectId,
+        staleTime: 1000 * 60 * 5,
+        ...options,
+    });
+}
+
+export function useUserTeamMembers(options = {}) {
+    return useQuery({
+        queryKey: queryKeys.userTeamMembers(),
+        queryFn: () => userApi.getTeamMembers(),
+        staleTime: 1000 * 60 * 5,
+        ...options,
+    });
+}
+
+export function useUserTeamMemberDetail(memberId, options = {}) {
+    return useQuery({
+        queryKey: queryKeys.userTeamMemberDetail(memberId),
+        queryFn: () => userApi.getTeamMemberDetails(memberId),
+        enabled: !!memberId,
+        staleTime: 1000 * 60 * 5,
+        ...options,
+    });
+}
+
+export function useUserTeamMemberDashboard(memberId, role, options = {}) {
+    return useQuery({
+        queryKey: queryKeys.userTeamMemberDashboard(memberId),
+        queryFn: () => userApi.getTeamMemberDashboard(memberId, role),
+        enabled: !!memberId && !!role,
+        staleTime: 1000 * 60 * 2,
+        ...options,
+    });
+}
+
+export function useUserDevices(userId, role, options = {}) {
+    return useQuery({
+        queryKey: queryKeys.userDevices(userId),
+        queryFn: () => userApi.getDevices(userId, role),
+        staleTime: 1000 * 60 * 2,
+        ...options,
+    });
+}
+
+export function useUserEvents(options = {}) {
+    return useQuery({
+        queryKey: queryKeys.userEvents(),
+        queryFn: () => userApi.getEvents(),
+        staleTime: 1000 * 60 * 2,
+        ...options,
+    });
+}
+
+export function useUserNotificationPreferences(userId, options = {}) {
+    return useQuery({
+        queryKey: queryKeys.userNotificationPreferences(userId),
+        queryFn: () => userApi.getNotificationPreferences(userId),
+        enabled: !!userId,
+        staleTime: 1000 * 60 * 10,
+        ...options,
+    });
+}
+
+// ── User Mutations ──
+
+export function useRequestDeleteProject() {
+    const queryClient = useQueryClient();
+    return useMutation({
+        mutationFn: (projectId) => userApi.requestDeleteProject(projectId),
+        onSuccess: () => {
+            queryClient.invalidateQueries({ queryKey: ['user', 'projects'] });
+        },
+    });
+}
+
+export function useApproveDeleteProject() {
+    const queryClient = useQueryClient();
+    return useMutation({
+        mutationFn: (projectId) => userApi.approveDeleteProject(projectId),
+        onSuccess: () => {
+            queryClient.invalidateQueries({ queryKey: ['user', 'projects'] });
+        },
+    });
+}
+
+export function useRejectDeleteProject() {
+    const queryClient = useQueryClient();
+    return useMutation({
+        mutationFn: (projectId) => userApi.rejectDeleteProject(projectId),
+        onSuccess: () => {
+            queryClient.invalidateQueries({ queryKey: ['user', 'projects'] });
+        },
+    });
+}
+
+export function useDeleteUserProject() {
+    const queryClient = useQueryClient();
+    return useMutation({
+        mutationFn: (projectId) => userApi.deleteProject(projectId),
+        onSuccess: () => {
+            queryClient.invalidateQueries({ queryKey: ['user', 'projects'] });
+        },
+    });
+}
+
+export function useCreateObservation() {
+    const queryClient = useQueryClient();
+    return useMutation({
+        mutationFn: ({ projectId, userId, data }) => userApi.createObservation(projectId, userId, data),
+        onSuccess: () => {
+            queryClient.invalidateQueries({ queryKey: ['user', 'projects'] });
+        },
+    });
+}
+
+export function useCreateUserSnapshot() {
+    const queryClient = useQueryClient();
+    return useMutation({
+        mutationFn: ({ projectId, userId, data }) => userApi.createSnapshot(projectId, userId, data),
+        onSuccess: () => {
+            queryClient.invalidateQueries({ queryKey: ['user', 'projects'] });
+        },
+    });
+}
+
+export function useUpdateDeviceAssignment() {
+    const queryClient = useQueryClient();
+    return useMutation({
+        mutationFn: ({ deviceId, assignments }) => userApi.updateDeviceAssignment(deviceId, assignments),
+        onSuccess: () => {
+            queryClient.invalidateQueries({ queryKey: ['user', 'devices'] });
+            queryClient.invalidateQueries({ queryKey: ['devices'] });
+        },
+    });
+}
+
+export function useCreateEvent() {
+    const queryClient = useQueryClient();
+    return useMutation({
+        mutationFn: (eventData) => userApi.createEvent(eventData),
+        onSuccess: () => {
+            queryClient.invalidateQueries({ queryKey: queryKeys.userEvents() });
+        },
+    });
+}
+
+export function useUpdateEvent() {
+    const queryClient = useQueryClient();
+    return useMutation({
+        mutationFn: ({ eventId, data }) => userApi.updateEvent(eventId, data),
+        onSuccess: () => {
+            queryClient.invalidateQueries({ queryKey: queryKeys.userEvents() });
+        },
+    });
+}
+
+export function useDeleteEvent() {
+    const queryClient = useQueryClient();
+    return useMutation({
+        mutationFn: (eventId) => userApi.deleteEvent(eventId),
+        onSuccess: () => {
+            queryClient.invalidateQueries({ queryKey: queryKeys.userEvents() });
+        },
+    });
+}
+
+export function useUpdateUserProfile() {
+    return useMutation({
+        mutationFn: ({ username, data }) => userApi.updateProfile(username, data),
+    });
+}
+
+export function useChangeUserPassword() {
+    return useMutation({
+        mutationFn: (passwordData) => userApi.changePassword(passwordData),
+    });
+}
+
+export function useSaveUserSettings() {
+    return useMutation({
+        mutationFn: (settings) => userApi.saveSettings(settings),
+    });
+}
+
+export function useUpdateUserNotificationPreferences() {
+    const queryClient = useQueryClient();
+    return useMutation({
+        mutationFn: ({ userId, preferences }) => userApi.updateNotificationPreferences(userId, preferences),
+        onSuccess: (_data, { userId }) => {
+            queryClient.invalidateQueries({ queryKey: queryKeys.userNotificationPreferences(userId) });
+        },
+    });
+}
+
+/**
  * ============ CACHE UTILITIES ============
  */
 
@@ -978,5 +1212,29 @@ export default {
     useUpdateCustomerNotificationPreferences,
     useSubmitCustomerSupportTicket,
     useDownloadCustomerReport,
+    // User (Team Lead) hooks
+    useUserDashboard,
+    useUserProjects,
+    useUserProject,
+    useUserTeamMembers,
+    useUserTeamMemberDetail,
+    useUserTeamMemberDashboard,
+    useUserDevices,
+    useUserEvents,
+    useUserNotificationPreferences,
+    useRequestDeleteProject,
+    useApproveDeleteProject,
+    useRejectDeleteProject,
+    useDeleteUserProject,
+    useCreateObservation,
+    useCreateUserSnapshot,
+    useUpdateDeviceAssignment,
+    useCreateEvent,
+    useUpdateEvent,
+    useDeleteEvent,
+    useUpdateUserProfile,
+    useChangeUserPassword,
+    useSaveUserSettings,
+    useUpdateUserNotificationPreferences,
     queryKeys,
 };

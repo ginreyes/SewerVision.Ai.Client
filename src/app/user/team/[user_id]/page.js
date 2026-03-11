@@ -1,6 +1,6 @@
 'use client';
 
-import React, { useEffect, useState } from 'react';
+import React from 'react';
 import { useParams, useRouter } from 'next/navigation';
 import {
   ArrowLeft,
@@ -20,12 +20,11 @@ import {
   CalendarDays,
   Upload,
 } from 'lucide-react';
-import { api } from '@/lib/helper';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
 import { Button } from '@/components/ui/button';
-import { useAlert } from '@/components/providers/AlertProvider';
+import { useUserTeamMemberDetail } from '@/hooks/useQueryHooks';
 
 /* ─── Helpers ─── */
 
@@ -79,32 +78,10 @@ const SHIFT_MAP = {
 export default function UserTeamMemberDetailPage() {
   const params = useParams();
   const router = useRouter();
-  const { showAlert } = useAlert();
   const userId = params?.user_id;
 
-  const [profile, setProfile] = useState(null);
-  const [loading, setLoading] = useState(true);
-
-  useEffect(() => {
-    if (!userId) return;
-    const fetchDetail = async () => {
-      try {
-        setLoading(true);
-        const { ok, data } = await api(`/api/users/get-user-details/${userId}`, 'GET');
-        if (!ok || !data?.user) {
-          showAlert('Failed to load team member details', 'error');
-          return;
-        }
-        setProfile(data.user);
-      } catch (err) {
-        console.error('Failed to load team member details:', err);
-        showAlert('Failed to load team member details', 'error');
-      } finally {
-        setLoading(false);
-      }
-    };
-    fetchDetail();
-  }, [userId, showAlert]);
+  const { data: memberData, isLoading: loading } = useUserTeamMemberDetail(userId);
+  const profile = memberData?.user ?? memberData ?? null;
 
   /* ── Early returns ── */
 
