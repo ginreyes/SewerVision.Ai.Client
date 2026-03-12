@@ -1,6 +1,6 @@
 'use client';
 
-import React, { useEffect, useState } from 'react';
+import React, { useState, useMemo } from 'react';
 import { useParams, useRouter } from 'next/navigation';
 import Link from 'next/link';
 import {
@@ -33,8 +33,8 @@ import {
   FileText,
   ShieldCheck,
 } from 'lucide-react';
-import { api } from '@/lib/helper';
 import { devicesApi } from '@/data/devicesApi';
+import { useOperatorDevices, useReportDeviceStatus } from '@/hooks/useQueryHooks';
 import { useUser } from '@/components/providers/UserContext';
 import { useAlert } from '@/components/providers/AlertProvider';
 import { Button } from '@/components/ui/button';
@@ -100,9 +100,6 @@ export default function OperatorDeviceDetailPage() {
   const deviceId = params?.deviceId;
   const { userId } = useUser() || {};
   const { showAlert } = useAlert();
-  const [device, setDevice] = useState(null);
-  const [loading, setLoading] = useState(true);
-  const [reportingId, setReportingId] = useState(false);
   const [powerModalOpen, setPowerModalOpen] = useState(false);
   const [powerAction, setPowerAction] = useState(null);
   const [sendingPower, setSendingPower] = useState(false);
@@ -110,56 +107,25 @@ export default function OperatorDeviceDetailPage() {
   const [connectionReachable, setConnectionReachable] = useState(undefined);
   const [howToConnectOpen, setHowToConnectOpen] = useState(false);
 
-  const fetchDevice = async () => {
-    if (!deviceId || !userId) return;
-    try {
-      setLoading(true);
-      const listRes = await api(`/api/devices/get-all-devices?operatorId=${userId}`, 'GET');
-      const list = Array.isArray(listRes.data) ? listRes.data : listRes.data?.data ?? [];
-      const allowed = list.some((d) => (d._id || d.id) === deviceId);
-      if (!allowed) {
-        setDevice(null);
-        return;
-      }
-      const res = await devicesApi.getDeviceById(deviceId);
-      const data = res?.data ?? res;
-      if (data && (data._id || data.id)) setDevice(data);
-      else setDevice(null);
-    } catch (e) {
-      console.error('Fetch device:', e);
-      setDevice(null);
-    } finally {
-      setLoading(false);
-    }
-  };
+  // ── Data fetching via TanStack Query ──
+  const { data: devicesRaw, isLoading: loading } = useOperatorDevices(userId);
+  const reportStatusMutation = useReportDeviceStatus();
+  const reportingId = reportStatusMutation.isPending;
 
-  useEffect(() => {
-    if (!deviceId || !userId) {
-      setLoading(false);
-      return;
-    }
-    fetchDevice();
-  }, [deviceId, userId]);
+  const device = useMemo(() => {
+    if (!deviceId || !devicesRaw) return null;
+    const list = Array.isArray(devicesRaw) ? devicesRaw : devicesRaw?.data ?? [];
+    const found = list.find((d) => (d._id || d.id) === deviceId);
+    return found || null;
+  }, [devicesRaw, deviceId]);
 
   const handleReportStatus = async (reportedStatus) => {
     if (!deviceId || !userId) return;
-    setReportingId(true);
     try {
-      const res = await api(`/api/devices/${deviceId}/report-status`, 'PUT', {
-        reportedStatus,
-        reportedBy: userId,
-      });
-      if (res.ok) {
-        const updated = res.data?.data ?? res.data;
-        setDevice((d) => (d ? { ...d, reportedStatus: updated?.reportedStatus ?? reportedStatus } : d));
-        showAlert('Device report updated', 'success');
-      } else {
-        showAlert(res.data?.message || 'Failed to report status', 'error');
-      }
+      await reportStatusMutation.mutateAsync({ deviceId, data: { reportedStatus, reportedBy: userId } });
+      showAlert('Device report updated', 'success');
     } catch (e) {
       showAlert(e?.message || 'Failed to report status', 'error');
-    } finally {
-      setReportingId(false);
     }
   };
 

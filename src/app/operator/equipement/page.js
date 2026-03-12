@@ -1,6 +1,6 @@
 'use client'
 
-import React, { useState, useEffect } from 'react'
+import React, { useState, useMemo } from 'react'
 import { useRouter } from 'next/navigation'
 import {
   Video,
@@ -26,8 +26,8 @@ import {
   Eye,
   Settings as SettingsIcon
 } from 'lucide-react'
-import { api, getCookie } from '@/lib/helper'
 import { devicesApi } from '@/data/devicesApi'
+import { useOperatorDevices, useReportDeviceStatus } from '@/hooks/useQueryHooks'
 import { useUser } from '@/components/providers/UserContext'
 import {
   Dialog,
@@ -56,112 +56,70 @@ const EquipmentPage = () => {
   const router = useRouter()
   const { showAlert } = useAlert()
   const { userId } = useUser() || {}
-  const [devices, setDevices] = useState([])
-  const [loading, setLoading] = useState(true)
-  const [refreshing, setRefreshing] = useState(false)
   const [searchQuery, setSearchQuery] = useState('')
-  const [reportingId, setReportingId] = useState(null)
+  const [refreshing, setRefreshing] = useState(false)
   const [powerModalOpen, setPowerModalOpen] = useState(false)
   const [powerModalDevice, setPowerModalDevice] = useState(null)
   const [sendingPower, setSendingPower] = useState(false)
   const [sendingLiveStatusId, setSendingLiveStatusId] = useState(null)
-  const [statistics, setStatistics] = useState({
-    total: 0,
-    online: 0,
-    recording: 0,
-    offline: 0
-  })
-  
-  useEffect(() => {
-    fetchDevices()
-  }, [userId])
 
-  const fetchDevices = async () => {
-    try {
-      setLoading(true)
-      if (!userId) {
-        setLoading(false)
-        setRefreshing(false)
-        return
+  // ── Data fetching via TanStack Query ──
+  const { data: devicesRaw, isLoading: loading, refetch } = useOperatorDevices(userId)
+  const reportStatusMutation = useReportDeviceStatus()
+  const reportingId = reportStatusMutation.isPending ? reportStatusMutation.variables?.deviceId : null
+
+  const { devices, statistics } = useMemo(() => {
+    const raw = devicesRaw
+    const list = Array.isArray(raw) ? raw : raw?.data ?? []
+    const LIVE_MAX_AGE_MS = 10 * 60 * 1000
+    const isLiveRecent = (d) => d.liveUpdatedAt && (Date.now() - new Date(d.liveUpdatedAt).getTime() < LIVE_MAX_AGE_MS)
+    const formattedDevices = list.map(device => {
+      const useLive = isLiveRecent(device)
+      const battery = useLive && typeof device.liveBattery === 'number'
+        ? device.liveBattery
+        : (device.specifications?.battery != null ? (typeof device.specifications.battery === 'number' ? device.specifications.battery : parseInt(String(device.specifications.battery).replace('%', ''), 10) || 0) : 0)
+      const signal = useLive && device.liveSignal
+        ? device.liveSignal
+        : (device.status === 'online' || device.status === 'recording' ? 'strong' : device.status === 'offline' ? 'none' : 'medium')
+      const liveStatus = useLive && device.liveStatus ? device.liveStatus : 'Active'
+      return {
+        id: device._id,
+        name: device.name || 'Unknown Device',
+        type: device.type?.toLowerCase() || 'camera',
+        status: device.status || 'offline',
+        reportedStatus: device.reportedStatus || null,
+        battery,
+        signal,
+        liveStatus,
+        location: device.location || 'Unknown',
+        lastActive: device.updatedAt || device.createdAt,
+        liveUpdatedAt: device.liveUpdatedAt
       }
-
-      // Fetch devices assigned to this operator (backend filters by operatorId)
-      const devicesResponse = await api(`/api/devices/get-all-devices?operatorId=${userId}`, 'GET')
-      const raw = devicesResponse.data
-      const list = Array.isArray(raw) ? raw : raw?.data ?? []
-      if (devicesResponse.ok && list.length >= 0) {
-        const operatorDevices = list
-
-        const LIVE_MAX_AGE_MS = 10 * 60 * 1000 // 10 min
-        const isLiveRecent = (d) => d.liveUpdatedAt && (Date.now() - new Date(d.liveUpdatedAt).getTime() < LIVE_MAX_AGE_MS)
-        const formattedDevices = operatorDevices.map(device => {
-          const useLive = isLiveRecent(device)
-          const battery = useLive && typeof device.liveBattery === 'number'
-            ? device.liveBattery
-            : (device.specifications?.battery != null ? (typeof device.specifications.battery === 'number' ? device.specifications.battery : parseInt(String(device.specifications.battery).replace('%', ''), 10) || 0) : 0)
-          const signal = useLive && device.liveSignal
-            ? device.liveSignal
-            : (device.status === 'online' || device.status === 'recording' ? 'strong' : device.status === 'offline' ? 'none' : 'medium')
-          const liveStatus = useLive && device.liveStatus ? device.liveStatus : 'Active'
-          return {
-            id: device._id,
-            name: device.name || 'Unknown Device',
-            type: device.type?.toLowerCase() || 'camera',
-            status: device.status || 'offline',
-            reportedStatus: device.reportedStatus || null,
-            battery,
-            signal,
-            liveStatus,
-            location: device.location || 'Unknown',
-            lastActive: device.updatedAt || device.createdAt,
-            liveUpdatedAt: device.liveUpdatedAt
-          }
-        })
-        
-        setDevices(formattedDevices)
-        
-        // Calculate statistics
-        setStatistics({
-          total: formattedDevices.length,
-          online: formattedDevices.filter(d => d.status === 'online').length,
-          recording: formattedDevices.filter(d => d.status === 'recording').length,
-          offline: formattedDevices.filter(d => d.status === 'offline').length
-        })
+    })
+    return {
+      devices: formattedDevices,
+      statistics: {
+        total: formattedDevices.length,
+        online: formattedDevices.filter(d => d.status === 'online').length,
+        recording: formattedDevices.filter(d => d.status === 'recording').length,
+        offline: formattedDevices.filter(d => d.status === 'offline').length
       }
-    } catch (error) {
-      console.error('Error fetching devices:', error)
-    } finally {
-      setLoading(false)
-      setRefreshing(false)
     }
-  }
+  }, [devicesRaw])
 
-  const handleRefresh = () => {
+  const handleRefresh = async () => {
     setRefreshing(true)
-    fetchDevices()
+    await refetch()
+    setRefreshing(false)
   }
 
   const handleReportStatus = async (deviceId, reportedStatus) => {
     if (!userId) return
-    setReportingId(deviceId)
     try {
-      const res = await api(`/api/devices/${deviceId}/report-status`, 'PUT', {
-        reportedStatus,
-        reportedBy: userId,
-      })
-      if (res.ok) {
-        const updated = res.data?.data ?? res.data
-        setDevices(prev =>
-          prev.map(d => (d.id === deviceId ? { ...d, reportedStatus: updated?.reportedStatus ?? reportedStatus } : d))
-        )
-        showAlert('Device report updated', 'success')
-      } else {
-        showAlert(res.data?.message || 'Failed to report status', 'error')
-      }
+      await reportStatusMutation.mutateAsync({ deviceId, data: { reportedStatus, reportedBy: userId } })
+      showAlert('Device report updated', 'success')
     } catch (e) {
       showAlert(e?.message || 'Failed to report status', 'error')
-    } finally {
-      setReportingId(null)
     }
   }
 
@@ -181,7 +139,7 @@ const EquipmentPage = () => {
         status: 'active',
       })
       showAlert('Live status updated. Card will show real data.', 'success')
-      fetchDevices()
+      refetch()
     } catch (e) {
       showAlert(e?.message || 'Failed to send live status', 'error')
     } finally {

@@ -1,5 +1,5 @@
 "use client";
-import React, { useState, useEffect, useRef, Suspense } from "react";
+import React, { useState, useEffect, useRef, useMemo, Suspense } from "react";
 import { Search, Plus, Loader2, LayoutGrid, Rows, MoreVertical, Eye } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import {
@@ -9,20 +9,21 @@ import {
   DropdownMenuItem,
   DropdownMenuLabel,
 } from "@/components/ui/dropdown-menu";
-import ProjectDetail from "./components/ProjectDetail";
-import ProjectCard from "./components/ProjectCard";
-import { api } from "@/lib/helper";
+
 import { useAlert } from "@/components/providers/AlertProvider";
 import { useUser } from "@/components/providers/UserContext";
 import debounce from "lodash/debounce";
 import { useRouter, useSearchParams, usePathname } from "next/navigation";
+import { useOperatorProjects, useOperatorProject } from "@/hooks/useQueryHooks";
+import ProjectDetail from "@/components/operator/project/ProjectDetail";
+import ProjectCard from "@/components/operator/project/ProjectCard";
 
 const OperatorModulePage = () => {
   const { userId } = useUser();
 
-  const [projects, setProjects] = useState([]);
   const [selectedProject, setSelectedProject] = useState(null);
   const [searchTerm, setSearchTerm] = useState("");
+  const [debouncedSearch, setDebouncedSearch] = useState("");
   const [statusFilter, setStatusFilter] = useState("all");
   const [viewMode, setViewMode] = useState("grid"); // 'grid' | 'table'
   const navigatingBackRef = useRef(false);
@@ -36,64 +37,39 @@ const OperatorModulePage = () => {
 
   const [page, setPage] = useState(1);
   const [limit] = useState(6);
-  const [totalPages, setTotalPages] = useState(1);
 
   const { showAlert } = useAlert();
 
-  const handleLoadData = async (
-    search = "",
-    status = "all",
-    pageNumber = 1
-  ) => {
-    // For operator routes, only load once we know who the operator is
-    if (isOperatorRoute && !userId) {
-      return;
-    }
+  // ── Data fetching via TanStack Query ──
+  const { data: projectsData } = useOperatorProjects(
+    isOperatorRoute ? userId : null,
+    { page, limit, search: debouncedSearch, status: statusFilter },
+  );
+  const { data: deepLinkedProject } = useOperatorProject(
+    selectedProjectId && !selectedProject ? selectedProjectId : null,
+  );
 
-    try {
-      const query = new URLSearchParams({
-        page: pageNumber.toString(),
-        limit: limit.toString(),
-        search,
-        status: status === "all" ? "" : status,
-      });
+  const projects = projectsData?.data ?? [];
+  const totalPages = projectsData?.totalPages ?? 1;
 
-      // Restrict to the logged-in operator's own projects
-      if (isOperatorRoute && userId) {
-        query.append("assignedOperatorId", userId);
-      }
-
-      const response = await api(
-        `/api/projects/get-all-projects?${query.toString()}`,
-        "GET"
-      );
-      const { data, totalPages } = response.data;
-
-      console.log("Fetched Projects:", data);
-
-      setProjects(data);
-      setTotalPages(totalPages);
-    } catch (error) {
-      console.error(`Error Fetching: ${error.message}`);
-      showAlert(`Error Fetching Data: ${error.message}`, "error");
-    }
-  };
-
-  const debouncedSearch = debounce((value, status, page) => {
-    handleLoadData(value, status, page);
-  }, 400);
+  // Debounced search handler
+  const debouncedSearchFn = React.useMemo(
+    () => debounce((value) => {
+      setDebouncedSearch(value);
+      setPage(1);
+    }, 400),
+    []
+  );
 
   const handleSearchChange = (e) => {
     const value = e.target.value;
     setSearchTerm(value);
-    debouncedSearch(value, statusFilter, 1);
-    setPage(1);
+    debouncedSearchFn(value);
   };
 
   const handleStatusChange = (e) => {
     const value = e.target.value;
     setStatusFilter(value);
-    debouncedSearch(searchTerm, value, 1);
     setPage(1);
   };
 
@@ -124,11 +100,6 @@ const OperatorModulePage = () => {
   };
 
   useEffect(() => {
-    handleLoadData(searchTerm, statusFilter, page);
-  }, [page, userId, isOperatorRoute]);
-
-
-  useEffect(() => {
     if (navigatingBackRef.current) {
       navigatingBackRef.current = false;
       setSelectedProject(null);
@@ -139,32 +110,20 @@ const OperatorModulePage = () => {
       return;
     }
 
-    const fetchProjectById = async () => {
-      if (selectedProject && selectedProject._id === selectedProjectId) {
+    // Try to find in loaded projects first
+    if (projects.length > 0) {
+      const found = projects.find((p) => p._id === selectedProjectId);
+      if (found) {
+        setSelectedProject(found);
         return;
       }
+    }
 
-      if (projects.length > 0) {
-        const found = projects.find((p) => p._id === selectedProjectId);
-        if (found) {
-          setSelectedProject(found);
-          return;
-        }
-      }
-
-      try {
-        const { data } = await api(`/api/projects/get-project/${selectedProjectId}`, 'GET');
-        if (data?.data) {
-          setSelectedProject(data.data);
-        }
-      } catch (error) {
-        console.error('Error fetching deep-linked project:', error);
-        showAlert('Failed to load project from URL', 'error');
-      }
-    };
-
-    fetchProjectById();
-  }, [selectedProjectId, projects, selectedProject]);
+    // Use deep-linked query result
+    if (deepLinkedProject) {
+      setSelectedProject(deepLinkedProject);
+    }
+  }, [selectedProjectId, projects, deepLinkedProject]);
 
   const handleBackToProjects = () => {
     navigatingBackRef.current = true;
@@ -277,7 +236,7 @@ const OperatorModulePage = () => {
                     setSelectedProject={setSelectedProject}
                     getStatusColor={getStatusColor}
                     getPriorityColor={getPriorityColor}
-                    loadData={handleLoadData}
+                    loadData={projects}
                     hideActions
                   />
                 ))}

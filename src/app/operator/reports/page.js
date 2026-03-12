@@ -1,6 +1,6 @@
 'use client'
 
-import React, { useState, useEffect } from 'react'
+import React, { useState, useMemo } from 'react'
 import { 
   FileText, 
   Download, 
@@ -25,7 +25,12 @@ import {
   ChevronRight,
   Activity
 } from 'lucide-react'
-import { api } from '@/lib/helper'
+import {
+  useOperatorReports,
+  useOperatorAllProjects,
+  useCreateOperatorReport,
+} from '@/hooks/useQueryHooks'
+import { operatorApi } from '@/data/operatorApi'
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
 import { Button } from '@/components/ui/button'
 import { Badge } from '@/components/ui/badge'
@@ -46,6 +51,7 @@ import {
   DropdownMenuTrigger,
 } from '@/components/ui/dropdown-menu'
 import { Dialog, DialogContent } from '@/components/ui/dialog'
+import { useUser } from '@/components/providers/UserContext'
 import { useAlert } from '@/components/providers/AlertProvider'
 import GenerateReportModal from './components/GenerateReportModal'
 
@@ -78,26 +84,18 @@ const statusConfig = {
 }
 
 const ReportsPage = () => {
+  const { userId, userData } = useUser()
+  const username = userData?.username ?? userData?.email ?? ''
+  const { showAlert } = useAlert()
+
   const [selectedFilter, setSelectedFilter] = useState('all')
   const [dateRange, setDateRange] = useState('month')
   const [searchTerm, setSearchTerm] = useState('')
   const [selectedReports, setSelectedReports] = useState([])
-  const [reports, setReports] = useState([])
-  const [loading, setLoading] = useState(true)
   const [refreshing, setRefreshing] = useState(false)
-  const [stats, setStats] = useState({
-    total: 0,
-    completed: 0,
-    inReview: 0,
-    totalFootage: 0
-  })
-  const { showAlert } = useAlert()
-  
+
   // Generate Report Modal State
   const [showGenerateModal, setShowGenerateModal] = useState(false)
-  const [projects, setProjects] = useState([])
-  const [loadingProjects, setLoadingProjects] = useState(false)
-  const [generating, setGenerating] = useState(false)
   const [reportForm, setReportForm] = useState({
     projectId: '',
     reportTitle: '',
@@ -108,141 +106,70 @@ const ReportsPage = () => {
     notes: ''
   })
 
-  useEffect(() => {
-    fetchReports()
-  }, [])
+  // ── Data fetching via TanStack Query ──
+  const { data: reportsRaw, isLoading: loading, refetch: refetchReports } = useOperatorReports(userId)
+  const { data: projectsRaw, isLoading: loadingProjects } = useOperatorAllProjects({ enabled: showGenerateModal })
+  const createReportMutation = useCreateOperatorReport()
+  const generating = createReportMutation.isPending
 
-  useEffect(() => {
-    if (showGenerateModal) {
-      fetchProjects()
-    }
-  }, [showGenerateModal])
-
-  const fetchReports = async () => {
-    try {
-      const username = localStorage.getItem('username')
-      if (!username) return
-
-      // Get user ID
-      const userResponse = await api(`/api/users/role/${username}`, 'GET')
-      if (!userResponse.ok || !userResponse.data?._id) return
-
-      const userId = userResponse.data._id
-
-      // Fetch operator reports
-      const reportsResponse = await api(`/api/reports/get-operator-reports/${userId}`, 'GET')
-      if (reportsResponse.ok && reportsResponse.data?.data) {
-        const reportsData = reportsResponse.data.data
-        
-        const formattedReports = reportsData.map(report => ({
-          id: report._id,
-          inspectionId: report.reportId || `INS-${report._id.slice(-6)}`,
-          location: report.project?.location || report.location || 'Unknown',
-          date: report.createdAt ? new Date(report.createdAt).toLocaleDateString() : 'N/A',
-          time: report.createdAt ? new Date(report.createdAt).toLocaleTimeString('en-US', { hour: '2-digit', minute: '2-digit' }) : 'N/A',
-          status: report.status || 'pending',
-          operator: report.createdBy?.first_name && report.createdBy?.last_name
-            ? `${report.createdBy.first_name} ${report.createdBy.last_name}`
-            : username,
-          footage: report.totalFootage || '0 ft',
-          aiDetections: report.aiDetections || 0,
-          issues: report.defects?.map(d => d.type) || [],
-          confidence: report.averageConfidence || 0,
-          reportType: report.type || 'PACP',
-          projectName: report.project?.name || 'N/A'
-        }))
-        
-        setReports(formattedReports)
-        
-        // Calculate stats
-        const totalFootage = formattedReports.reduce((sum, r) => {
-          const footage = parseInt(r.footage) || 0
-          return sum + footage
-        }, 0)
-
-        setStats({
-          total: formattedReports.length,
-          completed: formattedReports.filter(r => r.status === 'completed').length,
-          inReview: formattedReports.filter(r => r.status === 'in-review').length,
-          totalFootage: totalFootage
-        })
+  const { reports, stats } = useMemo(() => {
+    const reportsData = Array.isArray(reportsRaw) ? reportsRaw : reportsRaw?.data ?? []
+    const formattedReports = reportsData.map(report => ({
+      id: report._id,
+      inspectionId: report.reportId || `INS-${report._id.slice(-6)}`,
+      location: report.project?.location || report.location || 'Unknown',
+      date: report.createdAt ? new Date(report.createdAt).toLocaleDateString() : 'N/A',
+      time: report.createdAt ? new Date(report.createdAt).toLocaleTimeString('en-US', { hour: '2-digit', minute: '2-digit' }) : 'N/A',
+      status: report.status || 'pending',
+      operator: report.createdBy?.first_name && report.createdBy?.last_name
+        ? `${report.createdBy.first_name} ${report.createdBy.last_name}`
+        : username,
+      footage: report.totalFootage || '0 ft',
+      aiDetections: report.aiDetections || 0,
+      issues: report.defects?.map(d => d.type) || [],
+      confidence: report.averageConfidence || 0,
+      reportType: report.type || 'PACP',
+      projectName: report.project?.name || 'N/A'
+    }))
+    const totalFootage = formattedReports.reduce((sum, r) => {
+      const footage = parseInt(r.footage) || 0
+      return sum + footage
+    }, 0)
+    return {
+      reports: formattedReports,
+      stats: {
+        total: formattedReports.length,
+        completed: formattedReports.filter(r => r.status === 'completed').length,
+        inReview: formattedReports.filter(r => r.status === 'in-review').length,
+        totalFootage
       }
-    } catch (error) {
-      console.error('Error fetching reports:', error)
-      showAlert('Failed to load reports', 'error')
-    } finally {
-      setLoading(false)
-      setRefreshing(false)
     }
-  }
+  }, [reportsRaw, username])
 
-  const handleRefresh = () => {
+  const projects = useMemo(() => {
+    const allProjects = Array.isArray(projectsRaw) ? projectsRaw : projectsRaw?.data ?? []
+    return allProjects.filter(project => project.assignedOperator?.userId === userId)
+  }, [projectsRaw, userId])
+
+  const handleRefresh = async () => {
     setRefreshing(true)
-    fetchReports()
-  }
-
-  const fetchProjects = async () => {
-    try {
-      setLoadingProjects(true)
-      const username = localStorage.getItem('username')
-      if (!username) return
-
-      // Get user data
-      const userResponse = await api(`/api/users/role/${username}`, 'GET')
-      if (!userResponse.ok || !userResponse.data?._id) return
-
-      const userId = userResponse.data._id
-
-      // Fetch projects assigned to this operator
-      const projectsResponse = await api(`/api/projects/get-all-project`, 'GET')
-      if (projectsResponse.ok && projectsResponse.data) {
-        // Filter projects where operator is assigned
-        const operatorProjects = projectsResponse.data.filter(project => 
-          project.assignedOperator?.userId === userId
-        )
-        setProjects(operatorProjects)
-      }
-    } catch (error) {
-      console.error('Error fetching projects:', error)
-      showAlert('Failed to load projects', 'error')
-    } finally {
-      setLoadingProjects(false)
-    }
+    await refetchReports()
+    setRefreshing(false)
   }
 
   const handleGenerateReport = async () => {
+    if (!reportForm.projectId) {
+      showAlert('Please select a project', 'error')
+      return
+    }
+    if (!reportForm.reportTitle) {
+      showAlert('Please enter a report title', 'error')
+      return
+    }
     try {
-      // Validation
-      if (!reportForm.projectId) {
-        showAlert('Please select a project', 'error')
-        return
-      }
-      if (!reportForm.reportTitle) {
-        showAlert('Please enter a report title', 'error')
-        return
-      }
-
-      setGenerating(true)
-
-      const username = localStorage.getItem('username')
-      if (!username) {
-        showAlert('User not found', 'error')
-        return
-      }
-
-      // Get user ID
-      const userResponse = await api(`/api/users/role/${username}`, 'GET')
-      if (!userResponse.ok || !userResponse.data?._id) {
-        showAlert('Failed to get user information', 'error')
-        return
-      }
-
-      const operatorId = userResponse.data._id
-
-      // Prepare report data
       const reportData = {
         projectId: reportForm.projectId,
-        operator: operatorId,
+        operator: userId,
         reportTitle: reportForm.reportTitle,
         location: reportForm.location || 'N/A',
         date: reportForm.inspectionDate,
@@ -254,33 +181,21 @@ const ReportsPage = () => {
         issues: [],
         notes: reportForm.notes || ''
       }
-
-      // Create report
-      const response = await api('/api/reports/create-report', 'POST', reportData)
-
-      if (response.ok) {
-        showAlert('Report generated successfully!', 'success')
-        setShowGenerateModal(false)
-        // Reset form
-        setReportForm({
-          projectId: '',
-          reportTitle: '',
-          inspectionDate: new Date().toISOString().split('T')[0],
-          reportType: 'PACP',
-          footage: '',
-          location: '',
-          notes: ''
-        })
-        // Refresh reports list
-        fetchReports()
-      } else {
-        showAlert(response.message || 'Failed to generate report', 'error')
-      }
+      await createReportMutation.mutateAsync(reportData)
+      showAlert('Report generated successfully!', 'success')
+      setShowGenerateModal(false)
+      setReportForm({
+        projectId: '',
+        reportTitle: '',
+        inspectionDate: new Date().toISOString().split('T')[0],
+        reportType: 'PACP',
+        footage: '',
+        location: '',
+        notes: ''
+      })
     } catch (error) {
       console.error('Error generating report:', error)
       showAlert('Failed to generate report', 'error')
-    } finally {
-      setGenerating(false)
     }
   }
 

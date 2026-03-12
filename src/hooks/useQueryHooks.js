@@ -12,6 +12,7 @@ import { devicesApi } from '@/data/devicesApi';
 import notificationApi from '@/data/notificationApi ';
 import { customerApi } from '@/data/customerApi';
 import { userApi } from '@/data/userApi';
+import { maintenanceApi } from '@/data/maintenanceApi';
 
 /**
  * Query Keys - Centralized key management for cache invalidation
@@ -36,6 +37,19 @@ export const queryKeys = {
     operatorTasks: (operatorId, status) => ['operator', 'tasks', operatorId, status],
     operatorReports: (operatorId) => ['operator', 'reports', operatorId],
     operatorOverview: ['operator', 'overview'],
+    operatorTodayEvents: (userId) => ['operator', 'todayEvents', userId],
+    operatorAssignedProjects: (userId) => ['operator', 'assignedProjects', userId],
+    operatorCalendarEvents: (userId) => ['operator', 'calendar', userId],
+    operatorCalendarStats: (userId) => ['operator', 'calendar-stats', userId],
+    operatorProjects: (userId, filters) => ['operator', 'projects', userId, filters ?? {}],
+    operatorProject: (projectId) => ['operator', 'project', projectId],
+    operatorDevices: (operatorId) => ['operator', 'devices', operatorId],
+    operatorUploads: (limit) => ['operator', 'uploads', limit],
+    operatorLogs: (username) => ['operator', 'logs', username],
+    operatorNotificationPreferences: (userId) => ['operator', 'notification-preferences', userId],
+
+    // Maintenance
+    maintenanceOverview: () => ['maintenance', 'overview'],
 
     // Notes
     notes: (userId, filters) => ['notes', userId, filters],
@@ -192,6 +206,271 @@ export function useStopRecording() {
         mutationFn: (deviceId) => operatorApi.stopRecording(deviceId),
         onSuccess: () => {
             queryClient.invalidateQueries({ queryKey: ['operator'] });
+        },
+    });
+}
+
+// ── Operator Dashboard extras ──
+
+export function useOperatorTodayEvents(userId, options = {}) {
+    return useQuery({
+        queryKey: queryKeys.operatorTodayEvents(userId),
+        queryFn: () => operatorApi.getTodayEvents(userId),
+        enabled: !!userId,
+        staleTime: 1000 * 60 * 2,
+        ...options,
+    });
+}
+
+export function useOperatorAssignedProjects(userId, limit = 10, options = {}) {
+    return useQuery({
+        queryKey: queryKeys.operatorAssignedProjects(userId),
+        queryFn: () => operatorApi.getAssignedProjects(userId, limit),
+        enabled: !!userId,
+        staleTime: 1000 * 60 * 2,
+        ...options,
+    });
+}
+
+// ── Operator Calendar ──
+
+export function useOperatorCalendarEvents(userId, options = {}) {
+    return useQuery({
+        queryKey: queryKeys.operatorCalendarEvents(userId),
+        queryFn: () => operatorApi.getCalendarEvents(userId),
+        enabled: !!userId,
+        staleTime: 1000 * 60 * 2,
+        ...options,
+    });
+}
+
+export function useOperatorCalendarStats(userId, options = {}) {
+    return useQuery({
+        queryKey: queryKeys.operatorCalendarStats(userId),
+        queryFn: () => operatorApi.getCalendarStatistics(userId),
+        enabled: !!userId,
+        staleTime: 1000 * 60 * 2,
+        ...options,
+    });
+}
+
+export function useCreateOperatorEvent() {
+    const queryClient = useQueryClient();
+    return useMutation({
+        mutationFn: (payload) => operatorApi.createCalendarEvent(payload),
+        onSuccess: () => {
+            queryClient.invalidateQueries({ queryKey: ['operator', 'calendar'] });
+            queryClient.invalidateQueries({ queryKey: ['operator', 'calendar-stats'] });
+            queryClient.invalidateQueries({ queryKey: ['operator', 'todayEvents'] });
+        },
+    });
+}
+
+export function useUpdateOperatorEventStatus() {
+    const queryClient = useQueryClient();
+    return useMutation({
+        mutationFn: ({ eventId, status }) => operatorApi.updateCalendarEventStatus(eventId, status),
+        onSuccess: () => {
+            queryClient.invalidateQueries({ queryKey: ['operator', 'calendar'] });
+            queryClient.invalidateQueries({ queryKey: ['operator', 'calendar-stats'] });
+        },
+    });
+}
+
+export function useDeleteOperatorEvent() {
+    const queryClient = useQueryClient();
+    return useMutation({
+        mutationFn: (eventId) => operatorApi.deleteCalendarEvent(eventId),
+        onSuccess: () => {
+            queryClient.invalidateQueries({ queryKey: ['operator', 'calendar'] });
+            queryClient.invalidateQueries({ queryKey: ['operator', 'calendar-stats'] });
+            queryClient.invalidateQueries({ queryKey: ['operator', 'todayEvents'] });
+        },
+    });
+}
+
+// ── Operator Projects ──
+
+export function useOperatorProjects(userId, { page = 1, limit = 20, search = '', status = '' } = {}, options = {}) {
+    return useQuery({
+        queryKey: queryKeys.operatorProjects(userId, { page, limit, search, status }),
+        queryFn: () => operatorApi.getProjects(userId, { page, limit, search, status }),
+        enabled: !!userId,
+        staleTime: 1000 * 60 * 2,
+        ...options,
+    });
+}
+
+export function useOperatorProject(projectId, options = {}) {
+    return useQuery({
+        queryKey: queryKeys.operatorProject(projectId),
+        queryFn: () => operatorApi.getProject(projectId),
+        enabled: !!projectId,
+        staleTime: 1000 * 60 * 2,
+        ...options,
+    });
+}
+
+// ── Operator Equipment / Devices ──
+
+export function useOperatorDevices(operatorId, options = {}) {
+    return useQuery({
+        queryKey: queryKeys.operatorDevices(operatorId),
+        queryFn: () => operatorApi.getDevices(operatorId),
+        enabled: !!operatorId,
+        staleTime: 1000 * 60 * 2,
+        ...options,
+    });
+}
+
+export function useReportDeviceStatus() {
+    const queryClient = useQueryClient();
+    return useMutation({
+        mutationFn: ({ deviceId, data }) => operatorApi.reportDeviceStatus(deviceId, data),
+        onSuccess: () => {
+            queryClient.invalidateQueries({ queryKey: ['operator', 'devices'] });
+            queryClient.invalidateQueries({ queryKey: ['devices'] });
+        },
+    });
+}
+
+// ── Operator Operations ──
+
+export function useOperatorUploads(limit = 10, options = {}) {
+    return useQuery({
+        queryKey: queryKeys.operatorUploads(limit),
+        queryFn: () => operatorApi.getUploads(limit),
+        staleTime: 1000 * 30,
+        ...options,
+    });
+}
+
+export function useStartOperationsRecording() {
+    const queryClient = useQueryClient();
+    return useMutation({
+        mutationFn: (deviceId) => operatorApi.startOperationsRecording(deviceId),
+        onSuccess: () => {
+            queryClient.invalidateQueries({ queryKey: ['operator'] });
+        },
+    });
+}
+
+export function useStopOperationsRecording() {
+    const queryClient = useQueryClient();
+    return useMutation({
+        mutationFn: (deviceId) => operatorApi.stopOperationsRecording(deviceId),
+        onSuccess: () => {
+            queryClient.invalidateQueries({ queryKey: ['operator'] });
+        },
+    });
+}
+
+// ── Operator Reports ──
+
+export function useCreateOperatorReport() {
+    const queryClient = useQueryClient();
+    return useMutation({
+        mutationFn: (reportData) => operatorApi.createReport(reportData),
+        onSuccess: () => {
+            queryClient.invalidateQueries({ queryKey: ['operator', 'reports'] });
+        },
+    });
+}
+
+export function useOperatorAllProjects(options = {}) {
+    return useQuery({
+        queryKey: ['operator', 'allProjects'],
+        queryFn: () => operatorApi.getAllProjectsForReports(),
+        staleTime: 1000 * 60 * 5,
+        ...options,
+    });
+}
+
+// ── Operator Logs ──
+
+export function useOperatorLogs(username, limit = 100, options = {}) {
+    return useQuery({
+        queryKey: queryKeys.operatorLogs(username),
+        queryFn: () => operatorApi.getInspectionLogs(username, limit),
+        enabled: !!username,
+        staleTime: 1000 * 30,
+        ...options,
+    });
+}
+
+// ── Operator Settings ──
+
+export function useUpdateOperatorProfile() {
+    return useMutation({
+        mutationFn: ({ username, data }) => operatorApi.updateProfile(username, data),
+    });
+}
+
+export function useChangeOperatorPassword() {
+    return useMutation({
+        mutationFn: (data) => operatorApi.changePassword(data),
+    });
+}
+
+export function useSaveOperatorSettings() {
+    return useMutation({
+        mutationFn: (settings) => operatorApi.saveSettings(settings),
+    });
+}
+
+// ── Operator Notifications ──
+
+export function useOperatorNotificationPreferences(userId, options = {}) {
+    return useQuery({
+        queryKey: queryKeys.operatorNotificationPreferences(userId),
+        queryFn: () => operatorApi.getNotificationPreferences(userId),
+        enabled: !!userId,
+        staleTime: 1000 * 60 * 10,
+        ...options,
+    });
+}
+
+export function useUpdateOperatorNotificationPreferences() {
+    const queryClient = useQueryClient();
+    return useMutation({
+        mutationFn: ({ userId, preferences }) => operatorApi.updateNotificationPreferences(userId, preferences),
+        onSuccess: (_data, { userId }) => {
+            queryClient.invalidateQueries({ queryKey: queryKeys.operatorNotificationPreferences(userId) });
+        },
+    });
+}
+
+// ── Maintenance Hooks ──
+
+export function useMaintenanceOverview(options = {}) {
+    return useQuery({
+        queryKey: queryKeys.maintenanceOverview(),
+        queryFn: async () => {
+            const response = await maintenanceApi.getOverview();
+            if (response.error) throw new Error(response.error);
+            return response.data?.data ?? response.data;
+        },
+        staleTime: 1000 * 30,
+        ...options,
+    });
+}
+
+export function useRefreshMaintenanceSystems() {
+    const queryClient = useQueryClient();
+    return useMutation({
+        mutationFn: () => maintenanceApi.refreshSystems(),
+        onSuccess: () => {
+            queryClient.invalidateQueries({ queryKey: queryKeys.maintenanceOverview() });
+        },
+    });
+}
+
+export function useDismissMaintenanceAlert() {
+    const queryClient = useQueryClient();
+    return useMutation({
+        mutationFn: (alertId) => maintenanceApi.deleteAlert(alertId),
+        onSuccess: () => {
+            queryClient.invalidateQueries({ queryKey: queryKeys.maintenanceOverview() });
         },
     });
 }
@@ -1197,6 +1476,33 @@ export default {
     useDeleteDevice,
     useAssignDeviceToTeamLeader,
     useQueryUtilities,
+    // Operator hooks (extended)
+    useOperatorTodayEvents,
+    useOperatorAssignedProjects,
+    useOperatorCalendarEvents,
+    useOperatorCalendarStats,
+    useCreateOperatorEvent,
+    useUpdateOperatorEventStatus,
+    useDeleteOperatorEvent,
+    useOperatorProjects,
+    useOperatorProject,
+    useOperatorDevices,
+    useReportDeviceStatus,
+    useOperatorUploads,
+    useStartOperationsRecording,
+    useStopOperationsRecording,
+    useCreateOperatorReport,
+    useOperatorAllProjects,
+    useOperatorLogs,
+    useUpdateOperatorProfile,
+    useChangeOperatorPassword,
+    useSaveOperatorSettings,
+    useOperatorNotificationPreferences,
+    useUpdateOperatorNotificationPreferences,
+    // Maintenance hooks
+    useMaintenanceOverview,
+    useRefreshMaintenanceSystems,
+    useDismissMaintenanceAlert,
     // Customer hooks
     useCustomerProjects,
     useCustomerProject,

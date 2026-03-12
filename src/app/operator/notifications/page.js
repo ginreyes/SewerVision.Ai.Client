@@ -32,7 +32,10 @@ import { Label } from '@/components/ui/label';
 import { useUser } from '@/components/providers/UserContext';
 import { useNotifications } from '@/components/providers/NotificationProvider';
 import { useAlert } from '@/components/providers/AlertProvider';
-import { api } from '@/lib/helper';
+import {
+  useOperatorNotificationPreferences,
+  useUpdateOperatorNotificationPreferences,
+} from '@/hooks/useQueryHooks';
 
 // Compact Stat Card
 const StatCard = ({ icon: Icon, value, label, color = 'blue' }) => {
@@ -183,40 +186,24 @@ const NotificationPageOperator = () => {
 
   const [refreshing, setRefreshing] = useState(false);
   const [filter, setFilter] = useState('all'); // all, unread
-  const [preferences, setPreferences] = useState({
-    email: true,
-    push: true,
-    reportReady: true,
-    aiComplete: true,
-    statusUpdate: true,
-    qcReview: true,
-    defectFound: true,
-  });
+
+  // ── Notification preferences via TanStack Query ──
+  const { data: prefsData } = useOperatorNotificationPreferences(userId);
+  const updatePrefsMutation = useUpdateOperatorNotificationPreferences();
+
+  const preferences = {
+    email: prefsData?.email ?? true,
+    push: prefsData?.push ?? true,
+    reportReady: prefsData?.reportReady ?? true,
+    aiComplete: prefsData?.aiComplete ?? true,
+    statusUpdate: prefsData?.statusUpdate ?? true,
+    qcReview: prefsData?.qcReview ?? true,
+    defectFound: prefsData?.defectFound ?? true,
+  };
 
   useEffect(() => {
     if (userId) {
       fetchNotifications(true);
-      // Load notification preferences from backend
-      const loadPreferences = async () => {
-        try {
-          const response = await api(`/api/notifications/preferences/${userId}`, 'GET');
-          if (response.ok && response.data?.data) {
-            const prefs = response.data.data;
-            setPreferences({
-              email: prefs.email ?? true,
-              push: prefs.push ?? true,
-              reportReady: prefs.reportReady ?? true,
-              aiComplete: prefs.aiComplete ?? true,
-              statusUpdate: prefs.statusUpdate ?? true,
-              qcReview: prefs.qcReview ?? true,
-              defectFound: prefs.defectFound ?? true,
-            });
-          }
-        } catch (err) {
-          console.warn('Could not load notification preferences:', err);
-        }
-      };
-      loadPreferences();
     }
   }, [userId, fetchNotifications]);
 
@@ -261,18 +248,12 @@ const NotificationPageOperator = () => {
       ...preferences,
       [key]: !preferences[key],
     };
-    setPreferences(newPreferences);
     try {
-      const response = await api(`/api/notifications/preferences/${userId}`, 'PUT', newPreferences);
-      if (response.ok) {
-        showAlert('Preferences updated', 'success');
-      } else {
-        throw new Error(response.data?.message || 'Failed to update');
-      }
+      await updatePrefsMutation.mutateAsync({ userId, preferences: newPreferences });
+      showAlert('Preferences updated', 'success');
     } catch (err) {
       console.error('Error updating preferences:', err);
       showAlert('Failed to update preferences', 'error');
-      setPreferences(preferences);
     }
   };
 

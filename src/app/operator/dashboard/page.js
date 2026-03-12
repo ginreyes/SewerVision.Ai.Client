@@ -1,6 +1,6 @@
 'use client'
 
-import React, { useState, useEffect, useRef, useCallback } from 'react'
+import React, { useState, useEffect, useRef, useCallback, useMemo } from 'react'
 import { useRouter } from 'next/navigation'
 import {
   AlertTriangle,
@@ -17,177 +17,37 @@ import {
   MapPin,
   Wifi,
   Camera,
-  Activity,
   TrendingUp,
-  CheckCircle2,
   ChevronRight,
   Calendar as CalendarIcon,
   Wrench,
   FolderOpen,
-  Loader2
 } from 'lucide-react'
 
 import Chart from 'chart.js/auto'
-import { api } from '@/lib/helper'
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
 import { Button } from '@/components/ui/button'
 import { Badge } from '@/components/ui/badge'
 import { useUser } from '@/components/providers/UserContext'
-import { useAlert } from '@/components/providers/AlertProvider'
 
-// Import components
+// Import extracted components
 import { LoadingState, ErrorState } from '@/components/qc'
+import StatCard from '@/components/operator/dashboard/StatCard'
+import EquipmentCard from '@/components/operator/dashboard/EquipmentCard'
+import ActivityItem from '@/components/operator/dashboard/ActivityItem'
+import ProjectRow from '@/components/operator/dashboard/ProjectRow'
+import { formatRelativeTime } from '@/components/operator/constants'
 
-const POLL_INTERVAL = 30000
+// Import query hooks
+import {
+  useOperatorDashboardStats,
+  useOperatorTodayEvents,
+  useOperatorAssignedProjects,
+} from '@/hooks/useQueryHooks'
 
-// ─── Stat Card ───────────────────────────────────────────────────
-const StatCard = ({ icon: Icon, value, label, color = 'blue', suffix = '' }) => {
-  const colorClasses = {
-    blue: 'from-blue-500 to-blue-600',
-    green: 'from-green-500 to-emerald-600',
-    orange: 'from-orange-500 to-amber-600',
-    red: 'from-red-500 to-rose-600',
-    purple: 'from-purple-500 to-indigo-600'
-  }
-
-  return (
-    <div className="bg-white rounded-xl border border-gray-100 p-4 hover:shadow-md transition-all">
-      <div className="flex items-center justify-between">
-        <div className={`p-2 rounded-lg bg-gradient-to-br ${colorClasses[color]}`}>
-          <Icon className="w-5 h-5 text-white" />
-        </div>
-      </div>
-      <div className="mt-3">
-        <p className="text-2xl font-bold text-gray-900">{value}{suffix}</p>
-        <p className="text-sm text-gray-500">{label}</p>
-      </div>
-    </div>
-  )
-}
-
-// ─── Equipment Card ──────────────────────────────────────────────
-const EquipmentCard = ({ equipment, onClick }) => {
-  const statusColors = {
-    running: 'bg-green-500',
-    recording: 'bg-green-500',
-    online: 'bg-blue-500',
-    paused: 'bg-yellow-500',
-    idle: 'bg-gray-400',
-    maintenance: 'bg-orange-500',
-    offline: 'bg-gray-400'
-  }
-
-  return (
-    <div
-      onClick={() => onClick(equipment)}
-      className="flex items-center justify-between p-3 bg-gray-50 rounded-lg hover:bg-gray-100 cursor-pointer transition-colors"
-    >
-      <div className="flex items-center gap-3">
-        <div className={`w-2.5 h-2.5 rounded-full ${statusColors[equipment.status] || 'bg-gray-400'} ${equipment.status === 'recording' ? 'animate-pulse' : ''}`} />
-        <div>
-          <p className="font-medium text-gray-900 text-sm">{equipment.name}</p>
-          <p className="text-xs text-gray-500 capitalize">{equipment.status}</p>
-        </div>
-      </div>
-      <div className="flex items-center gap-2">
-        {equipment.battery && equipment.battery !== 'N/A' && (
-          <span className="text-xs text-gray-500 flex items-center gap-1">
-            <Battery className="w-3 h-3" />
-            {typeof equipment.battery === 'number' ? `${equipment.battery}%` : equipment.battery}
-          </span>
-        )}
-        <ChevronRight className="w-4 h-4 text-gray-400" />
-      </div>
-    </div>
-  )
-}
-
-// ─── Activity Item ───────────────────────────────────────────────
-const ActivityItem = ({ activity }) => (
-  <div className="flex items-start gap-3 py-3 border-b border-gray-100 last:border-0">
-    <div className={`p-1.5 rounded-lg ${
-      activity.type === 'success' ? 'bg-green-100' :
-      activity.type === 'warning' ? 'bg-yellow-100' :
-      activity.type === 'error' ? 'bg-red-100' : 'bg-blue-100'
-    }`}>
-      {activity.type === 'success' ? <CheckCircle2 className="w-4 h-4 text-green-600" /> :
-        activity.type === 'warning' ? <AlertTriangle className="w-4 h-4 text-yellow-600" /> :
-        activity.type === 'error' ? <AlertTriangle className="w-4 h-4 text-red-600" /> :
-        <Activity className="w-4 h-4 text-blue-600" />}
-    </div>
-    <div className="flex-1 min-w-0">
-      <p className="text-sm text-gray-900 truncate">{activity.message}</p>
-      <p className="text-xs text-gray-500">{activity.time}</p>
-    </div>
-  </div>
-)
-
-// ─── Project Row ─────────────────────────────────────────────────
-const ProjectRow = ({ project, onClick }) => {
-  const statusConfig = {
-    'field-capture': { color: 'bg-blue-100 text-blue-700', label: 'Field Capture' },
-    'uploading': { color: 'bg-indigo-100 text-indigo-700', label: 'Uploading' },
-    'ai-processing': { color: 'bg-purple-100 text-purple-700', label: 'AI Processing' },
-    'qc-review': { color: 'bg-amber-100 text-amber-700', label: 'QC Review' },
-    'completed': { color: 'bg-green-100 text-green-700', label: 'Completed' },
-    'planning': { color: 'bg-gray-100 text-gray-700', label: 'Planning' },
-    'on-hold': { color: 'bg-red-100 text-red-700', label: 'On Hold' },
-  }
-
-  const config = statusConfig[project.status] || statusConfig['planning']
-
-  return (
-    <div
-      onClick={() => onClick(project)}
-      className="flex items-center justify-between p-3 bg-gray-50 rounded-lg hover:bg-gray-100 cursor-pointer transition-colors"
-    >
-      <div className="flex-1 min-w-0 mr-3">
-        <p className="font-medium text-gray-900 text-sm truncate">{project.name}</p>
-        <div className="flex items-center gap-2 mt-0.5">
-          {project.location && (
-            <span className="text-xs text-gray-500 flex items-center gap-1 truncate">
-              <MapPin className="w-3 h-3 shrink-0" />
-              {project.location}
-            </span>
-          )}
-        </div>
-      </div>
-      <div className="flex items-center gap-2 shrink-0">
-        <span className={`text-[10px] font-medium px-2 py-0.5 rounded-full ${config.color}`}>
-          {config.label}
-        </span>
-        <ChevronRight className="w-4 h-4 text-gray-400" />
-      </div>
-    </div>
-  )
-}
-
-// ═══════════════════════════════════════════════════════════════════
-// MAIN DASHBOARD
-// ═══════════════════════════════════════════════════════════════════
 export default function OperatorDashboardContent() {
   const router = useRouter()
   const { userId, userData } = useUser()
-  const { showAlert } = useAlert()
-
-  const [refreshing, setRefreshing] = useState(false)
-  const [loading, setLoading] = useState(true)
-  const [error, setError] = useState(null)
-
-  // Dashboard data
-  const [operationalStats, setOperationalStats] = useState({
-    activeOperations: 0,
-    equipmentOnline: 0,
-    maintenanceDue: 0,
-    systemUptime: 0,
-    criticalAlerts: 0
-  })
-  const [recentOperations, setRecentOperations] = useState([])
-  const [devices, setDevices] = useState([])
-  const [weeklyPerformance, setWeeklyPerformance] = useState([])
-  const [todayEvents, setTodayEvents] = useState([])
-  const [projects, setProjects] = useState([])
-  const [recentActivities, setRecentActivities] = useState([])
 
   // Modal state
   const [selectedEquipment, setSelectedEquipment] = useState(null)
@@ -197,44 +57,54 @@ export default function OperatorDashboardContent() {
   const performanceChartRef = useRef(null)
   const performanceChartInstance = useRef(null)
 
-  // Track last updated
-  const [lastUpdated, setLastUpdated] = useState(null)
+  // ── Data fetching via TanStack Query ──
+  const { data: dashboardData, isLoading: loadingStats, isError, error, refetch: refetchStats } = useOperatorDashboardStats(userId, {
+    refetchInterval: 30000,
+  })
+  const { data: todayEventsRaw, refetch: refetchEvents } = useOperatorTodayEvents(userId, {
+    refetchInterval: 30000,
+  })
+  const { data: projectsRaw, refetch: refetchProjects } = useOperatorAssignedProjects(userId, 10, {
+    refetchInterval: 30000,
+  })
 
-  // ─── Build activity feed from real data ────────────────────────
-  const buildActivities = useCallback((devicesData, projectsData) => {
+  const operationalStats = dashboardData?.operationalStats ?? {
+    activeOperations: 0, equipmentOnline: 0, maintenanceDue: 0, systemUptime: 0, criticalAlerts: 0,
+  }
+  const devices = dashboardData?.devices ?? []
+  const weeklyPerformance = dashboardData?.weeklyPerformance ?? []
+  const projects = projectsRaw ?? []
+
+  const todayEvents = useMemo(() => {
+    const raw = Array.isArray(todayEventsRaw) ? todayEventsRaw : []
+    return raw.map(ev => ({
+      id: ev._id,
+      title: ev.title,
+      time: new Date(ev.start_date).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }),
+      location: ev.location || ev.projectId?.location || '',
+      type: ev.type || 'other',
+      status: ev.status || 'scheduled',
+    }))
+  }, [todayEventsRaw])
+
+  // ── Build activity feed from real data ──
+  const recentActivities = useMemo(() => {
     const activities = []
 
-    // Device-based activities
-    if (devicesData?.length) {
-      devicesData.forEach(d => {
+    if (devices?.length) {
+      devices.forEach(d => {
         if (d.status === 'recording') {
-          activities.push({
-            id: `dev-rec-${d.id}`,
-            type: 'success',
-            message: `${d.name} is currently recording`,
-            time: d.lastSeen ? formatRelativeTime(d.lastSeen) : 'Now'
-          })
+          activities.push({ id: `dev-rec-${d.id}`, type: 'success', message: `${d.name} is currently recording`, time: d.lastSeen ? formatRelativeTime(d.lastSeen) : 'Now' })
         } else if (d.status === 'offline') {
-          activities.push({
-            id: `dev-off-${d.id}`,
-            type: 'warning',
-            message: `${d.name} is offline`,
-            time: d.lastSeen ? formatRelativeTime(d.lastSeen) : 'Unknown'
-          })
+          activities.push({ id: `dev-off-${d.id}`, type: 'warning', message: `${d.name} is offline`, time: d.lastSeen ? formatRelativeTime(d.lastSeen) : 'Unknown' })
         } else if (d.status === 'maintenance') {
-          activities.push({
-            id: `dev-maint-${d.id}`,
-            type: 'warning',
-            message: `${d.name} requires maintenance`,
-            time: d.lastSeen ? formatRelativeTime(d.lastSeen) : 'Unknown'
-          })
+          activities.push({ id: `dev-maint-${d.id}`, type: 'warning', message: `${d.name} requires maintenance`, time: d.lastSeen ? formatRelativeTime(d.lastSeen) : 'Unknown' })
         }
       })
     }
 
-    // Project-based activities
-    if (projectsData?.length) {
-      projectsData.slice(0, 3).forEach(p => {
+    if (projects?.length) {
+      projects.slice(0, 3).forEach(p => {
         const statusMsg = {
           'ai-processing': { type: 'info', msg: `AI processing: ${p.name}` },
           'qc-review': { type: 'info', msg: `QC review pending: ${p.name}` },
@@ -243,113 +113,37 @@ export default function OperatorDashboardContent() {
         }
         const info = statusMsg[p.status]
         if (info) {
-          activities.push({
-            id: `proj-${p._id}`,
-            type: info.type,
-            message: info.msg,
-            time: p.updatedAt ? formatRelativeTime(p.updatedAt) : ''
-          })
+          activities.push({ id: `proj-${p._id}`, type: info.type, message: info.msg, time: p.updatedAt ? formatRelativeTime(p.updatedAt) : '' })
         }
       })
     }
 
-    // If no activities at all, show a default message
     if (activities.length === 0) {
-      activities.push({
-        id: 'no-activity',
-        type: 'info',
-        message: 'No recent activity',
-        time: ''
-      })
+      activities.push({ id: 'no-activity', type: 'info', message: 'No recent activity', time: '' })
     }
 
     return activities.slice(0, 6)
-  }, [])
+  }, [devices, projects])
 
-  // ─── Fetch all dashboard data ──────────────────────────────────
-  const fetchDashboardData = useCallback(async () => {
-    if (!userId) return
-
-    try {
-      // Fetch dashboard stats, today's events, and projects in parallel
-      const [dashResponse, eventsResponse, projectsResponse] = await Promise.all([
-        api(`/api/dashboard/operator/${userId}`, 'GET'),
-        api(`/api/operator/calendar/events/today?userId=${userId}`, 'GET'),
-        api(`/api/projects/get-all-projects?assignedOperatorId=${userId}&limit=10`, 'GET'),
-      ])
-
-      // Process dashboard stats
-      if (dashResponse.ok && dashResponse.data?.data) {
-        const data = dashResponse.data.data
-        setOperationalStats(data.operationalStats || operationalStats)
-        setRecentOperations(data.recentOperations || [])
-        setDevices(data.devices || [])
-        if (data.weeklyPerformance) {
-          setWeeklyPerformance(data.weeklyPerformance)
-        }
-      }
-
-      // Process today's calendar events
-      if (eventsResponse.ok && eventsResponse.data?.data) {
-        const events = (eventsResponse.data.data || []).map(ev => ({
-          id: ev._id,
-          title: ev.title,
-          time: new Date(ev.start_date).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }),
-          location: ev.location || ev.projectId?.location || '',
-          type: ev.type || 'other',
-          status: ev.status || 'scheduled'
-        }))
-        setTodayEvents(events)
-      } else {
-        setTodayEvents([])
-      }
-
-      // Process projects
-      const projectsList = projectsResponse.ok ? (projectsResponse.data?.data || []) : []
-      setProjects(projectsList)
-
-      // Build real activity feed
-      const devicesData = dashResponse.ok ? (dashResponse.data?.data?.devices || []) : []
-      setRecentActivities(buildActivities(devicesData, projectsList))
-
-      setLastUpdated(new Date())
-      setError(null)
-    } catch (err) {
-      console.error('Error fetching dashboard data:', err)
-      setError(err.message || 'Failed to load dashboard data')
-    } finally {
-      setLoading(false)
-    }
-  }, [userId, buildActivities])
-
-  // ─── Initial fetch and polling ─────────────────────────────────
-  useEffect(() => {
-    if (!userId) return
-
-    fetchDashboardData()
-
-    const intervalId = setInterval(fetchDashboardData, POLL_INTERVAL)
-    return () => clearInterval(intervalId)
-  }, [userId, fetchDashboardData])
-
-  // ─── Manual refresh ────────────────────────────────────────────
+  // ── Manual refresh ──
+  const [refreshing, setRefreshing] = useState(false)
   const handleRefresh = useCallback(async () => {
     setRefreshing(true)
     try {
-      await fetchDashboardData()
+      await Promise.all([refetchStats(), refetchEvents(), refetchProjects()])
     } finally {
       setRefreshing(false)
     }
-  }, [fetchDashboardData])
+  }, [refetchStats, refetchEvents, refetchProjects])
 
-  // ─── Equipment click for modal ─────────────────────────────────
+  // ── Equipment click for modal ──
   const handleEquipmentClick = useCallback((equipment) => {
     const device = devices.find(d => d.id === equipment.id) || equipment
     setSelectedEquipment(device)
     setShowEquipmentModal(true)
   }, [devices])
 
-  // ─── Status helpers ────────────────────────────────────────────
+  // ── Status helpers ──
   const getStatusColor = (status) => {
     switch (status) {
       case 'running': case 'recording': return 'bg-green-100 text-green-800'
@@ -369,7 +163,7 @@ export default function OperatorDashboardContent() {
     }
   }
 
-  // ─── Performance Chart ─────────────────────────────────────────
+  // ── Performance Chart ──
   useEffect(() => {
     if (performanceChartInstance.current) {
       performanceChartInstance.current.destroy()
@@ -436,17 +230,17 @@ export default function OperatorDashboardContent() {
     }
   }, [weeklyPerformance])
 
-  // ─── Loading state ─────────────────────────────────────────────
-  if (loading && !lastUpdated) {
+  // ── Loading state ──
+  if (loadingStats && !dashboardData) {
     return <LoadingState message="Loading dashboard..." spinnerColor="text-blue-600" />
   }
 
-  // ─── Error state ───────────────────────────────────────────────
-  if (error && !lastUpdated) {
-    return <ErrorState message={error} onRetry={handleRefresh} />
+  // ── Error state ──
+  if (isError && !dashboardData) {
+    return <ErrorState message={error?.message || 'Failed to load dashboard'} onRetry={handleRefresh} />
   }
 
-  // ─── Project counts ────────────────────────────────────────────
+  // ── Project counts ──
   const activeProjectCount = projects.filter(p =>
     ['field-capture', 'uploading', 'ai-processing'].includes(p.status)
   ).length
@@ -460,7 +254,7 @@ export default function OperatorDashboardContent() {
             {userData?.first_name ? `Welcome, ${userData.first_name}` : 'Operator Dashboard'}
           </h1>
           <p className="text-sm text-gray-500 mt-0.5">
-            {lastUpdated ? `Last updated: ${lastUpdated.toLocaleTimeString()}` : 'Monitor your field operations'}
+            Monitor your field operations
           </p>
         </div>
         <Button
@@ -477,31 +271,10 @@ export default function OperatorDashboardContent() {
 
       {/* Stats Grid */}
       <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
-        <StatCard
-          icon={FolderOpen}
-          value={activeProjectCount}
-          label="Active Projects"
-          color="green"
-        />
-        <StatCard
-          icon={Monitor}
-          value={operationalStats.equipmentOnline}
-          label="Equipment Online"
-          color="blue"
-        />
-        <StatCard
-          icon={AlertTriangle}
-          value={operationalStats.criticalAlerts + operationalStats.maintenanceDue}
-          label="Alerts"
-          color="orange"
-        />
-        <StatCard
-          icon={Zap}
-          value={operationalStats.systemUptime}
-          suffix="%"
-          label="Device Uptime"
-          color="purple"
-        />
+        <StatCard icon={FolderOpen} value={activeProjectCount} label="Active Projects" color="green" />
+        <StatCard icon={Monitor} value={operationalStats.equipmentOnline} label="Equipment Online" color="blue" />
+        <StatCard icon={AlertTriangle} value={operationalStats.criticalAlerts + operationalStats.maintenanceDue} label="Alerts" color="orange" />
+        <StatCard icon={Zap} value={operationalStats.systemUptime} suffix="%" label="Device Uptime" color="purple" />
       </div>
 
       {/* Main Content Grid */}
@@ -515,31 +288,19 @@ export default function OperatorDashboardContent() {
             </CardHeader>
             <CardContent>
               <div className="grid grid-cols-2 gap-3">
-                <button
-                  onClick={() => router.push('/operator/equipement')}
-                  className="flex items-center gap-3 p-3 rounded-lg bg-blue-50 hover:bg-blue-100 transition-colors"
-                >
+                <button onClick={() => router.push('/operator/equipement')} className="flex items-center gap-3 p-3 rounded-lg bg-blue-50 hover:bg-blue-100 transition-colors">
                   <Camera className="w-5 h-5 text-blue-600" />
                   <span className="text-sm font-medium text-blue-700">Equipment</span>
                 </button>
-                <button
-                  onClick={() => router.push('/operator/project')}
-                  className="flex items-center gap-3 p-3 rounded-lg bg-green-50 hover:bg-green-100 transition-colors"
-                >
+                <button onClick={() => router.push('/operator/project')} className="flex items-center gap-3 p-3 rounded-lg bg-green-50 hover:bg-green-100 transition-colors">
                   <FolderOpen className="w-5 h-5 text-green-600" />
                   <span className="text-sm font-medium text-green-700">Projects</span>
                 </button>
-                <button
-                  onClick={() => router.push('/operator/maintenance')}
-                  className="flex items-center gap-3 p-3 rounded-lg bg-purple-50 hover:bg-purple-100 transition-colors"
-                >
+                <button onClick={() => router.push('/operator/maintenance')} className="flex items-center gap-3 p-3 rounded-lg bg-purple-50 hover:bg-purple-100 transition-colors">
                   <Cog className="w-5 h-5 text-purple-600" />
                   <span className="text-sm font-medium text-purple-700">Maintenance</span>
                 </button>
-                <button
-                  onClick={() => router.push('/operator/notifications')}
-                  className="flex items-center gap-3 p-3 rounded-lg bg-orange-50 hover:bg-orange-100 transition-colors"
-                >
+                <button onClick={() => router.push('/operator/notifications')} className="flex items-center gap-3 p-3 rounded-lg bg-orange-50 hover:bg-orange-100 transition-colors">
                   <AlertTriangle className="w-5 h-5 text-orange-600" />
                   <span className="text-sm font-medium text-orange-700">Notifications</span>
                 </button>
@@ -552,30 +313,19 @@ export default function OperatorDashboardContent() {
             <CardHeader className="pb-3">
               <div className="flex items-center justify-between">
                 <CardTitle className="text-base font-semibold">Equipment Status</CardTitle>
-                <Badge variant="secondary" className="text-xs">
-                  {devices.length} devices
-                </Badge>
+                <Badge variant="secondary" className="text-xs">{devices.length} devices</Badge>
               </div>
             </CardHeader>
             <CardContent className="space-y-2 max-h-64 overflow-y-auto">
               {devices.length > 0 ? (
                 devices.slice(0, 6).map((device) => (
-                  <EquipmentCard
-                    key={device.id}
-                    equipment={device}
-                    onClick={handleEquipmentClick}
-                  />
+                  <EquipmentCard key={device.id} equipment={device} onClick={handleEquipmentClick} />
                 ))
               ) : (
                 <div className="text-center py-6 text-gray-500">
                   <Server className="w-8 h-8 mx-auto mb-2 opacity-50" />
                   <p className="text-sm">No devices assigned</p>
-                  <Button
-                    variant="ghost"
-                    size="sm"
-                    className="text-blue-600 mt-2"
-                    onClick={() => router.push('/operator/connect-device')}
-                  >
+                  <Button variant="ghost" size="sm" className="text-blue-600 mt-2" onClick={() => router.push('/operator/connect-device')}>
                     Connect Device
                   </Button>
                 </div>
@@ -589,14 +339,9 @@ export default function OperatorDashboardContent() {
               <div className="flex items-center justify-between">
                 <div className="flex items-center gap-2">
                   <CalendarIcon className="w-5 h-5 text-blue-600" />
-                  <CardTitle className="text-base font-semibold">Today's Schedule</CardTitle>
+                  <CardTitle className="text-base font-semibold">Today&apos;s Schedule</CardTitle>
                 </div>
-                <Button
-                  variant="ghost"
-                  size="sm"
-                  className="text-blue-600 h-auto py-1"
-                  onClick={() => router.push('/operator/calendar')}
-                >
+                <Button variant="ghost" size="sm" className="text-blue-600 h-auto py-1" onClick={() => router.push('/operator/calendar')}>
                   View All
                 </Button>
               </div>
@@ -648,12 +393,7 @@ export default function OperatorDashboardContent() {
                 <div className="text-center py-6 text-gray-500">
                   <CalendarIcon className="w-8 h-8 mx-auto mb-2 opacity-50" />
                   <p className="text-sm">No events scheduled today</p>
-                  <Button
-                    variant="ghost"
-                    size="sm"
-                    className="text-blue-600 mt-2"
-                    onClick={() => router.push('/operator/calendar')}
-                  >
+                  <Button variant="ghost" size="sm" className="text-blue-600 mt-2" onClick={() => router.push('/operator/calendar')}>
                     View Calendar
                   </Button>
                 </div>
@@ -669,12 +409,7 @@ export default function OperatorDashboardContent() {
             <CardHeader className="pb-3">
               <div className="flex items-center justify-between">
                 <CardTitle className="text-base font-semibold">Assigned Projects</CardTitle>
-                <Button
-                  variant="ghost"
-                  size="sm"
-                  className="text-blue-600 h-auto py-1"
-                  onClick={() => router.push('/operator/project')}
-                >
+                <Button variant="ghost" size="sm" className="text-blue-600 h-auto py-1" onClick={() => router.push('/operator/project')}>
                   View All
                 </Button>
               </div>
@@ -682,11 +417,7 @@ export default function OperatorDashboardContent() {
             <CardContent className="space-y-2">
               {projects.length > 0 ? (
                 projects.slice(0, 5).map((project) => (
-                  <ProjectRow
-                    key={project._id}
-                    project={project}
-                    onClick={() => router.push(`/operator/project`)}
-                  />
+                  <ProjectRow key={project._id} project={project} onClick={() => router.push(`/operator/project`)} />
                 ))
               ) : (
                 <div className="text-center py-6 text-gray-500">
@@ -726,12 +457,7 @@ export default function OperatorDashboardContent() {
             <CardHeader className="pb-3">
               <div className="flex items-center justify-between">
                 <CardTitle className="text-base font-semibold">Recent Activity</CardTitle>
-                <Button
-                  variant="ghost"
-                  size="sm"
-                  className="text-blue-600 h-auto py-1"
-                  onClick={() => router.push('/operator/notifications')}
-                >
+                <Button variant="ghost" size="sm" className="text-blue-600 h-auto py-1" onClick={() => router.push('/operator/notifications')}>
                   View All
                 </Button>
               </div>
@@ -751,7 +477,6 @@ export default function OperatorDashboardContent() {
       {showEquipmentModal && selectedEquipment && (
         <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4">
           <div className="bg-white rounded-2xl shadow-2xl w-full max-w-md overflow-hidden animate-in fade-in zoom-in duration-200">
-            {/* Modal Header */}
             <div className="bg-gradient-to-r from-blue-600 to-indigo-600 p-5 text-white">
               <div className="flex items-center justify-between">
                 <div className="flex items-center gap-3">
@@ -762,16 +487,11 @@ export default function OperatorDashboardContent() {
                   }`} />
                   <h3 className="text-lg font-semibold">{selectedEquipment.name}</h3>
                 </div>
-                <button
-                  onClick={() => setShowEquipmentModal(false)}
-                  className="text-white/80 hover:text-white transition-colors"
-                >
+                <button onClick={() => setShowEquipmentModal(false)} className="text-white/80 hover:text-white transition-colors">
                   <X className="w-5 h-5" />
                 </button>
               </div>
             </div>
-
-            {/* Modal Content */}
             <div className="p-5 space-y-4">
               <div className="grid grid-cols-2 gap-3">
                 <div className="bg-gray-50 rounded-xl p-3">
@@ -816,16 +536,9 @@ export default function OperatorDashboardContent() {
                 </p>
               )}
             </div>
-
-            {/* Modal Footer */}
             <div className="bg-gray-50 px-5 py-4 flex justify-end gap-3">
-              <Button variant="outline" onClick={() => setShowEquipmentModal(false)}>
-                Close
-              </Button>
-              <Button onClick={() => {
-                setShowEquipmentModal(false)
-                router.push('/operator/equipement')
-              }}>
+              <Button variant="outline" onClick={() => setShowEquipmentModal(false)}>Close</Button>
+              <Button onClick={() => { setShowEquipmentModal(false); router.push('/operator/equipement') }}>
                 View Equipment Page
               </Button>
             </div>
@@ -834,20 +547,4 @@ export default function OperatorDashboardContent() {
       )}
     </div>
   )
-}
-
-// ─── Helper: relative time formatting ────────────────────────────
-function formatRelativeTime(dateStr) {
-  if (!dateStr) return ''
-  const now = new Date()
-  const date = new Date(dateStr)
-  const diffMs = now - date
-  const diffMin = Math.floor(diffMs / 60000)
-
-  if (diffMin < 1) return 'Just now'
-  if (diffMin < 60) return `${diffMin} min ago`
-  const diffHrs = Math.floor(diffMin / 60)
-  if (diffHrs < 24) return `${diffHrs}h ago`
-  const diffDays = Math.floor(diffHrs / 24)
-  return `${diffDays}d ago`
 }

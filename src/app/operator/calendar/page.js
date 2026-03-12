@@ -1,6 +1,6 @@
 'use client'
 
-import React, { useState, useEffect, useCallback } from 'react'
+import React, { useState } from 'react'
 import {
   Calendar as CalendarIcon,
   Plus,
@@ -38,7 +38,13 @@ import { Textarea } from '@/components/ui/textarea'
 import { Select, SelectTrigger, SelectValue, SelectContent, SelectItem } from '@/components/ui/select'
 import { useAlert } from '@/components/providers/AlertProvider'
 import { useUser } from '@/components/providers/UserContext'
-import { api } from '@/lib/helper'
+import {
+  useOperatorCalendarEvents,
+  useOperatorCalendarStats,
+  useCreateOperatorEvent,
+  useUpdateOperatorEventStatus,
+  useDeleteOperatorEvent,
+} from '@/hooks/useQueryHooks'
 
 // Event type configuration matching operator design
 const eventTypes = {
@@ -93,22 +99,14 @@ const statusConfig = {
 }
 
 const OperatorCalendarPage = () => {
-  const [events, setEvents] = useState([])
-  const [loading, setLoading] = useState(true)
-  const [refreshing, setRefreshing] = useState(false)
   const [currentDate, setCurrentDate] = useState(new Date())
   const [viewMode, setViewMode] = useState('grid') // 'grid' or 'list'
   const [selectedEvent, setSelectedEvent] = useState(null)
   const [showEventModal, setShowEventModal] = useState(false)
   const [showCreateModal, setShowCreateModal] = useState(false)
   const [filterType, setFilterType] = useState('all')
-  const [statistics, setStatistics] = useState({
-    todayEvents: 0,
-    upcomingEvents: 0,
-    completedEvents: 0,
-    totalEvents: 0
-  })
-  
+  const [refreshing, setRefreshing] = useState(false)
+
   const { showAlert } = useAlert()
   const { userId } = useUser()
 
@@ -126,92 +124,42 @@ const OperatorCalendarPage = () => {
     notes: ''
   })
 
-  // Fetch events (operator-owned + user-assigned from main calendar)
-  const fetchEvents = useCallback(async () => {
-    try {
-      const operatorResult = await api(`/api/operator/calendar/events?userId=${userId}`, 'GET')
-      const calendarResult = await api('/api/calendar/get-event', 'GET')
+  // ── Data fetching via TanStack Query ──
+  const { data: calendarData, isLoading: loading, refetch: refetchEvents } = useOperatorCalendarEvents(userId)
+  const { data: statistics = { todayEvents: 0, upcomingEvents: 0, completedEvents: 0, totalEvents: 0 }, refetch: refetchStats } = useOperatorCalendarStats(userId)
 
-      let combinedEvents = []
+  // Combine operator events with assigned events from global calendar
+  const events = React.useMemo(() => {
+    if (!calendarData) return []
+    const { operatorEvents = [], globalEvents = [] } = calendarData
+    let combinedEvents = Array.isArray(operatorEvents) ? [...operatorEvents] : []
 
-      // Base operator events
-      if (operatorResult?.ok) {
-        const raw = operatorResult.data?.data ?? operatorResult.data
-        const baseEvents = Array.isArray(raw) ? raw : []
-        combinedEvents = baseEvents
-      }
-
-      // Events assigned to this operator from the user calendar
-      if (calendarResult?.ok) {
-        const raw = calendarResult.data ?? calendarResult
-        const list = raw?.data ?? raw
-        const allEvents = Array.isArray(list) ? list : []
-
-        const assignedEvents = allEvents
-          .filter((event) => {
-            const assigned = event.assignedTo
-            if (!assigned || typeof assigned !== 'object') return false
-
-            const op = assigned.operator || assigned.assignedOperator
-            if (!op) return false
-
-            const assignedId = op.userId || op.user_id || op._id
-            return assignedId && String(assignedId) === String(userId)
-          })
-          .map((event) => {
-            const type =
-              event.type && eventTypes[event.type]
-                ? event.type
-                : 'other'
-
-            const status = event.status || 'scheduled'
-
-            const assignedToLabel =
-              (event.assignedTo &&
-                event.assignedTo.operator &&
-                (event.assignedTo.operator.name ||
-                  event.assignedTo.operator.email)) ||
-              'Assigned'
-
-            return {
-              ...event,
-              type,
-              status,
-              assignedTo: assignedToLabel
-            }
-          })
-
-        combinedEvents = [...combinedEvents, ...assignedEvents]
-      }
-
-      setEvents(combinedEvents)
-    } catch (error) {
-      console.error('Error fetching events:', error)
-      showAlert('Failed to load events', 'error')
-    } finally {
-      setLoading(false)
-      setRefreshing(false)
+    if (Array.isArray(globalEvents)) {
+      const assignedEvents = globalEvents
+        .filter((event) => {
+          const assigned = event.assignedTo
+          if (!assigned || typeof assigned !== 'object') return false
+          const op = assigned.operator || assigned.assignedOperator
+          if (!op) return false
+          const assignedId = op.userId || op.user_id || op._id
+          return assignedId && String(assignedId) === String(userId)
+        })
+        .map((event) => ({
+          ...event,
+          type: event.type && eventTypes[event.type] ? event.type : 'other',
+          status: event.status || 'scheduled',
+          assignedTo: (event.assignedTo?.operator?.name || event.assignedTo?.operator?.email) || 'Assigned',
+        }))
+      combinedEvents = [...combinedEvents, ...assignedEvents]
     }
-  }, [userId, showAlert])
 
-  // Fetch statistics
-  const fetchStatistics = useCallback(async () => {
-    try {
-      const { data, ok } = await api(`/api/operator/calendar/statistics?userId=${userId}`, 'GET')
-      if (ok) {
-        setStatistics(data.data || statistics)
-      }
-    } catch (error) {
-      console.error('Error fetching statistics:', error)
-    }
-  }, [userId])
+    return combinedEvents
+  }, [calendarData, userId])
 
-  useEffect(() => {
-    if (userId) {
-      fetchEvents()
-      fetchStatistics()
-    }
-  }, [userId, fetchEvents, fetchStatistics])
+  // ── Mutations ──
+  const createEventMutation = useCreateOperatorEvent()
+  const updateStatusMutation = useUpdateOperatorEventStatus()
+  const deleteEventMutation = useDeleteOperatorEvent()
 
   // Create event
   const handleCreateEvent = async () => {
@@ -221,22 +169,15 @@ const OperatorCalendarPage = () => {
     }
 
     try {
-      const payload = {
+      await createEventMutation.mutateAsync({
         ...formData,
         userId,
         start_date: new Date(formData.start_date),
-        end_date: new Date(formData.end_date)
-      }
-
-      const { ok } = await api('/api/operator/calendar/events', 'POST', payload)
-      
-      if (ok) {
-        showAlert('Event created successfully!', 'success')
-        setShowCreateModal(false)
-        fetchEvents()
-        fetchStatistics()
-        resetForm()
-      }
+        end_date: new Date(formData.end_date),
+      })
+      showAlert('Event created successfully!', 'success')
+      setShowCreateModal(false)
+      resetForm()
     } catch (error) {
       showAlert('Failed to create event', 'error')
     }
@@ -245,14 +186,9 @@ const OperatorCalendarPage = () => {
   // Update event status
   const handleUpdateStatus = async (eventId, newStatus) => {
     try {
-      const { ok } = await api(`/api/operator/calendar/events/${eventId}/status`, 'PATCH', { status: newStatus })
-      
-      if (ok) {
-        showAlert('Status updated successfully', 'success')
-        fetchEvents()
-        fetchStatistics()
-        setSelectedEvent({ ...selectedEvent, status: newStatus })
-      }
+      await updateStatusMutation.mutateAsync({ eventId, status: newStatus })
+      showAlert('Status updated successfully', 'success')
+      setSelectedEvent({ ...selectedEvent, status: newStatus })
     } catch (error) {
       showAlert('Failed to update status', 'error')
     }
@@ -261,14 +197,9 @@ const OperatorCalendarPage = () => {
   // Delete event
   const handleDeleteEvent = async (eventId) => {
     try {
-      const { ok } = await api(`/api/operator/calendar/events/${eventId}`, 'DELETE')
-      
-      if (ok) {
-        showAlert('Event deleted successfully', 'success')
-        setShowEventModal(false)
-        fetchEvents()
-        fetchStatistics()
-      }
+      await deleteEventMutation.mutateAsync(eventId)
+      showAlert('Event deleted successfully', 'success')
+      setShowEventModal(false)
     } catch (error) {
       showAlert('Failed to delete event', 'error')
     }
@@ -321,8 +252,11 @@ const OperatorCalendarPage = () => {
   // Handle refresh
   const handleRefresh = async () => {
     setRefreshing(true)
-    await fetchEvents()
-    await fetchStatistics()
+    try {
+      await Promise.all([refetchEvents(), refetchStats()])
+    } finally {
+      setRefreshing(false)
+    }
   }
 
   if (loading) {

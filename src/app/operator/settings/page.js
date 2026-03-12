@@ -34,9 +34,13 @@ import { Badge } from '@/components/ui/badge';
 import { Separator } from '@/components/ui/separator';
 import { useUser } from '@/components/providers/UserContext';
 import { useAlert } from '@/components/providers/AlertProvider';
-import { api, getCookie } from '@/lib/helper';
-import { useQuery } from '@tanstack/react-query';
-import { operatorApi } from '@/data/operatorApi';
+import { getCookie } from '@/lib/helper';
+import {
+  useOperatorDashboardStats,
+  useUpdateOperatorProfile,
+  useChangeOperatorPassword,
+  useSaveOperatorSettings,
+} from '@/hooks/useQueryHooks';
 
 // --- Components ---
 
@@ -147,10 +151,7 @@ const OperatorSettingsContent = () => {
   });
 
   // Fetch real stats via TanStack Query
-  const { data: dashboardData } = useQuery({
-    queryKey: ['operator', 'dashboard', userData?._id],
-    queryFn: () => operatorApi.getDashboardStats(userData?._id),
-    enabled: !!userData?._id,
+  const { data: dashboardData } = useOperatorDashboardStats(userData?._id, {
     staleTime: 5 * 60 * 1000,
   });
   const stats = {
@@ -197,31 +198,32 @@ const OperatorSettingsContent = () => {
     setProfile(prev => ({ ...prev, [name]: value }));
   };
 
+  // ── Mutations ──
+  const updateProfileMutation = useUpdateOperatorProfile();
+  const changePasswordMutation = useChangeOperatorPassword();
+  const saveSettingsMutation = useSaveOperatorSettings();
+
   // Handle Save Profile
   const handleSaveProfile = async () => {
     try {
       setSaving(true);
       const username = localStorage.getItem('username');
-
       if (!username) throw new Error('User not identified');
 
-      const response = await api(`/api/users/profile/${username}`, 'PATCH', {
-        firstName: profile.firstName,
-        lastName: profile.lastName,
-        phone: profile.phone,
-        department: profile.department
+      const result = await updateProfileMutation.mutateAsync({
+        username,
+        data: {
+          firstName: profile.firstName,
+          lastName: profile.lastName,
+          phone: profile.phone,
+          department: profile.department,
+        },
       });
-
-      if (response.ok) {
-        // Update context if needed
-        if (updateUserData && response.data?.data) {
-          updateUserData(response.data.data);
-        }
-        showAlert('Profile updated successfully', 'success');
-        setIsEditingProfile(false);
-      } else {
-        throw new Error(response.message || 'Failed to update profile');
+      if (updateUserData && result) {
+        updateUserData(result);
       }
+      showAlert('Profile updated successfully', 'success');
+      setIsEditingProfile(false);
     } catch (error) {
       console.error('Error updating profile:', error);
       showAlert(error.message || 'Failed to update profile', 'error');
@@ -303,17 +305,12 @@ const OperatorSettingsContent = () => {
 
     try {
       setSaving(true);
-      const response = await api('/api/auth/change-password', 'POST', {
+      await changePasswordMutation.mutateAsync({
         currentPassword: passwordForm.currentPassword,
-        newPassword: passwordForm.newPassword
+        newPassword: passwordForm.newPassword,
       });
-
-      if (response.ok) {
-        showAlert('Password changed successfully', 'success');
-        setPasswordForm({ currentPassword: '', newPassword: '', confirmPassword: '' });
-      } else {
-        throw new Error(response.message || 'Failed to change password');
-      }
+      showAlert('Password changed successfully', 'success');
+      setPasswordForm({ currentPassword: '', newPassword: '', confirmPassword: '' });
     } catch (error) {
       console.error('Password change error:', error);
       showAlert(error.message, 'error');
@@ -330,18 +327,11 @@ const OperatorSettingsContent = () => {
   const handleSaveSettings = async () => {
     try {
       setSaving(true);
-      const response = await api('/api/settings/section/operator', 'PATCH', {
-        operator: settings
-      });
-
-      if (response.ok) {
-        showAlert('Settings saved', 'success');
-      } else {
-        console.warn("Settings API might not be fully implemented", response);
-        showAlert('Settings saved (Local)', 'success');
-      }
-    } catch (e) {
-      showAlert('Failed to save settings', 'error');
+      await saveSettingsMutation.mutateAsync(settings);
+      showAlert('Settings saved', 'success');
+    } catch (error) {
+      console.warn("Settings API might not be fully implemented", error);
+      showAlert('Settings saved (Local)', 'success');
     } finally {
       setSaving(false);
     }
