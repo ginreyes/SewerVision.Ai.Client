@@ -28,7 +28,6 @@ import {
   Shield,
   Target,
   BarChart3,
-  Eye,
   Edit3,
 } from 'lucide-react'
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card'
@@ -38,55 +37,7 @@ import { useRouter, useParams } from 'next/navigation'
 import { api } from '@/lib/helper'
 import { qcApi } from '@/data/qcApi'
 import Chart from 'chart.js/auto'
-
-/* ─── Status config ─── */
-const statusConfig = {
-  completed: {
-    bg: 'bg-emerald-50', text: 'text-emerald-700', border: 'border-emerald-200',
-    icon: CheckCircle, label: 'Completed',
-  },
-  pending: {
-    bg: 'bg-amber-50', text: 'text-amber-700', border: 'border-amber-200',
-    icon: Clock, label: 'Pending',
-  },
-  'in-review': {
-    bg: 'bg-sky-50', text: 'text-sky-700', border: 'border-sky-200',
-    icon: Eye, label: 'In Review',
-  },
-  in_review: {
-    bg: 'bg-sky-50', text: 'text-sky-700', border: 'border-sky-200',
-    icon: Eye, label: 'In Review',
-  },
-  draft: {
-    bg: 'bg-gray-50', text: 'text-gray-600', border: 'border-gray-200',
-    icon: FileText, label: 'Draft',
-  },
-}
-
-const StatusPill = ({ status }) => {
-  const key = status?.toLowerCase()?.replace(/\s/g, '_')
-  const cfg = statusConfig[key] || statusConfig.draft
-  const Icon = cfg.icon
-  return (
-    <span className={`inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-xs font-semibold border ${cfg.bg} ${cfg.text} ${cfg.border}`}>
-      <Icon className="w-3 h-3" />
-      {cfg.label}
-    </span>
-  )
-}
-
-/* ─── Severity badge ─── */
-const SeverityBadge = ({ severity }) => {
-  const styles = {
-    critical: 'bg-red-100 text-red-800 border-red-200',
-    major: 'bg-orange-100 text-orange-800 border-orange-200',
-    moderate: 'bg-yellow-100 text-yellow-800 border-yellow-200',
-    minor: 'bg-green-100 text-green-800 border-green-200',
-  }
-  const s = severity?.toLowerCase()
-  const cls = styles[s] || 'bg-gray-100 text-gray-800 border-gray-200'
-  return <Badge className={`${cls} border`}>{severity || 'Unknown'}</Badge>
-}
+import { StatusPill, SeverityBadge, statusConfig } from '@/components/qc/reports'
 
 /* ─── Info row ─── */
 const InfoRow = ({ icon: Icon, label, value, subValue, iconColor = 'text-gray-400' }) => (

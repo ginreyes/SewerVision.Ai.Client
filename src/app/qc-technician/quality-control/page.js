@@ -29,61 +29,14 @@ import { api } from '@/lib/helper';
 import { useUser } from '@/components/providers/UserContext';
 import { useAlert } from '@/components/providers/AlertProvider';
 import { useRouter } from 'next/navigation';
-
-// ─── Helpers ────────────────────────────────────────────────
-/** Normalize confidence to 0-100 range (handles both 0-1 decimals and 0-100 integers) */
-const normalizeConfidence = (value) => {
-  if (value == null || isNaN(value)) return 0;
-  const num = Number(value);
-  return num > 1 ? num : num * 100;
-};
-
-/** Convert seconds to mm:ss display */
-const formatTimestamp = (seconds) => {
-  if (seconds == null || isNaN(seconds)) return '0:00';
-  const totalSec = Math.round(Number(seconds));
-  const m = Math.floor(totalSec / 60);
-  const s = totalSec % 60;
-  return `${m}:${s.toString().padStart(2, '0')}`;
-};
-
-const getConfidenceColor = (pct) => {
-  if (pct >= 85) return 'text-green-700 bg-green-50 border-green-200';
-  if (pct >= 70) return 'text-amber-700 bg-amber-50 border-amber-200';
-  return 'text-red-700 bg-red-50 border-red-200';
-};
-
-const getSeverityStyle = (severity) => {
-  switch ((severity || '').toLowerCase()) {
-    case 'critical': return 'bg-red-100 text-red-800 border-red-200';
-    case 'major': return 'bg-orange-100 text-orange-800 border-orange-200';
-    case 'moderate': return 'bg-yellow-100 text-yellow-800 border-yellow-200';
-    case 'minor': return 'bg-green-100 text-green-800 border-green-200';
-    case 'high': return 'bg-red-100 text-red-800 border-red-200';
-    case 'medium': return 'bg-amber-100 text-amber-800 border-amber-200';
-    case 'low': return 'bg-blue-100 text-blue-800 border-blue-200';
-    default: return 'bg-gray-100 text-gray-700 border-gray-200';
-  }
-};
-
-const getPriorityColor = (priority) => {
-  switch (priority?.toLowerCase()) {
-    case 'high': return 'text-red-600 bg-red-50 border-red-100';
-    case 'medium': return 'text-amber-600 bg-amber-50 border-amber-100';
-    case 'low': return 'text-blue-600 bg-blue-50 border-blue-100';
-    default: return 'text-gray-600 bg-gray-50 border-gray-100';
-  }
-};
-
-const getStatusColor = (status) => {
-  switch (status) {
-    case 'assigned':
-    case 'pending': return 'bg-amber-100 text-amber-700';
-    case 'in-progress': return 'bg-rose-100 text-rose-700';
-    case 'completed': return 'bg-green-100 text-green-700';
-    default: return 'bg-gray-100 text-gray-700';
-  }
-};
+import {
+  normalizeConfidence,
+  formatTimestamp,
+  getConfidenceColor,
+  getSeverityStyle,
+  getPriorityColor,
+  getStatusColor,
+} from '@/components/qc/constants';
 
 // ─── Page ───────────────────────────────────────────────────
 const QualityControlPage = () => {

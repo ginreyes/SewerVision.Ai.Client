@@ -1,7 +1,7 @@
 'use client';
 
 import React from 'react';
-import TasksPage from '@/components/tasks/TasksPage';
+import TasksPage from '@/components/admin/tasks/TasksPage';
 
 const QcTechnicianTasks = () => {
   return <TasksPage role="qc-technician" />;

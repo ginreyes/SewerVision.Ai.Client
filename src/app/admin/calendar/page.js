@@ -3,16 +3,16 @@ import { Button } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
 import { Calendar as ShadcnCalendar } from "@/components/ui/calendar";
 import React, { useState, useRef, useEffect } from "react";
-import EventFilters from "./components/FilterComponent";
+import EventFilters from "@/components/admin/calendar/FilterComponent";
 import { ArrowLeft, ArrowRight } from "lucide-react";
-import EventModal from "./components/AddEventModal";
+import EventModal from "@/components/admin/calendar/AddEventModal";
 import { useUser } from "@/components/providers/UserContext";
 import { api } from "@/lib/helper";
-import MonthViewCalendar from "./components/MonthView";
-import ListViewCalendar from "./components/ListViewCalendar";
 
-import WeekView from "./components/WeekView";
-import DayView from "./components/DayView";
+import MonthViewCalendar from "@/components/admin/calendar/MonthView";
+import WeekView from "@/components/admin/calendar/WeekView";
+import DayView from "@/components/admin/calendar/DayView";
+import ListViewCalendar from "@/components/admin/calendar/ListViewCalendar";
 
 
 const generateCalendarGrid = (selectedMonth, selectedYear) => {

@@ -2,6 +2,7 @@
 import React, { useState, useEffect, useRef, Suspense } from "react";
 import { Search, Plus, Loader2, LayoutGrid, Rows, MoreVertical, Eye, Pencil } from "lucide-react";
 import { Button } from "@/components/ui/button";
+
 import {
   DropdownMenu,
   DropdownMenuTrigger,
@@ -9,8 +10,9 @@ import {
   DropdownMenuItem,
   DropdownMenuLabel,
 } from "@/components/ui/dropdown-menu";
-import ProjectDetail from "./components/ProjectDetail";
-import ProjectCard from "./components/ProjectCard";
+
+import ProjectCard from "@/components/admin/project/ProjectCard";
+import ProjectDetail from "@/components/admin/project/ProjectDetail";
 import { api } from "@/lib/helper";
 import { useAlert } from "@/components/providers/AlertProvider";
 import debounce from "lodash/debounce";

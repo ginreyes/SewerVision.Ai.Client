@@ -45,9 +45,9 @@ import { Alert, AlertDescription } from "@/components/ui/alert";
 import { Checkbox } from "@/components/ui/checkbox";
 import { Label } from "@/components/ui/label";
 import uploadsApi from "@/data/uploadsApi";
-import { FileCard } from "./components/FileCard";
+import { FileCard } from "@/components/admin/uploads/FileCard";
 import { getFileTypeIcon, getStatusColor } from "@/lib/utils";
-import BulkUploadModal from "./components/BulkUploadModal";
+import BulkUploadModal from "@/components/admin/uploads/BulkUploadModal";
 import { useAlert } from "@/components/providers/AlertProvider";
 import { useAdminUploads, useAdminUploadStats } from "@/hooks/useQueryHooks";
 

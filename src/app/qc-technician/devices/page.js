@@ -20,32 +20,7 @@ import { useAlert } from "@/components/providers/AlertProvider";
 import { useUser } from "@/components/providers/UserContext";
 import { Select, SelectTrigger, SelectValue, SelectContent, SelectItem } from "@/components/ui/select";
 import DeviceDetailModal from "./DeviceDetailModal";
-
-// Compact Stat Card (matching dashboard style)
-const StatCard = ({ icon: Icon, value, label, color = 'blue' }) => {
-  const colorClasses = {
-    blue: 'from-blue-500 to-blue-600',
-    green: 'from-green-500 to-emerald-600',
-    orange: 'from-orange-500 to-amber-600',
-    red: 'from-red-500 to-rose-600',
-    purple: 'from-purple-500 to-indigo-600',
-    rose: 'from-rose-500 to-pink-600',
-  };
-
-  return (
-    <div className="bg-white rounded-xl border border-gray-100 p-4 hover:shadow-md transition-all">
-      <div className="flex items-center justify-between">
-        <div className={`p-2 rounded-lg bg-gradient-to-br ${colorClasses[color] || colorClasses.blue}`}>
-          <Icon className="w-5 h-5 text-white" />
-        </div>
-      </div>
-      <div className="mt-3">
-        <p className="text-2xl font-bold text-gray-900">{value}</p>
-        <p className="text-sm text-gray-500">{label}</p>
-      </div>
-    </div>
-  );
-};
+import { StatCard } from '@/components/qc/dashboard';
 
 const QCDevicesPage = () => {
   const { showAlert } = useAlert();

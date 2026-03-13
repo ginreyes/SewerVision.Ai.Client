@@ -1,6 +1,6 @@
 'use client';
 
-import TasksPage from '@/components/tasks/TasksPage';
+import TasksPage from '@/components/admin/tasks/TasksPage';
 
 // Management view that reuses the existing Tasks UI,
 // but with a neutral "admin" role so it can see the

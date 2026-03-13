@@ -39,7 +39,6 @@ import operatorApi from '@/data/operatorApi';
 import taskApi from '@/data/taskApi';
 import { useRouter } from 'next/navigation';
 
-// Compact Stat Card
 const StatCard = ({ icon: Icon, value, label, color = 'blue' }) => {
     const colorClasses = {
         blue: 'from-blue-500 to-blue-600',

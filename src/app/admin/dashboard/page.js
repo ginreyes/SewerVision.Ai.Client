@@ -23,6 +23,7 @@ import {
   Filter
 } from 'lucide-react'
 import dashboardApi from '@/data/dashboardApi'
+import { COLORS } from '@/components/admin/constants'
 
 // Lazy load Chart.js for better performance
 const loadChart = async () => {
@@ -50,7 +51,6 @@ const AdminDashboard = () => {
   const defectTrendChartInstance = useRef(null)
   const aiPerformanceChartInstance = useRef(null)
 
-  const COLORS = ['#3B82F6', '#8B5CF6', '#F59E0B', '#10B981']
   const [ChartLoaded, setChartLoaded] = useState(false);
 
   // Data state

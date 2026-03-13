@@ -5,6 +5,7 @@ import {
   Loader2, 
 } from 'lucide-react';
 import ModuleLoading from './SewerVisionLoadingAnimation';
+import { useLoadingModuleSetting } from '@/hooks/useLoadingModuleSettings';
 
 // SewerVision Loading Component
 
@@ -13,6 +14,7 @@ import ModuleLoading from './SewerVisionLoadingAnimation';
 const AdminSidebar = ({ isOpen }) => {
   const [activeItem, setActiveItem] = useState("Dashboard");
   const [loadingItem, setLoadingItem] = useState(null);
+  const showLoading = useLoadingModuleSetting('admin');
 
   const handleItemClick = (item) => {
     if (loadingItem) return; 
@@ -48,7 +50,7 @@ const AdminSidebar = ({ isOpen }) => {
   return (
     <>
       {/* SewerVision Loading Animation */}
-      <ModuleLoading isVisible={!!loadingItem} />
+      <ModuleLoading isVisible={showLoading && !!loadingItem} moduleName={loadingItem} />
 
       <nav className="h-full bg-gray-200 p-4">
         {/* Logo and Title (keeping your original design) */}

@@ -29,38 +29,7 @@ import {
   Users,
   Hash,
 } from 'lucide-react';
-
-/* ─── Priority helpers ─── */
-const priorityConfig = {
-  low: {
-    color: 'text-slate-500',
-    bg: 'bg-slate-50',
-    border: 'border-slate-200',
-    label: 'Low',
-    ring: 'ring-slate-200',
-  },
-  medium: {
-    color: 'text-amber-600',
-    bg: 'bg-amber-50',
-    border: 'border-amber-200',
-    label: 'Medium',
-    ring: 'ring-amber-200',
-  },
-  high: {
-    color: 'text-orange-600',
-    bg: 'bg-orange-50',
-    border: 'border-orange-200',
-    label: 'High',
-    ring: 'ring-orange-200',
-  },
-  critical: {
-    color: 'text-red-600',
-    bg: 'bg-red-50',
-    border: 'border-red-200',
-    label: 'Critical',
-    ring: 'ring-red-200',
-  },
-};
+import { priorityConfig } from '@/components/admin/constants';
 
 const PriorityBadge = ({ priority }) => {
   const cfg = priorityConfig[priority] || priorityConfig.medium;

@@ -22,10 +22,12 @@ import {
   ChevronRight,
 } from 'lucide-react';
 import ModuleLoading from './SewerVisionLoadingAnimation';
+import { useLoadingModuleSetting } from '@/hooks/useLoadingModuleSettings';
 
 const QcSidebar = ({ isOpen, role }) => {
   const [activeItem, setActiveItem] = useState("Dashboard");
   const [loadingItem, setLoadingItem] = useState(null);
+  const showLoading = useLoadingModuleSetting('qcTechnician');
   const pathname = usePathname();
 
   const handleItemClick = (item) => {
@@ -105,7 +107,7 @@ const QcSidebar = ({ isOpen, role }) => {
   return (
     <>
       {/* SewerVision Loading Animation */}
-      <ModuleLoading isVisible={!!loadingItem} />
+      <ModuleLoading isVisible={showLoading && !!loadingItem} moduleName={loadingItem} />
 
       <nav className={cn(
         "h-full flex flex-col",

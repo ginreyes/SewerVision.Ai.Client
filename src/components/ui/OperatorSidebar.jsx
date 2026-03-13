@@ -1,9 +1,11 @@
  'use client';
 
-import React from 'react';
+import React, { useState } from 'react';
 import Image from 'next/image';
 import Link from 'next/link';
 import { usePathname } from 'next/navigation';
+import ModuleLoading from './SewerVisionLoadingAnimation';
+import { useLoadingModuleSetting } from '@/hooks/useLoadingModuleSettings';
 
 // Import Lucide icons
 import {
@@ -22,6 +24,16 @@ import {
 
 const OperatorSidebar = ({ isOpen, role }) => {
   const pathname = usePathname();
+  const [loadingItem, setLoadingItem] = useState(null);
+  const showLoading = useLoadingModuleSetting('operator');
+
+  const handleItemClick = (item) => {
+    if (loadingItem) return;
+    setLoadingItem(item);
+    setTimeout(() => {
+      setLoadingItem(null);
+    }, 5000);
+  };
 
   const activeStyle = "bg-[#826AF91A] text-[#2D99FF] font-semibold shadow-sm";
   const inactiveStyle = "text-gray-700";
@@ -44,6 +56,8 @@ const OperatorSidebar = ({ isOpen, role }) => {
   const sidebarItems = role === 'operator' ? operator : operator;
 
   return (
+    <>
+      <ModuleLoading isVisible={showLoading && !!loadingItem} moduleName={loadingItem} />
     <nav className="h-full bg-gray-200 p-4">
       {/* Logo and Title */}
       <div className={`flex items-center gap-2 mb-6 transition-all duration-300 ${isOpen ? 'justify-start' : 'justify-center'}`}>
@@ -72,8 +86,10 @@ const OperatorSidebar = ({ isOpen, role }) => {
             return (
               <Link key={item.label} href={item.path}>
                 <div
+                  onClick={() => handleItemClick(item.label)}
                   className={`flex items-center space-x-3 h-[56px] px-4 rounded-2xl cursor-pointer transition-all duration-200 transform hover:scale-[1.02]
-                    ${isActive ? activeStyle : `${inactiveStyle} hover:bg-gray-300 hover:shadow-sm`}`}
+                    ${isActive ? activeStyle : `${inactiveStyle} hover:bg-gray-300 hover:shadow-sm`}
+                    ${loadingItem === item.label ? 'pointer-events-none opacity-70' : ''}`}
                   style={{
                     animationName: 'slideIn',
                     animationDuration: '0.3s',
@@ -122,6 +138,7 @@ const OperatorSidebar = ({ isOpen, role }) => {
         }
       `}</style>
     </nav>
+    </>
   );
 };
 

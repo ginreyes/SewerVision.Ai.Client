@@ -4,11 +4,8 @@ import { useEffect, useState } from 'react';
 import {
   Bell,
   Check,
-  Clock,
-  AlertCircle,
   Mail,
   Info,
-  FileText,
   Loader2,
   Trash2,
 } from 'lucide-react';
@@ -22,11 +19,7 @@ import { useUser } from '@/components/providers/UserContext';
 import { useNotifications } from '@/components/providers/NotificationProvider';
 import { useAlert } from '@/components/providers/AlertProvider';
 import { api } from '@/lib/helper';
-
-// Helper Icons
-const FileTextIcon = () => <FileText className="h-4 w-4 text-blue-500" />;
-const BotIcon = () => <AlertCircle className="h-4 w-4 text-green-500" />;
-const UpdateIcon = () => <Clock className="h-4 w-4 text-orange-500" />;
+import { FileTextIcon, BotIcon, UpdateIcon } from '@/components/admin/notifications';
 
 const NotificationPageAdmin = () => {
   const { userId } = useUser();

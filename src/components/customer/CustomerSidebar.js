@@ -5,10 +5,12 @@ import Image from 'next/image';
 import Link from 'next/link';
 import { Bell, FileText, FolderOpen, Headset, LayoutDashboard, Loader2 } from 'lucide-react';
 import ModuleLoading from '@/components/ui/SewerVisionLoadingAnimation';
+import { useLoadingModuleSetting } from '@/hooks/useLoadingModuleSettings';
 
 const CustomerSidebar = ({ isOpen }) => {
   const [activeItem, setActiveItem] = useState("Dashboard");
   const [loadingItem, setLoadingItem] = useState(null);
+  const showLoading = useLoadingModuleSetting('user');
 
   const handleItemClick = (item) => {
     if (loadingItem) return;
@@ -32,7 +34,7 @@ const CustomerSidebar = ({ isOpen }) => {
 
   return (
     <>
-      <ModuleLoading isVisible={!!loadingItem} />
+      <ModuleLoading isVisible={showLoading && !!loadingItem} moduleName={loadingItem} />
       <nav className="h-full bg-gray-200 p-4" data-tour="customer-sidebar">
         <div className={`flex items-center gap-2 mb-6 transition-all duration-300 ${isOpen ? 'justify-start' : 'justify-center'}`}>
           <Image src="/logo.png" alt="Logo" width={32} height={30} />

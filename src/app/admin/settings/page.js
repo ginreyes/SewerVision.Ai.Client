@@ -27,7 +27,8 @@ import {
   BrainCircuit,
   Settings as SettingsIcon,
   RefreshCcw,
-  RotateCcw
+  RotateCcw,
+  Monitor
 } from 'lucide-react';
 import { Card, CardContent, CardHeader, CardTitle, CardDescription, CardFooter } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
@@ -53,30 +54,8 @@ import { useUser } from '@/components/providers/UserContext';
 import { useAlert } from '@/components/providers/AlertProvider';
 import { api, getCookie } from '@/lib/helper';
 import settingsApi from '@/data/settingsApi';
-
-// --- Components ---
-
-const SectionHeader = ({ icon: Icon, title, description }) => (
-  <div className="flex items-center space-x-4 mb-6">
-    <div className="p-2 bg-blue-100 rounded-lg">
-      <Icon className="w-6 h-6 text-blue-600" />
-    </div>
-    <div>
-      <h2 className="text-lg font-semibold text-gray-900">{title}</h2>
-      <p className="text-sm text-gray-500">{description}</p>
-    </div>
-  </div>
-);
-
-const ToggleSetting = ({ label, description, checked, onCheckedChange }) => (
-  <div className="flex items-center justify-between py-4">
-    <div className="space-y-0.5">
-      <Label className="text-base font-medium text-gray-900">{label}</Label>
-      <p className="text-sm text-gray-500">{description}</p>
-    </div>
-    <Switch checked={checked} onCheckedChange={onCheckedChange} />
-  </div>
-);
+import { SectionHeader, ToggleSetting, SettingsPageLoading } from '@/components/admin/settings';
+import { invalidateLoadingModuleCache } from '@/hooks/useLoadingModuleSettings';
 
 function SettingsPageContent() {
   const router = useRouter();
@@ -164,6 +143,12 @@ function SettingsPageContent() {
     maintenanceMode: false,
     debugMode: false,
     logRetentionDays: 30,
+  });
+  const [loadingModule, setLoadingModule] = useState({
+    admin: true,
+    operator: true,
+    qcTechnician: true,
+    user: true,
   });
   const [awsConfig, setAwsConfig] = useState({
     bucket: '',
@@ -255,6 +240,14 @@ function SettingsPageContent() {
           debugMode: settings.systemAdmin.debugMode ?? false,
           logRetentionDays: settings.systemAdmin.logRetentionDays || 30,
         });
+        if (settings.systemAdmin.loadingModule) {
+          setLoadingModule({
+            admin: settings.systemAdmin.loadingModule.admin ?? true,
+            operator: settings.systemAdmin.loadingModule.operator ?? true,
+            qcTechnician: settings.systemAdmin.loadingModule.qcTechnician ?? true,
+            user: settings.systemAdmin.loadingModule.user ?? true,
+          });
+        }
       }
     } catch (error) {
       console.error('Error fetching settings:', error);
@@ -442,7 +435,8 @@ function SettingsPageContent() {
           await settingsApi.updateAWSConfig({ bucket: awsConfig.bucket, region: awsConfig.region, accessKeyId: awsConfig.accessKey, secretAccessKey: awsConfig.secretKey }, userId);
           break;
         case 'system-admin':
-          await settingsApi.updateSystemAdmin({ currentModelVersion: modelVersion, maintenanceMode: systemAdmin.maintenanceMode, debugMode: systemAdmin.debugMode, logRetentionDays: systemAdmin.logRetentionDays }, userId);
+          await settingsApi.updateSystemAdmin({ currentModelVersion: modelVersion, maintenanceMode: systemAdmin.maintenanceMode, debugMode: systemAdmin.debugMode, logRetentionDays: systemAdmin.logRetentionDays, loadingModule }, userId);
+          invalidateLoadingModuleCache();
           break;
       }
       showAlert('Settings saved successfully', 'success');
@@ -841,6 +835,26 @@ function SettingsPageContent() {
                 <CardContent className="space-y-6">
                   <ToggleSetting label="Maintenance Mode" description="Disable public access" checked={systemAdmin.maintenanceMode} onCheckedChange={(val) => setSystemAdmin(prev => ({ ...prev, maintenanceMode: val }))} />
                   <ToggleSetting label="Debug Mode" description="Enable verbose logging" checked={systemAdmin.debugMode} onCheckedChange={(val) => setSystemAdmin(prev => ({ ...prev, debugMode: val }))} />
+                </CardContent>
+              </Card>
+
+              <Card className="border-0 shadow-sm">
+                <CardHeader>
+                  <SectionHeader icon={Monitor} title="Loading Module" description="Control the loading animation shown when navigating between pages" />
+                </CardHeader>
+                <CardContent className="space-y-2">
+                  <ToggleSetting label="Admin" description="Show loading animation for admin users" checked={loadingModule.admin} onCheckedChange={(val) => setLoadingModule(prev => ({ ...prev, admin: val }))} />
+                  <ToggleSetting label="Operator" description="Show loading animation for operators" checked={loadingModule.operator} onCheckedChange={(val) => setLoadingModule(prev => ({ ...prev, operator: val }))} />
+                  <ToggleSetting label="QC Technician" description="Show loading animation for QC technicians" checked={loadingModule.qcTechnician} onCheckedChange={(val) => setLoadingModule(prev => ({ ...prev, qcTechnician: val }))} />
+                  <ToggleSetting label="User (Team Lead)" description="Show loading animation for team leads" checked={loadingModule.user} onCheckedChange={(val) => setLoadingModule(prev => ({ ...prev, user: val }))} />
+                </CardContent>
+              </Card>
+
+              <Card className="border-0 shadow-sm">
+                <CardHeader>
+                  <SectionHeader icon={SettingsIcon} title="System Logs" description="Recent system activity" />
+                </CardHeader>
+                <CardContent className="space-y-6">
                   <Separator />
                   <div>
                     <Label>System Logs</Label>
@@ -869,15 +883,6 @@ function SettingsPageContent() {
     </div>
   );
 }
-
-const SettingsPageLoading = () => (
-  <div className="flex items-center justify-center min-h-screen">
-    <div className="text-center">
-      <Loader2 className="animate-spin h-8 w-8 text-blue-500 mx-auto" />
-      <span className="ml-2 mt-2 block text-gray-500">Loading settings...</span>
-    </div>
-  </div>
-);
 
 const SettingsPage = () => {
   return (
