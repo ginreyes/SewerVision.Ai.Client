@@ -1,38 +1,60 @@
 'use client';
 
-import { FileText, CheckCircle, Clock } from 'lucide-react';
-import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
+import {
+  FolderOpen,
+  Activity,
+  CheckCircle2,
+  AlertTriangle,
+} from 'lucide-react';
+import { Card, CardContent } from '@/components/ui/card';
+
+const cards = [
+  {
+    key: 'total',
+    label: 'Total Projects',
+    icon: FolderOpen,
+    iconBg: 'bg-blue-100',
+    iconColor: 'text-blue-600',
+  },
+  {
+    key: 'active',
+    label: 'Active',
+    icon: Activity,
+    iconBg: 'bg-emerald-100',
+    iconColor: 'text-emerald-600',
+  },
+  {
+    key: 'completed',
+    label: 'Completed',
+    icon: CheckCircle2,
+    iconBg: 'bg-purple-100',
+    iconColor: 'text-purple-600',
+  },
+  {
+    key: 'totalDefects',
+    label: 'Total Defects',
+    icon: AlertTriangle,
+    iconBg: 'bg-red-100',
+    iconColor: 'text-red-600',
+  },
+];
 
 const StatsCards = ({ stats }) => {
   return (
-    <div className="grid gap-4 md:grid-cols-3" data-tour="customer-stats">
-      <Card>
-        <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-          <CardTitle className="text-sm font-medium">Total Projects</CardTitle>
-          <FileText className="h-4 w-4 text-muted-foreground" />
-        </CardHeader>
-        <CardContent>
-          <div className="text-2xl font-bold">{stats.total}</div>
-        </CardContent>
-      </Card>
-      <Card>
-        <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-          <CardTitle className="text-sm font-medium">Completed</CardTitle>
-          <CheckCircle className="h-4 w-4 text-green-500" />
-        </CardHeader>
-        <CardContent>
-          <div className="text-2xl font-bold">{stats.completed}</div>
-        </CardContent>
-      </Card>
-      <Card>
-        <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-          <CardTitle className="text-sm font-medium">In Review</CardTitle>
-          <Clock className="h-4 w-4 text-yellow-500" />
-        </CardHeader>
-        <CardContent>
-          <div className="text-2xl font-bold">{stats.inReview}</div>
-        </CardContent>
-      </Card>
+    <div className="grid gap-4 grid-cols-2 lg:grid-cols-4" data-tour="customer-stats">
+      {cards.map(({ key, label, icon: Icon, iconBg, iconColor }) => (
+        <Card key={key} className="relative overflow-hidden">
+          <CardContent className="p-4 flex items-center gap-4">
+            <div className={`rounded-lg p-2.5 ${iconBg}`}>
+              <Icon className={`h-5 w-5 ${iconColor}`} />
+            </div>
+            <div>
+              <p className="text-sm text-muted-foreground">{label}</p>
+              <p className="text-2xl font-bold">{stats[key] ?? 0}</p>
+            </div>
+          </CardContent>
+        </Card>
+      ))}
     </div>
   );
 };

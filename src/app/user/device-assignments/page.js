@@ -4,14 +4,6 @@ import React, { useState, useMemo } from 'react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import {
-  Select,
-  SelectContent,
-  SelectItem,
-  SelectTrigger,
-  SelectValue,
-} from '@/components/ui/select';
-import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
-import {
   Monitor,
   User,
   Users,
@@ -32,39 +24,16 @@ import {
 import { useAlert } from '@/components/providers/AlertProvider';
 import { useUser } from '@/components/providers/UserContext';
 import { useUserDevices, useUserTeamMembers, useUpdateDeviceAssignment } from '@/hooks/useQueryHooks';
+import { DEVICE_STATUS_CONFIG } from '@/components/user/constants';
+import PersonBadge from '@/components/user/device-assignments/PersonBadge';
+import AssignmentSelector from '@/components/user/device-assignments/AssignmentSelector';
 
-const STATUS_CONFIG = {
-  online: {
-    color: 'bg-emerald-500',
-    ping: 'bg-emerald-400',
-    badge: 'bg-emerald-50 text-emerald-700 border-emerald-200',
-    icon: Wifi,
-    label: 'Online',
-  },
-  offline: {
-    color: 'bg-slate-400',
-    ping: 'bg-slate-300',
-    badge: 'bg-slate-50 text-slate-600 border-slate-200',
-    icon: WifiOff,
-    label: 'Offline',
-  },
-  maintenance: {
-    color: 'bg-amber-500',
-    ping: 'bg-amber-400',
-    badge: 'bg-amber-50 text-amber-700 border-amber-200',
-    icon: Wrench,
-    label: 'Maintenance',
-  },
-  decommissioned: {
-    color: 'bg-red-400',
-    ping: 'bg-red-300',
-    badge: 'bg-red-50 text-red-600 border-red-200',
-    icon: WifiOff,
-    label: 'Decommissioned',
-  },
+const STATUS_ICONS = { online: Wifi, offline: WifiOff, maintenance: Wrench, decommissioned: WifiOff };
+
+const getStatusConfig = (status) => {
+  const cfg = DEVICE_STATUS_CONFIG[status] || DEVICE_STATUS_CONFIG.offline;
+  return { ...cfg, icon: STATUS_ICONS[status] || STATUS_ICONS.offline };
 };
-
-const getStatusConfig = (status) => STATUS_CONFIG[status] || STATUS_CONFIG.offline;
 
 export default function UserDeviceAssignmentsPage() {
   const { showAlert } = useAlert();
@@ -129,23 +98,6 @@ export default function UserDeviceAssignmentsPage() {
     return counts;
   }, [devices]);
 
-  /* ──────────── helpers ──────────── */
-
-  const getUserDisplay = (user) => {
-    if (!user) return { name: 'Unassigned', initials: '?', avatar: '' };
-    const name =
-      [user.first_name, user.last_name].filter(Boolean).join(' ').trim() ||
-      user.username ||
-      'Unassigned';
-    const initials = name
-      .split(' ')
-      .map((n) => n[0])
-      .join('')
-      .toUpperCase()
-      .slice(0, 2);
-    return { name, initials, avatar: user.avatar || '' };
-  };
-
   const openDevice = (device) => {
     if (expandedDeviceId === device._id) {
       setExpandedDeviceId(null);
@@ -181,61 +133,6 @@ export default function UserDeviceAssignmentsPage() {
           showAlert(err?.message || 'Failed to update assignments', 'error');
         },
       }
-    );
-  };
-
-  /* ──────────── sub-components ──────────── */
-
-  const PersonBadge = ({ user, role, colorClass, iconElement }) => {
-    const { name, initials, avatar } = getUserDisplay(user);
-    return (
-      <div className={`inline-flex items-center gap-2 px-2.5 py-1.5 rounded-lg ${colorClass} transition-colors`}>
-        <Avatar className="w-5 h-5">
-          <AvatarImage src={avatar} alt={name} />
-          <AvatarFallback className="text-[10px] font-medium">{initials}</AvatarFallback>
-        </Avatar>
-        <span className="text-xs font-medium opacity-70">{role}</span>
-        <span className="text-xs font-semibold">{name}</span>
-      </div>
-    );
-  };
-
-  const AssignmentSelector = ({ label, icon: Icon, value, onChange, options, placeholder }) => {
-    const selectedUser = options.find((o) => o._id === value);
-    const { name, initials, avatar } = getUserDisplay(selectedUser);
-
-    return (
-      <div className="space-y-2">
-        <label className="flex items-center gap-1.5 text-xs font-semibold text-slate-500 uppercase tracking-wider">
-          <Icon className="w-3.5 h-3.5" />
-          {label}
-        </label>
-        <div className="flex items-center gap-2.5">
-          <Avatar className="w-8 h-8 ring-2 ring-white shadow-sm">
-            <AvatarImage src={avatar} alt={name} />
-            <AvatarFallback className="text-xs font-semibold bg-slate-100 text-slate-600">
-              {initials}
-            </AvatarFallback>
-          </Avatar>
-          <Select value={value || '__none__'} onValueChange={(v) => onChange(v === '__none__' ? '' : v)}>
-            <SelectTrigger className="h-9 text-sm flex-1 bg-white border-slate-200 hover:border-slate-300 transition-colors shadow-sm">
-              <SelectValue placeholder={placeholder} />
-            </SelectTrigger>
-            <SelectContent>
-              <SelectItem value="__none__">
-                <span className="text-slate-400">Unassigned</span>
-              </SelectItem>
-              {options.map((user) => (
-                <SelectItem key={user._id} value={user._id}>
-                  {[user.first_name, user.last_name].filter(Boolean).join(' ') ||
-                    user.username ||
-                    'Unknown'}
-                </SelectItem>
-              ))}
-            </SelectContent>
-          </Select>
-        </div>
-      </div>
     );
   };
 

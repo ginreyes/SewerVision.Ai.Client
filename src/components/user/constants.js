@@ -73,3 +73,34 @@ export const getUserDisplayName = (user) => {
         .slice(0, 2);
     return { name, initials, avatar: user.avatar || '' };
 };
+
+export const PROJECT_STATUS_COLORS = {
+    planning: 'bg-slate-100 text-slate-800',
+    'field-capture': 'bg-blue-100 text-blue-800',
+    uploading: 'bg-indigo-100 text-indigo-800',
+    'ai-processing': 'bg-yellow-100 text-yellow-800',
+    'qc-review': 'bg-purple-100 text-purple-800',
+    'in-progress': 'bg-emerald-100 text-emerald-800',
+    completed: 'bg-green-100 text-green-800',
+    'customer-notified': 'bg-teal-100 text-teal-800',
+    'on-hold': 'bg-gray-100 text-gray-600',
+};
+
+export const PROJECT_PRIORITY_COLORS = {
+    high: 'text-red-600',
+    medium: 'text-yellow-600',
+    low: 'text-green-600',
+};
+
+export const REPORT_STATUS_CONFIG = {
+    completed: { label: 'Completed', className: 'bg-green-100 text-green-700 border-green-200' },
+    'in-review': { label: 'In Review', className: 'bg-yellow-100 text-yellow-700 border-yellow-200' },
+    pending: { label: 'Pending', className: 'bg-blue-100 text-blue-700 border-blue-200' },
+    draft: { label: 'Draft', className: 'bg-gray-100 text-gray-700 border-gray-200' },
+};
+
+export const getProjectStatusColor = (status) =>
+    PROJECT_STATUS_COLORS[status] || 'bg-gray-100 text-gray-600';
+
+export const getProjectPriorityColor = (priority) =>
+    PROJECT_PRIORITY_COLORS[priority] || 'text-gray-600';

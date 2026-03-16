@@ -230,6 +230,20 @@ export const userApi = {
         return response.data;
     },
 
+    // ─── Reports ───
+
+    async getReports({ managerId, status, source } = {}) {
+        const params = new URLSearchParams();
+        if (managerId) params.set('managerId', managerId);
+        if (status && status !== 'all') params.set('status', status);
+        if (source && source !== 'all') params.set('source', source);
+        const response = await api(`/api/reports/get-all-report?${params}`, 'GET');
+        if (!response.ok) {
+            throw new Error(response.data?.error || 'Failed to fetch reports');
+        }
+        return response.data;
+    },
+
     // ─── Notifications ───
 
     async getNotificationPreferences(userId) {

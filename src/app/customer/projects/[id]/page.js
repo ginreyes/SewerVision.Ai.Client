@@ -1,6 +1,6 @@
 'use client';
 
-import { useState } from 'react';
+import { useState, useMemo } from 'react';
 import { useRouter, useParams } from 'next/navigation';
 import {
   ArrowLeft,
@@ -9,6 +9,10 @@ import {
   Loader2,
   FileText,
   AlertCircle,
+  ChevronRight,
+  AlertTriangle,
+  Zap,
+  Ruler,
 } from 'lucide-react';
 
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
@@ -29,6 +33,8 @@ import {
   useCustomerProject,
   useCustomerObservations,
   useCustomerSnapshots,
+  useCustomerDetections,
+  useProjectVideos,
   useDownloadCustomerReport,
 } from '@/hooks/useQueryHooks';
 
@@ -62,12 +68,38 @@ export default function ProjectPageViewDetails() {
     isLoading: obsLoading,
   } = useCustomerObservations(projectId);
 
+  console.log('Observations:', observations); // Debug log to check observations data
+
   const {
     data: snapshots = [],
     isLoading: snapsLoading,
   } = useCustomerSnapshots(projectId);
 
+  const {
+    data: videosData = [],
+  } = useProjectVideos(projectId);
+
+  const {
+    data: detections = [],
+  } = useCustomerDetections(projectId);
+
   const downloadReportMutation = useDownloadCustomerReport();
+
+  // Build a lookup: observationId → snapshot (so DefectCards can show images)
+  // Also includes AI detection images matched by observationId
+  const snapshotByObsId = useMemo(() => {
+    const map = {};
+    snapshots.forEach((snap) => {
+      if (snap.observationId) map[snap.observationId] = snap;
+    });
+    // Also map detections that have images (detection.observationId → detection)
+    detections.forEach((det) => {
+      if (det.observationId && det.images?.length > 0 && !map[det.observationId]) {
+        map[det.observationId] = { imageUrl: det.images[0].url, isDetection: true };
+      }
+    });
+    return map;
+  }, [snapshots, detections]);
 
   const loading = projectLoading || obsLoading || snapsLoading;
   const error = projectError;
@@ -164,20 +196,28 @@ export default function ProjectPageViewDetails() {
       project.assignedOperator.name
     : 'Not Assigned';
 
+  const highCount = observations.filter((o) => o.severity === 'high').length;
+  const avgConfidence = observations.length > 0
+    ? Math.round(observations.reduce((s, o) => s + (o.confidence || 0), 0) / observations.length * 100)
+    : null;
+
   return (
     <div className="space-y-6 p-4 md:p-6">
+      {/* Breadcrumb */}
+      <nav className="flex items-center gap-1 text-sm text-muted-foreground">
+        <button
+          onClick={() => router.push('/customer/projects')}
+          className="hover:text-primary transition-colors"
+        >
+          Projects
+        </button>
+        <ChevronRight className="h-3.5 w-3.5" />
+        <span className="font-medium text-foreground truncate max-w-[200px]">{project.name}</span>
+      </nav>
+
       {/* Header */}
       <div className="flex items-start justify-between flex-wrap gap-4">
         <div className="space-y-1 flex-1">
-          <Button
-            variant="ghost"
-            size="sm"
-            onClick={() => router.push('/customer/projects')}
-            className="mb-2 -ml-2"
-          >
-            <ArrowLeft className="mr-2 h-4 w-4" />
-            Back to Projects
-          </Button>
           <div className="flex items-center gap-3 flex-wrap">
             <h1 className="text-3xl font-bold">{project.name}</h1>
             {renderStatusBadge(project.status)}
@@ -196,6 +236,62 @@ export default function ProjectPageViewDetails() {
             Export Report
           </Button>
         </div>
+      </div>
+
+      {/* Quick Stats Row */}
+      <div className="grid gap-3 grid-cols-2 lg:grid-cols-4">
+        <Card>
+          <CardContent className="pt-3 pb-2 px-4">
+            <div className="flex items-center gap-3">
+              <div className="rounded-lg bg-orange-50 p-2">
+                <AlertTriangle className="h-4 w-4 text-orange-600" />
+              </div>
+              <div>
+                <p className="text-xl font-bold">{observations.length}</p>
+                <p className="text-[10px] text-muted-foreground">Total Defects</p>
+              </div>
+            </div>
+          </CardContent>
+        </Card>
+        <Card>
+          <CardContent className="pt-3 pb-2 px-4">
+            <div className="flex items-center gap-3">
+              <div className="rounded-lg bg-red-50 p-2">
+                <AlertCircle className="h-4 w-4 text-red-600" />
+              </div>
+              <div>
+                <p className="text-xl font-bold text-red-600">{highCount}</p>
+                <p className="text-[10px] text-muted-foreground">High Severity</p>
+              </div>
+            </div>
+          </CardContent>
+        </Card>
+        <Card>
+          <CardContent className="pt-3 pb-2 px-4">
+            <div className="flex items-center gap-3">
+              <div className="rounded-lg bg-blue-50 p-2">
+                <Zap className="h-4 w-4 text-blue-600" />
+              </div>
+              <div>
+                <p className="text-xl font-bold text-blue-600">{avgConfidence !== null ? `${avgConfidence}%` : '—'}</p>
+                <p className="text-[10px] text-muted-foreground">AI Confidence</p>
+              </div>
+            </div>
+          </CardContent>
+        </Card>
+        <Card>
+          <CardContent className="pt-3 pb-2 px-4">
+            <div className="flex items-center gap-3">
+              <div className="rounded-lg bg-green-50 p-2">
+                <Ruler className="h-4 w-4 text-green-600" />
+              </div>
+              <div>
+                <p className="text-xl font-bold">{project.totalLength || '—'}</p>
+                <p className="text-[10px] text-muted-foreground">Pipeline Length</p>
+              </div>
+            </div>
+          </CardContent>
+        </Card>
       </div>
 
       {/* Project Info Card */}
@@ -227,7 +323,7 @@ export default function ProjectPageViewDetails() {
 
           <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-3">
             {filteredObservations.map((observation) => (
-              <DefectCard key={observation._id} observation={observation} />
+              <DefectCard key={observation._id} observation={observation} snapshot={snapshotByObsId[observation._id]} />
             ))}
           </div>
 
@@ -250,7 +346,9 @@ export default function ProjectPageViewDetails() {
           <SnapshotGrid
             project={project}
             snapshots={snapshots}
+            detections={detections}
             observations={observations}
+            videos={videosData}
             onOpenVideo={openVideoModal}
           />
         </TabsContent>

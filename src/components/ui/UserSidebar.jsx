@@ -1,5 +1,6 @@
 'use client';
 
+
 import React, { useState, useEffect } from 'react';
 import Image from 'next/image';
 import Link from 'next/link';
@@ -17,6 +18,8 @@ import {
   Settings2,
 } from 'lucide-react';
 import { cn } from '@/lib/utils';
+import ModuleLoading from './SewerVisionLoadingAnimation';
+import { useLoadingModuleSetting } from '@/hooks/useLoadingModuleSettings';
 
 /**
  * Management sidebar for the advanced "User" role.
@@ -25,7 +28,15 @@ import { cn } from '@/lib/utils';
  */
 const UserSidebar = ({ isOpen, role, userRoleMeta }) => {
   const [activeItem, setActiveItem] = useState('Dashboard');
+  const [loadingItem, setLoadingItem] = useState(null);
+  const showLoading = useLoadingModuleSetting('user');
   const pathname = usePathname();
+
+  const handleItemClick = (label) => {
+    if (loadingItem) return;
+    setLoadingItem(label);
+    setTimeout(() => setLoadingItem(null), 5000);
+  };
 
   useEffect(() => {
     const map = {
@@ -89,6 +100,7 @@ const UserSidebar = ({ isOpen, role, userRoleMeta }) => {
       )}
       style={{ backgroundColor: '#e5e7eb' }}
     >
+      <ModuleLoading isVisible={showLoading && !!loadingItem} moduleName={loadingItem} />
       {/* Header */}
       <div
         className={cn(
@@ -134,12 +146,14 @@ const UserSidebar = ({ isOpen, role, userRoleMeta }) => {
                 return (
                   <Link key={item.label} href={item.path}>
                     <div
+                      onClick={() => handleItemClick(item.label)}
                       className={cn(
                         'group relative flex items-center gap-3 h-11 px-3 rounded-xl transition-all duration-200 cursor-pointer select-none',
                         active
                           ? 'bg-gradient-to-r from-rose-50 to-pink-50 text-rose-700 font-semibold shadow-sm shadow-rose-500/10'
                           : 'text-gray-700 hover:bg-gray-100/80 hover:text-gray-900',
-                        !isOpen && 'justify-center'
+                        !isOpen && 'justify-center',
+                        loadingItem === item.label && 'pointer-events-none opacity-70'
                       )}
                     >
                       <div

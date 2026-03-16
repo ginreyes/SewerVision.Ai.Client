@@ -33,31 +33,8 @@ import { Separator } from '@/components/ui/separator';
 import { useUser } from '@/components/providers/UserContext';
 import { useAlert } from '@/components/providers/AlertProvider';
 import { api, getCookie } from '@/lib/helper';
-
-const SectionHeader = ({ icon: Icon, title, description, variant = 'default' }) => {
-  const isRose = variant === 'rose';
-  return (
-    <div className="flex items-center space-x-4 mb-6">
-      <div className={`p-2 rounded-lg ${isRose ? 'bg-rose-100' : 'bg-indigo-100'}`}>
-        <Icon className={`w-6 h-6 ${isRose ? 'text-rose-600' : 'text-indigo-600'}`} />
-      </div>
-      <div>
-        <h2 className="text-lg font-semibold text-gray-900">{title}</h2>
-        <p className="text-sm text-gray-500">{description}</p>
-      </div>
-    </div>
-  );
-};
-
-const ToggleSetting = ({ label, description, checked, onCheckedChange, disabled }) => (
-  <div className={`flex items-center justify-between py-4 ${disabled ? 'opacity-70' : ''}`}>
-    <div className="space-y-0.5">
-      <Label className="text-base font-medium text-gray-900">{label}</Label>
-      <p className="text-sm text-gray-500">{description}</p>
-    </div>
-    <Switch checked={checked} onCheckedChange={onCheckedChange} disabled={disabled} />
-  </div>
-);
+import SectionHeader from '@/components/user/settings/SectionHeader';
+import ToggleSetting from '@/components/user/settings/ToggleSetting';
 
 function UserSettingsContent() {
   const router = useRouter();
@@ -295,6 +272,7 @@ function UserSettingsContent() {
   };
 
   const canEdit = Boolean(isEditingSettings);
+  const isDirty = isEditingSettings && JSON.stringify(settings) !== JSON.stringify(settingsSnapshot);
 
   return (
     <div className="max-w-7xl mx-auto p-6 space-y-8">
@@ -319,10 +297,12 @@ function UserSettingsContent() {
                 <X className="w-4 h-4" />
                 Cancel
               </Button>
-              <Button variant="rose" size="sm" onClick={handleSaveSettings} disabled={saving} className="gap-1.5">
-                {saving ? <Loader2 className="w-4 h-4 animate-spin" /> : <Save className="w-4 h-4" />}
-                Save
-              </Button>
+              {isDirty && (
+                <Button variant="rose" size="sm" onClick={handleSaveSettings} disabled={saving} className="gap-1.5">
+                  {saving ? <Loader2 className="w-4 h-4 animate-spin" /> : <Save className="w-4 h-4" />}
+                  Save changes
+                </Button>
+              )}
             </>
           )}
         </div>
@@ -649,18 +629,14 @@ function UserSettingsContent() {
                 </CardHeader>
                 <CardContent className="space-y-6 relative">
                   <div className="space-y-2">
-                    <Label className="text-gray-900">Theme</Label>
-                    <select
-                      value={settings.theme}
-                      onChange={(e) => updateSetting('theme', e.target.value)}
-                      disabled={!canEdit}
-                      className={`flex h-10 w-full max-w-xs rounded-md border px-3 py-2 text-sm focus:ring-rose-500 focus:border-rose-500 ${!canEdit ? 'border-gray-200 bg-gray-50 cursor-not-allowed' : 'border-rose-200 bg-background'}`}
-                    >
-                      <option value="system">System</option>
-                      <option value="light">Light</option>
-                      <option value="dark">Dark</option>
-                    </select>
-                    <p className="text-sm text-gray-500">Match your system or choose light/dark</p>
+                    <div className="flex items-center gap-2">
+                      <Label className="text-gray-900">Theme</Label>
+                      <Badge variant="outline" className="text-xs text-amber-600 border-amber-300 bg-amber-50">Coming soon</Badge>
+                    </div>
+                    <div className="flex h-10 w-full max-w-xs items-center rounded-md border border-gray-200 bg-gray-50 px-3 py-2 text-sm text-gray-400 cursor-not-allowed select-none">
+                      Light (default)
+                    </div>
+                    <p className="text-sm text-gray-400">Dark mode is not available yet — light mode is currently the only theme.</p>
                   </div>
                   <Separator />
                   <div className="space-y-2">

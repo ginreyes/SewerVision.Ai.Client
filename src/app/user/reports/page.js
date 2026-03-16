@@ -1,17 +1,14 @@
 'use client';
 
-import React, { useEffect, useState } from "react";
+import React, { useMemo, useState } from "react";
 import {
   FileText,
-  CheckCircle,
-  Clock,
-  BarChart3,
   Search,
   Calendar as CalendarIcon,
   MapPin,
   User,
 } from "lucide-react";
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { Card, CardContent } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Input } from "@/components/ui/input";
 import {
@@ -21,116 +18,60 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
-import { useAlert } from "@/components/providers/AlertProvider";
 import { useUser } from "@/components/providers/UserContext";
-import reportsApi from "@/data/reportsApi";
-
-const statusConfig = {
-  completed: {
-    label: "Completed",
-    className: "bg-green-100 text-green-700 border-green-200",
-  },
-  "in-review": {
-    label: "In Review",
-    className: "bg-yellow-100 text-yellow-700 border-yellow-200",
-  },
-  pending: {
-    label: "Pending",
-    className: "bg-blue-100 text-blue-700 border-blue-200",
-  },
-  draft: {
-    label: "Draft",
-    className: "bg-gray-100 text-gray-700 border-gray-200",
-  },
-};
+import { useUserReports } from "@/hooks/useQueryHooks";
+import { REPORT_STATUS_CONFIG } from "@/components/user/constants";
 
 export default function UserReportsPage() {
-  const { showAlert } = useAlert();
   const { userId } = useUser() || {};
-  const [reports, setReports] = useState([]);
-  const [loading, setLoading] = useState(true);
   const [statusFilter, setStatusFilter] = useState("all");
-  const [sourceFilter, setSourceFilter] = useState("all"); // operator | qc
+  const [sourceFilter, setSourceFilter] = useState("all");
   const [search, setSearch] = useState("");
 
-  const [stats, setStats] = useState({
-    total: 0,
-    completed: 0,
-    inReview: 0,
-  });
+  const { data: reportsData, isLoading: loading } = useUserReports(userId);
 
-  useEffect(() => {
-    const fetchAllReports = async () => {
-      if (!userId) {
-        setLoading(false);
-        setReports([]);
-        return;
-      }
-      try {
-        setLoading(true);
-        const response = await reportsApi.getReports({
-          managerId: userId,
-        });
-        const rawList = Array.isArray(response?.data) ? response.data : (response?.data ?? []);
-        const formatted = rawList.map((r) => ({
-          id: r._id,
-          inspectionId: r.inspectionId || `REP-${String(r._id).slice(-6)}`,
-          projectName: r.projectId?.name || "N/A",
-          location: r.projectId?.location || r.location || "Unknown",
-          status: r.status || "pending",
-          roleSource: r.qcTechnician ? "qc" : "operator",
-          operatorName:
-            r.operator?.name ||
-            (r.operator?.first_name != null || r.operator?.last_name != null
-              ? [r.operator.first_name, r.operator.last_name].filter(Boolean).join(" ") || r.operator.username
-              : "N/A"),
-          qcName:
-            r.qcTechnician?.name ||
-            (r.qcTechnician?.first_name != null || r.qcTechnician?.last_name != null
-              ? [r.qcTechnician.first_name, r.qcTechnician.last_name].filter(Boolean).join(" ") || r.qcTechnician.username
-              : null),
-          createdAt: r.createdAt,
-        }));
+  const reports = useMemo(() => {
+    const rawList = Array.isArray(reportsData?.data) ? reportsData.data : (reportsData?.data ?? []);
+    return rawList.map((r) => ({
+      id: r._id,
+      inspectionId: r.inspectionId || `REP-${String(r._id).slice(-6)}`,
+      projectName: r.projectId?.name || "N/A",
+      location: r.projectId?.location || r.location || "Unknown",
+      status: r.status || "pending",
+      roleSource: r.qcTechnician ? "qc" : "operator",
+      operatorName:
+        r.operator?.name ||
+        (r.operator?.first_name != null || r.operator?.last_name != null
+          ? [r.operator.first_name, r.operator.last_name].filter(Boolean).join(" ") || r.operator.username
+          : "N/A"),
+      createdAt: r.createdAt,
+    }));
+  }, [reportsData]);
 
-        setReports(formatted);
+  const stats = useMemo(() => ({
+    total: reports.length,
+    completed: reports.filter((r) => r.status === "completed").length,
+    inReview: reports.filter((r) => r.status === "in-review").length,
+  }), [reports]);
 
-        const completed = formatted.filter((r) => r.status === "completed").length;
-        const inReview = formatted.filter((r) => r.status === "in-review").length;
-
-        setStats({
-          total: formatted.length,
-          completed,
-          inReview,
-        });
-      } catch (err) {
-        console.error("Failed to load reports:", err);
-        showAlert(err?.message || "Failed to load reports", "error");
-        setReports([]);
-      } finally {
-        setLoading(false);
-      }
-    };
-
-    fetchAllReports();
-  }, [userId, showAlert]);
-
-  const filteredReports = reports.filter((r) => {
-    const matchesStatus =
-      statusFilter === "all" ? true : r.status === statusFilter;
-    const matchesSource =
-      sourceFilter === "all"
-        ? true
-        : sourceFilter === "operator"
-        ? r.roleSource === "operator"
-        : r.roleSource === "qc";
-    const term = search.trim().toLowerCase();
-    const matchesSearch =
-      !term ||
-      (r.inspectionId && r.inspectionId.toLowerCase().includes(term)) ||
-      (r.projectName && r.projectName.toLowerCase().includes(term)) ||
-      (r.location && r.location.toLowerCase().includes(term));
-    return matchesStatus && matchesSource && matchesSearch;
-  });
+  const filteredReports = useMemo(() => {
+    return reports.filter((r) => {
+      const matchesStatus = statusFilter === "all" || r.status === statusFilter;
+      const matchesSource =
+        sourceFilter === "all"
+          ? true
+          : sourceFilter === "operator"
+          ? r.roleSource === "operator"
+          : r.roleSource === "qc";
+      const term = search.trim().toLowerCase();
+      const matchesSearch =
+        !term ||
+        (r.inspectionId && r.inspectionId.toLowerCase().includes(term)) ||
+        (r.projectName && r.projectName.toLowerCase().includes(term)) ||
+        (r.location && r.location.toLowerCase().includes(term));
+      return matchesStatus && matchesSource && matchesSearch;
+    });
+  }, [reports, statusFilter, sourceFilter, search]);
 
   return (
     <div className="p-6 space-y-6 max-w-7xl mx-auto">
@@ -141,9 +82,7 @@ export default function UserReportsPage() {
             <FileText className="w-6 h-6 text-white" />
           </div>
           <div>
-            <h1 className="text-2xl font-bold text-gray-900">
-              Team Reports Overview
-            </h1>
+            <h1 className="text-2xl font-bold text-gray-900">Team Reports Overview</h1>
             <p className="text-sm text-gray-600 mt-0.5">
               Review Operator and QC reports from a single place.
             </p>
@@ -156,25 +95,19 @@ export default function UserReportsPage() {
         <Card>
           <CardContent className="pt-4 pb-5">
             <p className="text-xs text-gray-500">Total Reports</p>
-            <p className="text-2xl font-bold text-gray-900 mt-1">
-              {stats.total}
-            </p>
+            <p className="text-2xl font-bold text-gray-900 mt-1">{stats.total}</p>
           </CardContent>
         </Card>
         <Card>
           <CardContent className="pt-4 pb-5">
             <p className="text-xs text-gray-500">Completed</p>
-            <p className="text-2xl font-bold text-gray-900 mt-1">
-              {stats.completed}
-            </p>
+            <p className="text-2xl font-bold text-gray-900 mt-1">{stats.completed}</p>
           </CardContent>
         </Card>
         <Card>
           <CardContent className="pt-4 pb-5">
             <p className="text-xs text-gray-500">In Review</p>
-            <p className="text-2xl font-bold text-gray-900 mt-1">
-              {stats.inReview}
-            </p>
+            <p className="text-2xl font-bold text-gray-900 mt-1">{stats.inReview}</p>
           </CardContent>
         </Card>
       </div>
@@ -234,20 +167,16 @@ export default function UserReportsPage() {
           </Card>
         ) : (
           filteredReports.map((r) => {
-            const statusCfg = statusConfig[r.status] || statusConfig.pending;
+            const statusCfg = REPORT_STATUS_CONFIG[r.status] || REPORT_STATUS_CONFIG.pending;
             return (
               <Card key={r.id} className="border-gray-100 shadow-sm">
                 <CardContent className="py-4 px-5 flex flex-col md:flex-row md:items-center gap-4">
                   <div className="flex-1 min-w-0">
                     <div className="flex items-center gap-3">
                       <FileText className="w-4 h-4 text-rose-500" />
-                      <p className="font-semibold text-gray-900 truncate">
-                        {r.inspectionId}
-                      </p>
+                      <p className="font-semibold text-gray-900 truncate">{r.inspectionId}</p>
                     </div>
-                    <p className="text-sm text-gray-600 mt-1 truncate">
-                      {r.projectName}
-                    </p>
+                    <p className="text-sm text-gray-600 mt-1 truncate">{r.projectName}</p>
                     <div className="flex flex-wrap items-center gap-3 mt-2 text-xs text-gray-500">
                       <span className="flex items-center gap-1">
                         <MapPin className="w-3 h-3" />
@@ -267,12 +196,8 @@ export default function UserReportsPage() {
                       )}
                     </div>
                   </div>
-
                   <div className="flex flex-col items-start md:items-end gap-2">
-                    <Badge
-                      variant="outline"
-                      className={statusCfg.className + " border px-2 py-0.5"}
-                    >
+                    <Badge variant="outline" className={statusCfg.className + " border px-2 py-0.5"}>
                       {statusCfg.label}
                     </Badge>
                     <Badge variant="secondary">
@@ -288,4 +213,3 @@ export default function UserReportsPage() {
     </div>
   );
 }
-

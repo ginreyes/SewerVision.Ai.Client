@@ -214,6 +214,22 @@ export const customerApi = {
     },
 
     /**
+     * Get AI detections for a project (for snapshot images)
+     */
+    async getProjectDetections(projectId) {
+        const response = await api(
+            `/api/qc-technicians/projects/${projectId}/detections`,
+            'GET'
+        );
+
+        if (!response.ok) {
+            throw new Error(response.data?.error || 'Failed to fetch detections');
+        }
+
+        return response.data?.data || [];
+    },
+
+    /**
      * Submit support ticket
      */
     async submitSupportTicket(userId, { subject, category, message }) {

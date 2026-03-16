@@ -4,7 +4,7 @@ import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { dashboardApi } from '@/data/dashboardApi';
 import { qcApi } from '@/data/qcApi';
 import { notesApi } from '@/data/notesApi';
-import { reportsApi } from '@/data/reportsApi';
+import reportsApi from '@/data/reportsApi';
 import { settingsApi } from '@/data/settingsApi';
 import { uploadsApi } from '@/data/uploadsApi';
 import { operatorApi } from '@/data/operatorApi';
@@ -111,6 +111,7 @@ export const queryKeys = {
     userTeamMemberDashboard: (memberId) => ['user', 'team-member-dashboard', memberId],
     userDevices: (userId) => ['user', 'devices', userId],
     userEvents: () => ['user', 'events'],
+    userReports: (userId, filters) => ['user', 'reports', userId, filters ?? {}],
     userNotificationPreferences: (userId) => ['user', 'notification-preferences', userId],
 };
 
@@ -1059,6 +1060,16 @@ export function useUserNotificationPreferences(userId, options = {}) {
     });
 }
 
+export function useUserReports(userId, filters = {}, options = {}) {
+    return useQuery({
+        queryKey: queryKeys.userReports(userId, filters),
+        queryFn: () => userApi.getReports({ managerId: userId, ...filters }),
+        enabled: !!userId,
+        staleTime: 1000 * 60 * 2,
+        ...options,
+    });
+}
+
 // ── User Mutations ──
 
 export function useRequestDeleteProject() {
@@ -1317,6 +1328,19 @@ export function useCustomerSnapshots(projectId, { limit = 100 } = {}, options = 
 }
 
 /**
+ * Hook for fetching AI detections for a project (for snapshot images)
+ */
+export function useCustomerDetections(projectId, options = {}) {
+    return useQuery({
+        queryKey: [...queryKeys.customerSnapshots(projectId), 'detections'],
+        queryFn: () => customerApi.getProjectDetections(projectId),
+        enabled: !!projectId,
+        staleTime: 1000 * 60 * 5,
+        ...options,
+    });
+}
+
+/**
  * Hook for fetching all customer reports
  */
 export function useCustomerReports(userId, options = {}) {
@@ -1508,6 +1532,7 @@ export default {
     useCustomerProject,
     useCustomerObservations,
     useCustomerSnapshots,
+    useCustomerDetections,
     useCustomerReports,
     useCustomerReport,
     useCustomerNotifications,
@@ -1527,6 +1552,7 @@ export default {
     useUserTeamMemberDashboard,
     useUserDevices,
     useUserEvents,
+    useUserReports,
     useUserNotificationPreferences,
     useRequestDeleteProject,
     useApproveDeleteProject,

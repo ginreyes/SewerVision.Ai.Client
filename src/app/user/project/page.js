@@ -1,6 +1,6 @@
 "use client";
 
-import React, { useState, useEffect, Suspense } from "react";
+import React, { useState, useEffect, Suspense, useCallback } from "react";
 import { Search, Plus, Loader2, FolderOpen, LayoutGrid, Rows, MoreVertical, Eye, Pencil, Trash2 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import {
@@ -12,139 +12,83 @@ import {
 } from "@/components/ui/dropdown-menu";
 import ProjectDetail from "./components/ProjectDetail";
 import ProjectCard from "./components/ProjectCard";
-import { api } from "@/lib/helper";
 import { useAlert } from "@/components/providers/AlertProvider";
 import { useDialog } from "@/components/providers/DialogProvider";
 import { useUser } from "@/components/providers/UserContext";
 import debounce from "lodash/debounce";
 import { useRouter, useSearchParams } from "next/navigation";
+import { useUserProjects, useRequestDeleteProject, useUserProject } from "@/hooks/useQueryHooks";
+import { getProjectStatusColor, getProjectPriorityColor } from "@/components/user/constants";
 
 const UserProjectModuleContent = () => {
   const { userId } = useUser();
-  const [projects, setProjects] = useState([]);
   const [selectedProject, setSelectedProject] = useState(null);
   const [searchTerm, setSearchTerm] = useState("");
   const [statusFilter, setStatusFilter] = useState("all");
-  const [loading, setLoading] = useState(true);
-  const [viewMode, setViewMode] = useState("grid"); // 'grid' | 'table'
+  const [viewMode, setViewMode] = useState("grid");
 
   const searchParams = useSearchParams();
   const selectedProjectId = searchParams.get("selectedProject");
 
   const [page, setPage] = useState(1);
-  const [limit] = useState(6);
-  const [totalPages, setTotalPages] = useState(1);
+  const limit = 6;
 
   const { showAlert } = useAlert();
   const { showDelete } = useDialog();
   const router = useRouter();
 
-  const handleLoadData = async (search = "", status = "all", pageNumber = 1) => {
-    if (!userId) {
-      setLoading(false);
-      return;
-    }
-    try {
-      setLoading(true);
-      const query = new URLSearchParams({
-        page: pageNumber.toString(),
-        limit: limit.toString(),
-        managerId: userId,
-        search: search || "",
-        status: status === "all" ? "" : status,
-      });
+  // ── Data fetching via TanStack Query ──
+  const {
+    data: projectsData,
+    isLoading: loading,
+    refetch,
+  } = useUserProjects(userId, { page, limit, search: searchTerm, status: statusFilter });
 
-      const response = await api(
-        `/api/projects/get-all-projects?${query}`,
-        "GET"
-      );
-      const { data, totalPages: total } = response.data ?? {};
-      setProjects(Array.isArray(data) ? data : []);
-      setTotalPages(total ?? 1);
-    } catch (err) {
-      console.error("Error fetching projects:", err);
-      showAlert(err?.message || "Failed to load projects", "error");
-      setProjects([]);
-    } finally {
-      setLoading(false);
-    }
-  };
+  const projects = projectsData?.data ?? [];
+  const totalPages = projectsData?.totalPages ?? 1;
 
-  const debouncedSearch = debounce((value, status, pageNum) => {
-    handleLoadData(value, status, pageNum);
-  }, 400);
+  // Hook for fetching a single project by ID (URL param)
+  const { data: projectById } = useUserProject(
+    selectedProjectId && !selectedProject ? selectedProjectId : null
+  );
+
+  const requestDeleteMutation = useRequestDeleteProject();
+
+  const debouncedSearch = useCallback(
+    debounce((value) => {
+      setPage(1);
+    }, 400),
+    []
+  );
 
   const handleSearchChange = (e) => {
-    const value = e.target.value;
-    setSearchTerm(value);
-    debouncedSearch(value, statusFilter, 1);
-    setPage(1);
+    setSearchTerm(e.target.value);
+    debouncedSearch(e.target.value);
   };
 
   const handleStatusChange = (e) => {
-    const value = e.target.value;
-    setStatusFilter(value);
-    debouncedSearch(searchTerm, value, 1);
+    setStatusFilter(e.target.value);
     setPage(1);
-  };
-
-  const getStatusColor = (status) => {
-    const colors = {
-      planning: "bg-slate-100 text-slate-800",
-      "field-capture": "bg-blue-100 text-blue-800",
-      uploading: "bg-indigo-100 text-indigo-800",
-      "ai-processing": "bg-yellow-100 text-yellow-800",
-      "qc-review": "bg-purple-100 text-purple-800",
-      "in-progress": "bg-emerald-100 text-emerald-800",
-      completed: "bg-green-100 text-green-800",
-      "customer-notified": "bg-teal-100 text-teal-800",
-      "on-hold": "bg-gray-100 text-gray-600",
-    };
-    return colors[status] || "bg-gray-100 text-gray-600";
-  };
-
-  const getPriorityColor = (priority) => {
-    const colors = {
-      high: "text-red-600",
-      medium: "text-yellow-600",
-      low: "text-green-600",
-    };
-    return colors[priority] || "text-gray-600";
   };
 
   const handleNewProject = () => {
     router.push("/user/project/create");
   };
 
+  // Sync URL-selected project
   useEffect(() => {
-    if (userId) handleLoadData(searchTerm, statusFilter, page);
-  }, [userId, page]);
+    if (!selectedProjectId) return;
+    if (selectedProject && selectedProject._id === selectedProjectId) return;
 
-  useEffect(() => {
-    const fetchProjectById = async () => {
-      if (!selectedProjectId) return;
-      if (selectedProject && selectedProject._id === selectedProjectId) return;
-
-      const found = projects.find((p) => p._id === selectedProjectId);
-      if (found) {
-        setSelectedProject(found);
-        return;
-      }
-
-      try {
-        const { data } = await api(
-          `/api/projects/get-project/${selectedProjectId}`,
-          "GET"
-        );
-        if (data?.data) setSelectedProject(data.data);
-      } catch (error) {
-        console.error("Error fetching project:", error);
-        showAlert("Failed to load project from URL", "error");
-      }
-    };
-
-    fetchProjectById();
-  }, [selectedProjectId, projects, selectedProject]);
+    const found = projects.find((p) => p._id === selectedProjectId);
+    if (found) {
+      setSelectedProject(found);
+      return;
+    }
+    if (projectById) {
+      setSelectedProject(projectById);
+    }
+  }, [selectedProjectId, projects, projectById, selectedProject]);
 
   if (!userId) {
     return (
@@ -263,11 +207,7 @@ const UserProjectModuleContent = () => {
                         key={project._id}
                         project={project}
                         setSelectedProject={setSelectedProject}
-                        getStatusColor={getStatusColor}
-                        getPriorityColor={getPriorityColor}
-                        loadData={() =>
-                          handleLoadData(searchTerm, statusFilter, page)
-                        }
+                        loadData={() => refetch()}
                       />
                     ))}
                   </div>
@@ -277,36 +217,19 @@ const UserProjectModuleContent = () => {
                       <table className="min-w-full text-sm">
                         <thead className="bg-gray-50">
                           <tr>
-                            <th className="px-4 py-3 text-left font-medium text-gray-600">
-                              Project
-                            </th>
-                            <th className="px-4 py-3 text-left font-medium text-gray-600">
-                              Client
-                            </th>
-                            <th className="px-4 py-3 text-left font-medium text-gray-600">
-                              Location
-                            </th>
-                            <th className="px-4 py-3 text-left font-medium text-gray-600">
-                              Status
-                            </th>
-                            <th className="px-4 py-3 text-left font-medium text-gray-600">
-                              Priority
-                            </th>
-                            <th className="px-4 py-3 text-left font-medium text-gray-600">
-                              Videos
-                            </th>
-                            <th className="px-4 py-3 text-right font-medium text-gray-600">
-                              Actions
-                            </th>
+                            <th className="px-4 py-3 text-left font-medium text-gray-600">Project</th>
+                            <th className="px-4 py-3 text-left font-medium text-gray-600">Client</th>
+                            <th className="px-4 py-3 text-left font-medium text-gray-600">Location</th>
+                            <th className="px-4 py-3 text-left font-medium text-gray-600">Status</th>
+                            <th className="px-4 py-3 text-left font-medium text-gray-600">Priority</th>
+                            <th className="px-4 py-3 text-left font-medium text-gray-600">Videos</th>
+                            <th className="px-4 py-3 text-right font-medium text-gray-600">Actions</th>
                           </tr>
                         </thead>
                         <tbody>
                           {projects.length === 0 ? (
                             <tr>
-                              <td
-                                className="px-4 py-6 text-center text-gray-500"
-                                colSpan={7}
-                              >
+                              <td className="px-4 py-6 text-center text-gray-500" colSpan={7}>
                                 No projects found.
                               </td>
                             </tr>
@@ -314,10 +237,7 @@ const UserProjectModuleContent = () => {
                             projects.map((project) => {
                               const isPendingDelete = project.deleteStatus === "pending";
                               const handleSelect = () => {
-                                router.push(
-                                  `?selectedProject=${project._id}`,
-                                  { scroll: false }
-                                );
+                                router.push(`?selectedProject=${project._id}`, { scroll: false });
                                 setSelectedProject(project);
                               };
 
@@ -325,44 +245,28 @@ const UserProjectModuleContent = () => {
                                 <tr
                                   key={project._id}
                                   className={`border-t border-gray-100 cursor-pointer ${
-                                    isPendingDelete
-                                      ? "bg-gray-50 hover:bg-gray-100"
-                                      : "hover:bg-gray-50"
+                                    isPendingDelete ? "bg-gray-50 hover:bg-gray-100" : "hover:bg-gray-50"
                                   }`}
                                   onClick={handleSelect}
                                 >
                                   <td className="px-4 py-3">
-                                    <div
-                                      className={`font-semibold ${
-                                        isPendingDelete ? "text-gray-700" : "text-gray-900"
-                                      }`}
-                                    >
+                                    <div className={`font-semibold ${isPendingDelete ? "text-gray-700" : "text-gray-900"}`}>
                                       {project.name}
                                     </div>
-                                    <div className="text-xs text-gray-500">
-                                      Work Order: {project.workOrder}
-                                    </div>
+                                    <div className="text-xs text-gray-500">Work Order: {project.workOrder}</div>
                                     {isPendingDelete && (
                                       <div className="mt-1 text-[11px] text-amber-700 font-medium">
                                         Pending deletion — waiting for admin approval
                                       </div>
                                     )}
                                   </td>
-                                  <td className="px-4 py-3 text-gray-700">
-                                    {project.client}
-                                  </td>
-                                  <td className="px-4 py-3 text-gray-700">
-                                    {project.location}
-                                  </td>
+                                  <td className="px-4 py-3 text-gray-700">{project.client}</td>
+                                  <td className="px-4 py-3 text-gray-700">{project.location}</td>
                                   <td className="px-4 py-3">
                                     <span
-                                      className={`inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-semibold ${getStatusColor(
-                                        project.status
-                                      )}`}
+                                      className={`inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-semibold ${getProjectStatusColor(project.status)}`}
                                     >
-                                      {project.status
-                                        ?.replace("-", " ")
-                                        .toUpperCase()}
+                                      {project.status?.replace("-", " ").toUpperCase()}
                                     </span>
                                     {isPendingDelete && (
                                       <span className="ml-2 inline-flex items-center px-2 py-0.5 rounded-full text-[10px] font-semibold bg-amber-100 text-amber-800">
@@ -371,113 +275,60 @@ const UserProjectModuleContent = () => {
                                     )}
                                   </td>
                                   <td className="px-4 py-3">
-                                    <span
-                                      className={`text-xs font-semibold ${getPriorityColor(
-                                        project.priority
-                                      )}`}
-                                    >
-                                      {project.priority?.toUpperCase?.() ||
-                                        project.priority}
+                                    <span className={`text-xs font-semibold ${getProjectPriorityColor(project.priority)}`}>
+                                      {project.priority?.toUpperCase?.() || project.priority}
                                     </span>
                                   </td>
                                   <td className="px-4 py-3 text-gray-700">
-                                    {project.videoCount ??
-                                      (project.videoUrl ? 1 : 0)}
+                                    {project.videoCount ?? (project.videoUrl ? 1 : 0)}
                                   </td>
-                                  <td
-                                    className="px-4 py-3 text-right"
-                                    onClick={(e) => e.stopPropagation()}
-                                  >
+                                  <td className="px-4 py-3 text-right" onClick={(e) => e.stopPropagation()}>
                                     <DropdownMenu>
                                       <DropdownMenuTrigger asChild>
-                                        <Button
-                                          variant="ghost"
-                                          size="icon"
-                                          className="h-8 w-8 p-0 hover:bg-gray-100"
-                                        >
+                                        <Button variant="ghost" size="icon" className="h-8 w-8 p-0 hover:bg-gray-100">
                                           <MoreVertical className="w-4 h-4 text-gray-600" />
                                         </Button>
                                       </DropdownMenuTrigger>
-                                      <DropdownMenuContent
-                                        align="end"
-                                        className="w-44"
-                                      >
-                                        <DropdownMenuLabel className="text-xs text-gray-500">
-                                          Actions
-                                        </DropdownMenuLabel>
-                                      <DropdownMenuItem
-                                        onClick={handleSelect}
-                                        className="cursor-pointer"
-                                      >
-                                        <Eye className="w-4 h-4 mr-2" />
-                                        Open Project
-                                      </DropdownMenuItem>
-                                      <DropdownMenuItem
-                                        onClick={() =>
-                                          router.push(
-                                            `/user/project/editProject/${project._id}`
-                                          )
-                                        }
-                                        className="cursor-pointer"
-                                      >
-                                        <Pencil className="w-4 h-4 mr-2" />
-                                        Edit Project
-                                      </DropdownMenuItem>
-                                      {project.deleteStatus !== "pending" ? (
-                                        <DropdownMenuItem
-                                          onClick={() => {
-                                            showDelete({
-                                              title: "Request project deletion",
-                                              description:
-                                                "This will send a delete request to the admin. The project will only be permanently removed after admin approval, and assigned members plus the customer will be notified.",
-                                              onConfirm: async () => {
-                                                try {
-                                                  const response = await api(
-                                                    `/api/projects/request-delete/${project._id}`,
-                                                    "POST",
-                                                    {}
-                                                  );
-                                                  if (!response.ok) {
-                                                    showAlert(
-                                                      "Delete request failed",
-                                                      "error"
-                                                    );
-                                                  } else {
-                                                    showAlert(
-                                                      "Delete request submitted for admin approval",
-                                                      "success"
-                                                    );
-                                                    handleLoadData(
-                                                      searchTerm,
-                                                      statusFilter,
-                                                      page
-                                                    );
-                                                  }
-                                                } catch (error) {
-                                                  showAlert(
-                                                    "Failed to request project deletion",
-                                                    "error"
-                                                  );
-                                                }
-                                              },
-                                              onCancel: () =>
-                                                showAlert("Cancelled", "info"),
-                                            });
-                                          }}
-                                          className="cursor-pointer text-red-600 focus:text-red-600"
-                                        >
-                                          <Trash2 className="w-4 h-4 mr-2" />
-                                          Request deletion
+                                      <DropdownMenuContent align="end" className="w-44">
+                                        <DropdownMenuLabel className="text-xs text-gray-500">Actions</DropdownMenuLabel>
+                                        <DropdownMenuItem onClick={handleSelect} className="cursor-pointer">
+                                          <Eye className="w-4 h-4 mr-2" />
+                                          Open Project
                                         </DropdownMenuItem>
-                                      ) : (
                                         <DropdownMenuItem
-                                          disabled
-                                          className="cursor-default text-gray-400 focus:text-gray-400"
+                                          onClick={() => router.push(`/user/project/editProject/${project._id}`)}
+                                          className="cursor-pointer"
                                         >
-                                          <Trash2 className="w-4 h-4 mr-2" />
-                                          Pending deletion
+                                          <Pencil className="w-4 h-4 mr-2" />
+                                          Edit Project
                                         </DropdownMenuItem>
-                                      )}
+                                        {project.deleteStatus !== "pending" ? (
+                                          <DropdownMenuItem
+                                            onClick={() => {
+                                              showDelete({
+                                                title: "Request project deletion",
+                                                description:
+                                                  "This will send a delete request to the admin. The project will only be permanently removed after admin approval, and assigned members plus the customer will be notified.",
+                                                onConfirm: () => {
+                                                  requestDeleteMutation.mutate(project._id, {
+                                                    onSuccess: () => showAlert("Delete request submitted for admin approval", "success"),
+                                                    onError: () => showAlert("Delete request failed", "error"),
+                                                  });
+                                                },
+                                                onCancel: () => showAlert("Cancelled", "info"),
+                                              });
+                                            }}
+                                            className="cursor-pointer text-red-600 focus:text-red-600"
+                                          >
+                                            <Trash2 className="w-4 h-4 mr-2" />
+                                            Request deletion
+                                          </DropdownMenuItem>
+                                        ) : (
+                                          <DropdownMenuItem disabled className="cursor-default text-gray-400 focus:text-gray-400">
+                                            <Trash2 className="w-4 h-4 mr-2" />
+                                            Pending deletion
+                                          </DropdownMenuItem>
+                                        )}
                                       </DropdownMenuContent>
                                     </DropdownMenu>
                                   </td>
@@ -492,21 +343,13 @@ const UserProjectModuleContent = () => {
                 )}
 
                 <div className="flex justify-center mt-6 gap-4">
-                  <Button
-                    disabled={page === 1}
-                    onClick={() => setPage((p) => p - 1)}
-                    variant="outline"
-                  >
+                  <Button disabled={page === 1} onClick={() => setPage((p) => p - 1)} variant="outline">
                     Previous
                   </Button>
                   <span className="text-gray-700 font-medium">
                     Page {page} of {totalPages}
                   </span>
-                  <Button
-                    disabled={page >= totalPages}
-                    onClick={() => setPage((p) => p + 1)}
-                    variant="outline"
-                  >
+                  <Button disabled={page >= totalPages} onClick={() => setPage((p) => p + 1)} variant="outline">
                     Next
                   </Button>
                 </div>
