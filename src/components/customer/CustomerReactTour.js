@@ -10,12 +10,15 @@ const tourSteps = [
   {
     selector: '[data-tour="customer-sidebar"]',
     content: (
-      <div className="space-y-2">
-        <h3 className="font-bold text-lg">Welcome to SewerVision!</h3>
-        <p className="text-sm text-gray-600">
+      <div className="space-y-3 py-1">
+        <h3 className="font-bold text-base text-gray-900">Welcome to SewerVision!</h3>
+        <p className="text-sm text-gray-600 leading-relaxed">
           This is your customer portal. Let us show you around so you can get the most out of your experience.
         </p>
-        <p className="text-xs text-gray-400">Use the arrows to navigate through the tour.</p>
+        <p className="text-xs text-gray-400 flex items-center gap-1">
+          <span className="inline-block w-4 h-4 rounded-full bg-teal-100 text-teal-600 text-[10px] font-bold flex items-center justify-center leading-none text-center">?</span>
+          Use the arrows to navigate through the tour.
+        </p>
       </div>
     ),
     position: 'right',
@@ -23,10 +26,10 @@ const tourSteps = [
   {
     selector: '[data-tour="customer-sidebar-dashboard"]',
     content: (
-      <div className="space-y-2">
-        <h3 className="font-bold text-base">Dashboard</h3>
-        <p className="text-sm text-gray-600">
-          Your main overview page. See all your projects at a glance with stats, search, and filters.
+      <div className="space-y-2 py-1">
+        <h3 className="font-bold text-base text-gray-900">📊 Dashboard</h3>
+        <p className="text-sm text-gray-600 leading-relaxed">
+          Your main overview page. See project stats, defect summaries, status breakdowns, and recent activity at a glance.
         </p>
       </div>
     ),
@@ -35,9 +38,9 @@ const tourSteps = [
   {
     selector: '[data-tour="customer-sidebar-projects"]',
     content: (
-      <div className="space-y-2">
-        <h3 className="font-bold text-base">Projects</h3>
-        <p className="text-sm text-gray-600">
+      <div className="space-y-2 py-1">
+        <h3 className="font-bold text-base text-gray-900">📁 Projects</h3>
+        <p className="text-sm text-gray-600 leading-relaxed">
           Browse all your inspection projects. Filter by status, search by name or location, and view detailed project information.
         </p>
       </div>
@@ -47,9 +50,9 @@ const tourSteps = [
   {
     selector: '[data-tour="customer-sidebar-reports"]',
     content: (
-      <div className="space-y-2">
-        <h3 className="font-bold text-base">Reports</h3>
-        <p className="text-sm text-gray-600">
+      <div className="space-y-2 py-1">
+        <h3 className="font-bold text-base text-gray-900">📄 Reports</h3>
+        <p className="text-sm text-gray-600 leading-relaxed">
           Access your PACP-compliant inspection reports. Download PDF reports with defect details, severity ratings, and photos.
         </p>
       </div>
@@ -59,9 +62,9 @@ const tourSteps = [
   {
     selector: '[data-tour="customer-sidebar-notifications"]',
     content: (
-      <div className="space-y-2">
-        <h3 className="font-bold text-base">Notifications</h3>
-        <p className="text-sm text-gray-600">
+      <div className="space-y-2 py-1">
+        <h3 className="font-bold text-base text-gray-900">🔔 Notifications</h3>
+        <p className="text-sm text-gray-600 leading-relaxed">
           Stay updated on project progress. Get alerts when AI processing completes, reports are ready, or project status changes.
         </p>
       </div>
@@ -71,10 +74,22 @@ const tourSteps = [
   {
     selector: '[data-tour="customer-sidebar-support"]',
     content: (
-      <div className="space-y-2">
-        <h3 className="font-bold text-base">Support</h3>
-        <p className="text-sm text-gray-600">
+      <div className="space-y-2 py-1">
+        <h3 className="font-bold text-base text-gray-900">🎧 Support</h3>
+        <p className="text-sm text-gray-600 leading-relaxed">
           Need help? Contact our support team, browse common issues, or submit a support ticket.
+        </p>
+      </div>
+    ),
+    position: 'right',
+  },
+  {
+    selector: '[data-tour="customer-sidebar-settings"]',
+    content: (
+      <div className="space-y-2 py-1">
+        <h3 className="font-bold text-base text-gray-900">⚙️ Settings</h3>
+        <p className="text-sm text-gray-600 leading-relaxed">
+          Manage your profile, update your avatar, and change your password. Keep your account information up to date.
         </p>
       </div>
     ),
@@ -83,10 +98,10 @@ const tourSteps = [
   {
     selector: '[data-tour="customer-stats"]',
     content: (
-      <div className="space-y-2">
-        <h3 className="font-bold text-base">Project Overview</h3>
-        <p className="text-sm text-gray-600">
-          Quick stats showing your total projects, completed inspections, and projects currently in review.
+      <div className="space-y-2 py-1">
+        <h3 className="font-bold text-base text-gray-900">📈 Project Overview</h3>
+        <p className="text-sm text-gray-600 leading-relaxed">
+          Quick stats showing your total projects, active inspections, completed projects, and total defects detected.
         </p>
       </div>
     ),
@@ -95,14 +110,16 @@ const tourSteps = [
   {
     selector: '[data-tour="customer-projects-list"]',
     content: (
-      <div className="space-y-2">
-        <h3 className="font-bold text-base">Your Projects</h3>
-        <p className="text-sm text-gray-600">
+      <div className="space-y-2 py-1">
+        <h3 className="font-bold text-base text-gray-900">🗂️ Your Projects</h3>
+        <p className="text-sm text-gray-600 leading-relaxed">
           Click on any project to view its details including defects, snapshots, and inspection reports.
         </p>
-        <p className="text-xs text-gray-400 mt-2">
-          That's it! You're all set. Enjoy using SewerVision.
-        </p>
+        <div className="mt-2 px-3 py-2 bg-teal-50 rounded-lg border border-teal-100">
+          <p className="text-xs text-teal-700 font-medium">
+            🎉 That&apos;s it! You&apos;re all set. Enjoy using SewerVision.
+          </p>
+        </div>
       </div>
     ),
     position: 'top',
@@ -173,19 +190,23 @@ const CustomerReactTour = ({ children, shouldOpen, onOpened }) => {
       styles={{
         popover: (base) => ({
           ...base,
-          borderRadius: '12px',
-          padding: '20px',
-          boxShadow: '0 20px 60px rgba(0,0,0,0.15)',
+          borderRadius: '16px',
+          padding: '20px 24px',
+          boxShadow: '0 20px 60px rgba(0,0,0,0.12), 0 4px 16px rgba(0,0,0,0.08)',
+          maxWidth: '340px',
         }),
         maskArea: (base) => ({
           ...base,
-          rx: 8,
+          rx: 12,
         }),
         badge: (base) => ({
           ...base,
-          background: 'linear-gradient(135deg, #D76A84, #ec4899)',
+          background: 'linear-gradient(135deg, #0d9488, #14b8a6)',
           color: '#fff',
           fontWeight: 600,
+          fontSize: '11px',
+          padding: '2px 8px',
+          borderRadius: '20px',
         }),
         controls: (base) => ({
           ...base,
@@ -193,8 +214,20 @@ const CustomerReactTour = ({ children, shouldOpen, onOpened }) => {
         }),
         dot: (base, { current }) => ({
           ...base,
-          background: current ? '#D76A84' : '#e5e7eb',
+          background: current ? '#0d9488' : '#e5e7eb',
           border: 'none',
+          width: current ? '24px' : '8px',
+          height: '8px',
+          borderRadius: '4px',
+          transition: 'all 0.2s ease',
+        }),
+        close: (base) => ({
+          ...base,
+          color: '#9ca3af',
+          width: '12px',
+          height: '12px',
+          top: '16px',
+          right: '16px',
         }),
       }}
       padding={{ mask: 8, popover: [8, 12] }}

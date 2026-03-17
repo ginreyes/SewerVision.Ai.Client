@@ -46,7 +46,7 @@ const Navbar = (props) => {
   const debounceTimer = useRef(null);
 
 
-  const userDisplayName = userData ? `${userData.first_name || ''} ${userData.last_name || ''}`.trim() || userData.username : 'David Flores';
+  const userDisplayName = userData ? `${userData.first_name || ''} ${userData.last_name || ''}`.trim() || userData.username : 'User';
   const userInitials = userDisplayName ? userDisplayName.charAt(0).toUpperCase() : 'U';
   const userRole = userData?.role || role || 'Admin';
 

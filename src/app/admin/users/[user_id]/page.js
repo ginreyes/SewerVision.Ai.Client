@@ -23,10 +23,10 @@ import { Badge } from "@/components/ui/badge"
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar"
 import { Switch } from "@/components/ui/switch"
 import { SeparatorVertical } from "@/components/ui/separator"
-import CustomerDetailed from "../components/CustomerDetailed"
-import QcTechnicianDetailed from "../components/QcTechnicianDetailed"
-import TeamLeadDetailed from "../components/TeamLeadDetailed"
-import OperatorDetailed, { OperatorWorkspaceOverview } from "../components/OperatorDetailed"
+import CustomerDetailed from "@/components/admin/users/CustomerDetailed"
+import QcTechnicianDetailed from "@/components/admin/users/QcTechnicianDetailed"
+import TeamLeadDetailed from "@/components/admin/users/TeamLeadDetailed"
+import OperatorDetailed, { OperatorWorkspaceOverview } from "@/components/admin/users/OperatorDetailed"
 
 const roleOptions = [
   {
@@ -434,6 +434,7 @@ const UserProfile = () => {
           {/* Role Specific Modules */}
           {normalizedRole === 'customer' && (
             <CustomerDetailed
+              user={user}
               form={form}
               isEdit={isEdit}
               setForm={setForm}

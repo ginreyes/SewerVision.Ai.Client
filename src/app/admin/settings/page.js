@@ -42,14 +42,6 @@ import { UserAvatar } from '@/components/ui/UserAvatar';
 import { Badge } from '@/components/ui/badge';
 import { Separator } from '@/components/ui/separator';
 import { Slider } from '@/components/ui/slider';
-import {
-  Table,
-  TableBody,
-  TableCell,
-  TableHead,
-  TableHeader,
-  TableRow,
-} from '@/components/ui/table';
 import { useUser } from '@/components/providers/UserContext';
 import { useAlert } from '@/components/providers/AlertProvider';
 import { api, getCookie } from '@/lib/helper';
@@ -159,8 +151,6 @@ function SettingsPageContent() {
     secretKey: '',
     showSecret: false,
   });
-  const [logs, setLogs] = useState([]);
-  const [logsLoading, setLogsLoading] = useState(false);
   const snapshotRef = useRef({});
 
   // Sync URL param changes to state
@@ -529,29 +519,6 @@ function SettingsPageContent() {
     }
   }
 
-  const fetchLogs = async () => {
-    setLogsLoading(true);
-    try {
-      const response = await api('/api/audit/user-management?limit=30', 'GET');
-      if (response.ok && response.data?.logs) {
-        setLogs(response.data.logs.map((log) => ({
-          id: log._id,
-          timestamp: new Date(log.createdAt).toLocaleString(),
-          level: 'AUDIT',
-          actor: log.actor || 'System',
-          message: `${log.action}${log.targetSnapshot?.username ? ` → ${log.targetSnapshot.username}` : ''}`,
-        })));
-      }
-    } catch (e) {
-      // Keep existing logs on failure
-    } finally {
-      setLogsLoading(false);
-    }
-  };
-
-  useEffect(() => {
-    if (activeTab === 'system-admin') fetchLogs();
-  }, [activeTab]);
 
   const handleModelToggle = (key) => {
     setSelectedModels(prev => ({ ...prev, [key]: !prev[key] }));
@@ -978,51 +945,6 @@ function SettingsPageContent() {
                 </CardContent>
               </Card>
 
-              <Card className="border-0 shadow-sm">
-                <CardHeader>
-                  <div className="flex items-center justify-between">
-                    <SectionHeader icon={Activity} title="Audit Logs" description="Recent user management activity" />
-                    <Button variant="outline" size="sm" onClick={fetchLogs} disabled={logsLoading} className="gap-2 shrink-0">
-                      {logsLoading ? <Loader2 className="w-4 h-4 animate-spin" /> : <RefreshCcw className="w-4 h-4" />}
-                      Refresh
-                    </Button>
-                  </div>
-                </CardHeader>
-                <CardContent>
-                  <div className="border rounded-md max-h-72 overflow-auto">
-                    <Table>
-                      <TableHeader>
-                        <TableRow>
-                          <TableHead className="w-40">Time</TableHead>
-                          <TableHead className="w-20">Type</TableHead>
-                          <TableHead className="w-28">Actor</TableHead>
-                          <TableHead>Event</TableHead>
-                        </TableRow>
-                      </TableHeader>
-                      <TableBody>
-                        {logsLoading && logs.length === 0 ? (
-                          <TableRow>
-                            <TableCell colSpan={4} className="text-center text-sm text-gray-400 py-6">
-                              <Loader2 className="w-4 h-4 animate-spin inline mr-2" />Loading logs…
-                            </TableCell>
-                          </TableRow>
-                        ) : logs.length === 0 ? (
-                          <TableRow>
-                            <TableCell colSpan={4} className="text-center text-sm text-gray-400 py-6">No audit events found</TableCell>
-                          </TableRow>
-                        ) : logs.map(log => (
-                          <TableRow key={log.id}>
-                            <TableCell className="text-xs text-gray-500 whitespace-nowrap">{log.timestamp}</TableCell>
-                            <TableCell><Badge variant="secondary" className="text-xs bg-blue-50 text-blue-700 border-blue-200">{log.level}</Badge></TableCell>
-                            <TableCell className="text-xs font-medium text-gray-700">{log.actor}</TableCell>
-                            <TableCell className="text-sm">{log.message}</TableCell>
-                          </TableRow>
-                        ))}
-                      </TableBody>
-                    </Table>
-                  </div>
-                </CardContent>
-              </Card>
             </TabsContent>
 
           </Tabs>

@@ -68,7 +68,6 @@ export default function ProjectPageViewDetails() {
     isLoading: obsLoading,
   } = useCustomerObservations(projectId);
 
-  console.log('Observations:', observations); // Debug log to check observations data
 
   const {
     data: snapshots = [],

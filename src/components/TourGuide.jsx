@@ -1354,6 +1354,46 @@ const tourSteps = {
             ),
         },
         {
+            id: 'settings',
+            title: 'Your Account Settings ⚙️',
+            description: 'Manage your personal profile, upload a custom avatar, and keep your password secure. Your settings page lets you update your name, phone number, and company information anytime.',
+            tips: ['Upload a profile photo to personalize your account', 'Change your password regularly for security', 'Keep your contact info up to date'],
+            icon: Settings,
+            color: 'from-slate-500 to-gray-600',
+            illustration: (
+                <div className="w-full h-64 bg-gray-50 rounded-xl border border-gray-200 p-4 flex items-center justify-center">
+                    <div className="w-full max-w-sm">
+                        <div className="bg-white rounded-xl shadow-lg p-5 space-y-4">
+                            <div className="flex items-center gap-4">
+                                <div className="w-14 h-14 rounded-full bg-gradient-to-br from-teal-400 to-cyan-500 flex items-center justify-center shadow-lg">
+                                    <Camera className="w-6 h-6 text-white" />
+                                </div>
+                                <div className="flex-1">
+                                    <div className="h-3 w-28 bg-gray-200 rounded-full" />
+                                    <div className="h-2 w-20 bg-gray-100 rounded-full mt-2" />
+                                </div>
+                                <div className="px-3 py-1 bg-teal-50 text-teal-700 text-xs font-medium rounded-full">Edit</div>
+                            </div>
+                            <div className="border-t border-gray-100 pt-3 space-y-2">
+                                <div className="flex items-center gap-2">
+                                    <div className="w-4 h-4 rounded bg-gray-100" />
+                                    <div className="h-2.5 flex-1 bg-gray-100 rounded-full" />
+                                </div>
+                                <div className="flex items-center gap-2">
+                                    <div className="w-4 h-4 rounded bg-gray-100" />
+                                    <div className="h-2.5 flex-1 bg-gray-100 rounded-full" />
+                                </div>
+                            </div>
+                            <div className="border-t border-gray-100 pt-3 flex gap-2">
+                                <button className="flex-1 px-3 py-2 bg-gray-100 text-gray-700 text-xs font-medium rounded-lg">Profile</button>
+                                <button className="flex-1 px-3 py-2 bg-gradient-to-r from-slate-500 to-gray-600 text-white text-xs font-medium rounded-lg shadow">Security</button>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            ),
+        },
+        {
             id: 'complete',
             title: 'We\'re Here for You! 💼',
             description: 'Explore your portal to track projects and access reports. If you have any questions or need support, our team is just a click away. Quality inspections, delivered on time.',
@@ -1366,7 +1406,7 @@ const tourSteps = {
                         <div className="w-24 h-24 mx-auto mb-4 rounded-full bg-gradient-to-br from-green-400 to-emerald-500 flex items-center justify-center shadow-2xl">
                             <CheckCircle className="w-12 h-12 text-white" />
                         </div>
-                        <h3 className="text-xl font-bold text-gray-800">You're All Set!</h3>
+                        <h3 className="text-xl font-bold text-gray-800">You&apos;re All Set!</h3>
                         <p className="text-sm text-gray-500 mt-2">Start exploring your projects 📊</p>
                         <div className="flex justify-center gap-2 mt-4">
                             <button className="px-4 py-2 bg-white border border-gray-200 rounded-lg text-sm font-medium text-gray-700 shadow-sm">View Projects</button>

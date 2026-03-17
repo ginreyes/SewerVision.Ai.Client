@@ -261,6 +261,28 @@ export const uploadsApi = {
       throw error;
     }
   },
+
+  /**
+   * Get cloud storage provider configuration (masked credentials)
+   */
+  async getStorageConfig() {
+    const response = await api('/api/uploads/storage-config', 'GET');
+    if (!response.ok) {
+      throw new Error(response.data?.message || 'Failed to fetch storage config');
+    }
+    return response.data.data;
+  },
+
+  /**
+   * Get bucket storage usage (total bytes, file count, breakdown by prefix)
+   */
+  async getStorageUsage() {
+    const response = await api('/api/uploads/storage-usage', 'GET');
+    if (!response.ok) {
+      throw new Error(response.data?.message || 'Failed to fetch storage usage');
+    }
+    return response.data.data;
+  },
 };
 
 export default uploadsApi;
