@@ -1,6 +1,6 @@
 'use client';
 
-import OperatorSidebar from "@/components/ui/OperatorSidebar";
+import UnifiedSidebar from "@/components/ui/UnifiedSidebar";
 import Navbar from "@/components/ui/navbar";
 import { api, getCookie, deleteCookie } from "@/lib/helper";
 import { useEffect, useState } from "react";
@@ -74,7 +74,7 @@ export default function OperatorLayout({ children }) {
           className={`fixed top-0 left-0 h-full transition-all duration-300 border-2 bg-gray-100 ${openSidebar ? "w-[270px]" : "w-[90px]"
             }`}
         >
-          <OperatorSidebar isOpen={openSidebar} role={role} />
+          <UnifiedSidebar isOpen={openSidebar} role={role} />
         </div>
 
         <div

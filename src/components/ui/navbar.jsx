@@ -99,11 +99,10 @@ const Navbar = (props) => {
 
       const response = await api('/api/search/search-all', 'POST', { query });
 
-      console.log('Search API Response:', response);
-
       if (response.ok && response.data?.success) {
         setSearchResults(response.data.results || []);
-      } else {
+      } 
+      else {
         setSearchResults([]);
         console.warn('Search failed or no results');
       }

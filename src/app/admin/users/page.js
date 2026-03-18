@@ -9,6 +9,7 @@ import { useDialog } from "@/components/providers/DialogProvider";
 import SewerTable from "@/components/ui/SewerTable";
 import { useRouter } from "next/navigation";
 import CardList from "@/components/admin/users/CardList";
+import PermissionLevelsTab from "@/components/admin/users/PermissionLevelsTab";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Button } from "@/components/ui/button";
 import {
@@ -138,7 +139,16 @@ const UserPage = () => {
     });
   };
 
-  const filteredUsers = users;
+  const filteredUsers = users.filter((u) => {
+    if (filters.permission && filters.permission !== "all") {
+      if (filters.permission === "default") {
+        if (u.permissionLevel) return false;
+      } else {
+        if (u.permissionLevel?.name !== filters.permission) return false;
+      }
+    }
+    return true;
+  });
 
   const [emailModalOpen, setEmailModalOpen] = useState(false);
   const [selectedUserForEmail, setSelectedUserForEmail] = useState(null);
@@ -230,6 +240,7 @@ const UserPage = () => {
   const userColumns = [
     { key: "user", name: "USER" },
     { key: "roleTag", name: "ROLE" },
+    { key: "permissionLevel", name: "PERMISSION" },
     { key: "status", name: "STATUS" },
   ];
 
@@ -253,8 +264,29 @@ const UserPage = () => {
     },
     roleTag: getRoleBadge(u),
     role: u.role,
+    permissionLevel: u.permissionLevel?.name || null,
+    permissionLevelId: u.permissionLevel?._id || null,
     status: u.status,
   }));
+
+  // Collect unique permission level names for filter
+  const permissionLevelNames = [...new Set(
+    users.map((u) => u.permissionLevel?.name).filter(Boolean)
+  )];
+
+  const renderUserCell = (item, col) => {
+    if (col.key === "permissionLevel") {
+      if (!item.permissionLevel) {
+        return <span className="text-xs text-gray-400 italic">Default Access</span>;
+      }
+      return (
+        <span className="inline-flex items-center px-2 py-0.5 rounded-full text-[11px] font-semibold bg-rose-100 text-rose-700 border border-rose-200">
+          {item.permissionLevel}
+        </span>
+      );
+    }
+    return null; // Let SewerTable handle other columns
+  };
 
   const filterOptions = [
     {
@@ -267,6 +299,15 @@ const UserPage = () => {
         { label: "QC Technician", value: "qc-technician" },
         { label: "Operator", value: "operator" },
         { label: "Management User", value: "user" },
+      ],
+    },
+    {
+      key: "permission",
+      label: "Permission",
+      options: [
+        { label: "Show All", value: "all" },
+        { label: "Default Access", value: "default" },
+        ...permissionLevelNames.map((name) => ({ label: name, value: name })),
       ],
     },
     {
@@ -511,12 +552,21 @@ const UserPage = () => {
     return null; // fallback to default rendering
   };
 
+  /* ─── permission stats ─── */
+  const permissionStats = {
+    total: permissionLevelNames.length,
+    assigned: users.filter((u) => u.permissionLevel).length,
+    unassigned: users.filter((u) => !u.permissionLevel && u.role !== 'admin').length,
+  };
+
   /* ─── dynamic page title ─── */
-  const pageTitle = activeTab === "audit" ? "Audit Logs" : "User Management";
-  const pageDescription =
-    activeTab === "audit"
-      ? "Track all user management actions across your organization"
-      : "Manage users, roles, and permissions across your organization";
+  const pageTitles = {
+    users: { title: "User Management", desc: "Manage users, roles, and permissions across your organization" },
+    audit: { title: "Audit Logs", desc: "Track all user management actions across your organization" },
+    permissions: { title: "Permission Levels", desc: "Create and manage module access levels for each role" },
+  };
+  const pageTitle = pageTitles[activeTab]?.title || "User Management";
+  const pageDescription = pageTitles[activeTab]?.desc || "";
 
   return (
     <div className="max-w-7xl mx-auto bg-gray-100">
@@ -525,11 +575,15 @@ const UserPage = () => {
         <div className="max-w-7xl mx-auto px-6 py-6">
           <div className="flex items-center justify-between">
             <div className="flex items-center gap-4">
-              <div className={`w-12 h-12 rounded-xl flex items-center justify-center ${activeTab === "audit" ? "bg-blue-100" : "bg-rose-100"}`}>
+              <div className={`w-12 h-12 rounded-xl flex items-center justify-center ${
+                activeTab === "audit" ? "bg-blue-100" : activeTab === "permissions" ? "bg-amber-100" : "bg-rose-100"
+              }`}>
                 {activeTab === "audit" ? (
                   <Activity className="w-6 h-6 text-blue-600" />
+                ) : activeTab === "permissions" ? (
+                  <Shield className="w-6 h-6 text-amber-600" />
                 ) : (
-                  <Shield className="w-6 h-6 text-rose-600" />
+                  <Users className="w-6 h-6 text-rose-600" />
                 )}
               </div>
               <div>
@@ -560,7 +614,7 @@ const UserPage = () => {
 
       {/* Dynamic Stats Cards */}
       <div className="max-w-7xl mx-auto px-6 py-6">
-        <CardList activeTab={activeTab} auditStats={auditStats} />
+        <CardList activeTab={activeTab} auditStats={auditStats} permissionStats={permissionStats} />
       </div>
 
       {/* Main Content with Tabs */}
@@ -576,6 +630,10 @@ const UserPage = () => {
                 <TabsTrigger value="audit" className="gap-2 data-[state=active]:bg-white data-[state=active]:text-rose-600">
                   <Activity className="w-4 h-4" />
                   Audit Logs
+                </TabsTrigger>
+                <TabsTrigger value="permissions" className="gap-2 data-[state=active]:bg-white data-[state=active]:text-rose-600">
+                  <Shield className="w-4 h-4" />
+                  Permission Levels
                 </TabsTrigger>
               </TabsList>
             </div>
@@ -624,6 +682,7 @@ const UserPage = () => {
                 onSearch={setSearch}
                 onFilterChange={handleFilterChange}
                 loading={loading}
+                renderCell={renderUserCell}
                 onDelete={handleDelete}
                 onDisable={handleDisable}
                 onEmail={handleOpenEmailModal}
@@ -672,6 +731,11 @@ const UserPage = () => {
                 emptySubtext="Activity will appear here as changes are made"
                 rowsPerPageOptions={[10, 25, 50]}
               />
+            </TabsContent>
+
+            {/* Permission Levels Tab */}
+            <TabsContent value="permissions" className="p-6 m-0">
+              <PermissionLevelsTab />
             </TabsContent>
           </Tabs>
         </div>

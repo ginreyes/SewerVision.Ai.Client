@@ -1,6 +1,7 @@
 'use client'
 import React, { useState, useEffect, useCallback } from 'react'
 import { useRouter } from 'next/navigation'
+import * as XLSX from 'xlsx'
 import {
   FileText, Download, Share2, Plus, Search, Filter, Calendar, MapPin,
   User, Camera, Brain, AlertTriangle, CheckCircle, Clock, Eye, MoreVertical,
@@ -103,14 +104,11 @@ const Reports = () => {
     }
     const headers = ['Inspection ID', 'Location', 'Date', 'Status', 'Project', 'Leader', 'Operator', 'QC', 'Footage', 'Defects', 'Critical', 'Confidence']
     const rows = reports.map((r) => [r.inspectionId || '', r.location || '', r.date || '', r.status || '', (r.projectId && (r.projectId.name || r.projectId._id)) || '', leaderName(r), (r.operator && (r.operator.first_name + ' ' + r.operator.last_name)) || '', (r.qcTechnician && (r.qcTechnician.first_name + ' ' + r.qcTechnician.last_name)) || '', r.footage || '0', r.totalDefects ?? '', r.criticalDefects ?? '', r.confidence ?? ''])
-    const csv = [headers.join(','), ...rows.map((row) => row.map((c) => `"${String(c).replace(/"/g, '""')}"`).join(','))].join('\n')
-    const blob = new Blob([csv], { type: 'text/csv;charset=utf-8;' })
-    const link = document.createElement('a')
-    link.href = URL.createObjectURL(blob)
-    link.download = `reports-export-${new Date().toISOString().slice(0, 10)}.csv`
-    link.click()
-    URL.revokeObjectURL(link.href)
-    showAlert('Report exported as CSV', 'success')
+    const ws = XLSX.utils.aoa_to_sheet([headers, ...rows])
+    const wb = XLSX.utils.book_new()
+    XLSX.utils.book_append_sheet(wb, ws, 'Reports')
+    XLSX.writeFile(wb, `reports-export-${new Date().toISOString().slice(0, 10)}.xlsx`)
+    showAlert('Report exported as Excel', 'success')
   }
 
   // Template/report creation & import handlers removed – admin reviews only.

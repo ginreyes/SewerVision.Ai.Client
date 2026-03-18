@@ -170,9 +170,9 @@ const ProjectDetail = ({ project, setSelectedProject }) => {
     // Check if we're in QC technician context
     const currentPath = window.location.pathname;
     if (currentPath.includes('/qc-technician')) {
-      router.replace(`/qc-technician/project`);
+      router.push(`/qc-technician/project`);
     } else {
-      router.replace(`/user/project`);
+      router.push(`/user/project`);
     }
   };
 

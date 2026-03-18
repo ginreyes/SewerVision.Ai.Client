@@ -27,6 +27,7 @@ import CustomerDetailed from "@/components/admin/users/CustomerDetailed"
 import QcTechnicianDetailed from "@/components/admin/users/QcTechnicianDetailed"
 import TeamLeadDetailed from "@/components/admin/users/TeamLeadDetailed"
 import OperatorDetailed, { OperatorWorkspaceOverview } from "@/components/admin/users/OperatorDetailed"
+import PermissionsTab from "@/components/admin/users/PermissionsTab"
 
 const roleOptions = [
   {
@@ -80,6 +81,7 @@ const UserProfile = () => {
   const [user, setUser] = useState(null)
   const [loading, setLoading] = useState(true)
   const [isEdit, setIsEdit] = useState(false)
+  const [refreshKey, setRefreshKey] = useState(0)
   const { showProfile } = useDialog();
 
   const [form, setForm] = useState({
@@ -91,6 +93,9 @@ const UserProfile = () => {
     company_name: "", industry: "", phone_number: "", address: "",
     account_type: "standard", company_size: "", tax_id: "", billing_contact: "",
   })
+
+  // Permission level (pending until Save)
+  const [pendingPermissionLevelId, setPendingPermissionLevelId] = useState(undefined) // undefined = no change
 
   // Team lead → members they manage
   const [managedMembers, setManagedMembers] = useState([])
@@ -139,7 +144,7 @@ const UserProfile = () => {
     };
 
     if (user_id) fetchUser();
-  }, [user_id]);
+  }, [user_id, refreshKey]);
 
   const handleSave = async () => {
     // Prepare payload
@@ -189,7 +194,16 @@ const UserProfile = () => {
           const { ok: updateOk, data: updateData } = await api("/api/users/change-info", "PUT", payload);
           if (!updateOk) throw new Error(updateData?.message || "Failed to update user");
 
-          setUser((prev) => ({ ...prev, ...form, managedMembers }));
+          // Save permission level if changed
+          if (pendingPermissionLevelId !== undefined) {
+            await api(`/api/users/${user_id}/assign-permission`, "PATCH", {
+              permissionLevelId: pendingPermissionLevelId,
+            });
+            setPendingPermissionLevelId(undefined);
+          }
+
+          // Re-fetch fresh user data to get updated permissionLevel populated
+          setRefreshKey((k) => k + 1);
           setIsEdit(false);
           showAlert("User profile updated successfully", "success");
         } catch (err) {
@@ -353,6 +367,55 @@ const UserProfile = () => {
               </CardContent>
             </Card>
           )}
+
+          {/* Module Access */}
+          {normalizedRole !== 'admin' && (
+            <Card className="border-gray-200">
+              <CardHeader className="pb-3">
+                <CardTitle className="text-md font-semibold flex items-center gap-2">
+                  <FaCog className="text-rose-500" />
+                  Module Access
+                </CardTitle>
+              </CardHeader>
+              <CardContent>
+                {(() => {
+                  const pl = user?.permissionLevel;
+                  const levelName = typeof pl === 'object' && pl ? pl.name : null;
+                  const modules = user?.modulePermissions?.length > 0
+                    ? user.modulePermissions
+                    : (typeof pl === 'object' && pl?.modules) || [];
+                  const hasPermission = !!pl || modules.length > 0;
+
+                  if (hasPermission && modules.length > 0) {
+                    return (
+                      <div className="space-y-3">
+                        <div className="flex items-center justify-between">
+                          <span className="text-sm text-gray-500">Level</span>
+                          <Badge className="bg-rose-100 text-rose-700 border-rose-200">
+                            {levelName || 'Assigned'}
+                          </Badge>
+                        </div>
+                        <div className="flex flex-wrap gap-1.5 pt-2 border-t border-gray-100">
+                          {modules.map((mod) => (
+                            <Badge key={mod} variant="outline" className="text-[11px] bg-emerald-50 text-emerald-700 border-emerald-200">
+                              {mod.replace(/-/g, ' ').replace(/\b\w/g, c => c.toUpperCase())}
+                            </Badge>
+                          ))}
+                        </div>
+                      </div>
+                    );
+                  }
+                  return (
+                    <div className="flex items-center gap-2 px-3 py-2 bg-blue-50 rounded-lg border border-blue-100">
+                      <FaCheckCircle className="text-blue-500 flex-shrink-0" />
+                      <span className="text-sm text-blue-700 font-medium">Default Access</span>
+                      <span className="text-xs text-blue-500">— Full module access</span>
+                    </div>
+                  );
+                })()}
+              </CardContent>
+            </Card>
+          )}
         </div>
 
         {/* Right Column: Details Forms */}
@@ -471,6 +534,11 @@ const UserProfile = () => {
               selectedMemberId={selectedMemberId}
               setSelectedMemberId={setSelectedMemberId}
             />
+          )}
+
+          {/* Module Permissions */}
+          {normalizedRole !== 'admin' && (
+            <PermissionsTab user={user} isEdit={isEdit} onPermissionChange={setPendingPermissionLevelId} />
           )}
 
         </div>

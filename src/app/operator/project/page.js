@@ -1,16 +1,9 @@
 "use client";
 import React, { useState, useEffect, useRef, useMemo, Suspense } from "react";
-import { Search, Plus, Loader2, LayoutGrid, Rows, MoreVertical, Eye } from "lucide-react";
+import { Search, Plus, Loader2, LayoutGrid, Rows, MapPin, Video } from "lucide-react";
 import { Button } from "@/components/ui/button";
-import {
-  DropdownMenu,
-  DropdownMenuTrigger,
-  DropdownMenuContent,
-  DropdownMenuItem,
-  DropdownMenuLabel,
-} from "@/components/ui/dropdown-menu";
-
-import { useAlert } from "@/components/providers/AlertProvider";
+import SewerTable from "@/components/ui/SewerTable";
+import { Badge } from "@/components/ui/badge";
 import { useUser } from "@/components/providers/UserContext";
 import debounce from "lodash/debounce";
 import { useRouter, useSearchParams, usePathname } from "next/navigation";
@@ -38,7 +31,6 @@ const OperatorModulePage = () => {
   const [page, setPage] = useState(1);
   const [limit] = useState(6);
 
-  const { showAlert } = useAlert();
 
   // ── Data fetching via TanStack Query ──
   const { data: projectsData } = useOperatorProjects(
@@ -99,6 +91,95 @@ const OperatorModulePage = () => {
     router.push("/operator/project/createProject");
   };
 
+  /* ─── SewerTable config for table view ─── */
+  const projectColumns = [
+    { key: "project", name: "Project" },
+    { key: "client", name: "Client" },
+    { key: "location", name: "Location" },
+    { key: "status", name: "Status" },
+    { key: "priority", name: "Priority" },
+    { key: "videos", name: "Videos" },
+  ];
+
+  const projectTableData = useMemo(() => {
+    return projects.map((p) => ({
+      _id: p._id,
+      project: { name: p.name, workOrder: p.workOrder, deleteStatus: p.deleteStatus },
+      client: p.client || "—",
+      location: p.location || "—",
+      status: p.status,
+      priority: p.priority,
+      videos: p.videoCount ?? (p.videoUrl ? 1 : 0),
+    }));
+  }, [projects]);
+
+  const renderProjectCell = (item, col) => {
+    if (col.key === "project") {
+      const p = item.project;
+      const isPending = p.deleteStatus === "pending";
+      return (
+        <div className="min-w-0">
+          <p className={`text-sm font-semibold truncate ${isPending ? "text-gray-600" : "text-gray-900"}`}>{p.name}</p>
+          <p className="text-[11px] text-gray-500">Work Order: {p.workOrder}</p>
+          {isPending && (
+            <p className="text-[11px] text-amber-700 font-medium mt-0.5">
+              Pending deletion — awaiting admin approval
+            </p>
+          )}
+        </div>
+      );
+    }
+    if (col.key === "location") {
+      return (
+        <span className="text-sm text-gray-600 flex items-center gap-1">
+          <MapPin className="w-3 h-3 flex-shrink-0" />
+          {item.location}
+        </span>
+      );
+    }
+    if (col.key === "status") {
+      const isPending = item.project?.deleteStatus === "pending";
+      return (
+        <div className="flex items-center gap-1.5 flex-wrap">
+          <Badge variant="outline" className={`text-xs font-semibold ${getStatusColor(item.status)}`}>
+            {item.status?.replace("-", " ").toUpperCase()}
+          </Badge>
+          {isPending && (
+            <Badge className="bg-amber-100 text-amber-800 border-amber-200 text-[10px] px-1.5 py-0">
+              PENDING DELETION
+            </Badge>
+          )}
+        </div>
+      );
+    }
+    if (col.key === "priority") {
+      return (
+        <span className={`text-xs font-semibold ${getPriorityColor(item.priority)}`}>
+          {item.priority?.toUpperCase?.() || item.priority}
+        </span>
+      );
+    }
+    if (col.key === "videos") {
+      return (
+        <span className="text-sm text-gray-600 flex items-center gap-1">
+          <Video className="w-3.5 h-3.5" />
+          {item.videos}
+        </span>
+      );
+    }
+    if (col.key === "client") {
+      return <span className="text-sm text-gray-700">{item.client}</span>;
+    }
+    return null;
+  };
+
+  const handleProjectRowView = (row) => {
+    const projectId = row._id;
+    router.push(`?selectedProject=${projectId}`, { scroll: false });
+    const found = projects.find((p) => p._id === projectId);
+    if (found) setSelectedProject(found);
+  };
+
   useEffect(() => {
     if (navigatingBackRef.current) {
       navigatingBackRef.current = false;
@@ -128,7 +209,7 @@ const OperatorModulePage = () => {
   const handleBackToProjects = () => {
     navigatingBackRef.current = true;
     setSelectedProject(null);
-    router.replace('/operator/project');
+    router.push('/operator/project');
   };
 
   return (
@@ -242,178 +323,28 @@ const OperatorModulePage = () => {
                 ))}
               </div>
             ) : (
-              <div className="bg-white rounded-xl shadow-sm border border-gray-200 overflow-hidden">
-                <div className="min-w-full overflow-x-auto">
-                  <table className="min-w-full text-sm">
-                    <thead className="bg-gray-50">
-                      <tr>
-                        <th className="px-4 py-3 text-left font-medium text-gray-600">
-                          Project
-                        </th>
-                        <th className="px-4 py-3 text-left font-medium text-gray-600">
-                          Client
-                        </th>
-                        <th className="px-4 py-3 text-left font-medium text-gray-600">
-                          Location
-                        </th>
-                        <th className="px-4 py-3 text-left font-medium text-gray-600">
-                          Status
-                        </th>
-                        <th className="px-4 py-3 text-left font-medium text-gray-600">
-                          Priority
-                        </th>
-                        <th className="px-4 py-3 text-left font-medium text-gray-600">
-                          Videos
-                        </th>
-                        <th className="px-4 py-3 text-right font-medium text-gray-600">
-                          Actions
-                        </th>
-                      </tr>
-                    </thead>
-                    <tbody>
-                      {projects.length === 0 ? (
-                        <tr>
-                          <td
-                            className="px-4 py-6 text-center text-gray-500"
-                            colSpan={7}
-                          >
-                            No projects found.
-                          </td>
-                        </tr>
-                      ) : (
-                        projects.map((project) => {
-                          const isPendingDelete = project.deleteStatus === "pending";
-                          const handleSelect = () => {
-                            router.push(
-                              `?selectedProject=${project._id}`,
-                              { scroll: false }
-                            );
-                            setSelectedProject(project);
-                          };
-
-                          return (
-                            <tr
-                              key={project._id}
-                              className={`border-t border-gray-100 cursor-pointer ${
-                                isPendingDelete
-                                  ? "bg-gray-50 hover:bg-gray-100"
-                                  : "hover:bg-gray-50"
-                              }`}
-                              onClick={handleSelect}
-                            >
-                              <td className="px-4 py-3">
-                                <div
-                                  className={`font-semibold ${
-                                    isPendingDelete ? "text-gray-700" : "text-gray-900"
-                                  }`}
-                                >
-                                  {project.name}
-                                </div>
-                                <div className="text-xs text-gray-500">
-                                  Work Order: {project.workOrder}
-                                </div>
-                                {isPendingDelete && (
-                                  <div className="mt-1 text-[11px] text-amber-700 font-medium">
-                                    Pending deletion — waiting for admin approval
-                                  </div>
-                                )}
-                              </td>
-                              <td className="px-4 py-3 text-gray-700">
-                                {project.client}
-                              </td>
-                              <td className="px-4 py-3 text-gray-700">
-                                {project.location}
-                              </td>
-                              <td className="px-4 py-3">
-                                <span
-                                  className={`inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-semibold ${getStatusColor(
-                                    project.status
-                                  )}`}
-                                >
-                                  {project.status
-                                    ?.replace("-", " ")
-                                    .toUpperCase()}
-                                </span>
-                                {isPendingDelete && (
-                                  <span className="ml-2 inline-flex items-center px-2 py-0.5 rounded-full text-[10px] font-semibold bg-amber-100 text-amber-800">
-                                    PENDING DELETION
-                                  </span>
-                                )}
-                              </td>
-                              <td className="px-4 py-3">
-                                <span
-                                  className={`text-xs font-semibold ${getPriorityColor(
-                                    project.priority
-                                  )}`}
-                                >
-                                  {project.priority?.toUpperCase?.() ||
-                                    project.priority}
-                                </span>
-                              </td>
-                              <td className="px-4 py-3 text-gray-700">
-                                {project.videoCount ??
-                                  (project.videoUrl ? 1 : 0)}
-                              </td>
-                              <td
-                                className="px-4 py-3 text-right"
-                                onClick={(e) => e.stopPropagation()}
-                              >
-                                <DropdownMenu>
-                                  <DropdownMenuTrigger asChild>
-                                    <Button
-                                      variant="ghost"
-                                      size="icon"
-                                      className="h-8 w-8 p-0 hover:bg-gray-100"
-                                    >
-                                      <MoreVertical className="w-4 h-4 text-gray-600" />
-                                    </Button>
-                                  </DropdownMenuTrigger>
-                                  <DropdownMenuContent
-                                    align="end"
-                                    className="w-44"
-                                  >
-                                    <DropdownMenuLabel className="text-xs text-gray-500">
-                                      Actions
-                                    </DropdownMenuLabel>
-                                    <DropdownMenuItem
-                                      onClick={handleSelect}
-                                      className="cursor-pointer"
-                                    >
-                                      <Eye className="w-4 h-4 mr-2" />
-                                      Open Project
-                                    </DropdownMenuItem>
-                                  </DropdownMenuContent>
-                                </DropdownMenu>
-                              </td>
-                            </tr>
-                          );
-                        })
-                      )}
-                    </tbody>
-                  </table>
-                </div>
-              </div>
+              <SewerTable
+                data={projectTableData}
+                columns={projectColumns}
+                loading={false}
+                renderCell={renderProjectCell}
+                showCheckbox={false}
+                showActions={false}
+                showCsvActions={false}
+                onView={handleProjectRowView}
+                emptyMessage="No projects found"
+                emptySubtext="Try adjusting your filters or create a new project"
+                columnDefaults={{
+                  project: 220,
+                  client: 140,
+                  location: 160,
+                  status: 160,
+                  priority: 100,
+                  videos: 80,
+                }}
+                rowsPerPageOptions={[6, 12, 24]}
+              />
             )}
-
-            <div className="flex justify-center mt-6 gap-4">
-              <Button
-                disabled={page === 1}
-                onClick={() => setPage((prev) => prev - 1)}
-                variant="outline"
-              >
-                Previous
-              </Button>
-              <span className="text-gray-700 font-medium">
-                Page {page} of {totalPages}
-              </span>
-              <Button
-                disabled={page === totalPages}
-                onClick={() => setPage((prev) => prev + 1)}
-                variant="outline"
-              >
-                Next
-              </Button>
-            </div>
           </>
         )}
       </div>

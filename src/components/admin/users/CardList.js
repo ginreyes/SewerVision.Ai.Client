@@ -7,7 +7,7 @@ import {
   CardHeader,
   CardTitle,
 } from "@/components/ui/card";
-import { UserCheck, Users, UserPlus, UserMinus, UserCog } from "lucide-react";
+import { UserCheck, Users, UserPlus, UserMinus, UserCog, Shield, ShieldCheck, ShieldX } from "lucide-react";
 import { FaUserClock } from "react-icons/fa";
 import { api } from "@/lib/helper";
 
@@ -26,7 +26,7 @@ const SkeletonCard = () => (
   </Card>
 );
 
-const CardList = ({ activeTab = "users", auditStats = {} }) => {
+const CardList = ({ activeTab = "users", auditStats = {}, permissionStats = {} }) => {
   const [userStats, setUserStats] = useState({
     total: 0,
     active: 0,
@@ -125,7 +125,31 @@ const CardList = ({ activeTab = "users", auditStats = {} }) => {
     },
   ];
 
-  const stats = activeTab === "audit" ? auditCards : userCards;
+  const permissionCards = [
+    {
+      label: "Total Levels",
+      value: permissionStats.total || 0,
+      icon: <Shield className="text-rose-600 w-6 h-6" />,
+      color: "text-rose-600",
+      description: "Permission levels created.",
+    },
+    {
+      label: "Assigned Users",
+      value: permissionStats.assigned || 0,
+      icon: <ShieldCheck className="text-emerald-600 w-6 h-6" />,
+      color: "text-emerald-600",
+      description: "Users with assigned levels.",
+    },
+    {
+      label: "Default Access",
+      value: permissionStats.unassigned || 0,
+      icon: <ShieldX className="text-amber-600 w-6 h-6" />,
+      color: "text-amber-600",
+      description: "Users with full default access.",
+    },
+  ];
+
+  const stats = activeTab === "permissions" ? permissionCards : activeTab === "audit" ? auditCards : userCards;
 
   if (loading) {
     return (

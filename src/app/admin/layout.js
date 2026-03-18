@@ -5,7 +5,7 @@ import Sidebar from "@/components/ui/sidebar";
 import { useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
 import { api, getCookie, deleteCookie } from "@/lib/helper";
-import AdminSidebar from "@/components/ui/AdminSidebar";
+import UnifiedSidebar from "@/components/ui/UnifiedSidebar";
 import { TourGuide, useTourGuide } from "@/components/TourGuide";
 
 export default function AdminLayout({ children }) {
@@ -76,7 +76,7 @@ export default function AdminLayout({ children }) {
         className={`fixed top-0 left-0 h-full transition-all duration-300 border-2 bg-gray-100 ${openSidebar ? "w-[270px]" : "w-[90px]"
           }`}
       >
-        <AdminSidebar isOpen={openSidebar} role={role} />
+        <UnifiedSidebar isOpen={openSidebar} role={role} />
       </div>
 
       <div

@@ -14,6 +14,7 @@ import { Button } from "@/components/ui/button"
 import { Label } from "@/components/ui/label"
 import { useAlert } from "@/components/providers/AlertProvider"
 import { api } from "@/lib/helper"
+import permissionLevelApi from "@/data/permissionLevelApi"
 import {
   Select,
   SelectTrigger,
@@ -72,6 +73,8 @@ const AddUserModal = ({ fetchUser }) => {
   const [operatorOptions, setOperatorOptions] = useState([])
   const [qcOptions, setQcOptions] = useState([])
   const [loadingMembers, setLoadingMembers] = useState(false)
+  const [permissionLevels, setPermissionLevels] = useState([])
+  const [selectedPermissionLevel, setSelectedPermissionLevel] = useState("")
   const { showAlert } = useAlert()
 
   const roles = [
@@ -127,7 +130,7 @@ const AddUserModal = ({ fetchUser }) => {
     setFormData((prev) => ({ ...prev, [name]: value }))
   }
 
-  const handleRoleSelect = (role) => {
+  const handleRoleSelect = async (role) => {
     setFormData((prev) => ({
       ...prev,
       role: role,
@@ -149,7 +152,25 @@ const AddUserModal = ({ fetchUser }) => {
       password: "",
     }))
     setShowPassword(false)
+    setSelectedPermissionLevel("")
     setStep(2)
+
+    // Fetch permission levels for the selected role
+    if (role !== 'admin') {
+      try {
+        const res = await permissionLevelApi.getAll(role)
+        const raw = res?.data?.data ?? res?.data
+        const levels = Array.isArray(raw) ? raw : []
+        setPermissionLevels(levels)
+        // Auto-select default level if one exists
+        const defaultLevel = levels.find((l) => l.isDefault)
+        if (defaultLevel) setSelectedPermissionLevel(defaultLevel._id)
+      } catch (e) {
+        setPermissionLevels([])
+      }
+    } else {
+      setPermissionLevels([])
+    }
   }
 
   const handleSelectChange = (name, value) => {
@@ -245,6 +266,11 @@ const AddUserModal = ({ fetchUser }) => {
         if (Array.isArray(formData.managedMembers) && formData.managedMembers.length > 0) {
           payload.managedMembers = formData.managedMembers
         }
+      }
+
+      // Include permission level if selected
+      if (selectedPermissionLevel) {
+        payload.permissionLevelId = selectedPermissionLevel
       }
 
       console.log('Creating user with payload:', payload)
@@ -541,42 +567,6 @@ const AddUserModal = ({ fetchUser }) => {
               </div>
             </div>
 
-            {/* Account Settings */}
-            <div className="bg-blue-50/50 p-4 rounded-xl border border-blue-100 space-y-4">
-              <div className="flex items-center gap-2 mb-2">
-                <UserCircle className="w-5 h-5 text-blue-600" />
-                <h4 className="font-semibold text-blue-900">Account Subscription</h4>
-              </div>
-              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                <div>
-                  <Label htmlFor="account_type" className="text-blue-900">Plan Type</Label>
-                  <Select
-                    value={formData.account_type}
-                    onValueChange={(value) => handleSelectChange('account_type', value)}
-                  >
-                    <SelectTrigger className="mt-1 bg-white">
-                      <SelectValue />
-                    </SelectTrigger>
-                    <SelectContent>
-                      <SelectItem value="trial">🌟 Trial</SelectItem>
-                      <SelectItem value="standard">💼 Standard</SelectItem>
-                      <SelectItem value="premium">👑 Premium</SelectItem>
-                    </SelectContent>
-                  </Select>
-                </div>
-                <div>
-                  <Label htmlFor="billing_contact" className="text-blue-900">Billing Email</Label>
-                  <Input
-                    name="billing_contact"
-                    type="email"
-                    value={formData.billing_contact}
-                    onChange={handleChange}
-                    placeholder="Optional"
-                    className="mt-1 bg-white"
-                  />
-                </div>
-              </div>
-            </div>
           </div>
         )
 
@@ -887,6 +877,31 @@ const AddUserModal = ({ fetchUser }) => {
                   </div>
                 )}
               </div>
+
+              {/* Permission Level */}
+              {formData.role && formData.role !== 'admin' && permissionLevels.length > 0 && (
+                <div className="space-y-2">
+                  <Label>Permission Level</Label>
+                  <Select
+                    value={selectedPermissionLevel || "none"}
+                    onValueChange={(val) => setSelectedPermissionLevel(val === "none" ? "" : val)}
+                  >
+                    <SelectTrigger className="focus-visible:ring-rose-500">
+                      <SelectValue placeholder="Select permission level" />
+                    </SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="none">Default Access (full access)</SelectItem>
+                      {permissionLevels.map((level) => (
+                        <SelectItem key={level._id} value={level._id}>
+                          {level.name} ({level.modules?.length || 0} modules)
+                          {level.isDefault ? ' — Default' : ''}
+                        </SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
+                  <p className="text-xs text-gray-500">Controls which modules this user can access</p>
+                </div>
+              )}
 
               {/* Role Specific Fields */}
               {getRoleSpecificFields()}

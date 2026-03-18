@@ -23,12 +23,14 @@ import {
 } from 'lucide-react';
 import ModuleLoading from './SewerVisionLoadingAnimation';
 import { useLoadingModuleSetting } from '@/hooks/useLoadingModuleSettings';
+import { useModulePermissions } from '@/hooks/useModulePermissions';
 
 const QcSidebar = ({ isOpen, role }) => {
   const [activeItem, setActiveItem] = useState("Dashboard");
   const [loadingItem, setLoadingItem] = useState(null);
   const showLoading = useLoadingModuleSetting('qcTechnician');
   const pathname = usePathname();
+  const { hasAccess } = useModulePermissions();
 
   const handleItemClick = (item) => {
     if (loadingItem) return; 
@@ -65,40 +67,50 @@ const QcSidebar = ({ isOpen, role }) => {
     }
   }, [pathname]);
 
-  // QC Technician menu items grouped by category
-  const menuGroups = useMemo(() => [
+  // QC Technician menu items grouped by category — module key maps to permission system
+  const allMenuGroups = useMemo(() => [
     {
       label: 'Main',
       items: [
-        { label: "Dashboard", icon: LayoutDashboard, path: "/qc-technician/dashboard" },
-        { label: "Projects", icon: FolderOpen, path: "/qc-technician/project" },
-        { label: "Calendar", icon: Calendar, path: "/qc-technician/calendar" },
+        { label: "Dashboard", icon: LayoutDashboard, path: "/qc-technician/dashboard", module: "dashboard" },
+        { label: "Projects", icon: FolderOpen, path: "/qc-technician/project", module: "projects" },
+        { label: "Calendar", icon: Calendar, path: "/qc-technician/calendar", module: "calendar" },
       ]
     },
     {
       label: 'Work',
       items: [
-        { label: "Task", icon: ClipboardList, path: "/qc-technician/task" },
-        { label: "Quality Control", icon: ClipboardCheck, path: "/qc-technician/quality-control" },
-        { label: "Devices", icon: Monitor, path: "/qc-technician/devices" },
+        { label: "Task", icon: ClipboardList, path: "/qc-technician/task", module: "tasks" },
+        { label: "Quality Control", icon: ClipboardCheck, path: "/qc-technician/quality-control", module: "quality-control" },
+        { label: "Devices", icon: Monitor, path: "/qc-technician/devices", module: "devices" },
       ]
     },
     {
       label: 'Records',
       items: [
-        { label: "Reports", icon: FileText, path: "/qc-technician/reports" },
-        { label: "Notes", icon: StickyNote, path: "/qc-technician/notes" },
-        { label: "Certifications", icon: Award, path: "/qc-technician/certifications" },
+        { label: "Reports", icon: FileText, path: "/qc-technician/reports", module: "reports" },
+        { label: "Notes", icon: StickyNote, path: "/qc-technician/notes", module: "notes" },
+        { label: "Certifications", icon: Award, path: "/qc-technician/certifications", module: "certifications" },
       ]
     },
     {
       label: 'Account',
       items: [
-        { label: "Notifications", icon: Bell, path: "/qc-technician/notifications" },
-        { label: "Settings", icon: Settings, path: "/qc-technician/settings" },
+        { label: "Notifications", icon: Bell, path: "/qc-technician/notifications", module: "notifications" },
+        { label: "Settings", icon: Settings, path: "/qc-technician/settings", module: "settings" },
       ]
     }
   ], []);
+
+  // Filter by module permissions
+  const menuGroups = useMemo(() => {
+    return allMenuGroups
+      .map((group) => ({
+        ...group,
+        items: group.items.filter((item) => hasAccess(item.module)),
+      }))
+      .filter((group) => group.items.length > 0);
+  }, [allMenuGroups, hasAccess]);
 
   const isActive = (path) => {
     return pathname?.startsWith(path);

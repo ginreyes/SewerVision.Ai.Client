@@ -2,7 +2,7 @@
 
 import { useEffect, useState } from "react";
 import Navbar from "@/components/ui/navbar";
-import UserSidebar from "@/components/ui/UserSidebar";
+import UnifiedSidebar from "@/components/ui/UnifiedSidebar";
 import { api } from "@/lib/helper";
 import { useUser } from "@/components/providers/UserContext";
 import { TourGuide, useTourGuide } from "@/components/TourGuide";
@@ -74,7 +74,7 @@ export default function UserLayout({ children }) {
             openSidebar ? "w-[270px]" : "w-[90px]"
           }`}
         >
-          <UserSidebar isOpen={openSidebar} role={role} userRoleMeta={userRoleMeta} />
+          <UnifiedSidebar isOpen={openSidebar} role={role} displayName={userRoleMeta?.displayName} />
         </div>
 
         <div

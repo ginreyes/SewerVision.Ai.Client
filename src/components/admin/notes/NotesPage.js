@@ -53,6 +53,10 @@ const NotesPage = () => {
     const [showDetailModal, setShowDetailModal] = useState(false);
     const [editingNote, setEditingNote] = useState(null);
 
+    const tabs ={
+        
+    }
+
     const fetchNotes = useCallback(async () => {
         if (!userId) return;
         try {
@@ -221,7 +225,7 @@ const NotesPage = () => {
                             <p className="text-sm text-gray-500">Create and manage inspection notes</p>
                         </div>
                     </div>
-                    <Button onClick={() => setShowCreateModal(true)}>
+                    <Button onClick={() => setShowCreateModal(true)} variant='rose'>
                         <Plus className="w-4 h-4 mr-2" />
                         New Note
                     </Button>

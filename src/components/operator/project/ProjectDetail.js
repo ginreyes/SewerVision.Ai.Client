@@ -177,11 +177,11 @@ const ProjectDetail = ({ project, setSelectedProject, onBack }) => {
     setSelectedProject(null);
     const currentPath = window.location.pathname;
     if (currentPath.includes('/qc-technician')) {
-      router.replace(`/qc-technician/project`);
+      router.push(`/qc-technician/project`);
     } else if (currentPath.includes('/operator')) {
-      router.replace(`/operator/project`);
+      router.push(`/operator/project`);
     } else {
-      router.replace(`/admin/project`);
+      router.push(`/admin/project`);
     }
   };
 

@@ -570,16 +570,10 @@ const AdminUploads = () => {
                 Admin Access
               </Badge>
             </div>
-            <div className="flex items-center space-x-4">
-              <Button variant="outline" onClick={() => { handleFetchUploads(); fetchSystemStats(); }}>
-                <RefreshCw className="w-4 h-4 mr-2" />
-                Refresh
-              </Button>
-              <Button variant="gradient" onClick={() => setShowBulkUploadModal(true)}>
-                <CloudUpload className="w-4 h-4 mr-2" />
-                Bulk Upload
-              </Button>
-            </div>
+            <Button variant="outline" onClick={() => { handleFetchUploads(); fetchSystemStats(); }}>
+              <RefreshCw className="w-4 h-4 mr-2" />
+              Refresh
+            </Button>
           </div>
         </div>
       </div>
@@ -955,7 +949,7 @@ const AdminUploads = () => {
               }}
               rowsPerPageOptions={[10, 20, 50]}
               ButtonPlacement={
-                <Button variant="gradient" size="sm" onClick={() => setShowBulkUploadModal(true)}>
+                <Button variant="rose" size="sm" onClick={() => setShowBulkUploadModal(true)}>
                   <CloudUpload className="w-4 h-4 mr-1.5" />
                   Upload Files
                 </Button>

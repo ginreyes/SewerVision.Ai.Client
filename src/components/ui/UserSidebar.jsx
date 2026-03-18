@@ -20,6 +20,7 @@ import {
 import { cn } from '@/lib/utils';
 import ModuleLoading from './SewerVisionLoadingAnimation';
 import { useLoadingModuleSetting } from '@/hooks/useLoadingModuleSettings';
+import { useModulePermissions } from '@/hooks/useModulePermissions';
 
 /**
  * Management sidebar for the advanced "User" role.
@@ -31,6 +32,7 @@ const UserSidebar = ({ isOpen, role, userRoleMeta }) => {
   const [loadingItem, setLoadingItem] = useState(null);
   const showLoading = useLoadingModuleSetting('user');
   const pathname = usePathname();
+  const { hasAccess } = useModulePermissions();
 
   const handleItemClick = (label) => {
     if (loadingItem) return;
@@ -58,34 +60,40 @@ const UserSidebar = ({ isOpen, role, userRoleMeta }) => {
     }
   }, [pathname]);
 
-  const groups = [
+  const allGroups = [
     {
       label: 'Overview',
       items: [
-        { label: 'Dashboard', icon: LayoutDashboard, path: '/user/dashboard' },
-        { label: 'My Projects', icon: Folder, path: '/user/project' },
-        { label: 'Task Management', icon: ClipboardList, path: '/user/tasks' },
-        { label: 'Inbox', icon: Inbox, path: '/user/inbox' },
+        { label: 'Dashboard', icon: LayoutDashboard, path: '/user/dashboard', module: 'dashboard' },
+        { label: 'My Projects', icon: Folder, path: '/user/project', module: 'projects' },
+        { label: 'Task Management', icon: ClipboardList, path: '/user/tasks', module: 'tasks' },
+        { label: 'Inbox', icon: Inbox, path: '/user/inbox', module: 'inbox' },
       ],
     },
     {
       label: 'Team & Assets',
       items: [
-        { label: 'Team Management', icon: Users, path: '/user/team' },
-        { label: 'Device Assignments', icon: Monitor, path: '/user/device-assignments' },
-
+        { label: 'Team Management', icon: Users, path: '/user/team', module: 'team' },
+        { label: 'Device Assignments', icon: Monitor, path: '/user/device-assignments', module: 'device-assignments' },
       ],
     },
     {
       label: 'Tools & Settings',
       items: [
-        { label: 'Reports', icon: BookOpen, path: '/user/reports' },
-        { label: 'Calendar', icon: Calendar, path: '/user/calendar' },
-        { label: 'Settings', icon: Settings2, path: '/user/settings' },
-      ]
-
+        { label: 'Reports', icon: BookOpen, path: '/user/reports', module: 'reports' },
+        { label: 'Calendar', icon: Calendar, path: '/user/calendar', module: 'calendar' },
+        { label: 'Settings', icon: Settings2, path: '/user/settings', module: 'settings' },
+      ],
     },
   ];
+
+  // Filter by module permissions
+  const groups = allGroups
+    .map((group) => ({
+      ...group,
+      items: group.items.filter((item) => hasAccess(item.module)),
+    }))
+    .filter((group) => group.items.length > 0);
 
   const isActive = (path) => pathname?.startsWith(path);
 
