@@ -190,9 +190,8 @@ const Navbar = (props) => {
   };
 
   const handleSettings = () => {
-    // Route to the appropriate settings page based on user role
     const currentRole = userData?.role || role;
-    const settingsPath = currentRole ? `/${currentRole}/settings` : '/admin/settings';
+    const settingsPath = currentRole ? `/${currentRole}/settings` : '/admin/settings?tab=profile';
     router.push(settingsPath);
   };
 
@@ -208,7 +207,7 @@ const Navbar = (props) => {
           </button>
 
           <div ref={searchContainerRef} className="relative flex-1 max-w-md">
-            <div className="relative flex items-center w-full rounded-lg border border-gray-300 focus-within:border-blue-500 focus-within:ring-1 focus-within:ring-blue-500">
+            <div className="relative flex items-center w-full rounded-lg border border-gray-300" style={{ '--tw-ring-color': 'var(--role-accent, #3b82f6)' }}>
               <span className="px-3">
                 <FiSearch className="w-5 h-5 text-gray-400" />
               </span>
@@ -233,7 +232,7 @@ const Navbar = (props) => {
                     <div className="flex items-center justify-between mb-2">
                       <h3 className="text-sm font-semibold text-gray-700">Results</h3>
                       {loading && (
-                        <div className="w-4 h-4 border-2 border-blue-500 border-t-transparent rounded-full animate-spin"></div>
+                        <div className="w-4 h-4 border-2 border-t-transparent rounded-full animate-spin" style={{ borderColor: 'var(--role-accent, #3b82f6)', borderTopColor: 'transparent' }}></div>
                       )}
                     </div>
                     {searchResults.length > 0 ? (
@@ -282,7 +281,7 @@ const Navbar = (props) => {
                       </h3>
                       <button
                         onClick={clearSearchHistory}
-                        className="text-xs text-blue-600 hover:text-blue-800"
+                        className="text-xs hover:opacity-80" style={{ color: 'var(--role-accent, #2563eb)' }}
                       >
                         Clear
                       </button>
@@ -349,7 +348,7 @@ const Navbar = (props) => {
               <div className="p-2 bg-white">
                 <Link href={userRole ? `/${userRole}/settings` : '/admin/settings'}>
                   <Button variant="ghost" className="w-full justify-start p-3 h-auto rounded-lg hover:bg-gray-50 group">
-                    <RxAvatar className="w-5 h-5 mr-3 text-gray-500 group-hover:text-rose-500 transition-colors" />
+                    <RxAvatar className="w-5 h-5 mr-3 text-gray-500 transition-colors" style={{ '--hover-color': 'var(--role-accent, #f43f5e)' }} />
                     <div className="text-left">
                       <p className="font-medium text-gray-700">Profile</p>
                       <p className="text-xs text-gray-400">View and edit your profile</p>

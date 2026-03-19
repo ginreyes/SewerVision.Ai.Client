@@ -3,6 +3,8 @@
 import React, { useState, useEffect, Suspense, useCallback, useMemo } from "react";
 import { Search, Plus, Loader2, FolderOpen, LayoutGrid, Rows, MapPin, Video } from "lucide-react";
 import { Button } from "@/components/ui/button";
+import { Input } from "@/components/ui/input";
+import { Select, SelectTrigger, SelectValue, SelectContent, SelectItem } from "@/components/ui/select";
 import ProjectDetail from "./components/ProjectDetail";
 import ProjectCard from "./components/ProjectCard";
 import { useUser } from "@/components/providers/UserContext";
@@ -246,32 +248,36 @@ const UserProjectModuleContent = () => {
             </div>
 
             <div className="mb-6 flex flex-wrap gap-4 items-center">
-              <div className="flex items-center gap-2">
-                <Search className="text-gray-400" size={20} />
-                <input
+              <div className="relative flex items-center gap-2">
+                <Search className="absolute left-3 text-gray-400" size={16} />
+                <Input
                   type="text"
                   placeholder="Search projects, clients, locations..."
                   value={searchTerm}
                   onChange={handleSearchChange}
-                  className="px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-indigo-500 focus:border-transparent bg-white text-gray-900 w-64"
+                  className="pl-9 w-64"
                 />
               </div>
-              <select
+              <Select
                 value={statusFilter}
-                onChange={handleStatusChange}
-                className="px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-indigo-500 focus:border-transparent bg-white text-gray-900"
+                onValueChange={(val) => handleStatusChange({ target: { value: val } })}
               >
-                <option value="all">All Status</option>
-                <option value="planning">Planning</option>
-                <option value="field-capture">Field Capture</option>
-                <option value="uploading">Uploading</option>
-                <option value="ai-processing">AI Processing</option>
-                <option value="qc-review">QC Review</option>
-                <option value="in-progress">In Progress</option>
-                <option value="completed">Completed</option>
-                <option value="customer-notified">Customer Notified</option>
-                <option value="on-hold">On Hold</option>
-              </select>
+                <SelectTrigger className="w-[180px]">
+                  <SelectValue placeholder="All Status" />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="all">All Status</SelectItem>
+                  <SelectItem value="planning">Planning</SelectItem>
+                  <SelectItem value="field-capture">Field Capture</SelectItem>
+                  <SelectItem value="uploading">Uploading</SelectItem>
+                  <SelectItem value="ai-processing">AI Processing</SelectItem>
+                  <SelectItem value="qc-review">QC Review</SelectItem>
+                  <SelectItem value="in-progress">In Progress</SelectItem>
+                  <SelectItem value="completed">Completed</SelectItem>
+                  <SelectItem value="customer-notified">Customer Notified</SelectItem>
+                  <SelectItem value="on-hold">On Hold</SelectItem>
+                </SelectContent>
+              </Select>
             </div>
 
             {loading ? (

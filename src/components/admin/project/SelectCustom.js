@@ -1,23 +1,40 @@
+import {
+  Select,
+  SelectTrigger,
+  SelectValue,
+  SelectContent,
+  SelectItem,
+} from "@/components/ui/select";
+
 const SelectCustom = ({
   value,
   onChange,
   options,
   className = "",
   disabled = false,
+  placeholder = "Select...",
 }) => {
   return (
-    <select
+    <Select
       value={value}
-      onChange={onChange}
+      onValueChange={(val) => {
+        // Mimic native select event shape for backwards compatibility
+        const syntheticEvent = { target: { value: val } };
+        onChange(syntheticEvent);
+      }}
       disabled={disabled}
-      className={`w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500 disabled:bg-gray-50 disabled:text-gray-500 ${className}`}
     >
-      {options.map((option) => (
-        <option key={option.value} value={option.value}>
-          {option.label}
-        </option>
-      ))}
-    </select>
+      <SelectTrigger className={className}>
+        <SelectValue placeholder={placeholder} />
+      </SelectTrigger>
+      <SelectContent>
+        {options.map((option) => (
+          <SelectItem key={option.value} value={option.value}>
+            {option.label}
+          </SelectItem>
+        ))}
+      </SelectContent>
+    </Select>
   );
 };
 

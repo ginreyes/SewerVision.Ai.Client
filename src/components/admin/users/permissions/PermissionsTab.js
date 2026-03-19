@@ -24,6 +24,7 @@ const ROLE_LABELS = {
   "qc-technician": "QC Technician",
   user: "User",
   customer: "Customer",
+  "customer-rep": "Customer Rep",
 };
 
 /**

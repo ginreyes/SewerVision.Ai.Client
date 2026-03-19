@@ -65,7 +65,7 @@ const Reports = () => {
   // Admin is reviewer only – no template or report creation from this screen.
   const [templates] = useState([])
 
-  const roseGradientClass = "bg-gradient-to-r from-[#D76A84] to-rose-500 hover:from-rose-600 hover:to-pink-600 text-white shadow-lg hover:shadow-xl transition-all duration-200"
+  const roseGradientClass = "bg-[var(--role-accent,#D76A84)] hover:opacity-90 text-white shadow-lg hover:shadow-xl transition-all duration-200"
 
   // TanStack Query: admin reports list + analytics/templates still via direct API
   const {

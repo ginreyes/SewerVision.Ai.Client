@@ -33,6 +33,8 @@ import {
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card'
 import { Button } from '@/components/ui/button'
 import { Badge } from '@/components/ui/badge'
+import { Input } from '@/components/ui/input'
+import { Select, SelectTrigger, SelectValue, SelectContent, SelectItem } from '@/components/ui/select'
 import { useRouter, useParams } from 'next/navigation'
 import { api } from '@/lib/helper'
 import { qcApi } from '@/data/qcApi'
@@ -787,46 +789,48 @@ const ReportDetailView = () => {
               <CardContent className="p-4 space-y-3 text-xs">
                 <div className="space-y-1">
                   <p className="font-medium text-gray-700">Status</p>
-                  <select
-                    className="w-full border border-gray-200 rounded-md px-2 py-1 text-xs bg-white"
-                    value={editMeta.status}
-                    onChange={(e) => setEditMeta({ ...editMeta, status: e.target.value })}
-                  >
-                    <option value="draft">Draft</option>
-                    <option value="in-review">In Review</option>
-                    <option value="completed">Completed</option>
-                  </select>
+                  <Select value={editMeta.status} onValueChange={(val) => setEditMeta({ ...editMeta, status: val })}>
+                    <SelectTrigger className="w-full text-xs h-8">
+                      <SelectValue />
+                    </SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="draft">Draft</SelectItem>
+                      <SelectItem value="in-review">In Review</SelectItem>
+                      <SelectItem value="completed">Completed</SelectItem>
+                    </SelectContent>
+                  </Select>
                 </div>
                 <div className="space-y-1">
                   <p className="font-medium text-gray-700">Overall Grade</p>
-                  <select
-                    className="w-full border border-gray-200 rounded-md px-2 py-1 text-xs bg-white"
-                    value={editMeta.overallGrade || ''}
-                    onChange={(e) => setEditMeta({ ...editMeta, overallGrade: e.target.value })}
-                  >
-                    <option value="">Not set</option>
-                    <option value="Grade 1">Grade 1</option>
-                    <option value="Grade 2">Grade 2</option>
-                    <option value="Grade 3">Grade 3</option>
-                    <option value="Grade 4">Grade 4</option>
-                  </select>
+                  <Select value={editMeta.overallGrade || 'none'} onValueChange={(val) => setEditMeta({ ...editMeta, overallGrade: val === 'none' ? '' : val })}>
+                    <SelectTrigger className="w-full text-xs h-8">
+                      <SelectValue placeholder="Not set" />
+                    </SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="none">Not set</SelectItem>
+                      <SelectItem value="Grade 1">Grade 1</SelectItem>
+                      <SelectItem value="Grade 2">Grade 2</SelectItem>
+                      <SelectItem value="Grade 3">Grade 3</SelectItem>
+                      <SelectItem value="Grade 4">Grade 4</SelectItem>
+                    </SelectContent>
+                  </Select>
                 </div>
                 <div className="space-y-1">
                   <p className="font-medium text-gray-700">AI Confidence (%)</p>
-                  <input
+                  <Input
                     type="number"
                     min="0"
                     max="100"
-                    className="w-full border border-gray-200 rounded-md px-2 py-1 text-xs"
+                    className="w-full text-xs h-8"
                     value={editMeta.confidence}
                     onChange={(e) => setEditMeta({ ...editMeta, confidence: e.target.value })}
                   />
                 </div>
                 <div className="space-y-1">
                   <p className="font-medium text-gray-700">Footage</p>
-                  <input
+                  <Input
                     type="text"
-                    className="w-full border border-gray-200 rounded-md px-2 py-1 text-xs"
+                    className="w-full text-xs h-8"
                     value={editMeta.footage}
                     onChange={(e) => setEditMeta({ ...editMeta, footage: e.target.value })}
                   />
@@ -834,20 +838,20 @@ const ReportDetailView = () => {
                 <div className="grid grid-cols-2 gap-2">
                   <div className="space-y-1">
                     <p className="font-medium text-gray-700">Total Defects</p>
-                    <input
+                    <Input
                       type="number"
                       min="0"
-                      className="w-full border border-gray-200 rounded-md px-2 py-1 text-xs"
+                      className="w-full text-xs h-8"
                       value={editMeta.totalDefects}
                       onChange={(e) => setEditMeta({ ...editMeta, totalDefects: e.target.value })}
                     />
                   </div>
                   <div className="space-y-1">
                     <p className="font-medium text-gray-700">Critical Defects</p>
-                    <input
+                    <Input
                       type="number"
                       min="0"
-                      className="w-full border border-gray-200 rounded-md px-2 py-1 text-xs"
+                      className="w-full text-xs h-8"
                       value={editMeta.criticalDefects}
                       onChange={(e) => setEditMeta({ ...editMeta, criticalDefects: e.target.value })}
                     />

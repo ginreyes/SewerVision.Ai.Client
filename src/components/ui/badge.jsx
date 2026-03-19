@@ -18,7 +18,7 @@ const badgeVariants = cva(
         outline:
           "text-foreground [a&]:hover:bg-accent [a&]:hover:text-accent-foreground",
         rose:
-          "border-transparent bg-[#d76b84] text-white [a&]:hover:bg-[#d76b84]/90",
+          "border-transparent bg-[var(--role-accent,#d76b84)] text-white [a&]:hover:bg-[var(--role-accent,#d76b84)]/90",
       },
     },
     defaultVariants: {

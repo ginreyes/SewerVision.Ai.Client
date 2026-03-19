@@ -6,6 +6,7 @@ import UnifiedSidebar from "@/components/ui/UnifiedSidebar";
 import { api } from "@/lib/helper";
 import { useUser } from "@/components/providers/UserContext";
 import { TourGuide, useTourGuide } from "@/components/TourGuide";
+import RoleThemeProvider from "@/components/providers/RoleThemeProvider";
 import { useRouter } from "next/navigation";
 
 export default function UserLayout({ children }) {
@@ -67,29 +68,31 @@ export default function UserLayout({ children }) {
   }
 
   return (
-    <>
-      <div className="flex">
-        <div
-          className={`fixed top-0 left-0 h-full transition-all duration-300 border-2 bg-gray-100 ${
-            openSidebar ? "w-[270px]" : "w-[90px]"
-          }`}
-        >
-          <UnifiedSidebar isOpen={openSidebar} role={role} displayName={userRoleMeta?.displayName} />
+    <RoleThemeProvider role="user">
+      <>
+        <div className="flex">
+          <div
+            className={`fixed top-0 left-0 h-full transition-all duration-300 border-2 bg-gray-100 ${
+              openSidebar ? "w-[270px]" : "w-[90px]"
+            }`}
+          >
+            <UnifiedSidebar isOpen={openSidebar} role={role} displayName={userRoleMeta?.displayName} />
+          </div>
+
+          <div
+            className={`flex-1 transition-all duration-300 ${
+              openSidebar ? "ml-[270px]" : "ml-[90px]"
+            }`}
+          >
+            <Navbar openSideBar={handleToggleSidebar} role="user" />
+            <main className="p-4">{children}</main>
+          </div>
         </div>
 
-        <div
-          className={`flex-1 transition-all duration-300 ${
-            openSidebar ? "ml-[270px]" : "ml-[90px]"
-          }`}
-        >
-          <Navbar openSideBar={handleToggleSidebar} role="user" />
-          <main className="p-4">{children}</main>
-        </div>
-      </div>
-
-      {/* Tour Guide Modal for User role */}
-      <TourGuide isOpen={showTour} onClose={closeTour} role="user" />
-    </>
+        {/* Tour Guide Modal for User role */}
+        <TourGuide isOpen={showTour} onClose={closeTour} role="user" />
+      </>
+    </RoleThemeProvider>
   );
 }
 

@@ -35,6 +35,7 @@ import { Label } from '@/components/ui/label';
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
 import { Badge } from '@/components/ui/badge';
 import { Separator } from '@/components/ui/separator';
+import { Select, SelectTrigger, SelectValue, SelectContent, SelectItem } from '@/components/ui/select';
 import { useUser } from '@/components/providers/UserContext';
 import { useAlert } from '@/components/providers/AlertProvider';
 import { api, getCookie } from '@/lib/helper';
@@ -682,18 +683,21 @@ function CustomerSettingsContent() {
                     <div className="relative">
                       <Users className="absolute left-3 top-2.5 h-4 w-4 text-gray-400" />
                       {isEditingProfile ? (
-                        <select
-                          name="companySize"
-                          value={profile.companySize}
-                          onChange={handleProfileChange}
-                          className="flex h-10 w-full rounded-md border border-input bg-background pl-9 pr-3 py-2 text-sm ring-offset-background focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2"
+                        <Select
+                          value={profile.companySize || "none"}
+                          onValueChange={(val) => handleProfileChange({ target: { name: 'companySize', value: val === 'none' ? '' : val } })}
                         >
-                          <option value="">Select size</option>
-                          <option value="1-10">1-10 employees</option>
-                          <option value="11-50">11-50 employees</option>
-                          <option value="51-200">51-200 employees</option>
-                          <option value="200+">200+ employees</option>
-                        </select>
+                          <SelectTrigger className="w-full pl-9">
+                            <SelectValue placeholder="Select size" />
+                          </SelectTrigger>
+                          <SelectContent>
+                            <SelectItem value="none">Select size</SelectItem>
+                            <SelectItem value="1-10">1-10 employees</SelectItem>
+                            <SelectItem value="11-50">11-50 employees</SelectItem>
+                            <SelectItem value="51-200">51-200 employees</SelectItem>
+                            <SelectItem value="200+">200+ employees</SelectItem>
+                          </SelectContent>
+                        </Select>
                       ) : (
                         <Input
                           value={profile.companySize || 'Not specified'}

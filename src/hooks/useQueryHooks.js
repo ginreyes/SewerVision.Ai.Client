@@ -13,6 +13,9 @@ import notificationApi from '@/data/notificationApi ';
 import { customerApi } from '@/data/customerApi';
 import { userApi } from '@/data/userApi';
 import { maintenanceApi } from '@/data/maintenanceApi';
+import supportApi from '@/data/supportApi';
+import messageApi from '@/data/messageApi';
+import cannedResponseApi from '@/data/cannedResponseApi';
 
 /**
  * Query Keys - Centralized key management for cache invalidation
@@ -113,6 +116,21 @@ export const queryKeys = {
     userEvents: () => ['user', 'events'],
     userReports: (userId, filters) => ['user', 'reports', userId, filters ?? {}],
     userNotificationPreferences: (userId) => ['user', 'notification-preferences', userId],
+
+    // Support (Customer-Rep)
+    supportAllTickets: (params) => ['support', 'tickets', params ?? {}],
+    supportGlobalStats: ['support', 'global-stats'],
+    supportTicket: (ticketId) => ['support', 'ticket', ticketId],
+    supportAssigned: (repId) => ['support', 'assigned', repId],
+    supportTeam: ['support', 'team'],
+    supportCustomerStats: (userId) => ['support', 'customer-stats', userId],
+
+    // Messages (Inbox)
+    messagesInbox: (userId, params) => ['messages', 'inbox', userId, params ?? {}],
+    messagesSent: (userId) => ['messages', 'sent', userId],
+    messagesThread: (threadId) => ['messages', 'thread', threadId],
+    messagesUnreadCount: (userId) => ['messages', 'unread', userId],
+    messagesContacts: (userId) => ['messages', 'contacts', userId],
 };
 
 /**
@@ -1202,6 +1220,288 @@ export function useUpdateUserNotificationPreferences() {
 }
 
 /**
+ * ============ SUPPORT / CUSTOMER-REP HOOKS ============
+ */
+
+export function useSupportAllTickets(params = {}, options = {}) {
+    return useQuery({
+        queryKey: queryKeys.supportAllTickets(params),
+        queryFn: () => supportApi.getAllTickets(params),
+        staleTime: 1000 * 30,
+        ...options,
+    });
+}
+
+export function useSupportGlobalStats(options = {}) {
+    return useQuery({
+        queryKey: queryKeys.supportGlobalStats,
+        queryFn: () => supportApi.getGlobalStats(),
+        staleTime: 1000 * 30,
+        ...options,
+    });
+}
+
+export function useSupportTicket(ticketId, options = {}) {
+    return useQuery({
+        queryKey: queryKeys.supportTicket(ticketId),
+        queryFn: () => supportApi.getTicketById(ticketId),
+        enabled: !!ticketId,
+        staleTime: 1000 * 15,
+        ...options,
+    });
+}
+
+export function useSupportAssignedTickets(repId, options = {}) {
+    return useQuery({
+        queryKey: queryKeys.supportAssigned(repId),
+        queryFn: () => supportApi.getAssignedTickets(repId),
+        enabled: !!repId,
+        staleTime: 1000 * 30,
+        ...options,
+    });
+}
+
+export function useSupportTeam(options = {}) {
+    return useQuery({
+        queryKey: queryKeys.supportTeam,
+        queryFn: () => supportApi.getTeam(),
+        staleTime: 1000 * 60 * 2,
+        ...options,
+    });
+}
+
+export function useSupportCustomerStats(userId, options = {}) {
+    return useQuery({
+        queryKey: queryKeys.supportCustomerStats(userId),
+        queryFn: () => supportApi.getCustomerStats(userId),
+        enabled: !!userId,
+        staleTime: 1000 * 30,
+        ...options,
+    });
+}
+
+export function useCreateSupportTicket() {
+    const queryClient = useQueryClient();
+    return useMutation({
+        mutationFn: (data) => supportApi.createTicket(data),
+        onSuccess: () => {
+            queryClient.invalidateQueries({ queryKey: ['support'] });
+        },
+    });
+}
+
+export function useUpdateSupportTicket() {
+    const queryClient = useQueryClient();
+    return useMutation({
+        mutationFn: ({ ticketId, ...data }) => supportApi.updateTicket(ticketId, data),
+        onSuccess: () => {
+            queryClient.invalidateQueries({ queryKey: ['support'] });
+        },
+    });
+}
+
+export function useAddTicketResponse() {
+    const queryClient = useQueryClient();
+    return useMutation({
+        mutationFn: ({ ticketId, ...data }) => supportApi.addResponse(ticketId, data),
+        onSuccess: (_data, { ticketId }) => {
+            queryClient.invalidateQueries({ queryKey: queryKeys.supportTicket(ticketId) });
+            queryClient.invalidateQueries({ queryKey: ['support', 'tickets'] });
+        },
+    });
+}
+
+export function useDeleteSupportTicket() {
+    const queryClient = useQueryClient();
+    return useMutation({
+        mutationFn: (ticketId) => supportApi.deleteTicket(ticketId),
+        onSuccess: () => {
+            queryClient.invalidateQueries({ queryKey: ['support'] });
+        },
+    });
+}
+
+export function useAddInternalNote() {
+    const queryClient = useQueryClient();
+    return useMutation({
+        mutationFn: ({ ticketId, ...data }) => supportApi.addInternalNote(ticketId, data),
+        onSuccess: (_data, { ticketId }) => {
+            queryClient.invalidateQueries({ queryKey: queryKeys.supportTicket(ticketId) });
+        },
+    });
+}
+
+export function useSupportTags(options = {}) {
+    return useQuery({
+        queryKey: ['support', 'tags'],
+        queryFn: () => supportApi.getTags(),
+        staleTime: 1000 * 60 * 5,
+        ...options,
+    });
+}
+
+export function useSupportCustomerHistory(customerId, options = {}) {
+    return useQuery({
+        queryKey: ['support', 'customer-history', customerId],
+        queryFn: () => supportApi.getCustomerHistory(customerId),
+        enabled: !!customerId,
+        staleTime: 1000 * 30,
+        ...options,
+    });
+}
+
+/**
+ * ============ CANNED RESPONSE HOOKS ============
+ */
+
+export function useCannedResponses(userId, options = {}) {
+    return useQuery({
+        queryKey: ['canned-responses', userId],
+        queryFn: () => cannedResponseApi.getAll(userId),
+        staleTime: 1000 * 60 * 2,
+        ...options,
+    });
+}
+
+export function useCreateCannedResponse() {
+    const queryClient = useQueryClient();
+    return useMutation({
+        mutationFn: (data) => cannedResponseApi.create(data),
+        onSuccess: () => { queryClient.invalidateQueries({ queryKey: ['canned-responses'] }); },
+    });
+}
+
+export function useUpdateCannedResponse() {
+    const queryClient = useQueryClient();
+    return useMutation({
+        mutationFn: ({ id, ...data }) => cannedResponseApi.update(id, data),
+        onSuccess: () => { queryClient.invalidateQueries({ queryKey: ['canned-responses'] }); },
+    });
+}
+
+export function useDeleteCannedResponse() {
+    const queryClient = useQueryClient();
+    return useMutation({
+        mutationFn: (id) => cannedResponseApi.delete(id),
+        onSuccess: () => { queryClient.invalidateQueries({ queryKey: ['canned-responses'] }); },
+    });
+}
+
+/**
+ * ============ MESSAGES / INBOX HOOKS ============
+ */
+
+export function useMessagesInbox(userId, params = {}, options = {}) {
+    return useQuery({
+        queryKey: queryKeys.messagesInbox(userId, params),
+        queryFn: () => messageApi.getInbox(userId, params),
+        enabled: !!userId,
+        staleTime: 1000 * 15,
+        ...options,
+    });
+}
+
+export function useMessagesSent(userId, options = {}) {
+    return useQuery({
+        queryKey: queryKeys.messagesSent(userId),
+        queryFn: () => messageApi.getSent(userId),
+        enabled: !!userId,
+        staleTime: 1000 * 30,
+        ...options,
+    });
+}
+
+export function useMessagesThread(threadId, options = {}) {
+    return useQuery({
+        queryKey: queryKeys.messagesThread(threadId),
+        queryFn: () => messageApi.getThread(threadId),
+        enabled: !!threadId,
+        staleTime: 1000 * 10,
+        ...options,
+    });
+}
+
+export function useMessagesUnreadCount(userId, options = {}) {
+    return useQuery({
+        queryKey: queryKeys.messagesUnreadCount(userId),
+        queryFn: () => messageApi.getUnreadCount(userId),
+        enabled: !!userId,
+        staleTime: 1000 * 15,
+        ...options,
+    });
+}
+
+export function useMessagesContacts(userId, options = {}) {
+    return useQuery({
+        queryKey: queryKeys.messagesContacts(userId),
+        queryFn: () => messageApi.getContacts(userId),
+        enabled: !!userId,
+        staleTime: 1000 * 60 * 5,
+        ...options,
+    });
+}
+
+export function useSendMessage() {
+    const queryClient = useQueryClient();
+    return useMutation({
+        mutationFn: (data) => messageApi.send(data),
+        onSuccess: () => {
+            queryClient.invalidateQueries({ queryKey: ['messages'] });
+        },
+    });
+}
+
+export function useToggleMessageStar() {
+    const queryClient = useQueryClient();
+    return useMutation({
+        mutationFn: (messageId) => messageApi.toggleStar(messageId),
+        onSuccess: () => {
+            queryClient.invalidateQueries({ queryKey: ['messages'] });
+        },
+    });
+}
+
+export function useMarkMessageRead() {
+    const queryClient = useQueryClient();
+    return useMutation({
+        mutationFn: (messageId) => messageApi.markAsRead(messageId),
+        onSuccess: () => {
+            queryClient.invalidateQueries({ queryKey: ['messages'] });
+        },
+    });
+}
+
+export function useArchiveMessage() {
+    const queryClient = useQueryClient();
+    return useMutation({
+        mutationFn: (messageId) => messageApi.archive(messageId),
+        onSuccess: () => {
+            queryClient.invalidateQueries({ queryKey: ['messages'] });
+        },
+    });
+}
+
+export function useDeleteMessage() {
+    const queryClient = useQueryClient();
+    return useMutation({
+        mutationFn: (messageId) => messageApi.delete(messageId),
+        onSuccess: () => {
+            queryClient.invalidateQueries({ queryKey: ['messages'] });
+        },
+    });
+}
+
+export function useMarkAllMessagesRead() {
+    const queryClient = useQueryClient();
+    return useMutation({
+        mutationFn: (userId) => messageApi.markAllAsRead(userId),
+        onSuccess: () => {
+            queryClient.invalidateQueries({ queryKey: ['messages'] });
+        },
+    });
+}
+
+/**
  * ============ CACHE UTILITIES ============
  */
 
@@ -1569,4 +1869,35 @@ export default {
     useSaveUserSettings,
     useUpdateUserNotificationPreferences,
     queryKeys,
+    // Support (Customer-Rep) hooks
+    useSupportAllTickets,
+    useSupportGlobalStats,
+    useSupportTicket,
+    useSupportAssignedTickets,
+    useSupportTeam,
+    useSupportCustomerStats,
+    useCreateSupportTicket,
+    useUpdateSupportTicket,
+    useAddTicketResponse,
+    useDeleteSupportTicket,
+    useAddInternalNote,
+    useSupportTags,
+    useSupportCustomerHistory,
+    // Canned Response hooks
+    useCannedResponses,
+    useCreateCannedResponse,
+    useUpdateCannedResponse,
+    useDeleteCannedResponse,
+    // Messages / Inbox hooks
+    useMessagesInbox,
+    useMessagesSent,
+    useMessagesThread,
+    useMessagesUnreadCount,
+    useMessagesContacts,
+    useSendMessage,
+    useToggleMessageStar,
+    useMarkMessageRead,
+    useArchiveMessage,
+    useDeleteMessage,
+    useMarkAllMessagesRead,
 };

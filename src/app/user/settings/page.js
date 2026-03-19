@@ -30,6 +30,7 @@ import { Switch } from '@/components/ui/switch';
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
 import { Badge } from '@/components/ui/badge';
 import { Separator } from '@/components/ui/separator';
+import { Select, SelectTrigger, SelectValue, SelectContent, SelectItem } from '@/components/ui/select';
 import { useUser } from '@/components/providers/UserContext';
 import { useAlert } from '@/components/providers/AlertProvider';
 import { api, getCookie } from '@/lib/helper';
@@ -641,14 +642,18 @@ function UserSettingsContent() {
                   <Separator />
                   <div className="space-y-2">
                     <Label className="text-gray-900">Language</Label>
-                    <select
+                    <Select
                       value={settings.language}
-                      onChange={(e) => updateSetting('language', e.target.value)}
+                      onValueChange={(val) => updateSetting('language', val)}
                       disabled={!canEdit}
-                      className={`flex h-10 w-full max-w-xs rounded-md border px-3 py-2 text-sm focus:ring-rose-500 focus:border-rose-500 ${!canEdit ? 'border-gray-200 bg-gray-50 cursor-not-allowed' : 'border-rose-200 bg-background'}`}
                     >
-                      <option value="en">English</option>
-                    </select>
+                      <SelectTrigger className="w-full max-w-xs">
+                        <SelectValue placeholder="Select language" />
+                      </SelectTrigger>
+                      <SelectContent>
+                        <SelectItem value="en">English</SelectItem>
+                      </SelectContent>
+                    </Select>
                   </div>
                 </CardContent>
               </Card>

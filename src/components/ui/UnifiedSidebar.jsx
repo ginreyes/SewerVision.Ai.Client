@@ -89,6 +89,7 @@ const ADMIN_MENU_GROUPS = [
     items: [
       { label: 'Reports', icon: 'BarChart2', path: '/admin/report', module: 'reports' },
       { label: 'Notes', icon: 'StickyNote', path: '/admin/notes', module: 'notes' },
+      { label: 'Support', icon: 'Inbox', path: '/admin/support', module: 'support' },
     ],
   },
   {
@@ -152,6 +153,23 @@ const ROLE_THEMES = {
     footerSub: 'text-green-600/70',
     portal: 'QC Portal',
     title: 'QC Technician',
+    subtitle: 'Active Access',
+  },
+  'customer-rep': {
+    gradient: 'from-teal-600 via-cyan-500 to-teal-700',
+    activeBg: 'from-teal-50 to-cyan-50',
+    activeText: 'text-teal-700',
+    activeIcon: 'text-teal-600',
+    activeBar: 'from-teal-500 to-cyan-500',
+    hoverOverlay: 'group-hover:from-teal-500/5 group-hover:to-cyan-500/5',
+    loaderColor: 'text-teal-500',
+    chevronColor: 'text-teal-400',
+    footerBg: 'from-teal-50 to-cyan-50',
+    footerBorder: 'border-teal-200/50',
+    footerText: 'text-teal-700',
+    footerSub: 'text-teal-600/70',
+    portal: 'Support Console',
+    title: 'Customer Rep',
     subtitle: 'Active Access',
   },
   user: {
@@ -246,6 +264,23 @@ const FALLBACK_MENUS = {
       { label: 'Settings', icon: 'Settings', path: '/customer/settings', key: 'settings', locked: true },
     ]},
   ],
+  'customer-rep': [
+    { label: 'Main', items: [
+      { label: 'Dashboard', icon: 'LayoutDashboard', path: '/customer-rep/dashboard', key: 'dashboard', locked: true },
+      { label: 'Inbox', icon: 'Inbox', path: '/customer-rep/inbox', key: 'inbox' },
+    ]},
+    { label: 'Support', items: [
+      { label: 'Tickets', icon: 'ClipboardList', path: '/customer-rep/tickets', key: 'tickets' },
+      { label: 'Tasks', icon: 'ClipboardList', path: '/customer-rep/tasks', key: 'tasks' },
+      { label: 'Monitoring', icon: 'BarChart2', path: '/customer-rep/monitoring', key: 'monitoring' },
+    ]},
+    { label: 'Team', items: [
+      { label: 'Team', icon: 'Users', path: '/customer-rep/team', key: 'team' },
+    ]},
+    { label: 'Account', items: [
+      { label: 'Settings', icon: 'Settings', path: '/customer-rep/settings', key: 'settings', locked: true },
+    ]},
+  ],
 };
 
 // ── Loading module setting keys per role ──
@@ -254,6 +289,7 @@ const LOADING_KEYS = {
   operator: 'operator',
   'qc-technician': 'qcTechnician',
   user: 'user',
+  'customer-rep': 'customerRep',
 };
 
 const UnifiedSidebar = ({ isOpen, role, displayName }) => {
@@ -391,7 +427,7 @@ const UnifiedSidebar = ({ isOpen, role, displayName }) => {
                   const isItemLoading = loadingItem === item.label;
 
                   return (
-                    <Link key={item.label || item.key} href={itemPath || '#'}>
+                    <Link key={item.key || item.label} href={itemPath || '#'}>
                       <div
                         className={cn(
                           'group relative flex items-center gap-3',

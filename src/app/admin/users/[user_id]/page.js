@@ -22,12 +22,13 @@ import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/com
 import { Badge } from "@/components/ui/badge"
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar"
 import { Switch } from "@/components/ui/switch"
-import { SeparatorVertical } from "@/components/ui/separator"
-import CustomerDetailed from "@/components/admin/users/CustomerDetailed"
-import QcTechnicianDetailed from "@/components/admin/users/QcTechnicianDetailed"
-import TeamLeadDetailed from "@/components/admin/users/TeamLeadDetailed"
-import OperatorDetailed, { OperatorWorkspaceOverview } from "@/components/admin/users/OperatorDetailed"
-import PermissionsTab from "@/components/admin/users/PermissionsTab"
+import { Separator } from "@/components/ui/separator"
+import CustomerDetailed from "@/components/admin/users/user-management/CustomerDetailed"
+import QcTechnicianDetailed from "@/components/admin/users/user-management/QcTechnicianDetailed"
+import TeamLeadDetailed from "@/components/admin/users/user-management/TeamLeadDetailed"
+import OperatorDetailed, { OperatorWorkspaceOverview } from "@/components/admin/users/user-management/OperatorDetailed"
+import CustomerRepresentativeDetailed from "@/components/admin/users/user-management/CustomerRepresentativeDetailed"
+import PermissionsTab from "@/components/admin/users/permissions/PermissionsTab"
 
 const roleOptions = [
   {
@@ -64,6 +65,13 @@ const roleOptions = [
     icon: <FaUserTag className="h-4 w-4" />,
     color: "bg-emerald-100 text-emerald-800 border-emerald-200",
     description: "Team lead / management workspace"
+  },
+  {
+    value: "customer-rep",
+    label: "Customer Representative",
+    icon: <FaEnvelope className="h-4 w-4" />,
+    color: "bg-teal-100 text-teal-800 border-teal-200",
+    description: "Customer support & complaints"
   }
 ]
 
@@ -92,6 +100,8 @@ const UserProfile = () => {
     shift_preference: "", equipment_experience: "",
     company_name: "", industry: "", phone_number: "", address: "",
     account_type: "standard", company_size: "", tax_id: "", billing_contact: "",
+    department: "", support_specialty: "", languages_spoken: "", bio: "",
+    availability_status: "available", max_concurrent_tickets: 10,
   })
 
   // Permission level (pending until Save)
@@ -120,6 +130,8 @@ const UserProfile = () => {
           shift_preference: u.shift_preference || "", equipment_experience: u.equipment_experience || "",
           company_name: u.company_name || "", industry: u.industry || "", phone_number: u.phone_number || "", address: u.address || "",
           account_type: u.account_type || "standard", company_size: u.company_size || "", tax_id: u.tax_id || "", billing_contact: u.billing_contact || "",
+          department: u.department || "", support_specialty: u.support_specialty || "", languages_spoken: u.languages_spoken || "", bio: u.bio || "",
+          availability_status: u.availability_status || "available", max_concurrent_tickets: u.max_concurrent_tickets || 10,
         });
 
         // Load potential team members (operators & QC techs)
@@ -171,6 +183,12 @@ const UserProfile = () => {
       company_size: form.company_size,
       tax_id: form.tax_id,
       billing_contact: form.billing_contact,
+      department: form.department,
+      support_specialty: form.support_specialty,
+      languages_spoken: form.languages_spoken,
+      bio: form.bio,
+      availability_status: form.availability_status,
+      max_concurrent_tickets: form.max_concurrent_tickets,
       managedMembers: managedMembers.map((m) => m._id || m.user_id)
     };
 
@@ -290,6 +308,14 @@ const UserProfile = () => {
                   return {
                     backgroundImage:
                       "url('/background_pictures/user-team_background.jpg')",
+                    backgroundSize: 'cover',
+                    backgroundPosition: 'center',
+                  };
+                }
+                if (normalizedRole === 'customer-rep') {
+                  return {
+                    backgroundImage:
+                      "url('/background_pictures/customer-bg-header.png')",
                     backgroundSize: 'cover',
                     backgroundPosition: 'center',
                   };
@@ -475,11 +501,10 @@ const UserProfile = () => {
                   <div className="space-y-2">
                     <Label>Role</Label>
                     <Select
-                      disabled={!isEdit}
+                      disabled
                       value={form.role}
-                      onValueChange={v => setForm({ ...form, role: v })}
                     >
-                      <SelectTrigger className={!isEdit ? "bg-gray-50" : "bg-white"}>
+                      <SelectTrigger className="bg-gray-50">
                         <SelectValue />
                       </SelectTrigger>
                       <SelectContent>
@@ -533,6 +558,16 @@ const UserProfile = () => {
               availableMembers={availableMembers}
               selectedMemberId={selectedMemberId}
               setSelectedMemberId={setSelectedMemberId}
+            />
+          )}
+
+          {/* Customer Representative */}
+          {normalizedRole === 'customer-rep' && (
+            <CustomerRepresentativeDetailed
+              user={user}
+              form={form}
+              isEdit={isEdit}
+              setForm={setForm}
             />
           )}
 
@@ -638,7 +673,7 @@ const OperatorCurrentProjects = ({ operatorId }) => {
         )}
       </div>
 
-      <SeparatorVertical className="my-1 border-blue-100" />
+      <Separator className="my-1 border-blue-100" />
 
       {/* Current projects list (can be empty) */}
       {projects.length ? (

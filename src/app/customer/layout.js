@@ -6,6 +6,7 @@ import { usePathname, useRouter } from "next/navigation";
 import { api, getCookie, deleteCookie } from "@/lib/helper";
 import CustomerSidebar from "@/components/customer/CustomerSidebar";
 import { TourGuide, useTourGuide } from "@/components/TourGuide";
+import RoleThemeProvider from "@/components/providers/RoleThemeProvider";
 import CustomerReactTour, { useCustomerReactTour } from "@/components/customer/CustomerReactTour";
 
 export default function CustomerLayout({ children }) {
@@ -81,30 +82,32 @@ export default function CustomerLayout({ children }) {
   if (!role) return null;
 
   return (
-    <CustomerReactTour shouldOpen={shouldOpen} onOpened={handleTourOpened}>
-      <div className="flex">
-        <div
-          className={`fixed top-0 left-0 h-full transition-all duration-300 border-2  ${openSidebar ? "w-[270px]" : "w-[90px]"
-            }`}
-        >
-          <CustomerSidebar isOpen={openSidebar} />
-        </div>
+    <RoleThemeProvider role="customer">
+      <CustomerReactTour shouldOpen={shouldOpen} onOpened={handleTourOpened}>
+        <div className="flex">
+          <div
+            className={`fixed top-0 left-0 h-full transition-all duration-300 border-2  ${openSidebar ? "w-[270px]" : "w-[90px]"
+              }`}
+          >
+            <CustomerSidebar isOpen={openSidebar} />
+          </div>
 
-        <div
-          className={`flex-1 transition-all duration-300 ${openSidebar ? "ml-[270px]" : "ml-[90px]"
-            }`}
-        >
-          <Navbar openSideBar={handleToggleSidebar} role="customer" />
-          <main className="p-4  min-h-screen">{children}</main>
-        </div>
+          <div
+            className={`flex-1 transition-all duration-300 ${openSidebar ? "ml-[270px]" : "ml-[90px]"
+              }`}
+          >
+            <Navbar openSideBar={handleToggleSidebar} role="customer" />
+            <main className="p-4  min-h-screen">{children}</main>
+          </div>
 
-        {/* Tour Guide Modal (existing) */}
-        <TourGuide
-          isOpen={showTour}
-          onClose={closeTour}
-          role="customer"
-        />
-      </div>
-    </CustomerReactTour>
+          {/* Tour Guide Modal (existing) */}
+          <TourGuide
+            isOpen={showTour}
+            onClose={closeTour}
+            role="customer"
+          />
+        </div>
+      </CustomerReactTour>
+    </RoleThemeProvider>
   );
 }

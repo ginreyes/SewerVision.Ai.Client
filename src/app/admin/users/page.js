@@ -1,15 +1,15 @@
 "use client";
 import React, { useState, useEffect } from "react";
-import AddUserModal from "@/components/admin/users/AddUserModal";
-import SendEmailModal from "@/components/admin/users/SendEmailModal";
-import ChangePasswordModal from "@/components/admin/users/ChangePasswordModal";
+import AddUserModal from "@/components/admin/users/user-management/AddUserModal";
+import SendEmailModal from "@/components/admin/users/user-management/SendEmailModal";
+import ChangePasswordModal from "@/components/admin/users/user-management/ChangePasswordModal";
 import { api, getCookie } from "@/lib/helper";
 import { useAlert } from "@/components/providers/AlertProvider";
 import { useDialog } from "@/components/providers/DialogProvider";
 import SewerTable from "@/components/ui/SewerTable";
 import { useRouter } from "next/navigation";
-import CardList from "@/components/admin/users/CardList";
-import PermissionLevelsTab from "@/components/admin/users/PermissionLevelsTab";
+import CardList from "@/components/admin/users/user-management/CardList";
+import PermissionLevelsTab from "@/components/admin/users/permissions/PermissionLevelsTab";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Button } from "@/components/ui/button";
 import {
@@ -21,6 +21,7 @@ import {
   Shield,
   Activity,
   RefreshCw,
+  Plus,
 } from "lucide-react";
 
 /* ─── action badge config (for audit logs) ─── */
@@ -285,7 +286,7 @@ const UserPage = () => {
         </span>
       );
     }
-    return null; // Let SewerTable handle other columns
+    return null; 
   };
 
   const filterOptions = [
@@ -565,6 +566,7 @@ const UserPage = () => {
     audit: { title: "Audit Logs", desc: "Track all user management actions across your organization" },
     permissions: { title: "Permission Levels", desc: "Create and manage module access levels for each role" },
   };
+
   const pageTitle = pageTitles[activeTab]?.title || "User Management";
   const pageDescription = pageTitles[activeTab]?.desc || "";
 
@@ -606,6 +608,13 @@ const UserPage = () => {
               >
                 <RefreshCw className={`w-3.5 h-3.5 ${auditLoading ? "animate-spin" : ""}`} />
                 Refresh
+              </Button>
+            )}
+
+            {activeTab === 'permissions' && (
+              <Button onClick={() => router.push("/admin/users/permissions/create")} variant='rose'>
+                <Plus className="w-4 h-4 mr-1.5" />
+                Create Level
               </Button>
             )}
           </div>

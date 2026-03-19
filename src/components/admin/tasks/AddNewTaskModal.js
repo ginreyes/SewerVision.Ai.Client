@@ -8,7 +8,17 @@ import {
   DialogTrigger,
 } from '@/components/ui/dialog'
 import { Button } from '@/components/ui/button'
-import { Plus, Camera, FileText, Eye, MapPin, AlertCircle } from 'lucide-react'
+import { Input } from '@/components/ui/input'
+import { Textarea } from '@/components/ui/textarea'
+import { Label } from '@/components/ui/label'
+import {
+  Select,
+  SelectTrigger,
+  SelectValue,
+  SelectContent,
+  SelectItem,
+} from '@/components/ui/select'
+import { Plus } from 'lucide-react'
 
 const AddNewTaskModal = ({ onAddTask }) => {
   const [open, setOpen] = useState(false)
@@ -32,10 +42,16 @@ const AddNewTaskModal = ({ onAddTask }) => {
     }))
   }
 
+  const handleSelectChange = (name, value) => {
+    setFormData(prev => ({
+      ...prev,
+      [name]: value
+    }))
+  }
+
   const handleSubmit = (e) => {
     e.preventDefault()
-    
-    // Create new task object
+
     const newTask = {
       id: Date.now(),
       ...formData,
@@ -44,13 +60,11 @@ const AddNewTaskModal = ({ onAddTask }) => {
       aiProcessing: 'pending',
       footage: '0 GB'
     }
-    
-    // Call parent callback if provided
+
     if (onAddTask) {
       onAddTask(newTask)
     }
-    
-    // Reset form and close modal
+
     setFormData({
       title: '',
       description: '',
@@ -68,7 +82,7 @@ const AddNewTaskModal = ({ onAddTask }) => {
   return (
     <Dialog open={open} onOpenChange={setOpen}>
       <DialogTrigger asChild>
-        <Button className="bg-gradient-to-r from-blue-500 to-purple-600 hover:from-blue-600 hover:to-purple-700">
+        <Button variant="rose">
           <Plus className="w-4 h-4 mr-2" />
           New Task
         </Button>
@@ -80,19 +94,16 @@ const AddNewTaskModal = ({ onAddTask }) => {
             Fill in the details below to create a new inspection or assessment task.
           </DialogDescription>
         </DialogHeader>
-        
+
         <form onSubmit={handleSubmit} className="space-y-6 mt-4">
           {/* Task Title */}
           <div className="space-y-2">
-            <label htmlFor="title" className="text-sm font-medium text-gray-700">
-              Task Title *
-            </label>
-            <input
+            <Label htmlFor="title">Task Title *</Label>
+            <Input
               id="title"
               name="title"
               type="text"
               required
-              className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
               placeholder="e.g., Main St Pipeline Inspection"
               value={formData.title}
               onChange={handleInputChange}
@@ -101,15 +112,12 @@ const AddNewTaskModal = ({ onAddTask }) => {
 
           {/* Description */}
           <div className="space-y-2">
-            <label htmlFor="description" className="text-sm font-medium text-gray-700">
-              Description *
-            </label>
-            <textarea
+            <Label htmlFor="description">Description *</Label>
+            <Textarea
               id="description"
               name="description"
               required
-              rows="3"
-              className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent resize-none"
+              rows={3}
               placeholder="Provide a detailed description of the task..."
               value={formData.description}
               onChange={handleInputChange}
@@ -119,58 +127,53 @@ const AddNewTaskModal = ({ onAddTask }) => {
           {/* Task Type and Priority */}
           <div className="grid grid-cols-2 gap-4">
             <div className="space-y-2">
-              <label htmlFor="type" className="text-sm font-medium text-gray-700">
-                Task Type *
-              </label>
-              <select
-                id="type"
-                name="type"
-                required
-                className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+              <Label htmlFor="type">Task Type *</Label>
+              <Select
                 value={formData.type}
-                onChange={handleInputChange}
+                onValueChange={(value) => handleSelectChange('type', value)}
               >
-                <option value="inspection">Inspection</option>
-                <option value="assessment">Assessment</option>
-                <option value="review">Review</option>
-                <option value="survey">Survey</option>
-                <option value="report">Report</option>
-                <option value="emergency">Emergency</option>
-              </select>
+                <SelectTrigger>
+                  <SelectValue placeholder="Select type" />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="inspection">Inspection</SelectItem>
+                  <SelectItem value="assessment">Assessment</SelectItem>
+                  <SelectItem value="review">Review</SelectItem>
+                  <SelectItem value="survey">Survey</SelectItem>
+                  <SelectItem value="report">Report</SelectItem>
+                  <SelectItem value="emergency">Emergency</SelectItem>
+                </SelectContent>
+              </Select>
             </div>
 
             <div className="space-y-2">
-              <label htmlFor="priority" className="text-sm font-medium text-gray-700">
-                Priority *
-              </label>
-              <select
-                id="priority"
-                name="priority"
-                required
-                className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+              <Label htmlFor="priority">Priority *</Label>
+              <Select
                 value={formData.priority}
-                onChange={handleInputChange}
+                onValueChange={(value) => handleSelectChange('priority', value)}
               >
-                <option value="low">Low</option>
-                <option value="medium">Medium</option>
-                <option value="high">High</option>
-                <option value="critical">Critical</option>
-              </select>
+                <SelectTrigger>
+                  <SelectValue placeholder="Select priority" />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="low">Low</SelectItem>
+                  <SelectItem value="medium">Medium</SelectItem>
+                  <SelectItem value="high">High</SelectItem>
+                  <SelectItem value="critical">Critical</SelectItem>
+                </SelectContent>
+              </Select>
             </div>
           </div>
 
           {/* Assignee and Location */}
           <div className="grid grid-cols-2 gap-4">
             <div className="space-y-2">
-              <label htmlFor="assignee" className="text-sm font-medium text-gray-700">
-                Assignee *
-              </label>
-              <input
+              <Label htmlFor="assignee">Assignee *</Label>
+              <Input
                 id="assignee"
                 name="assignee"
                 type="text"
                 required
-                className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
                 placeholder="Team member name"
                 value={formData.assignee}
                 onChange={handleInputChange}
@@ -178,15 +181,12 @@ const AddNewTaskModal = ({ onAddTask }) => {
             </div>
 
             <div className="space-y-2">
-              <label htmlFor="location" className="text-sm font-medium text-gray-700">
-                Location *
-              </label>
-              <input
+              <Label htmlFor="location">Location *</Label>
+              <Input
                 id="location"
                 name="location"
                 type="text"
                 required
-                className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
                 placeholder="Site location"
                 value={formData.location}
                 onChange={handleInputChange}
@@ -196,15 +196,12 @@ const AddNewTaskModal = ({ onAddTask }) => {
 
           {/* Device */}
           <div className="space-y-2">
-            <label htmlFor="device" className="text-sm font-medium text-gray-700">
-              Device/Equipment *
-            </label>
-            <input
+            <Label htmlFor="device">Device/Equipment *</Label>
+            <Input
               id="device"
               name="device"
               type="text"
               required
-              className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
               placeholder="e.g., CCTV Inspection Camera Unit 1"
               value={formData.device}
               onChange={handleInputChange}
@@ -214,30 +211,24 @@ const AddNewTaskModal = ({ onAddTask }) => {
           {/* Start Time and Duration */}
           <div className="grid grid-cols-2 gap-4">
             <div className="space-y-2">
-              <label htmlFor="startTime" className="text-sm font-medium text-gray-700">
-                Start Time *
-              </label>
-              <input
+              <Label htmlFor="startTime">Start Time *</Label>
+              <Input
                 id="startTime"
                 name="startTime"
                 type="datetime-local"
                 required
-                className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
                 value={formData.startTime}
                 onChange={handleInputChange}
               />
             </div>
 
             <div className="space-y-2">
-              <label htmlFor="estimatedDuration" className="text-sm font-medium text-gray-700">
-                Estimated Duration *
-              </label>
-              <input
+              <Label htmlFor="estimatedDuration">Estimated Duration *</Label>
+              <Input
                 id="estimatedDuration"
                 name="estimatedDuration"
                 type="text"
                 required
-                className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
                 placeholder="e.g., 2 hours"
                 value={formData.estimatedDuration}
                 onChange={handleInputChange}
@@ -256,7 +247,7 @@ const AddNewTaskModal = ({ onAddTask }) => {
             </Button>
             <Button
               type="submit"
-              className="bg-gradient-to-r from-blue-500 to-purple-600 hover:from-blue-600 hover:to-purple-700"
+              variant="rose"
             >
               Create Task
             </Button>

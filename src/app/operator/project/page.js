@@ -2,6 +2,8 @@
 import React, { useState, useEffect, useRef, useMemo, Suspense } from "react";
 import { Search, Plus, Loader2, LayoutGrid, Rows, MapPin, Video } from "lucide-react";
 import { Button } from "@/components/ui/button";
+import { Input } from "@/components/ui/input";
+import { Select, SelectTrigger, SelectValue, SelectContent, SelectItem } from "@/components/ui/select";
 import SewerTable from "@/components/ui/SewerTable";
 import { Badge } from "@/components/ui/badge";
 import { useUser } from "@/components/providers/UserContext";
@@ -241,36 +243,33 @@ const OperatorModulePage = () => {
                 <div className="flex items-center gap-3">
                   {/* View mode toggle */}
                   <div className="inline-flex items-center rounded-lg border border-gray-200 bg-white shadow-sm overflow-hidden">
-                    <button
+                    <Button
                       type="button"
+                      variant={viewMode === "grid" ? "secondary" : "ghost"}
+                      size="sm"
                       onClick={() => setViewMode("grid")}
-                      className={`flex items-center gap-1 px-3 py-1.5 text-xs font-medium ${
-                        viewMode === "grid"
-                          ? "bg-indigo-50 text-indigo-600"
-                          : "text-gray-600 hover:bg-gray-50"
-                      }`}
+                      className="rounded-none gap-1"
                     >
                       <LayoutGrid className="w-4 h-4" />
                       <span>Grid</span>
-                    </button>
-                    <button
+                    </Button>
+                    <Button
                       type="button"
+                      variant={viewMode === "table" ? "secondary" : "ghost"}
+                      size="sm"
                       onClick={() => setViewMode("table")}
-                      className={`flex items-center gap-1 px-3 py-1.5 text-xs font-medium border-l border-gray-200 ${
-                        viewMode === "table"
-                          ? "bg-indigo-50 text-indigo-600"
-                          : "text-gray-600 hover:bg-gray-50"
-                      }`}
+                      className="rounded-none border-l border-gray-200 gap-1"
                     >
                       <Rows className="w-4 h-4" />
                       <span>Table</span>
-                    </button>
+                    </Button>
                   </div>
 
                   {!isOperatorRoute && (
                     <Button
                       onClick={AddProject}
-                      className="bg-gradient-to-r from-purple-500 to-purple-700 text-white hover:from-blue-700 hover:to-purple-700 transition-all duration-300 flex items-center gap-2 font-medium"
+                      variant="rose"
+                      className="flex items-center gap-2 font-medium"
                     >
                       <Plus size={20} />
                       New Project
@@ -281,31 +280,35 @@ const OperatorModulePage = () => {
             </div>
 
             <div className="mb-6 flex flex-wrap gap-4 items-center">
-              <div className="flex items-center gap-2">
-                <Search className="text-gray-400" size={20} />
-                <input
+              <div className="relative flex items-center gap-2">
+                <Search className="absolute left-3 text-gray-400" size={16} />
+                <Input
                   type="text"
                   placeholder="Search projects, clients, locations..."
                   value={searchTerm}
                   onChange={handleSearchChange}
-                  className="px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent bg-white text-gray-900 w-64"
+                  className="pl-9 w-64"
                 />
               </div>
 
-              <select
+              <Select
                 value={statusFilter}
-                onChange={handleStatusChange}
-                className="px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent bg-white text-gray-900"
+                onValueChange={(val) => handleStatusChange({ target: { value: val } })}
               >
-                <option value="all">All Status</option>
-                <option value="field-capture">Field Capture</option>
-                <option value="uploading">Uploading</option>
-                <option value="ai-processing">AI Processing</option>
-                <option value="qc-review">QC Review</option>
-                <option value="completed">Completed</option>
-                <option value="customer-notified">Customer Notified</option>
-                <option value="customer-notified">Planning</option>
-              </select>
+                <SelectTrigger className="w-[180px]">
+                  <SelectValue placeholder="All Status" />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="all">All Status</SelectItem>
+                  <SelectItem value="field-capture">Field Capture</SelectItem>
+                  <SelectItem value="uploading">Uploading</SelectItem>
+                  <SelectItem value="ai-processing">AI Processing</SelectItem>
+                  <SelectItem value="qc-review">QC Review</SelectItem>
+                  <SelectItem value="completed">Completed</SelectItem>
+                  <SelectItem value="customer-notified">Customer Notified</SelectItem>
+                  <SelectItem value="planning">Planning</SelectItem>
+                </SelectContent>
+              </Select>
             </div>
 
             {viewMode === "grid" ? (

@@ -26,6 +26,9 @@ import {
   Camera,
 } from 'lucide-react';
 import { api } from '@/lib/helper';
+import { Input } from '@/components/ui/input';
+import { Button } from '@/components/ui/button';
+import { Select, SelectTrigger, SelectValue, SelectContent, SelectItem } from '@/components/ui/select';
 import { useUser } from '@/components/providers/UserContext';
 import { useAlert } from '@/components/providers/AlertProvider';
 import { useRouter } from 'next/navigation';
@@ -346,17 +349,21 @@ const QualityControlPage = () => {
             </div>
             <div className="space-y-3">
               <div className="relative">
-                <Search className="absolute left-2.5 top-1/2 transform -translate-y-1/2 w-3.5 h-3.5 text-gray-400" />
-                <input type="text" placeholder="Search projects..." value={searchTerm} onChange={(e) => setSearchTerm(e.target.value)}
-                  className="w-full pl-8 pr-3 py-2 bg-gray-50 border border-gray-200 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-rose-500/20 focus:border-rose-500 transition-all" />
+                <Search className="absolute left-2.5 top-1/2 transform -translate-y-1/2 w-3.5 h-3.5 text-gray-400 z-10" />
+                <Input type="text" placeholder="Search projects..." value={searchTerm} onChange={(e) => setSearchTerm(e.target.value)}
+                  className="w-full pl-8 text-sm bg-gray-50" />
               </div>
-              <select value={filterStatus} onChange={(e) => setFilterStatus(e.target.value)}
-                className="w-full p-2 bg-white border border-gray-200 rounded-lg text-xs font-medium text-gray-600 focus:outline-none focus:border-rose-500">
-                <option value="assigned">Pending</option>
-                <option value="in-progress">In Progress</option>
-                <option value="completed">Completed</option>
-                <option value="all">All Status</option>
-              </select>
+              <Select value={filterStatus} onValueChange={(val) => setFilterStatus(val)}>
+                <SelectTrigger className="w-full text-xs font-medium text-gray-600" size="sm">
+                  <SelectValue placeholder="Status" />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="assigned">Pending</SelectItem>
+                  <SelectItem value="in-progress">In Progress</SelectItem>
+                  <SelectItem value="completed">Completed</SelectItem>
+                  <SelectItem value="all">All Status</SelectItem>
+                </SelectContent>
+              </Select>
             </div>
           </div>
 
@@ -446,18 +453,22 @@ const QualityControlPage = () => {
                     </div>
                     <div className="flex gap-2">
                       <div className="relative flex-1">
-                        <Search className="absolute left-2 top-1/2 transform -translate-y-1/2 w-3 h-3 text-gray-400" />
-                        <input type="text" placeholder="Search detections..." value={detectionSearch} onChange={(e) => setDetectionSearch(e.target.value)}
-                          className="w-full pl-7 pr-2 py-1.5 bg-white border border-gray-200 rounded-lg text-xs focus:outline-none focus:ring-2 focus:ring-rose-500/20 focus:border-rose-500 transition-all" />
+                        <Search className="absolute left-2 top-1/2 transform -translate-y-1/2 w-3 h-3 text-gray-400 z-10" />
+                        <Input type="text" placeholder="Search detections..." value={detectionSearch} onChange={(e) => setDetectionSearch(e.target.value)}
+                          className="w-full pl-7 text-xs h-8" />
                       </div>
-                      <select value={detectionSeverityFilter} onChange={(e) => setDetectionSeverityFilter(e.target.value)}
-                        className="py-1.5 pl-2 pr-6 bg-white border border-gray-200 rounded-lg text-xs focus:outline-none focus:ring-2 focus:ring-rose-500/20 focus:border-rose-500">
-                        <option value="all">All</option>
-                        <option value="critical">Critical</option>
-                        <option value="major">Major</option>
-                        <option value="moderate">Moderate</option>
-                        <option value="minor">Minor</option>
-                      </select>
+                      <Select value={detectionSeverityFilter} onValueChange={(val) => setDetectionSeverityFilter(val)}>
+                        <SelectTrigger className="text-xs h-8 w-[100px]">
+                          <SelectValue placeholder="All" />
+                        </SelectTrigger>
+                        <SelectContent>
+                          <SelectItem value="all">All</SelectItem>
+                          <SelectItem value="critical">Critical</SelectItem>
+                          <SelectItem value="major">Major</SelectItem>
+                          <SelectItem value="moderate">Moderate</SelectItem>
+                          <SelectItem value="minor">Minor</SelectItem>
+                        </SelectContent>
+                      </Select>
                     </div>
                   </div>
 

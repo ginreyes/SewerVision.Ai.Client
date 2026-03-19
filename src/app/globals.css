@@ -171,3 +171,42 @@
   border: 1px solid rgba(255, 255, 255, 0.18);
 }
 
+/* ── Role Theme CSS Variables ──
+   Set by RoleThemeProvider via data-role attribute.
+   Used by shadcn components for focus/active/checked states. */
+:root {
+  --role-accent: #d76a84;
+  --role-accent-ring: rgba(215, 106, 132, 0.3);
+  --role-accent-light: rgba(215, 106, 132, 0.1);
+}
+[data-role="admin"] {
+  --role-accent: #e11d48;
+  --role-accent-ring: rgba(225, 29, 72, 0.3);
+  --role-accent-light: rgba(225, 29, 72, 0.08);
+}
+[data-role="operator"] {
+  --role-accent: #2563eb;
+  --role-accent-ring: rgba(37, 99, 235, 0.3);
+  --role-accent-light: rgba(37, 99, 235, 0.08);
+}
+[data-role="qc-technician"] {
+  --role-accent: #9333ea;
+  --role-accent-ring: rgba(147, 51, 234, 0.3);
+  --role-accent-light: rgba(147, 51, 234, 0.08);
+}
+[data-role="user"] {
+  --role-accent: #4f46e5;
+  --role-accent-ring: rgba(79, 70, 229, 0.3);
+  --role-accent-light: rgba(79, 70, 229, 0.08);
+}
+[data-role="customer"] {
+  --role-accent: #059669;
+  --role-accent-ring: rgba(5, 150, 105, 0.3);
+  --role-accent-light: rgba(5, 150, 105, 0.08);
+}
+[data-role="customer-rep"] {
+  --role-accent: #0d9488;
+  --role-accent-ring: rgba(13, 148, 136, 0.3);
+  --role-accent-light: rgba(13, 148, 136, 0.08);
+}
+

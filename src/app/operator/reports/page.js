@@ -35,6 +35,7 @@ import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
 import { Button } from '@/components/ui/button'
 import { Badge } from '@/components/ui/badge'
 import { Input } from '@/components/ui/input'
+import { Checkbox } from '@/components/ui/checkbox'
 import {
   Select,
   SelectContent,
@@ -423,11 +424,9 @@ const ReportsPage = () => {
         <Card className="border-0 shadow-sm">
           <CardContent className="p-3">
             <label className="flex items-center gap-2 cursor-pointer">
-              <input
-                type="checkbox"
+              <Checkbox
                 checked={selectedReports.length === filteredReports.length && filteredReports.length > 0}
-                onChange={handleSelectAll}
-                className="rounded border-gray-300 text-blue-600 focus:ring-blue-500 w-4 h-4"
+                onCheckedChange={handleSelectAll}
               />
               <span className="text-sm font-medium text-gray-700">Select All ({filteredReports.length})</span>
             </label>
@@ -453,11 +452,10 @@ const ReportsPage = () => {
                 <CardContent className="p-6">
                   <div className="flex items-start gap-4">
                     {/* Checkbox */}
-                    <input
-                      type="checkbox"
+                    <Checkbox
                       checked={isSelected}
-                      onChange={() => handleSelectReport(report.id)}
-                      className="mt-1 rounded border-gray-300 text-blue-600 focus:ring-blue-500 w-4 h-4"
+                      onCheckedChange={() => handleSelectReport(report.id)}
+                      className="mt-1"
                       onClick={(e) => e.stopPropagation()}
                     />
 

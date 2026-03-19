@@ -3,6 +3,13 @@ import { Avatar } from "@/components/ui/avatar";
 import { Card, CardContent, CardFooter, CardHeader } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
+import {
+  Select,
+  SelectTrigger,
+  SelectValue,
+  SelectContent,
+  SelectItem,
+} from "@/components/ui/select";
 import React, { useEffect, useRef, useState } from "react";
 import { useDialog } from "@/components/providers/DialogProvider";
 import { Checkbox } from "@/components/ui/checkbox";
@@ -308,21 +315,26 @@ const AccountSettings = () => {
             <label htmlFor="role" className="block text-sm font-medium">
               Role
             </label>
-            <select
-              id="role"
-              name="role"
-              className="w-full p-2 border rounded-md"
+            <Select
               value={formData.role}
-              onChange={handleInputChange}
+              onValueChange={(value) => {
+                setFormData({ ...formData, role: value });
+                setIsDirty(true);
+              }}
+              disabled
             >
-              <option value="" disabled>
-                Select Role
-              </option>
-              <option value="admin">Admin</option>
-              <option value="user">User</option>
-              <option value="manager">Manager</option>
-              <option value="guest">Guest</option>
-            </select>
+              <SelectTrigger className="w-full">
+                <SelectValue placeholder="Select Role" />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value="admin">Admin</SelectItem>
+                <SelectItem value="user">User</SelectItem>
+                <SelectItem value="operator">Operator</SelectItem>
+                <SelectItem value="qc-technician">QC Technician</SelectItem>
+                <SelectItem value="customer">Customer</SelectItem>
+                <SelectItem value="customer-rep">Customer Rep</SelectItem>
+              </SelectContent>
+            </Select>
           </div>
         </form>
       </CardContent>
@@ -341,12 +353,12 @@ const AccountSettings = () => {
           <h2 className="text-lg font-semibold">Delete Account</h2>
         </CardHeader>
         <CardContent className="space-y-4">
-          <Card className="bg-[#fff2d6] rounded-2xl">
+          <Card className="bg-amber-50 border-amber-200 rounded-2xl">
             <CardHeader>
-              <h1 className="text-[#ffb725] font-bold text-2xl">
+              <h1 className="text-amber-600 font-bold text-2xl">
                 Are you sure you want to delete your account?
               </h1>
-              <p className="text-[#ffb725] font-bold">
+              <p className="text-amber-600 font-bold">
                 Once you delete your account, there is no going back. Please be certain.
               </p>
             </CardHeader>

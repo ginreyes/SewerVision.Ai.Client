@@ -26,6 +26,7 @@ import { Card, CardContent } from "@/components/ui/card"
 import { Badge } from "@/components/ui/badge"
 import { Separator } from "@/components/ui/separator"
 import { Textarea } from "@/components/ui/textarea"
+import { Checkbox } from "@/components/ui/checkbox"
 import {
   Building2,
   UserPlus,
@@ -122,6 +123,15 @@ const AddUserModal = ({ fetchUser }) => {
       bgColor: 'bg-orange-50',
       borderColor: 'border-orange-200',
       icon: UserPlus
+    },
+    {
+      value: 'customer-rep',
+      label: 'Customer Representative',
+      description: 'Handle customer support tickets and complaints',
+      color: 'text-teal-600',
+      bgColor: 'bg-teal-50',
+      borderColor: 'border-teal-200',
+      icon: Mail
     },
   ]
 
@@ -614,11 +624,10 @@ const AddUserModal = ({ fetchUser }) => {
                             key={id}
                             className="flex items-center gap-2 text-[11px] cursor-pointer px-2 py-1 rounded-lg hover:bg-white/60"
                           >
-                            <input
-                              type="checkbox"
+                            <Checkbox
                               checked={checked}
-                              onChange={() => toggleManagedMember(id)}
-                              className="h-3 w-3 rounded border-gray-300"
+                              onCheckedChange={() => toggleManagedMember(id)}
+                              className="h-3 w-3"
                             />
                             <span className="flex flex-col">
                               <span className="font-medium text-gray-900">
@@ -657,11 +666,10 @@ const AddUserModal = ({ fetchUser }) => {
                             key={id}
                             className="flex items-center gap-2 text-[11px] cursor-pointer px-2 py-1 rounded-lg hover:bg-white/60"
                           >
-                            <input
-                              type="checkbox"
+                            <Checkbox
                               checked={checked}
-                              onChange={() => toggleManagedMember(id)}
-                              className="h-3 w-3 rounded border-gray-300"
+                              onCheckedChange={() => toggleManagedMember(id)}
+                              className="h-3 w-3"
                             />
                             <span className="flex flex-col">
                               <span className="font-medium text-gray-900">
@@ -938,7 +946,8 @@ const AddUserModal = ({ fetchUser }) => {
                 </Button>
                 <Button
                   type="submit"
-                  className="px-6 bg-rose-600 hover:bg-rose-700 text-white disabled:opacity-50 disabled:cursor-not-allowed"
+                  variant="rose"
+                  className="px-6"
                   disabled={isSubmitting}
                 >
                   {isSubmitting ? (

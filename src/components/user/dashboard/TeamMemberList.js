@@ -39,7 +39,7 @@ export default function TeamMemberList({ teamList = [], selectedTeamUser, onSele
                                         })
                                     }
                                     className={`w-full flex items-center gap-3 px-4 py-3 text-left transition-colors ${
-                                        isSelected ? 'bg-[#d76b84] text-white shadow-sm' : 'hover:bg-gray-50'
+                                        isSelected ? 'bg-[var(--role-accent,#d76b84)] text-white shadow-sm' : 'hover:bg-gray-50'
                                     }`}
                                 >
                                     <UserAvatar

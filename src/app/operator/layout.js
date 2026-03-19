@@ -6,6 +6,7 @@ import { api, getCookie, deleteCookie } from "@/lib/helper";
 import { useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
 import { TourGuide, useTourGuide } from "@/components/TourGuide";
+import RoleThemeProvider from "@/components/providers/RoleThemeProvider";
 
 export default function OperatorLayout({ children }) {
   const [openSidebar, setOpenSidebar] = useState(true);
@@ -68,30 +69,32 @@ export default function OperatorLayout({ children }) {
   if (!role) return null;
 
   return (
-    <>
-      <div className="flex">
-        <div
-          className={`fixed top-0 left-0 h-full transition-all duration-300 border-2 bg-gray-100 ${openSidebar ? "w-[270px]" : "w-[90px]"
-            }`}
-        >
-          <UnifiedSidebar isOpen={openSidebar} role={role} />
+    <RoleThemeProvider role="operator">
+      <>
+        <div className="flex">
+          <div
+            className={`fixed top-0 left-0 h-full transition-all duration-300 border-2 bg-gray-100 ${openSidebar ? "w-[270px]" : "w-[90px]"
+              }`}
+          >
+            <UnifiedSidebar isOpen={openSidebar} role={role} />
+          </div>
+
+          <div
+            className={`flex-1 transition-all duration-300 ${openSidebar ? "ml-[270px]" : "ml-[90px]"
+              }`}
+          >
+            <Navbar openSideBar={handleToggleSidebar} role="operator" />
+            <main className="p-4">{children}</main>
+          </div>
         </div>
 
-        <div
-          className={`flex-1 transition-all duration-300 ${openSidebar ? "ml-[270px]" : "ml-[90px]"
-            }`}
-        >
-          <Navbar openSideBar={handleToggleSidebar} role="operator" />
-          <main className="p-4">{children}</main>
-        </div>
-      </div>
-
-      {/* Tour Guide Modal */}
-      <TourGuide
-        isOpen={showTour}
-        onClose={closeTour}
-        role="operator"
-      />
-    </>
+        {/* Tour Guide Modal */}
+        <TourGuide
+          isOpen={showTour}
+          onClose={closeTour}
+          role="operator"
+        />
+      </>
+    </RoleThemeProvider>
   );
 }
