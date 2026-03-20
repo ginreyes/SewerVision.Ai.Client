@@ -10,6 +10,7 @@ import SewerTable from "@/components/ui/SewerTable";
 import { useRouter } from "next/navigation";
 import CardList from "@/components/admin/users/user-management/CardList";
 import PermissionLevelsTab from "@/components/admin/users/permissions/PermissionLevelsTab";
+import permissionLevelApi from "@/data/permissionLevelApi";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Button } from "@/components/ui/button";
 import {
@@ -86,6 +87,21 @@ const UserPage = () => {
     fetchUsers();
   }, [page, search, filters]);
 
+  // Fetch permission levels count for accurate stats
+  useEffect(() => {
+    const fetchPermissionLevelCount = async () => {
+      try {
+        const response = await permissionLevelApi.getAll();
+        const raw = response?.data?.data ?? response?.data ?? response;
+        const list = Array.isArray(raw) ? raw : [];
+        setPermissionLevelCount(list.length);
+      } catch (e) {
+        console.error("Failed to fetch permission levels count:", e);
+      }
+    };
+    fetchPermissionLevelCount();
+  }, [activeTab]);
+
   const fetchUsers = async () => {
     try {
       setLoading(true);
@@ -157,6 +173,9 @@ const UserPage = () => {
   const [selectedUserForPassword, setSelectedUserForPassword] = useState(null);
   const [selectedUsers, setSelectedUsers] = useState([]);
   const [activeTab, setActiveTab] = useState("users");
+
+  // Permission levels count (fetched independently for accurate stats)
+  const [permissionLevelCount, setPermissionLevelCount] = useState(0);
 
   // Audit logs state
   const [auditLogs, setAuditLogs] = useState([]);
@@ -555,7 +574,7 @@ const UserPage = () => {
 
   /* ─── permission stats ─── */
   const permissionStats = {
-    total: permissionLevelNames.length,
+    total: permissionLevelCount,
     assigned: users.filter((u) => u.permissionLevel).length,
     unassigned: users.filter((u) => !u.permissionLevel && u.role !== 'admin').length,
   };
