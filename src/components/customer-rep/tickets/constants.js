@@ -50,16 +50,18 @@ export const COLUMNS = [
   { key: "category", name: "Category" },
   { key: "priority", name: "Priority" },
   { key: "status", name: "Status" },
+  { key: "assignedTo", name: "Assigned To" },
   { key: "responses", name: "Replies" },
   { key: "createdAt", name: "Created" },
 ];
 
 export const COLUMN_DEFAULTS = {
-  subject: 220,
-  customer: 150,
-  category: 110,
-  priority: 100,
-  status: 120,
-  responses: 80,
-  createdAt: 130,
+  subject: 200,
+  customer: 140,
+  category: 100,
+  priority: 90,
+  status: 115,
+  assignedTo: 130,
+  responses: 70,
+  createdAt: 120,
 };

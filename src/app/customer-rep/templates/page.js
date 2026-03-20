@@ -299,7 +299,7 @@ export default function CustomerRepTemplates() {
             <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
               <div className="space-y-2">
                 <Label className="text-sm font-medium">Template Name <span className="text-red-500">*</span></Label>
-                <Input value={formTitle} onChange={(e) => setFormTitle(e.target.value)} placeholder="e.g., Welcome Response" className="h-10" />
+                <Input value={formTitle} onChange={(e) => setFormTitle(e.target.value)} placeholder="e.g., Welcome Response" className="h-10"/>
               </div>
               <div className="space-y-2">
                 <Label className="text-sm font-medium">Category</Label>

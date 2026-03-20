@@ -1,10 +1,343 @@
 
 export const whatsNewData = [
     {
+        id: "v1.9.0",
+        date: "March 20, 2026",
+        label: "Major Release",
+        isNew: true,
+        updates: {
+            admin: [
+                {
+                    type: 'feature',
+                    title: 'Full UI Consistency Audit',
+                    description: 'Replaced all native HTML form elements with shadcn/ui components across the entire admin section for a polished, consistent look.',
+                    details: [
+                        'All native <input>, <select>, <textarea>, and <checkbox> elements replaced with shadcn equivalents',
+                        'AddNewTaskModal fully rewritten with shadcn Input, Textarea, Select, and Label components',
+                        'AccountSettings role selector upgraded to shadcn Select',
+                        'SelectCustom component rewritten from native select to shadcn Select with backwards compatibility',
+                        'AddUserModal checkboxes replaced with shadcn Checkbox components'
+                    ]
+                },
+                {
+                    type: 'feature',
+                    title: 'Role-Based Theming System',
+                    description: 'Introduced CSS variable-based role theming via var(--role-accent) across all shared UI components — every role now has its own accent color.',
+                    image: '/updates/admin/admin_role_theming.png',
+                    details: [
+                        'RoleThemeProvider injects --role-accent, --role-accent-ring, and --role-accent-light per role',
+                        'Shared components (Button, Badge, Tabs, Calendar, Navbar) now use var(--role-accent) instead of hardcoded hex colors',
+                        'Admin = rose, Operator = blue, QC = purple, User = indigo, Customer = emerald, Customer-Rep = teal',
+                        'Fallback colors ensure graceful degradation if theme provider is missing'
+                    ]
+                },
+                {
+                    type: 'feature',
+                    title: 'Admin Support Ticket Overview',
+                    description: 'New support page for admins to oversee all customer support tickets and complaints across the platform.',
+                    image: '/updates/admin/admin_support_overview.png',
+                    details: [
+                        'View all support tickets from customers with filtering and search',
+                        'Track ticket status, priority, and assignment across the team',
+                        'Integrated with the new Customer Representative workflow'
+                    ]
+                },
+                {
+                    type: 'improvement',
+                    title: 'Permission Level System',
+                    description: 'Full permission level management — create custom permission levels per role, assign them to users, and control which modules each user can access.',
+                    image: ['/updates/admin/module_permission_part1.png', '/updates/admin/admin_permission_tab_part_2.png', '/updates/admin/admin_permission_tab_part_3.png'],
+                    details: [
+                        'New Permission Levels tab in User Management with create, edit, and delete flows',
+                        'Module selection grid grouped by category (Main, Management, Equipment, etc.)',
+                        'Locked modules (Dashboard, Settings) auto-included and cannot be removed',
+                        'Assigning a permission level syncs modulePermissions across all affected users',
+                        'New middleware on backend validates module access per request'
+                    ]
+                },
+                {
+                    type: 'improvement',
+                    title: 'Sidebar Ui & Navigation Overhaul',
+                    description: 'Complete redesign of the sidebar and navigation structure for improved usability and visual consistency.',
+                    image: '/updates/admin/sidebar_overhaul.png',
+                    details: [
+                        'Streamlined navigation with clearer hierarchy and improved iconography',
+                        'Enhanced sidebar collapse/expand functionality with smooth animations',
+                        'Updated active state indicators for better user feedback'
+                    ]
+                }
+            ],
+            operator: [
+                {
+                    type: 'feature',
+                    title: 'Operator Upload Module',
+                    description: 'Dedicated upload page for operators to quickly upload inspection footage directly from the field.',
+                    image: '/updates/operator/operator_upload_module.png',
+                    details: [
+                        'Full upload page with drag-and-drop support and progress tracking',
+                        'Multiple file upload with format validation (MP4, MOV)',
+                        'Direct integration with Backblaze B2 cloud storage',
+                        'Upload history and status tracking'
+                    ]
+                },
+                {
+                    type: 'improvement',
+                    title: 'Codebase Restructure & TanStack Query',
+                    description: 'Operator pages restructured into modular components with TanStack Query for efficient data fetching and caching.',
+                    details: [
+                        'Dashboard, maintenance, equipment, and operations pages refactored into smaller components',
+                        'New operatorApi.js with centralized API functions',
+                        'TanStack Query hooks with 30-second auto-refresh for real-time data',
+                        'Reduced page sizes by 40-60% through component extraction'
+                    ]
+                },
+                {
+                    type: 'improvement',
+                    title: 'UI Consistency with shadcn Components',
+                    description: 'Replaced native HTML form elements on the operator project page and reports page with shadcn/ui components.',
+                    details: [
+                        'Project page: search input, status filter select, and view toggle buttons upgraded to shadcn',
+                        'Reports page: checkboxes for select-all and per-report selection now use shadcn Checkbox',
+                        'Consistent styling with role-based blue accent theming'
+                    ]
+                }
+            ],
+            'qc-technician': [
+                {
+                    type: 'feature',
+                    title: 'QC Review Dashboard for Admin',
+                    description: 'New admin-side QC review page to inspect and manage AI-detected defects per project with approve/reject workflow.',
+                    image: '/updates/qc/qc_review_dashboard.png',
+                    details: [
+                        'Dedicated /admin/qc-review/[project_id] page with defect listing',
+                        'Confidence scores, severity levels, and detection type display',
+                        'Approve/reject actions with instant status update'
+                    ]
+                },
+                {
+                    type: 'improvement',
+                    title: 'QC Technician Tour Guide Fixed',
+                    description: 'Fixed the QC technician tour guide to use the correct purple/violet theme colors instead of admin rose/pink colors.',
+                    details: [
+                        'Welcome step: icon gradient, badges, and background updated to purple/violet',
+                        'Dashboard step: chart bars and progress card themed to purple',
+                        'Assignments step: selected project card, status badges, and progress bar in purple',
+                        'Detections step: selected detection card in purple, native selects replaced with styled spans',
+                        'Approve-reject and complete steps: borders and bulk action bar updated to purple'
+                    ]
+                },
+                {
+                    type: 'improvement',
+                    title: 'Codebase Restructure & Component Extraction',
+                    description: 'QC technician pages restructured with extracted components, constants files, and TanStack Query hooks.',
+                    details: [
+                        'New qc/ component folder with certifications, dashboard, project, reports, and settings sub-modules',
+                        'Constants file with role-specific configuration and column definitions',
+                        'Shared hooks for data fetching with automatic cache invalidation'
+                    ]
+                }
+            ],
+            user: [
+                {
+                    type: 'improvement',
+                    title: 'Team Lead Dashboard & Pages Revamped',
+                    description: 'User (Team Lead) dashboard and all pages restructured into modular components with improved data fetching.',
+                    details: [
+                        'Dashboard split into StatsCards, TeamMemberList, and UserDashboardDetail components',
+                        'Team page refactored with TeamMemberCard components',
+                        'Device assignments page simplified with AssignmentSelector and PersonBadge components',
+                        'Inbox restructured with ChatBubble and DateSeparator components',
+                        'New userApi.js with centralized API functions and TanStack Query hooks'
+                    ]
+                },
+                {
+                    type: 'improvement',
+                    title: 'UI Consistency with shadcn Components',
+                    description: 'Replaced native form elements across all user pages with shadcn/ui components.',
+                    details: [
+                        'Project page: search input and status filter upgraded to shadcn Input and Select',
+                        'Settings page: language selector now uses shadcn Select',
+                        'TeamMemberList: hardcoded accent colors replaced with var(--role-accent)'
+                    ]
+                }
+            ],
+            customer: [
+                {
+                    type: 'feature',
+                    title: 'Customer Portal Revamp',
+                    description: 'Complete overhaul of the customer experience — new dashboard, project detail views, and settings page with improved UI.',
+                    image: '/updates/customer/customer_dashboard_new_ui.png',
+                    details: [
+                        'Dashboard redesigned with StatsCards and ProjectListCard components',
+                        'Project detail page enhanced with DefectCard, DefectSummary, SnapshotGrid, and ProjectInfoCard',
+                        'New customer settings page with profile, security, notifications, and avatar management',
+                        'Support page expanded with ContactInfoCard and SupportForm for ticket submission',
+                        'All pages restructured into modular components with TanStack Query caching'
+                    ]
+                },
+                {
+                    type: 'feature',
+                    title: 'Customer Tour Guide',
+                    description: 'Interactive tour guide for the customer role walking through projects, status tracking, reports, and settings.',
+                    details: [
+                        '6-step tour: Welcome, Projects, Status, Reports, Settings, Complete',
+                        'Teal/cyan themed illustrations matching the customer brand',
+                        'Accessible from the navbar profile popover'
+                    ]
+                },
+                {
+                    type: 'improvement',
+                    title: 'UI Consistency with shadcn Components',
+                    description: 'Customer settings company size selector upgraded from native select to shadcn Select component.',
+                    details: [
+                        'Synthetic event wrapper maintains backwards compatibility with existing onChange handlers'
+                    ]
+                },
+                {
+                    type: 'improvement',
+                    title: 'Codebase Restructure & Component Extraction',
+                    description: 'Customer pages restructured with extracted components, constants files, and TanStack Query hooks.',
+                    details: [
+                        'New customer/ component folder with dashboard, project, settings, support, and tour sub-modules',
+                        'Constants file with role-specific configuration and column definitions',
+                        'Shared hooks for data fetching with automatic cache invalidation'
+                     ]
+                },
+                {
+                    type: 'improvement',
+                    title: 'Avatar Upload Persistence',
+                    description: 'Customer avatar uploads now instantly reflect in the navbar and all pages without needing a page reload.',
+                    details: [
+                        'Added refetchUser() call after successful avatar upload in customer settings',
+                        'UserContext refreshes globally so navbar and profile sections update immediately'
+                    ]
+                },
+                {
+                    type: 'improvement',
+                    title: 'Support Ticket Form with Backend Integration',
+                    description: 'New support form in the customer portal that submits tickets directly to the backend and integrates with the admin support overview.',
+                    image: [
+                        '/updates/customer/customer_support_center_1.png', 
+                        '/updates/customer/customer_support_center_2.png'
+                    ],
+                    details: [
+                        'Support form with subject, description, and file attachment fields',
+                        'Form validation and user feedback on submission success/failure',
+                        'Tickets submitted via the form are saved in the backend and visible in the admin support overview page'
+                    ]
+                }
+            ],
+            'customer_rep': [
+                {
+                    type: 'feature',
+                    title: 'New Customer Representative Role',
+                    description: 'Brand new role introduced to handle customer support tickets and complaints — complete with dashboard, ticket management, SLA monitoring, and team coordination.',
+                    image: [
+                        '/updates/customer-rep/customer_rep_ui_dashboard.png',
+                        '/updates/customer-rep/customer_rep_ui_inbox.png',
+                        '/updates/customer-rep/customer_rep_ui_notifications.png',
+                        '/updates/customer-rep/customer_rep_ui_settings.png',
+                        '/updates/customer-rep/customer_rep_ui_templates.png',
+                        '/updates/customer-rep/customer_rep_ui_tickets.png'
+
+                    ],
+                    details: [
+                        'Dashboard with real-time support stats: open tickets, in-progress, resolved, and personal queue',
+                        'Ticket management table with search, filtering by priority/status, and detail view with response thread',
+                        'SLA Monitoring page tracking first response time, resolution time, compliance %, and overdue tickets',
+                        'Internal inbox with folders (Inbox, Sent, Drafts), compose modal, and message detail view',
+                        'Team overview showing member availability, workload, and online status',
+                        'Canned response templates with categories, tags, copy-to-clipboard, and global/private visibility',
+                        'Full backend: SupportTicket model, CannedResponse model, InternalMessage model, and all CRUD controllers'
+                    ]
+                },
+                {
+                    type: 'feature',
+                    title: 'Customer-Rep Tour Guide',
+                    description: 'Full 8-step interactive tour guide for the customer representative role with teal/cyan themed illustrations.',
+                    image: [
+                        '/updates/customer-rep/customer_rep_tour_1.png',
+                        '/updates/customer-rep/customer_rep_tour_2.png',
+                        '/updates/customer-rep/customer_rep_tour_3.png',                  
+                    ],
+                    details: [
+                        'Steps: Welcome, Dashboard, Inbox, Tickets, SLA Monitoring, Team, Templates, Complete',
+                        'Each step has custom illustrations showing the actual UI layout',
+                        'Permission-aware — steps auto-filter based on user module permissions'
+                    ]
+                }
+            ],
+            other: [
+                {
+                    type: 'improvement',
+                    title: 'Global UI Polishing & Consistency',
+                    description: 'Polished UI across all pages and roles with consistent spacing, typography, and color usage.',
+                    image: '/updates/general/global_ui_changes.jpg',
+                    details: [
+                        'Standardized spacing and layout across all pages for a more cohesive look',
+                        'Consistent use of role-based accent colors in buttons, badges, and highlights',
+                        'Typography improvements with better font sizes, weights, and line heights for readability',
+                        'Updated icons across the app to use a consistent style and size',
+                        'Improved responsive design for better usability on mobile devices'
+                    ]
+                } ,
+                {
+                    type: 'improvement',
+                    title: 'Codebase Cleanup & Refactoring',
+                    description: 'Removed unused code, standardized imports, and refactored components for better maintainability.',
+                    image: '/updates/general/codebase_cleanup.jpg',
+                    details: [
+                        'Removed unused imports and components across all modules',
+                        'Standardized import paths and component structures for better readability',
+                        'Refactored shared components to reduce duplication and improve consistency',
+                        'Improved code comments and documentation for key features and workflows'
+                    ]
+                },
+                {
+                    type: 'improvement',
+                    title: 'Avatar Upload Persistence Across All Roles',
+                    description: 'Avatar uploads now instantly reflect in the navbar and all pages for every role — no page reload needed.',
+                    image: '/updates/general/avatar_upload_persistence.jpg',
+                    details: [
+                        'Added refetchUser() call after successful avatar upload in all settings pages',
+                        'UserContext refreshes globally so navbar, sidebar, and profile sections all update immediately',
+                    ]
+                },
+                {
+                    type: 'improvement',
+                    title:'Search Functionality – Global Search Bar with Role-Based Results',
+                    description:'Implemented a global search bar in the navbar that provides role-based search results across projects, reports, users, and tickets.',
+                    image: '/updates/general/global_search_results.png',
+                    details: [
+                        'Global search input added to the navbar with a search icon',
+                        'Search results dropdown that categorizes results by type (Projects, Reports, Users, Tickets)',
+                        'Results are filtered based on the user\'s role and permissions — e.g., operators see projects, customer reps see tickets',
+                        'Clicking a search result navigates to the relevant page (project detail, report view, user profile, ticket detail)',
+                        'Implemented debounced search API calls to optimize performance and reduce server load'
+                    ]
+                },
+                {
+                    type:'improvement',
+                    title:'Global Nabvar -Role Based Popover Menu change header banner background picture based on the user role',
+                    description:'The navbar profile popover now features a header banner that changes its background image based on the user\'s role, providing a more personalized and visually engaging experience.',
+                    image:[
+                        '/updates/general/navbar_popover_admin.png',
+                        '/updates/general/navbar_popover_operator.png',
+                        '/updates/general/navbar_popover_qc.png',
+                        '/updates/general/navbar_popover_user.png',
+                        '/updates/general/navbar_popover_customer.png',
+                        '/updates/general/navbar_popover_customer_rep.png'
+                    ]
+                }
+            ]
+           
+        }
+    },
+    {
         id: "v1.8.0",
         date: "February 13 – March 7, 2026",
         label: "Major Release",
-        isNew: true,
+        isNew: false,
         updates: {
             admin: [
                 {

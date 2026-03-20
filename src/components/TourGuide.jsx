@@ -58,6 +58,10 @@ import {
     BarChart2,
     Copy,
     Shield,
+    MessageSquareWarning,
+    ListTodo,
+    AlertTriangle,
+    ArrowRight,
 } from 'lucide-react';
 
 // What's New Changelog Data
@@ -1620,6 +1624,121 @@ const tourSteps = {
                                 </div>
                                 <div className="flex items-center gap-2 text-[10px] text-gray-400">
                                     <MessageSquare className="w-3 h-3" /> {ticket.responses} responses
+                                </div>
+                            </div>
+                        ))}
+                    </div>
+                </div>
+            ),
+        },
+        {
+            id: 'complaints',
+            moduleKeys: ['rep-complaints'],
+            title: 'Customer Complaints 📋',
+            description: 'Track and manage customer complaints from all channels. Customers submit complaints through their portal, and you can review, investigate, and escalate them into support tickets. Each complaint tracks severity, category, and resolution status.',
+            tips: ['Review new complaints daily and update their status', 'Escalate critical complaints by creating tickets directly', 'Add notes to document your investigation progress'],
+            icon: MessageSquareWarning,
+            color: 'from-red-500 to-orange-500',
+            illustration: (
+                <div className="w-full h-64 bg-gray-50 rounded-xl border border-gray-200 p-4">
+                    <div className="flex items-center justify-between mb-3">
+                        <h3 className="text-sm font-bold text-gray-900">Complaints</h3>
+                        <div className="flex gap-1">
+                            <span className="text-[10px] px-2 py-1 border border-gray-200 rounded-lg bg-white text-gray-600">All Status</span>
+                            <span className="text-[10px] px-2 py-1 border border-gray-200 rounded-lg bg-white text-gray-600">All Severity</span>
+                        </div>
+                    </div>
+                    <div className="grid grid-cols-4 gap-2 mb-3">
+                        {[
+                            { label: 'New', value: '6', color: 'teal' },
+                            { label: 'Investigating', value: '4', color: 'amber' },
+                            { label: 'Action Required', value: '2', color: 'red' },
+                            { label: 'Resolved', value: '18', color: 'green' },
+                        ].map((stat) => (
+                            <div key={stat.label} className="bg-white rounded-lg p-2 border border-gray-100 text-center">
+                                <p className={`text-lg font-bold text-${stat.color}-600`}>{stat.value}</p>
+                                <p className="text-[9px] text-gray-500">{stat.label}</p>
+                            </div>
+                        ))}
+                    </div>
+                    <div className="space-y-2">
+                        {[
+                            { title: 'Billing overcharge on invoice #4521', customer: 'Acme Corp', severity: 'High', status: 'New', category: 'Billing' },
+                            { title: 'Delayed delivery of inspection report', customer: 'City of Miami', severity: 'Medium', status: 'Investigating', category: 'Delivery' },
+                            { title: 'Equipment malfunction during survey', customer: 'Pipeline Solutions', severity: 'Critical', status: 'Action Required', category: 'Technical' },
+                        ].map((complaint, idx) => (
+                            <div key={idx} className={`p-2.5 rounded-xl border ${idx === 0 ? 'border-teal-500 bg-gradient-to-r from-teal-50 to-cyan-50' : 'border-gray-200 bg-white'}`}>
+                                <div className="flex items-start justify-between">
+                                    <div className="flex-1 min-w-0">
+                                        <p className="text-xs font-semibold text-gray-900 truncate">{complaint.title}</p>
+                                        <p className="text-[10px] text-gray-500">{complaint.customer}</p>
+                                    </div>
+                                    <div className="flex gap-1 ml-2 flex-shrink-0">
+                                        <span className={`px-1.5 py-0.5 rounded text-[9px] font-semibold ${complaint.severity === 'Critical' ? 'bg-red-100 text-red-700' : complaint.severity === 'High' ? 'bg-orange-100 text-orange-700' : 'bg-yellow-100 text-yellow-700'}`}>{complaint.severity}</span>
+                                        <span className={`px-1.5 py-0.5 rounded text-[9px] font-semibold ${complaint.status === 'New' ? 'bg-teal-100 text-teal-700' : complaint.status === 'Investigating' ? 'bg-amber-100 text-amber-700' : 'bg-red-100 text-red-700'}`}>{complaint.status}</span>
+                                    </div>
+                                </div>
+                                <div className="flex items-center gap-2 mt-1 text-[10px] text-gray-400">
+                                    <span className="px-1.5 py-0.5 bg-gray-100 rounded text-gray-500">{complaint.category}</span>
+                                    <ArrowRight className="w-3 h-3" />
+                                    <span className="text-teal-600 font-medium">Create Ticket</span>
+                                </div>
+                            </div>
+                        ))}
+                    </div>
+                </div>
+            ),
+        },
+        {
+            id: 'tasks',
+            moduleKeys: ['rep-tasks'],
+            title: 'Your Assigned Tasks 📌',
+            description: 'View all tickets assigned to you as task cards. Each card shows the ticket status, priority, customer info, and SLA indicators. Click any card to see full details, reply to the customer, and update the ticket status.',
+            tips: ['Cards are color-coded by status for quick scanning', 'Red SLA badge means the ticket is overdue — prioritize it', 'Use the inline reply to respond without leaving the page'],
+            icon: ListTodo,
+            color: 'from-indigo-500 to-teal-500',
+            illustration: (
+                <div className="w-full h-64 bg-gray-50 rounded-xl border border-gray-200 p-4">
+                    <div className="flex items-center justify-between mb-3">
+                        <h3 className="text-sm font-bold text-gray-900">My Tasks</h3>
+                        <div className="flex gap-1">
+                            {['All', 'Open', 'In Progress', 'Resolved'].map((f, i) => (
+                                <span key={f} className={`text-[10px] px-2 py-1 rounded-lg font-medium ${i === 0 ? 'bg-teal-100 text-teal-700' : 'bg-white border border-gray-200 text-gray-500'}`}>{f}</span>
+                            ))}
+                        </div>
+                    </div>
+                    <div className="grid grid-cols-2 gap-2 mb-3">
+                        {[
+                            { label: 'Total', value: '8', color: 'gray' },
+                            { label: 'Open', value: '3', color: 'teal' },
+                            { label: 'In Progress', value: '4', color: 'amber' },
+                            { label: 'Overdue', value: '1', color: 'red' },
+                        ].map((stat) => (
+                            <div key={stat.label} className="bg-white rounded-lg p-2 border border-gray-100 flex items-center gap-2">
+                                <div className={`w-2 h-2 rounded-full bg-${stat.color}-500`}></div>
+                                <span className="text-[10px] text-gray-500">{stat.label}</span>
+                                <span className={`text-sm font-bold text-${stat.color}-600 ml-auto`}>{stat.value}</span>
+                            </div>
+                        ))}
+                    </div>
+                    <div className="space-y-2">
+                        {[
+                            { subject: 'Report PDF not loading', customer: 'Acme Corp', priority: 'High', status: 'Open', time: '2h ago', sla: true },
+                            { subject: 'Request access to project data', customer: 'City of Miami', priority: 'Medium', status: 'In Progress', time: '5h ago', sla: false },
+                        ].map((task, idx) => (
+                            <div key={idx} className="flex items-stretch bg-white rounded-xl border border-gray-100 shadow-sm overflow-hidden">
+                                <div className={`w-1.5 ${task.status === 'Open' ? 'bg-teal-500' : 'bg-amber-500'}`}></div>
+                                <div className="flex-1 p-2.5">
+                                    <div className="flex items-start justify-between">
+                                        <div className="flex-1 min-w-0">
+                                            <p className="text-xs font-semibold text-gray-900 truncate">{task.subject}</p>
+                                            <p className="text-[10px] text-gray-500">{task.customer} • {task.time}</p>
+                                        </div>
+                                        <div className="flex gap-1 ml-2">
+                                            <span className={`px-1.5 py-0.5 rounded text-[9px] font-semibold ${task.priority === 'High' ? 'bg-red-100 text-red-700' : 'bg-yellow-100 text-yellow-700'}`}>{task.priority}</span>
+                                            {task.sla && <span className="px-1.5 py-0.5 rounded text-[9px] font-semibold bg-red-100 text-red-600">SLA</span>}
+                                        </div>
+                                    </div>
                                 </div>
                             </div>
                         ))}

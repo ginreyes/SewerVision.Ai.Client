@@ -2,7 +2,7 @@
 
 import React, { useState, useMemo } from "react";
 import { useSearchParams } from "next/navigation";
-import { Ticket, RefreshCw } from "lucide-react";
+import { Ticket, RefreshCw, Plus } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import SewerTable from "@/components/ui/SewerTable";
 import { useSupportAllTickets } from "@/hooks/useQueryHooks";
@@ -10,6 +10,7 @@ import { getUserName } from "@/components/customer-rep/constants";
 
 // Extracted components
 import TicketDetail from "@/components/customer-rep/tickets/TicketDetail";
+import CreateTicketModal from "@/components/customer-rep/tickets/CreateTicketModal";
 import renderTicketCell from "@/components/customer-rep/tickets/renderTicketCell";
 import { FILTER_OPTIONS, COLUMNS, COLUMN_DEFAULTS } from "@/components/customer-rep/tickets/constants";
 
@@ -17,6 +18,7 @@ export default function CustomerRepTickets() {
   const searchParams = useSearchParams();
   const [search, setSearch] = useState("");
   const [selectedTicketId, setSelectedTicketId] = useState(searchParams.get("id") || null);
+  const [showCreate, setShowCreate] = useState(false);
 
   const { data: ticketsData, isLoading, refetch } = useSupportAllTickets({}, { refetchInterval: 30000 });
 
@@ -34,6 +36,7 @@ export default function CustomerRepTickets() {
       priority: t.priority || "medium",
       status: t.status || "open",
       responses: t.responses?.length || 0,
+      assignedTo: t.assignedTo ? getUserName(t.assignedTo) : "Unassigned",
       createdAt: t.created_at || t.createdAt,
     }));
   }, [tickets]);
@@ -61,6 +64,14 @@ export default function CustomerRepTickets() {
               <p className="text-sm text-gray-500">Manage and respond to customer tickets</p>
             </div>
           </div>
+          <Button
+            size="sm"
+            className="bg-teal-600 hover:bg-teal-700"
+            onClick={() => setShowCreate(true)}
+          >
+            <Plus className="w-4 h-4 mr-1.5" />
+            Create Ticket
+          </Button>
         </div>
 
         <SewerTable
@@ -85,6 +96,13 @@ export default function CustomerRepTickets() {
               Refresh
             </Button>
           }
+        />
+
+        {/* Create Ticket Modal — select complaint → fill details → assign to rep */}
+        <CreateTicketModal
+          open={showCreate}
+          onOpenChange={setShowCreate}
+          onCreated={() => refetch()}
         />
       </div>
     </div>

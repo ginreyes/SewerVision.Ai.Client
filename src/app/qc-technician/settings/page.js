@@ -143,9 +143,9 @@ function QCSettingsContent() {
     if (tab) setActiveTab(tab);
   }, [searchParams]);
 
-  // Load User Data
+  // Load User Data — skip while user is editing or saving to avoid overwriting their changes
   useEffect(() => {
-    if (userData) {
+    if (userData && !isEditingProfile && !saving) {
       setProfile({
         firstName: userData.first_name || '',
         lastName: userData.last_name || '',
@@ -156,7 +156,7 @@ function QCSettingsContent() {
         avatar: userData.avatar || null
       });
     }
-  }, [userData]);
+  }, [userData, isEditingProfile, saving]);
 
   // Load QC preferences from backend (aligned with QC tech workflow)
   useEffect(() => {

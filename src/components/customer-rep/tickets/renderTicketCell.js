@@ -2,6 +2,7 @@
 
 import React from "react";
 import { Badge } from "@/components/ui/badge";
+import { User } from "lucide-react";
 import { STATUS_COLORS, PRIORITY_COLORS, STATUS_ICONS } from "./constants";
 
 export default function renderTicketCell(item, col) {
@@ -30,11 +31,22 @@ export default function renderTicketCell(item, col) {
       </Badge>
     );
   }
+  if (col.key === "assignedTo") {
+    const isUnassigned = !item.assignedTo || item.assignedTo === "Unassigned";
+    return (
+      <div className="flex items-center gap-1.5">
+        <User className={`w-3.5 h-3.5 ${isUnassigned ? "text-gray-300" : "text-teal-500"}`} />
+        <span className={`text-sm ${isUnassigned ? "text-gray-400 italic" : "text-gray-700"}`}>
+          {isUnassigned ? "Unassigned" : item.assignedTo}
+        </span>
+      </div>
+    );
+  }
   if (col.key === "responses") {
     return <span className="text-sm text-gray-600">{item.responses}</span>;
   }
   if (col.key === "createdAt") {
-    if (!item.createdAt) return <span className="text-sm text-gray-400">—</span>;
+    if (!item.createdAt) return <span className="text-sm text-gray-400">&mdash;</span>;
     const d = new Date(item.createdAt);
     return (
       <div>

@@ -162,8 +162,9 @@ function SettingsPageContent() {
   }, [searchParams]);
 
   // Keep profile in sync with UserContext (single source of truth for smooth updates)
+  // Skip syncing while user is actively editing or saving to avoid overwriting their changes
   useEffect(() => {
-    if (userData) {
+    if (userData && !isEditingProfile && !saving) {
       setProfile({
         firstName: userData.first_name || '',
         lastName: userData.last_name || '',
@@ -174,7 +175,7 @@ function SettingsPageContent() {
         avatar: userData.avatar || null
       });
     }
-  }, [userData]);
+  }, [userData, isEditingProfile, saving]);
 
   // Fetch Admin Settings
   useEffect(() => {

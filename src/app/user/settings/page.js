@@ -92,8 +92,9 @@ function UserSettingsContent() {
     if (tab) setActiveTab(tab);
   }, [searchParams]);
 
+  // Sync profile from UserContext — skip while user is editing or saving to avoid overwriting their changes
   useEffect(() => {
-    if (userData) {
+    if (userData && !isEditingProfile && !saving) {
       setProfile({
         firstName: userData.first_name || '',
         lastName: userData.last_name || '',
@@ -104,7 +105,7 @@ function UserSettingsContent() {
         avatar: userData?.avatar || null
       });
     }
-  }, [userData]);
+  }, [userData, isEditingProfile, saving]);
 
   const handleTabChange = (value) => {
     setActiveTab(value);

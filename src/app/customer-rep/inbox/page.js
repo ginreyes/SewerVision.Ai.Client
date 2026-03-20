@@ -150,9 +150,9 @@ export default function CustomerRepInbox() {
             <span className="font-semibold text-white">
               {replyTo ? "Reply" : "New Message"}
             </span>
-            <button onClick={handleCloseCompose} className="text-white/80 hover:text-white transition-colors">
+            <Button variant="ghost" size="sm" onClick={handleCloseCompose} className="text-white/80 hover:text-white hover:bg-white/10 h-7 w-7 p-0">
               <X className="w-4 h-4" />
-            </button>
+            </Button>
           </div>
 
           {/* Compose Fields */}

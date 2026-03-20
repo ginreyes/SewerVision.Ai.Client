@@ -91,8 +91,9 @@ function CustomerSettingsContent() {
     if (section) setActiveSection(section);
   }, [searchParams]);
 
+  // Sync profile from UserContext — skip while user is editing or saving to avoid overwriting their changes
   useEffect(() => {
-    if (userData) {
+    if (userData && !isEditingProfile && !saving) {
       setProfile({
         firstName: userData.first_name || '',
         lastName: userData.last_name || '',
@@ -110,7 +111,7 @@ function CustomerSettingsContent() {
         companyLogo: userData.company_logo || null
       });
     }
-  }, [userData]);
+  }, [userData, isEditingProfile, saving]);
 
   const handleSectionChange = (value) => {
     setActiveSection(value);

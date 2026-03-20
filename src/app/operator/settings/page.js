@@ -168,9 +168,9 @@ const OperatorSettingsContent = () => {
     if (tab) setActiveTab(tab);
   }, [searchParams]);
 
-  // Load User Data
+  // Load User Data — skip while user is editing or saving to avoid overwriting their changes
   useEffect(() => {
-    if (userData) {
+    if (userData && !isEditingProfile && !saving) {
       setProfile({
         firstName: userData.first_name || '',
         lastName: userData.last_name || '',
@@ -181,7 +181,7 @@ const OperatorSettingsContent = () => {
         avatar: userData.avatar || '/avatar_default.png'
       });
     }
-  }, [userData, updateUserData]);
+  }, [userData, isEditingProfile, saving]);
 
 
   // Handle Tab Change

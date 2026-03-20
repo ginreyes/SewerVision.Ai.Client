@@ -16,6 +16,7 @@ import { maintenanceApi } from '@/data/maintenanceApi';
 import supportApi from '@/data/supportApi';
 import messageApi from '@/data/messageApi';
 import cannedResponseApi from '@/data/cannedResponseApi';
+import complaintApi from '@/data/complaintApi';
 
 /**
  * Query Keys - Centralized key management for cache invalidation
@@ -124,6 +125,13 @@ export const queryKeys = {
     supportAssigned: (repId) => ['support', 'assigned', repId],
     supportTeam: ['support', 'team'],
     supportCustomerStats: (userId) => ['support', 'customer-stats', userId],
+
+    // Complaints
+    complaintsAll: (params) => ['complaints', 'all', params ?? {}],
+    complaintsStats: ['complaints', 'stats'],
+    complaint: (id) => ['complaints', 'detail', id],
+    complaintsAssigned: (repId) => ['complaints', 'assigned', repId],
+    customerComplaints: (customerId) => ['complaints', 'customer', customerId],
 
     // Messages (Inbox)
     messagesInbox: (userId, params) => ['messages', 'inbox', userId, params ?? {}],
@@ -1384,6 +1392,121 @@ export function useDeleteCannedResponse() {
     return useMutation({
         mutationFn: (id) => cannedResponseApi.delete(id),
         onSuccess: () => { queryClient.invalidateQueries({ queryKey: ['canned-responses'] }); },
+    });
+}
+
+/**
+ * ============ COMPLAINT HOOKS ============
+ */
+
+export function useComplaintsAll(params = {}, options = {}) {
+    return useQuery({
+        queryKey: queryKeys.complaintsAll(params),
+        queryFn: () => complaintApi.getAllComplaints(params),
+        staleTime: 1000 * 30,
+        ...options,
+    });
+}
+
+export function useComplaintStats(options = {}) {
+    return useQuery({
+        queryKey: queryKeys.complaintsStats,
+        queryFn: () => complaintApi.getStats(),
+        staleTime: 1000 * 30,
+        ...options,
+    });
+}
+
+export function useComplaint(complaintId, options = {}) {
+    return useQuery({
+        queryKey: queryKeys.complaint(complaintId),
+        queryFn: () => complaintApi.getById(complaintId),
+        enabled: !!complaintId,
+        staleTime: 1000 * 15,
+        ...options,
+    });
+}
+
+export function useComplaintsAssigned(repId, options = {}) {
+    return useQuery({
+        queryKey: queryKeys.complaintsAssigned(repId),
+        queryFn: () => complaintApi.getAssigned(repId),
+        enabled: !!repId,
+        staleTime: 1000 * 30,
+        ...options,
+    });
+}
+
+export function useCreateComplaint() {
+    const queryClient = useQueryClient();
+    return useMutation({
+        mutationFn: (data) => complaintApi.create(data),
+        onSuccess: () => {
+            queryClient.invalidateQueries({ queryKey: ['complaints'] });
+        },
+    });
+}
+
+export function useUpdateComplaint() {
+    const queryClient = useQueryClient();
+    return useMutation({
+        mutationFn: ({ complaintId, ...data }) => complaintApi.update(complaintId, data),
+        onSuccess: () => {
+            queryClient.invalidateQueries({ queryKey: ['complaints'] });
+        },
+    });
+}
+
+export function useDeleteComplaint() {
+    const queryClient = useQueryClient();
+    return useMutation({
+        mutationFn: (complaintId) => complaintApi.delete(complaintId),
+        onSuccess: () => {
+            queryClient.invalidateQueries({ queryKey: ['complaints'] });
+        },
+    });
+}
+
+export function useAddComplaintNote() {
+    const queryClient = useQueryClient();
+    return useMutation({
+        mutationFn: ({ complaintId, ...data }) => complaintApi.addNote(complaintId, data),
+        onSuccess: (_data, { complaintId }) => {
+            queryClient.invalidateQueries({ queryKey: queryKeys.complaint(complaintId) });
+        },
+    });
+}
+
+export function useCreateTicketFromComplaint() {
+    const queryClient = useQueryClient();
+    return useMutation({
+        mutationFn: ({ complaintId, ...data }) => complaintApi.createTicket(complaintId, data),
+        onSuccess: () => {
+            queryClient.invalidateQueries({ queryKey: ['complaints'] });
+            queryClient.invalidateQueries({ queryKey: ['support'] });
+        },
+    });
+}
+
+// ── Customer-side complaint hooks ──
+
+export function useCustomerComplaints(customerId, options = {}) {
+    return useQuery({
+        queryKey: queryKeys.customerComplaints(customerId),
+        queryFn: () => complaintApi.getCustomerComplaints(customerId),
+        enabled: !!customerId,
+        staleTime: 1000 * 30,
+        ...options,
+    });
+}
+
+export function useCreateCustomerComplaint() {
+    const queryClient = useQueryClient();
+    return useMutation({
+        mutationFn: (data) => complaintApi.createCustomerComplaint(data),
+        onSuccess: () => {
+            queryClient.invalidateQueries({ queryKey: ['complaints'] });
+        },
     });
 }
 

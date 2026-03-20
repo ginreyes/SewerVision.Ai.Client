@@ -25,8 +25,9 @@ export default function CustomerRepSettings() {
     emailNotifications: true, ticketAssigned: true, ticketUpdated: true, newTicket: true,
   });
 
+  // Sync profile from UserContext — skip while saving to avoid overwriting changes
   useEffect(() => {
-    if (userData) {
+    if (userData && !saving) {
       setProfile({
         first_name: userData.first_name || "",
         last_name: userData.last_name || "",
@@ -34,15 +35,29 @@ export default function CustomerRepSettings() {
         phone_number: userData.phone_number || "",
       });
     }
-  }, [userData]);
+  }, [userData, saving]);
 
   const handleSaveProfile = async () => {
     setSaving(true);
     try {
-      const res = await api(`/api/users/change-info/${userId}`, "PUT", profile);
-      if (res?.ok) { showAlert("Profile updated successfully", "success"); refreshUserData?.(); }
-      else showAlert(res?.message || "Failed to update profile", "error");
-    } catch { showAlert("Failed to update profile", "error"); }
+      const username = userData?.username || getCookie("username");
+      if (!username) throw new Error("User not identified");
+
+      const res = await api(`/api/users/profile/${username}`, "PATCH", {
+        first_name: profile.first_name,
+        last_name: profile.last_name,
+        phone_number: profile.phone_number,
+      });
+      if (res?.ok) {
+        if (res.data?.data) {
+          // Update context but don't refetch immediately to avoid race
+          refreshUserData?.();
+        }
+        showAlert("Profile updated successfully", "success");
+      } else {
+        showAlert(res?.message || "Failed to update profile", "error");
+      }
+    } catch (error) { showAlert("Failed to update profile", "error"); }
     finally { setSaving(false); }
   };
 

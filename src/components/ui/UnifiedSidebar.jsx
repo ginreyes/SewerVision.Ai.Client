@@ -32,6 +32,9 @@ import {
   Award,
   Inbox,
   Settings2,
+  Ticket,
+  Activity,
+  MessageSquareWarning,
 } from 'lucide-react';
 import ModuleLoading from './SewerVisionLoadingAnimation';
 import { useLoadingModuleSetting } from '@/hooks/useLoadingModuleSettings';
@@ -63,6 +66,9 @@ const ICON_MAP = {
   Award,
   Inbox,
   ShieldCheck,
+  Ticket,
+  Activity,
+  MessageSquareWarning,
 };
 
 // ── Hardcoded admin sidebar (never filtered by permissions) ──
@@ -260,6 +266,8 @@ const FALLBACK_MENUS = {
     { label: 'Main', items: [
       { label: 'Dashboard', icon: 'LayoutDashboard', path: '/customer/dashboard', key: 'dashboard', locked: true },
       { label: 'Projects', icon: 'FolderOpen', path: '/customer/project', key: 'projects' },
+      { label: 'Support', icon: 'Headphones', path: '/customer/support', key: 'customer-support' },
+      { label: 'Complaints', icon: 'MessageSquareWarning', path: '/customer/complaints', key: 'customer-complaints' },
       { label: 'Notifications', icon: 'Bell', path: '/customer/notifications', key: 'notifications', locked: true },
       { label: 'Settings', icon: 'Settings', path: '/customer/settings', key: 'settings', locked: true },
     ]},
@@ -270,14 +278,16 @@ const FALLBACK_MENUS = {
       { label: 'Inbox', icon: 'Inbox', path: '/customer-rep/inbox', key: 'inbox' },
     ]},
     { label: 'Support', items: [
-      { label: 'Tickets', icon: 'ClipboardList', path: '/customer-rep/tickets', key: 'tickets' },
-      { label: 'Tasks', icon: 'ClipboardList', path: '/customer-rep/tasks', key: 'tasks' },
-      { label: 'Monitoring', icon: 'BarChart2', path: '/customer-rep/monitoring', key: 'monitoring' },
+      { label: 'Tickets', icon: 'Ticket', path: '/customer-rep/tickets', key: 'tickets' },
+      { label: 'Complaints', icon: 'MessageSquareWarning', path: '/customer-rep/complaints', key: 'rep-complaints' },
+      { label: 'Tasks', icon: 'ClipboardCheck', path: '/customer-rep/tasks', key: 'tasks' },
+      { label: 'Monitoring', icon: 'Activity', path: '/customer-rep/monitoring', key: 'monitoring' },
     ]},
     { label: 'Team', items: [
       { label: 'Team', icon: 'Users', path: '/customer-rep/team', key: 'team' },
     ]},
     { label: 'Account', items: [
+      { label: 'Notifications', icon: 'Bell', path: '/customer-rep/notifications', key: 'notifications', locked: true },
       { label: 'Settings', icon: 'Settings', path: '/customer-rep/settings', key: 'settings', locked: true },
     ]},
   ],

@@ -19,6 +19,7 @@ export const CATEGORY_COLORS = {
   account: "text-purple-600",
   billing: "text-amber-600",
   feature: "text-emerald-600",
+  complaint: "text-red-600",
   other: "text-gray-600",
 };
 

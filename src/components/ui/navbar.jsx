@@ -13,6 +13,7 @@ import { FiSearch, FiClock, FiFile, FiUsers, FiSettings } from 'react-icons/fi';
 import Link from 'next/link';
 import Image from 'next/image';
 import { api } from '@/lib/helper';
+import { getRoleTheme } from '@/lib/roleThemes';
 import { NotificationBell } from '../NotificationPanel';
 import { useUser } from '@/components/providers/UserContext';
 
@@ -26,6 +27,85 @@ const searchCategories = {
   upload: { icon: FiFile, label: 'Uploads', color: 'text-gray-600' },
   videofile: { icon: FiFile, label: 'Videos', color: 'text-red-600' },
   calendar: { icon: FiClock, label: 'Events', color: 'text-indigo-600' },
+};
+
+// Role-specific search placeholders and quick suggestions
+const roleSearchConfig = {
+  admin: {
+    placeholder: 'Search users, projects, devices...',
+    suggestions: [
+      { label: 'Users', icon: FiUsers, path: '/admin/users', color: 'text-green-600' },
+      { label: 'Projects', icon: FiFile, path: '/admin/project', color: 'text-blue-600' },
+      { label: 'Devices', icon: FiSettings, path: '/admin/devices', color: 'text-orange-600' },
+      { label: 'Uploads', icon: FiFile, path: '/admin/uploads', color: 'text-gray-600' },
+      { label: 'Reports', icon: FiFile, path: '/admin/report', color: 'text-purple-600' },
+      { label: 'Support', icon: FiUsers, path: '/admin/support', color: 'text-teal-600' },
+    ],
+  },
+  operator: {
+    placeholder: 'Search projects, equipment, operations...',
+    suggestions: [
+      { label: 'Projects', icon: FiFile, path: '/operator/project', color: 'text-blue-600' },
+      { label: 'Operations', icon: FiSearch, path: '/operator/operations', color: 'text-indigo-600' },
+      { label: 'Equipment', icon: FiSettings, path: '/operator/equipement', color: 'text-orange-600' },
+      { label: 'Uploads', icon: FiFile, path: '/operator/uploads', color: 'text-gray-600' },
+      { label: 'Maintenance', icon: FiSettings, path: '/operator/maintenance', color: 'text-yellow-600' },
+      { label: 'Reports', icon: FiFile, path: '/operator/reports', color: 'text-purple-600' },
+    ],
+  },
+  'qc-technician': {
+    placeholder: 'Search projects, quality control, uploads...',
+    suggestions: [
+      { label: 'Projects', icon: FiFile, path: '/qc-technician/project', color: 'text-blue-600' },
+      { label: 'Quality Control', icon: FiSearch, path: '/qc-technician/quality-control', color: 'text-purple-600' },
+      { label: 'Uploads', icon: FiFile, path: '/qc-technician/uploads', color: 'text-gray-600' },
+      { label: 'Devices', icon: FiSettings, path: '/qc-technician/devices', color: 'text-orange-600' },
+      { label: 'Reports', icon: FiFile, path: '/qc-technician/reports', color: 'text-purple-600' },
+      { label: 'Certifications', icon: FiFile, path: '/qc-technician/certifications', color: 'text-green-600' },
+    ],
+  },
+  user: {
+    placeholder: 'Search projects, team, tasks...',
+    suggestions: [
+      { label: 'Projects', icon: FiFile, path: '/user/project', color: 'text-blue-600' },
+      { label: 'Team', icon: FiUsers, path: '/user/team', color: 'text-green-600' },
+      { label: 'Tasks', icon: FiFile, path: '/user/tasks', color: 'text-indigo-600' },
+      { label: 'Reports', icon: FiFile, path: '/user/reports', color: 'text-purple-600' },
+      { label: 'Inbox', icon: FiFile, path: '/user/inbox', color: 'text-gray-600' },
+      { label: 'Device Assignments', icon: FiSettings, path: '/user/device-assignments', color: 'text-orange-600' },
+    ],
+  },
+  customer: {
+    placeholder: 'Search projects, support, complaints...',
+    suggestions: [
+      { label: 'Projects', icon: FiFile, path: '/customer/projects', color: 'text-blue-600' },
+      { label: 'Support', icon: FiUsers, path: '/customer/support', color: 'text-teal-600' },
+      { label: 'Complaints', icon: FiFile, path: '/customer/complaints', color: 'text-red-600' },
+      { label: 'Reports', icon: FiFile, path: '/customer/reports', color: 'text-purple-600' },
+      { label: 'Notifications', icon: FiClock, path: '/customer/notifications', color: 'text-yellow-600' },
+    ],
+  },
+  'customer-rep': {
+    placeholder: 'Search tickets, complaints, tasks...',
+    suggestions: [
+      { label: 'Tickets', icon: FiFile, path: '/customer-rep/tickets', color: 'text-blue-600' },
+      { label: 'Complaints', icon: FiFile, path: '/customer-rep/complaints', color: 'text-red-600' },
+      { label: 'Tasks', icon: FiFile, path: '/customer-rep/tasks', color: 'text-indigo-600' },
+      { label: 'Monitoring', icon: FiSearch, path: '/customer-rep/monitoring', color: 'text-teal-600' },
+      { label: 'Templates', icon: FiFile, path: '/customer-rep/templates', color: 'text-gray-600' },
+      { label: 'Team', icon: FiUsers, path: '/customer-rep/team', color: 'text-green-600' },
+    ],
+  },
+};
+
+// Role-specific background images for user popover header
+const roleBackgroundImages = {
+  admin: '/background_pictures/admin_background.jpg',
+  operator: '/background_pictures/operator_background.jpg',
+  'qc-technician': '/background_pictures/qc-techinician_background.jpg',
+  user: '/background_pictures/user-team_background.jpg',
+  customer: '/background_pictures/customer_background.jpg',
+  'customer-rep': '/background_pictures/customer-bg-header.png',
 };
 
 const Navbar = (props) => {
@@ -48,7 +128,12 @@ const Navbar = (props) => {
 
   const userDisplayName = userData ? `${userData.first_name || ''} ${userData.last_name || ''}`.trim() || userData.username : 'User';
   const userInitials = userDisplayName ? userDisplayName.charAt(0).toUpperCase() : 'U';
-  const userRole = userData?.role || role || 'Admin';
+  const userRole = userData?.role || role || 'admin';
+
+  // Role-aware search config
+  const currentSearchConfig = roleSearchConfig[userRole] || roleSearchConfig.admin;
+  const roleTheme = getRoleTheme(userRole);
+  const popoverBgImage = roleBackgroundImages[userRole];
 
 
   useEffect(() => {
@@ -214,7 +299,7 @@ const Navbar = (props) => {
               <Input
                 ref={searchInputRef}
                 type="text"
-                placeholder="Search anything..."
+                placeholder={currentSearchConfig.placeholder}
                 className="w-full bg-transparent border-none focus-visible:ring-0 text-gray-700 pr-4"
                 value={searchQuery}
                 onChange={handleSearchChange}
@@ -271,6 +356,35 @@ const Navbar = (props) => {
                   </div>
                 )}
 
+                {/* Quick Suggestions (role-specific) */}
+                {searchQuery.length <= 1 && (
+                  <div className="p-2">
+                    <h3 className="text-sm font-semibold text-gray-700 mb-2 flex items-center">
+                      <FiSearch className="w-4 h-4 mr-1.5" style={{ color: 'var(--role-accent, #6b7280)' }} />
+                      Quick Access
+                    </h3>
+                    <div className="grid grid-cols-2 gap-1">
+                      {currentSearchConfig.suggestions.map((item) => {
+                        const SuggIcon = item.icon;
+                        return (
+                          <div
+                            key={item.label}
+                            className="flex items-center space-x-2 p-2 hover:bg-gray-50 rounded-lg cursor-pointer transition-colors"
+                            onClick={() => {
+                              router.push(item.path);
+                              setSearchOpen(false);
+                              setSearchQuery('');
+                            }}
+                          >
+                            <SuggIcon className={`w-4 h-4 ${item.color}`} />
+                            <span className="text-sm text-gray-700 truncate">{item.label}</span>
+                          </div>
+                        );
+                      })}
+                    </div>
+                  </div>
+                )}
+
                 {/* Recent Searches */}
                 {recentSearches.length > 0 && searchQuery.length <= 1 && (
                   <div className="p-2 border-t border-gray-100">
@@ -321,7 +435,7 @@ const Navbar = (props) => {
                     src={userAvatarUrl} 
                     fallback={userInitials}
                     size="md"
-                    className="ring-2 ring-transparent group-hover:ring-rose-200 transition-all duration-200"
+                    className="ring-2 ring-transparent transition-all duration-200 group-hover:ring-[var(--role-accent)]"
                   />
                   <span className="absolute bottom-0 right-0 w-3 h-3 bg-green-500 border-2 border-white rounded-full"></span>
                 </div>
@@ -329,17 +443,28 @@ const Navbar = (props) => {
             </PopoverTrigger>
             <PopoverContent className="w-64 p-0 shadow-xl border-0 rounded-xl overflow-hidden" align="end">
               {/* User Info Header */}
-              <div className="bg-gradient-to-r from-rose-500 via-pink-500 to-purple-500 p-4 text-white">
-                <div className="flex items-center gap-3">
-                  <UserAvatar 
-                    src={userAvatarUrl} 
+              <div
+                className={`p-4 text-white relative overflow-hidden ${!popoverBgImage ? roleTheme.gradient : ''}`}
+                style={popoverBgImage ? {
+                  backgroundImage: `url('${popoverBgImage}')`,
+                  backgroundSize: 'cover',
+                  backgroundPosition: 'center',
+                } : undefined}
+              >
+                {/* Dark overlay for better text readability on images */}
+                {popoverBgImage && (
+                  <div className="absolute inset-0 bg-black/30 opacity-80"  />
+                )}
+                <div className="flex items-center gap-3 relative z-100 opacity-100">
+                  <UserAvatar
+                    src={userAvatarUrl}
                     fallback={userInitials}
                     size="lg"
                     className="ring-2 ring-white/30"
                   />
                   <div className="flex-1 min-w-0">
                     <p className="font-semibold truncate">{userDisplayName}</p>
-                    <p className="text-white/80 text-sm truncate">{userRole}</p>
+                    <p className="text-white/80 text-sm truncate capitalize">{userRole?.replace('-', ' ')}</p>
                   </div>
                 </div>
               </div>

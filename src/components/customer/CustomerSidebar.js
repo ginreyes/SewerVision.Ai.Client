@@ -3,7 +3,7 @@
 import React, { useState } from 'react';
 import Image from 'next/image';
 import Link from 'next/link';
-import { Bell, FileText, FolderOpen, Headset, LayoutDashboard, Loader2, Settings } from 'lucide-react';
+import { Bell, FileText, FolderOpen, Headset, LayoutDashboard, Loader2, MessageSquareWarning, Settings } from 'lucide-react';
 import ModuleLoading from '@/components/ui/SewerVisionLoadingAnimation';
 import { useLoadingModuleSetting } from '@/hooks/useLoadingModuleSettings';
 
@@ -30,6 +30,7 @@ const CustomerSidebar = ({ isOpen }) => {
     { label: "Reports", icon: FileText, path: "/customer/reports", tourId: "customer-sidebar-reports" },
     { label: "Notifications", icon: Bell, path: "/customer/notifications", tourId: "customer-sidebar-notifications" },
     { label: "Support", icon: Headset, path: "/customer/support", tourId: "customer-sidebar-support" },
+    { label: "Complaints", icon: MessageSquareWarning, path: "/customer/complaints", tourId: "customer-sidebar-complaints" },
     { label: "Settings", icon: Settings, path: "/customer/settings", tourId: "customer-sidebar-settings" },
   ];
 
