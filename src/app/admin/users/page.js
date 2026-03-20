@@ -87,21 +87,6 @@ const UserPage = () => {
     fetchUsers();
   }, [page, search, filters]);
 
-  // Fetch permission levels count for accurate stats
-  useEffect(() => {
-    const fetchPermissionLevelCount = async () => {
-      try {
-        const response = await permissionLevelApi.getAll();
-        const raw = response?.data?.data ?? response?.data ?? response;
-        const list = Array.isArray(raw) ? raw : [];
-        setPermissionLevelCount(list.length);
-      } catch (e) {
-        console.error("Failed to fetch permission levels count:", e);
-      }
-    };
-    fetchPermissionLevelCount();
-  }, [activeTab]);
-
   const fetchUsers = async () => {
     try {
       setLoading(true);
@@ -176,6 +161,21 @@ const UserPage = () => {
 
   // Permission levels count (fetched independently for accurate stats)
   const [permissionLevelCount, setPermissionLevelCount] = useState(0);
+
+  // Fetch permission levels count for accurate stats
+  useEffect(() => {
+    const fetchPermissionLevelCount = async () => {
+      try {
+        const response = await permissionLevelApi.getAll();
+        const raw = response?.data?.data ?? response?.data ?? response;
+        const list = Array.isArray(raw) ? raw : [];
+        setPermissionLevelCount(list.length);
+      } catch (e) {
+        console.error("Failed to fetch permission levels count:", e);
+      }
+    };
+    fetchPermissionLevelCount();
+  }, [activeTab]);
 
   // Audit logs state
   const [auditLogs, setAuditLogs] = useState([]);
