@@ -1,7 +1,8 @@
 'use client';
 
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useMemo } from 'react';
 import { useRouter } from 'next/navigation';
+import { useUser } from '@/components/providers/UserContext';
 import {
     Dialog,
     DialogContent,
@@ -49,6 +50,18 @@ import {
     Monitor,
     Inbox,
     Calendar,
+    Ticket,
+    Activity,
+    Headphones,
+    MessageSquare,
+    Clock,
+    BarChart2,
+    Copy,
+    Shield,
+    MessageSquareWarning,
+    ListTodo,
+    AlertTriangle,
+    ArrowRight,
 } from 'lucide-react';
 
 // What's New Changelog Data
@@ -142,6 +155,7 @@ const WhatsNewContent = () => {
 const adminSteps = [
     {
         id: 'welcome',
+        moduleKeys: null, // Always show
         title: 'Welcome to SewerVision.ai! 🎉',
         description: 'SewerVision.ai is your complete solution for AI-powered pipeline inspection. This tour will guide you through all the powerful features available to help you manage inspections efficiently.',
         tips: ['Navigate using the sidebar on the left', 'Access your profile from the top-right avatar', 'Use keyboard shortcuts for faster navigation'],
@@ -181,6 +195,7 @@ const adminSteps = [
     },
     {
         id: 'dashboard',
+        moduleKeys: ['dashboard'],
         title: 'Your Command Center',
         description: 'The dashboard gives you a real-time overview of all your inspection activities. Monitor project progress, AI processing status, and team productivity from one central location.',
         tips: ['Stats update in real-time', 'Click on any card to see details', 'Use the refresh button to update manually'],
@@ -234,6 +249,7 @@ const adminSteps = [
     },
     {
         id: 'projects',
+        moduleKeys: ['projects'],
         title: 'Project Management',
         description: 'Create and manage inspection projects with ease. Each project contains all related videos, observations, and reports. Assign team members, set priorities, and track progress through the complete inspection workflow.',
         tips: ['Use filters to find projects quickly', 'Click a project card to view details', 'Drag to reorder by priority'],
@@ -298,6 +314,7 @@ const adminSteps = [
     },
     {
         id: 'ai-processing',
+        moduleKeys: ['projects'],
         title: 'AI-Powered Analysis',
         description: 'Our advanced AI analyzes pipeline videos in real-time, detecting cracks, root intrusions, joint offsets, and more. Review AI findings, adjust confidence thresholds, and reprocess videos when needed.',
         tips: ['AI processes videos automatically after upload', 'Click "Reprocess AI" to re-analyze with updated models', 'Review detections in the timeline view'],
@@ -347,6 +364,7 @@ const adminSteps = [
     },
     {
         id: 'uploads',
+        moduleKeys: ['uploads'],
         title: 'Upload & Manage Files',
         description: 'Upload inspection videos, documents, and images directly to the cloud. Files are automatically processed by our AI system and organized within their respective projects.',
         tips: ['Drag & drop multiple files at once', 'Supported formats: MP4, MOV, PDF, JPG', 'Maximum file size: 5GB per file'],
@@ -385,6 +403,7 @@ const adminSteps = [
     },
     {
         id: 'complete',
+        moduleKeys: null, // Always show
         title: "You're All Set! 🚀",
         description: 'Congratulations! You now know the essentials. Explore each section to discover more advanced features. Need this tour again? Just click "Tour Guide" from your profile menu.',
         tips: ['Explore the sidebar for all features', 'Check notifications regularly', 'Reach out to support if you need help'],
@@ -414,6 +433,7 @@ const tourSteps = {
     user: [
         {
             id: 'welcome',
+            moduleKeys: null,
             title: 'Welcome, Team Lead! 🧭',
             description:
                 'As a Team Lead (User role), you coordinate operator and QC work across projects. This tour will show you how to use your management dashboard, My Projects, tasks, team, and device views.',
@@ -450,6 +470,7 @@ const tourSteps = {
         },
         {
             id: 'dashboard',
+            moduleKeys: ['dashboard'],
             title: 'Dashboard – Your Overview',
             description:
                 'The User Dashboard gives you a snapshot of the projects you manage, task load, QC review state, and upcoming schedule. It is the same view as /user/dashboard.',
@@ -527,6 +548,7 @@ const tourSteps = {
         },
         {
             id: 'projects',
+            moduleKeys: ['projects'],
             title: 'My Projects – Lead View',
             description:
                 'My Projects lists every project where you are the manager. You can switch between card grid view and table view, create new projects, open the Project Console, and request deletions.',
@@ -586,6 +608,7 @@ const tourSteps = {
         },
         {
             id: 'team-assets',
+            moduleKeys: ['team', 'device-assignments', 'tasks'],
             title: 'Team, Tasks & Devices',
             description:
                 'The User sidebar also gives you access to Track Tasks, Team Management, Device Assignments, and Inbox so you can coordinate work across operators and QC technicians.',
@@ -656,6 +679,7 @@ const tourSteps = {
         },
         {
             id: 'complete',
+            moduleKeys: null,
             title: 'You\'re Ready to Lead 🚀',
             description:
                 'You now know how to use the User (Team Lead) workspace: dashboard, projects, team, tasks, devices, and inbox. Keep your projects moving by coordinating operators, QC, and AI review.',
@@ -693,23 +717,24 @@ const tourSteps = {
     'qc-technician': [
         {
             id: 'welcome',
+            moduleKeys: null,
             title: 'Welcome, QC Technician! 🔍',
             description: 'As a QC Technician, you play a critical role in ensuring the quality and accuracy of pipeline inspections. You\'ll review AI-detected defects, verify findings, and certify that all observations meet PACP standards.',
             tips: ['Your reviews ensure accurate reporting', 'Take time to verify each detection', 'Use PACP codes correctly for compliance'],
             icon: ClipboardCheck,
-            color: 'from-rose-500 to-pink-600',
+            color: 'from-purple-500 to-violet-600',
             illustration: (
-                <div className="w-full h-64 bg-gradient-to-br from-rose-50 to-pink-50 rounded-xl border border-rose-200 p-6">
+                <div className="w-full h-64 bg-gradient-to-br from-purple-50 to-violet-50 rounded-xl border border-purple-200 p-6">
                     <div className="flex items-center justify-center h-full">
                         <div className="text-center">
-                            <div className="w-20 h-20 mx-auto mb-4 rounded-2xl bg-gradient-to-br from-[#D76A84] via-rose-500 to-pink-600 flex items-center justify-center shadow-xl">
+                            <div className="w-20 h-20 mx-auto mb-4 rounded-2xl bg-gradient-to-br from-purple-500 via-violet-500 to-purple-600 flex items-center justify-center shadow-xl">
                                 <Target className="w-10 h-10 text-white" />
                             </div>
                             <h3 className="text-lg font-bold text-gray-800">Quality Control Technician</h3>
                             <p className="text-sm text-gray-500 mt-1">Review • Verify • Certify</p>
                             <div className="flex justify-center gap-2 mt-4">
                                 {['PACP Certified', 'AI Review', 'Quality First'].map((badge) => (
-                                    <span key={badge} className="px-3 py-1 bg-rose-100 text-rose-700 rounded-full text-xs font-medium">{badge}</span>
+                                    <span key={badge} className="px-3 py-1 bg-purple-100 text-purple-700 rounded-full text-xs font-medium">{badge}</span>
                                 ))}
                             </div>
                         </div>
@@ -719,6 +744,7 @@ const tourSteps = {
         },
         {
             id: 'dashboard',
+            moduleKeys: ['dashboard'],
             title: 'Your QC Dashboard',
             description: 'The dashboard shows your workload at a glance. Monitor pending QC reviews, approved/rejected counts, and track your daily progress. Stats update in real-time as you complete reviews.',
             tips: ['Check "Pending QC" for items needing attention', 'The refresh button updates all stats', 'Charts show your weekly review trends'],
@@ -748,15 +774,15 @@ const tourSteps = {
                             <p className="text-xs font-medium text-gray-600 mb-2">Weekly QC Trends</p>
                             <div className="flex items-end gap-1 h-16">
                                 {[30, 50, 40, 70, 55, 80, 65].map((h, i) => (
-                                    <div key={i} className="flex-1 bg-gradient-to-t from-rose-500 to-pink-400 rounded-t" style={{ height: `${h}%` }}></div>
+                                    <div key={i} className="flex-1 bg-gradient-to-t from-purple-500 to-violet-400 rounded-t" style={{ height: `${h}%` }}></div>
                                 ))}
                             </div>
                         </div>
-                        <div className="bg-gradient-to-r from-rose-100 to-pink-100 rounded-lg p-3 border border-rose-200">
+                        <div className="bg-gradient-to-r from-purple-100 to-violet-100 rounded-lg p-3 border border-purple-200">
                             <p className="text-xs font-medium text-gray-700 mb-2">Today's Progress</p>
                             <div className="flex items-center gap-4">
                                 <div className="text-center">
-                                    <p className="text-2xl font-bold text-rose-600">8</p>
+                                    <p className="text-2xl font-bold text-purple-600">8</p>
                                     <p className="text-[10px] text-gray-600">Assigned</p>
                                 </div>
                                 <div className="text-center">
@@ -771,6 +797,7 @@ const tourSteps = {
         },
         {
             id: 'assignments',
+            moduleKeys: ['projects'],
             title: 'Project Assignments',
             description: 'Projects are assigned to you by admins for QC review. Each project card shows the project name, location, priority level, and review progress. Click on a project to start reviewing its detections.',
             tips: ['High priority projects should be reviewed first', 'Check the detection count before starting', 'Progress bar shows how many detections you\'ve reviewed'],
@@ -788,7 +815,7 @@ const tourSteps = {
                             { name: 'Downtown Sewer Main', location: 'Orlando, FL', priority: 'medium', status: 'in-progress', progress: 45, detections: 18 },
                             { name: 'Industrial Park Line', location: 'Tampa, FL', priority: 'low', status: 'completed', progress: 100, detections: 12 },
                         ].map((project, idx) => (
-                            <div key={idx} className={`p-3 rounded-xl border transition-all ${idx === 1 ? 'border-rose-500 bg-gradient-to-r from-rose-50 to-pink-50 shadow-sm' : 'border-gray-200 bg-white'}`}>
+                            <div key={idx} className={`p-3 rounded-xl border transition-all ${idx === 1 ? 'border-purple-500 bg-gradient-to-r from-purple-50 to-violet-50 shadow-sm' : 'border-gray-200 bg-white'}`}>
                                 <div className="flex items-start justify-between mb-2">
                                     <div>
                                         <p className="font-semibold text-gray-900 text-sm">{project.name}</p>
@@ -796,12 +823,12 @@ const tourSteps = {
                                     </div>
                                     <div className="flex flex-col gap-1">
                                         <span className={`px-2 py-0.5 rounded-lg text-[10px] font-semibold ${project.priority === 'high' ? 'bg-red-100 text-red-700' : project.priority === 'medium' ? 'bg-yellow-100 text-yellow-700' : 'bg-gray-100 text-gray-700'}`}>{project.priority}</span>
-                                        <span className={`px-2 py-0.5 rounded-lg text-[10px] font-semibold ${project.status === 'completed' ? 'bg-green-100 text-green-700' : project.status === 'in-progress' ? 'bg-rose-100 text-rose-700' : 'bg-yellow-100 text-yellow-700'}`}>{project.status}</span>
+                                        <span className={`px-2 py-0.5 rounded-lg text-[10px] font-semibold ${project.status === 'completed' ? 'bg-green-100 text-green-700' : project.status === 'in-progress' ? 'bg-purple-100 text-purple-700' : 'bg-yellow-100 text-yellow-700'}`}>{project.status}</span>
                                     </div>
                                 </div>
                                 <div className="flex items-center gap-2">
                                     <div className="flex-1 h-1.5 bg-gray-200 rounded-full">
-                                        <div className="h-1.5 bg-gradient-to-r from-[#D76A84] to-pink-600 rounded-full" style={{ width: `${project.progress}%` }}></div>
+                                        <div className="h-1.5 bg-gradient-to-r from-purple-500 to-violet-600 rounded-full" style={{ width: `${project.progress}%` }}></div>
                                     </div>
                                     <span className="text-[10px] text-gray-600">{project.detections} detections</span>
                                 </div>
@@ -813,6 +840,7 @@ const tourSteps = {
         },
         {
             id: 'detections',
+            moduleKeys: ['quality-control'],
             title: 'Review AI Detections',
             description: 'When you select a project, you\'ll see all AI-detected defects. Each detection shows the type (crack, root intrusion, etc.), confidence level, severity, and current status. Pending detections need your review.',
             tips: ['Yellow ring indicates pending review', 'Confidence % shows how certain the AI is', 'Click a detection to see full details'],
@@ -823,12 +851,8 @@ const tourSteps = {
                     <div className="flex items-center justify-between mb-3">
                         <h3 className="text-sm font-bold text-gray-900">AI Detections (8 need review)</h3>
                         <div className="flex gap-1">
-                            <select className="text-[10px] px-2 py-1 border border-gray-200 rounded-lg bg-white">
-                                <option>All Severity</option>
-                            </select>
-                            <select className="text-[10px] px-2 py-1 border border-gray-200 rounded-lg bg-white">
-                                <option>Pending</option>
-                            </select>
+                            <span className="text-[10px] px-2 py-1 border border-gray-200 rounded-lg bg-white text-gray-600">All Severity</span>
+                            <span className="text-[10px] px-2 py-1 border border-gray-200 rounded-lg bg-white text-gray-600">Pending</span>
                         </div>
                     </div>
                     <div className="space-y-2">
@@ -837,7 +861,7 @@ const tourSteps = {
                             { type: 'Root Intrusion', confidence: 88, severity: 'Moderate', status: 'pending' },
                             { type: 'Joint Offset', confidence: 92, severity: 'Minor', status: 'approved' },
                         ].map((detection, idx) => (
-                            <div key={idx} className={`p-3 rounded-xl border transition-all ${idx === 0 ? 'border-rose-500 bg-gradient-to-r from-rose-50 to-pink-50 ring-2 ring-yellow-200' : detection.status === 'approved' ? 'border-green-200 bg-white' : 'border-gray-200 bg-white ring-2 ring-yellow-100'}`}>
+                            <div key={idx} className={`p-3 rounded-xl border transition-all ${idx === 0 ? 'border-purple-500 bg-gradient-to-r from-purple-50 to-violet-50 ring-2 ring-yellow-200' : detection.status === 'approved' ? 'border-green-200 bg-white' : 'border-gray-200 bg-white ring-2 ring-yellow-100'}`}>
                                 <div className="flex items-start justify-between">
                                     <div className="flex-1">
                                         <div className="flex items-center gap-2 mb-1">
@@ -859,6 +883,7 @@ const tourSteps = {
         },
         {
             id: 'approve-reject',
+            moduleKeys: ['quality-control'],
             title: 'Approve or Reject',
             description: 'For each pending detection, review the evidence and decide: Approve if the AI correctly identified the defect, or Reject if it\'s a false positive. Your decision updates the detection status instantly.',
             tips: ['Approve = AI detection is correct', 'Reject = False positive or incorrect', 'You can bulk select multiple detections'],
@@ -866,7 +891,7 @@ const tourSteps = {
             color: 'from-green-500 to-emerald-500',
             illustration: (
                 <div className="w-full h-64 bg-gray-50 rounded-xl border border-gray-200 p-4">
-                    <div className="bg-white rounded-xl border border-rose-200 shadow-lg p-4 mb-3">
+                    <div className="bg-white rounded-xl border border-purple-200 shadow-lg p-4 mb-3">
                         <div className="flex items-start justify-between mb-3">
                             <div>
                                 <p className="font-bold text-gray-900">Longitudinal Crack</p>
@@ -897,8 +922,8 @@ const tourSteps = {
                             </button>
                         </div>
                     </div>
-                    <div className="bg-rose-50 border border-rose-200 rounded-lg p-2 flex items-center justify-between">
-                        <span className="text-xs text-rose-700 font-medium">3 detections selected</span>
+                    <div className="bg-purple-50 border border-purple-200 rounded-lg p-2 flex items-center justify-between">
+                        <span className="text-xs text-purple-700 font-medium">3 detections selected</span>
                         <div className="flex gap-2">
                             <button className="px-3 py-1 bg-green-600 text-white text-[10px] rounded-lg font-semibold">Approve All</button>
                             <button className="px-3 py-1 bg-red-600 text-white text-[10px] rounded-lg font-semibold">Reject All</button>
@@ -909,6 +934,7 @@ const tourSteps = {
         },
         {
             id: 'shortcuts',
+            moduleKeys: ['quality-control'],
             title: 'Keyboard Shortcuts ⌨️',
             description: 'Speed up your workflow with keyboard shortcuts! Press A to approve, R to reject, and use arrow keys to navigate between detections. Press Escape to deselect.',
             tips: ['A = Approve current detection', 'R = Reject current detection', '↑↓ = Navigate between detections', 'Esc = Deselect'],
@@ -938,6 +964,7 @@ const tourSteps = {
         },
         {
             id: 'complete',
+            moduleKeys: null,
             title: 'Ready for Quality Reviews! ✅',
             description: 'You\'re now equipped to review AI detections efficiently. Remember: your careful reviews ensure accurate PACP-compliant reports for our clients. Quality is our top priority!',
             tips: ['Review each detection carefully', 'Use keyboard shortcuts for speed', 'Mark projects complete when done'],
@@ -953,7 +980,7 @@ const tourSteps = {
                         <p className="text-sm text-gray-500 mt-2">Start reviewing your assigned projects 🎉</p>
                         <div className="flex justify-center gap-2 mt-4">
                             <button className="px-4 py-2 bg-white border border-gray-200 rounded-lg text-sm font-medium text-gray-700 shadow-sm">View Dashboard</button>
-                            <button className="px-4 py-2 bg-gradient-to-r from-rose-500 to-pink-500 rounded-lg text-sm font-medium text-white shadow-lg">Start Reviews</button>
+                            <button className="px-4 py-2 bg-gradient-to-r from-purple-500 to-violet-500 rounded-lg text-sm font-medium text-white shadow-lg">Start Reviews</button>
                         </div>
                     </div>
                 </div>
@@ -963,6 +990,7 @@ const tourSteps = {
     operator: [
         {
             id: 'welcome',
+            moduleKeys: null,
             title: 'Welcome, Operator! 🎬',
             description: 'As a Field Operator, you\'re the eyes and ears on the ground. You capture inspection footage, manage equipment, and ensure high-quality data collection. Let\'s walk through your revamped workflow.',
             tips: ['Quality video = better AI detection', 'Check equipment before each job', 'Upload footage daily for faster processing'],
@@ -989,6 +1017,7 @@ const tourSteps = {
         },
         {
             id: 'dashboard',
+            moduleKeys: ['dashboard'],
             title: 'Your Operations Dashboard',
             description: 'Monitor all your field operations from one place. Track active operations, equipment status, system uptime, and critical alerts. The dashboard updates in real-time.',
             tips: ['Green = Running smoothly', 'Yellow = Needs attention', 'Red = Critical - take action'],
@@ -1045,6 +1074,7 @@ const tourSteps = {
         },
         {
             id: 'tasks',
+            moduleKeys: ['tasks'],
             title: 'Manage Your Tasks 📋',
             description: 'Stay organized with your personal task board. View assigned jobs, track progress, and update statuses as you complete your work. Filter tasks by priority to focus on what matters.',
             tips: ['Drag and drop to update status', 'Check high-priority tasks first', 'Add comments for your team'],
@@ -1084,6 +1114,7 @@ const tourSteps = {
         },
         {
             id: 'equipment',
+            moduleKeys: ['equipment'],
             title: 'Equipment Monitoring',
             description: 'Keep track of all your field equipment - cameras, crawlers, and sensors. Check battery levels, connectivity status, and location. Click any device for detailed information.',
             tips: ['Check battery before going to field', 'Green dot = online and connected', 'Report issues immediately'],
@@ -1118,6 +1149,7 @@ const tourSteps = {
         },
         {
             id: 'uploads',
+            moduleKeys: ['uploads'],
             title: 'Upload Inspection Videos',
             description: 'Upload your captured inspection footage directly to the cloud for AI analysis. You can upload multiple files at once. Ensure you have a stable connection for large files.',
             tips: ['MP4 and MOV formats supported', 'Maximum 5GB per file', 'Wait for upload to complete before closing'],
@@ -1147,6 +1179,7 @@ const tourSteps = {
         },
         {
             id: 'notifications',
+            moduleKeys: ['notifications'],
             title: 'Stay Informed 🔔',
             description: 'Never miss an important update. The revamped notifications center keeps you posted on new assignments, equipment alerts, and processing statuses.',
             tips: ['Click notifications to take action', 'Mark as read to clear clutter', 'Filter by type (Alert, Info, Task)'],
@@ -1178,6 +1211,7 @@ const tourSteps = {
         },
         {
             id: 'settings',
+            moduleKeys: ['settings'],
             title: 'Customize Your Profile ⚙️',
             description: 'Make the app yours. Update your profile picture, change your password, and configure preferences in the new Settings page. You can access this anytime from your avatar.',
             tips: ['Keep your profile up to date', 'Adjust notification preferences', 'Check "Video & AI" settings for upload quality'],
@@ -1206,6 +1240,7 @@ const tourSteps = {
         },
         {
             id: 'complete',
+            moduleKeys: null,
             title: 'Ready for the Field! 🚀',
             description: 'You\'re equipped with all the tools you need in this new version. Go capture high-quality inspections, monitor your equipment, and report your findings. Stay safe out there!',
             tips: ['Check equipment daily', 'Upload footage regularly', 'Report any issues immediately'],
@@ -1231,6 +1266,7 @@ const tourSteps = {
     customer: [
         {
             id: 'welcome',
+            moduleKeys: null,
             title: 'Welcome to Your Portal! 👋',
             description: 'This is your dedicated customer portal where you can track all your pipeline inspection projects. View progress, download reports, and stay updated on every inspection.',
             tips: ['Bookmark this page for quick access', 'Check back for project updates', 'Reports are available once inspections complete'],
@@ -1257,6 +1293,7 @@ const tourSteps = {
         },
         {
             id: 'projects',
+            moduleKeys: ['projects'],
             title: 'Your Projects Dashboard',
             description: 'View all your inspection projects at a glance. See total projects, completed inspections, and those currently in review. Use search and filters to find specific projects quickly.',
             tips: ['Use search to find projects fast', 'Filter by status to see what needs attention', 'Click any project for full details'],
@@ -1298,6 +1335,7 @@ const tourSteps = {
         },
         {
             id: 'status',
+            moduleKeys: ['projects'],
             title: 'Understand Project Status',
             description: 'Each project goes through several stages: Planning → Field Capture → AI Processing → QC Review → Ready for Review → Completed. Status badges help you track where your project is.',
             tips: ['Green = Ready or Completed', 'Yellow = In progress or review', 'Purple = Completed and delivered'],
@@ -1331,6 +1369,7 @@ const tourSteps = {
         },
         {
             id: 'reports',
+            moduleKeys: ['reports'],
             title: 'Access Your Reports',
             description: 'Once an inspection is complete, you can download the full PACP-compliant inspection report in PDF format. Reports include all AI-detected defects, severity ratings, and recommendations.',
             tips: ['Reports are auto-generated', 'PDF format for easy sharing', 'Includes photos and severity ratings'],
@@ -1354,7 +1393,49 @@ const tourSteps = {
             ),
         },
         {
+            id: 'settings',
+            moduleKeys: ['settings'],
+            title: 'Your Account Settings ⚙️',
+            description: 'Manage your personal profile, upload a custom avatar, and keep your password secure. Your settings page lets you update your name, phone number, and company information anytime.',
+            tips: ['Upload a profile photo to personalize your account', 'Change your password regularly for security', 'Keep your contact info up to date'],
+            icon: Settings,
+            color: 'from-slate-500 to-gray-600',
+            illustration: (
+                <div className="w-full h-64 bg-gray-50 rounded-xl border border-gray-200 p-4 flex items-center justify-center">
+                    <div className="w-full max-w-sm">
+                        <div className="bg-white rounded-xl shadow-lg p-5 space-y-4">
+                            <div className="flex items-center gap-4">
+                                <div className="w-14 h-14 rounded-full bg-gradient-to-br from-teal-400 to-cyan-500 flex items-center justify-center shadow-lg">
+                                    <Camera className="w-6 h-6 text-white" />
+                                </div>
+                                <div className="flex-1">
+                                    <div className="h-3 w-28 bg-gray-200 rounded-full" />
+                                    <div className="h-2 w-20 bg-gray-100 rounded-full mt-2" />
+                                </div>
+                                <div className="px-3 py-1 bg-teal-50 text-teal-700 text-xs font-medium rounded-full">Edit</div>
+                            </div>
+                            <div className="border-t border-gray-100 pt-3 space-y-2">
+                                <div className="flex items-center gap-2">
+                                    <div className="w-4 h-4 rounded bg-gray-100" />
+                                    <div className="h-2.5 flex-1 bg-gray-100 rounded-full" />
+                                </div>
+                                <div className="flex items-center gap-2">
+                                    <div className="w-4 h-4 rounded bg-gray-100" />
+                                    <div className="h-2.5 flex-1 bg-gray-100 rounded-full" />
+                                </div>
+                            </div>
+                            <div className="border-t border-gray-100 pt-3 flex gap-2">
+                                <button className="flex-1 px-3 py-2 bg-gray-100 text-gray-700 text-xs font-medium rounded-lg">Profile</button>
+                                <button className="flex-1 px-3 py-2 bg-gradient-to-r from-slate-500 to-gray-600 text-white text-xs font-medium rounded-lg shadow">Security</button>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            ),
+        },
+        {
             id: 'complete',
+            moduleKeys: null,
             title: 'We\'re Here for You! 💼',
             description: 'Explore your portal to track projects and access reports. If you have any questions or need support, our team is just a click away. Quality inspections, delivered on time.',
             tips: ['Check status updates regularly', 'Download reports when ready', 'Contact support if you need help'],
@@ -1366,11 +1447,442 @@ const tourSteps = {
                         <div className="w-24 h-24 mx-auto mb-4 rounded-full bg-gradient-to-br from-green-400 to-emerald-500 flex items-center justify-center shadow-2xl">
                             <CheckCircle className="w-12 h-12 text-white" />
                         </div>
-                        <h3 className="text-xl font-bold text-gray-800">You're All Set!</h3>
+                        <h3 className="text-xl font-bold text-gray-800">You&apos;re All Set!</h3>
                         <p className="text-sm text-gray-500 mt-2">Start exploring your projects 📊</p>
                         <div className="flex justify-center gap-2 mt-4">
                             <button className="px-4 py-2 bg-white border border-gray-200 rounded-lg text-sm font-medium text-gray-700 shadow-sm">View Projects</button>
                             <button className="px-4 py-2 bg-gradient-to-r from-teal-500 to-cyan-500 rounded-lg text-sm font-medium text-white shadow-lg">Get Support</button>
+                        </div>
+                    </div>
+                </div>
+            ),
+        },
+    ],
+    'customer-rep': [
+        {
+            id: 'welcome',
+            moduleKeys: null,
+            title: 'Welcome, Support Rep! 🎧',
+            description: 'As a Customer Representative, you\'re the front line of support. You manage tickets, monitor SLA compliance, and ensure every customer gets a timely, high-quality response. Let\'s walk through your Support Console.',
+            tips: ['Use the sidebar to navigate between Tickets, Monitoring, and Team', 'Your dashboard shows real-time support metrics', 'Quick actions help you respond faster'],
+            icon: Headphones,
+            color: 'from-teal-500 to-cyan-500',
+            illustration: (
+                <div className="w-full h-64 bg-gradient-to-br from-teal-50 to-cyan-50 rounded-xl border border-teal-200 p-6">
+                    <div className="flex items-center justify-center h-full">
+                        <div className="text-center">
+                            <div className="w-20 h-20 mx-auto mb-4 rounded-2xl bg-gradient-to-br from-teal-500 via-cyan-500 to-teal-600 flex items-center justify-center shadow-xl">
+                                <Headphones className="w-10 h-10 text-white" />
+                            </div>
+                            <h3 className="text-lg font-bold text-gray-800">Support Console v2.1</h3>
+                            <p className="text-sm text-gray-500 mt-1">Respond • Resolve • Delight</p>
+                            <div className="flex justify-center gap-2 mt-4">
+                                {['Ticket Pro', 'SLA Tracker', 'Team Player'].map((badge) => (
+                                    <span key={badge} className="px-3 py-1 bg-teal-100 text-teal-700 rounded-full text-xs font-medium">{badge}</span>
+                                ))}
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            ),
+        },
+        {
+            id: 'dashboard',
+            moduleKeys: ['dashboard'],
+            title: 'Your Support Dashboard',
+            description: 'The dashboard gives you a snapshot of all support activity at a glance. Track open tickets, in-progress items, resolved counts, and your personal queue. Stats refresh every 30 seconds.',
+            tips: ['Monitor "Open Tickets" to see what needs attention', 'Check assigned tickets for your personal queue', 'Use quick actions to jump to common tasks'],
+            icon: LayoutDashboard,
+            color: 'from-blue-500 to-indigo-500',
+            illustration: (
+                <div className="w-full h-64 bg-gray-50 rounded-xl border border-gray-200 p-4">
+                    <div className="grid grid-cols-4 gap-2 mb-4">
+                        {[
+                            { label: 'Open', value: '14', icon: Ticket, color: 'teal' },
+                            { label: 'In Progress', value: '8', icon: Clock, color: 'amber' },
+                            { label: 'Resolved', value: '52', icon: CheckCircle, color: 'green' },
+                            { label: 'My Queue', value: '5', icon: Inbox, color: 'blue' },
+                        ].map((stat) => (
+                            <div key={stat.label} className="bg-white rounded-lg p-2.5 border border-gray-100 shadow-sm">
+                                <div className={`w-7 h-7 bg-${stat.color}-100 rounded-lg flex items-center justify-center mb-1.5`}>
+                                    <stat.icon className={`w-3.5 h-3.5 text-${stat.color}-600`} />
+                                </div>
+                                <p className="text-lg font-bold text-gray-900">{stat.value}</p>
+                                <p className="text-[9px] text-gray-500">{stat.label}</p>
+                            </div>
+                        ))}
+                    </div>
+                    <div className="grid grid-cols-2 gap-3">
+                        <div className="bg-white rounded-lg p-3 border border-gray-100">
+                            <p className="text-xs font-medium text-gray-600 mb-2">Weekly Resolution Trend</p>
+                            <div className="flex items-end gap-1 h-16">
+                                {[40, 55, 35, 70, 60, 85, 75].map((h, i) => (
+                                    <div key={i} className="flex-1 bg-gradient-to-t from-teal-500 to-cyan-400 rounded-t" style={{ height: `${h}%` }}></div>
+                                ))}
+                            </div>
+                        </div>
+                        <div className="bg-gradient-to-r from-teal-100 to-cyan-100 rounded-lg p-3 border border-teal-200">
+                            <p className="text-xs font-medium text-gray-700 mb-2">Today&apos;s Activity</p>
+                            <div className="flex items-center gap-4">
+                                <div className="text-center">
+                                    <p className="text-2xl font-bold text-teal-600">5</p>
+                                    <p className="text-[10px] text-gray-600">Assigned</p>
+                                </div>
+                                <div className="text-center">
+                                    <p className="text-2xl font-bold text-green-600">3</p>
+                                    <p className="text-[10px] text-gray-600">Resolved</p>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            ),
+        },
+        {
+            id: 'inbox',
+            moduleKeys: ['rep-inbox'],
+            title: 'Your Inbox 📬',
+            description: 'Stay connected with your team through the internal messaging system. Receive ticket update notifications, send messages to colleagues, and manage your communication all in one place.',
+            tips: ['Unread messages show a badge count', 'Use folders to organize: Inbox, Sent, Drafts', 'Compose messages to coordinate with your team'],
+            icon: Inbox,
+            color: 'from-violet-500 to-purple-500',
+            illustration: (
+                <div className="w-full h-64 bg-gray-50 rounded-xl border border-gray-200 p-4">
+                    <div className="flex gap-3 h-full">
+                        <div className="w-24 space-y-1">
+                            {[
+                                { name: 'Inbox', count: 4, active: true },
+                                { name: 'Sent', count: 0, active: false },
+                                { name: 'Drafts', count: 1, active: false },
+                            ].map((folder) => (
+                                <div key={folder.name} className={`px-2 py-1.5 rounded-lg text-xs font-medium flex items-center justify-between ${folder.active ? 'bg-teal-100 text-teal-700' : 'text-gray-500 hover:bg-gray-100'}`}>
+                                    <span>{folder.name}</span>
+                                    {folder.count > 0 && <span className={`text-[10px] px-1.5 py-0.5 rounded-full ${folder.active ? 'bg-teal-500 text-white' : 'bg-gray-200 text-gray-600'}`}>{folder.count}</span>}
+                                </div>
+                            ))}
+                            <div className="pt-2">
+                                <div className="px-2 py-1.5 bg-gradient-to-r from-teal-500 to-cyan-500 rounded-lg text-xs font-medium text-white text-center shadow-sm">
+                                    <Plus className="w-3 h-3 inline mr-1" />Compose
+                                </div>
+                            </div>
+                        </div>
+                        <div className="flex-1 space-y-2">
+                            {[
+                                { from: 'Admin', subject: 'New ticket assigned: #1042', time: '2m ago', unread: true },
+                                { from: 'Sarah K.', subject: 'Re: SLA escalation for Beach Rd', time: '15m ago', unread: true },
+                                { from: 'System', subject: 'Ticket #1038 resolved automatically', time: '1h ago', unread: false },
+                            ].map((msg, idx) => (
+                                <div key={idx} className={`p-2.5 rounded-lg border ${msg.unread ? 'bg-teal-50 border-teal-200' : 'bg-white border-gray-100'}`}>
+                                    <div className="flex items-center justify-between mb-0.5">
+                                        <span className={`text-xs ${msg.unread ? 'font-bold text-gray-900' : 'font-medium text-gray-600'}`}>{msg.from}</span>
+                                        <span className="text-[10px] text-gray-400">{msg.time}</span>
+                                    </div>
+                                    <p className={`text-[11px] ${msg.unread ? 'text-gray-800' : 'text-gray-500'}`}>{msg.subject}</p>
+                                </div>
+                            ))}
+                        </div>
+                    </div>
+                </div>
+            ),
+        },
+        {
+            id: 'tickets',
+            moduleKeys: ['tickets'],
+            title: 'Manage Support Tickets 🎫',
+            description: 'Your core workspace. View all customer support tickets in a powerful table with search, filtering, and sorting. Click any ticket to see full details, respond, and update status. New tickets appear automatically.',
+            tips: ['Use search to find tickets by subject or customer', 'Filter by priority (High, Medium, Low) or status', 'Click a ticket row to open its full detail view'],
+            icon: Ticket,
+            color: 'from-teal-500 to-emerald-500',
+            illustration: (
+                <div className="w-full h-64 bg-gray-50 rounded-xl border border-gray-200 p-4">
+                    <div className="flex items-center justify-between mb-3">
+                        <h3 className="text-sm font-bold text-gray-900">Support Tickets</h3>
+                        <div className="flex gap-1">
+                            <span className="text-[10px] px-2 py-1 border border-gray-200 rounded-lg bg-white text-gray-600">All Status</span>
+                            <span className="text-[10px] px-2 py-1 border border-gray-200 rounded-lg bg-white text-gray-600">All Priority</span>
+                        </div>
+                    </div>
+                    <div className="space-y-2">
+                        {[
+                            { id: '#1042', subject: 'Report PDF not loading', customer: 'Acme Corp', priority: 'High', status: 'Open', responses: 2 },
+                            { id: '#1041', subject: 'Request access to project data', customer: 'City of Miami', priority: 'Medium', status: 'In Progress', responses: 5 },
+                            { id: '#1039', subject: 'Invoice discrepancy Q3', customer: 'Pipeline Solutions', priority: 'Low', status: 'Resolved', responses: 8 },
+                        ].map((ticket, idx) => (
+                            <div key={idx} className={`p-3 rounded-xl border transition-all ${idx === 0 ? 'border-teal-500 bg-gradient-to-r from-teal-50 to-cyan-50 shadow-sm' : 'border-gray-200 bg-white'}`}>
+                                <div className="flex items-start justify-between mb-1.5">
+                                    <div>
+                                        <div className="flex items-center gap-2">
+                                            <span className="text-[10px] text-gray-400 font-mono">{ticket.id}</span>
+                                            <p className="font-semibold text-gray-900 text-sm">{ticket.subject}</p>
+                                        </div>
+                                        <p className="text-[10px] text-gray-500">{ticket.customer}</p>
+                                    </div>
+                                    <div className="flex gap-1">
+                                        <span className={`px-2 py-0.5 rounded-lg text-[10px] font-semibold ${ticket.priority === 'High' ? 'bg-red-100 text-red-700' : ticket.priority === 'Medium' ? 'bg-yellow-100 text-yellow-700' : 'bg-gray-100 text-gray-700'}`}>{ticket.priority}</span>
+                                        <span className={`px-2 py-0.5 rounded-lg text-[10px] font-semibold ${ticket.status === 'Open' ? 'bg-teal-100 text-teal-700' : ticket.status === 'In Progress' ? 'bg-amber-100 text-amber-700' : 'bg-green-100 text-green-700'}`}>{ticket.status}</span>
+                                    </div>
+                                </div>
+                                <div className="flex items-center gap-2 text-[10px] text-gray-400">
+                                    <MessageSquare className="w-3 h-3" /> {ticket.responses} responses
+                                </div>
+                            </div>
+                        ))}
+                    </div>
+                </div>
+            ),
+        },
+        {
+            id: 'complaints',
+            moduleKeys: ['rep-complaints'],
+            title: 'Customer Complaints 📋',
+            description: 'Track and manage customer complaints from all channels. Customers submit complaints through their portal, and you can review, investigate, and escalate them into support tickets. Each complaint tracks severity, category, and resolution status.',
+            tips: ['Review new complaints daily and update their status', 'Escalate critical complaints by creating tickets directly', 'Add notes to document your investigation progress'],
+            icon: MessageSquareWarning,
+            color: 'from-red-500 to-orange-500',
+            illustration: (
+                <div className="w-full h-64 bg-gray-50 rounded-xl border border-gray-200 p-4">
+                    <div className="flex items-center justify-between mb-3">
+                        <h3 className="text-sm font-bold text-gray-900">Complaints</h3>
+                        <div className="flex gap-1">
+                            <span className="text-[10px] px-2 py-1 border border-gray-200 rounded-lg bg-white text-gray-600">All Status</span>
+                            <span className="text-[10px] px-2 py-1 border border-gray-200 rounded-lg bg-white text-gray-600">All Severity</span>
+                        </div>
+                    </div>
+                    <div className="grid grid-cols-4 gap-2 mb-3">
+                        {[
+                            { label: 'New', value: '6', color: 'teal' },
+                            { label: 'Investigating', value: '4', color: 'amber' },
+                            { label: 'Action Required', value: '2', color: 'red' },
+                            { label: 'Resolved', value: '18', color: 'green' },
+                        ].map((stat) => (
+                            <div key={stat.label} className="bg-white rounded-lg p-2 border border-gray-100 text-center">
+                                <p className={`text-lg font-bold text-${stat.color}-600`}>{stat.value}</p>
+                                <p className="text-[9px] text-gray-500">{stat.label}</p>
+                            </div>
+                        ))}
+                    </div>
+                    <div className="space-y-2">
+                        {[
+                            { title: 'Billing overcharge on invoice #4521', customer: 'Acme Corp', severity: 'High', status: 'New', category: 'Billing' },
+                            { title: 'Delayed delivery of inspection report', customer: 'City of Miami', severity: 'Medium', status: 'Investigating', category: 'Delivery' },
+                            { title: 'Equipment malfunction during survey', customer: 'Pipeline Solutions', severity: 'Critical', status: 'Action Required', category: 'Technical' },
+                        ].map((complaint, idx) => (
+                            <div key={idx} className={`p-2.5 rounded-xl border ${idx === 0 ? 'border-teal-500 bg-gradient-to-r from-teal-50 to-cyan-50' : 'border-gray-200 bg-white'}`}>
+                                <div className="flex items-start justify-between">
+                                    <div className="flex-1 min-w-0">
+                                        <p className="text-xs font-semibold text-gray-900 truncate">{complaint.title}</p>
+                                        <p className="text-[10px] text-gray-500">{complaint.customer}</p>
+                                    </div>
+                                    <div className="flex gap-1 ml-2 flex-shrink-0">
+                                        <span className={`px-1.5 py-0.5 rounded text-[9px] font-semibold ${complaint.severity === 'Critical' ? 'bg-red-100 text-red-700' : complaint.severity === 'High' ? 'bg-orange-100 text-orange-700' : 'bg-yellow-100 text-yellow-700'}`}>{complaint.severity}</span>
+                                        <span className={`px-1.5 py-0.5 rounded text-[9px] font-semibold ${complaint.status === 'New' ? 'bg-teal-100 text-teal-700' : complaint.status === 'Investigating' ? 'bg-amber-100 text-amber-700' : 'bg-red-100 text-red-700'}`}>{complaint.status}</span>
+                                    </div>
+                                </div>
+                                <div className="flex items-center gap-2 mt-1 text-[10px] text-gray-400">
+                                    <span className="px-1.5 py-0.5 bg-gray-100 rounded text-gray-500">{complaint.category}</span>
+                                    <ArrowRight className="w-3 h-3" />
+                                    <span className="text-teal-600 font-medium">Create Ticket</span>
+                                </div>
+                            </div>
+                        ))}
+                    </div>
+                </div>
+            ),
+        },
+        {
+            id: 'tasks',
+            moduleKeys: ['rep-tasks'],
+            title: 'Your Assigned Tasks 📌',
+            description: 'View all tickets assigned to you as task cards. Each card shows the ticket status, priority, customer info, and SLA indicators. Click any card to see full details, reply to the customer, and update the ticket status.',
+            tips: ['Cards are color-coded by status for quick scanning', 'Red SLA badge means the ticket is overdue — prioritize it', 'Use the inline reply to respond without leaving the page'],
+            icon: ListTodo,
+            color: 'from-indigo-500 to-teal-500',
+            illustration: (
+                <div className="w-full h-64 bg-gray-50 rounded-xl border border-gray-200 p-4">
+                    <div className="flex items-center justify-between mb-3">
+                        <h3 className="text-sm font-bold text-gray-900">My Tasks</h3>
+                        <div className="flex gap-1">
+                            {['All', 'Open', 'In Progress', 'Resolved'].map((f, i) => (
+                                <span key={f} className={`text-[10px] px-2 py-1 rounded-lg font-medium ${i === 0 ? 'bg-teal-100 text-teal-700' : 'bg-white border border-gray-200 text-gray-500'}`}>{f}</span>
+                            ))}
+                        </div>
+                    </div>
+                    <div className="grid grid-cols-2 gap-2 mb-3">
+                        {[
+                            { label: 'Total', value: '8', color: 'gray' },
+                            { label: 'Open', value: '3', color: 'teal' },
+                            { label: 'In Progress', value: '4', color: 'amber' },
+                            { label: 'Overdue', value: '1', color: 'red' },
+                        ].map((stat) => (
+                            <div key={stat.label} className="bg-white rounded-lg p-2 border border-gray-100 flex items-center gap-2">
+                                <div className={`w-2 h-2 rounded-full bg-${stat.color}-500`}></div>
+                                <span className="text-[10px] text-gray-500">{stat.label}</span>
+                                <span className={`text-sm font-bold text-${stat.color}-600 ml-auto`}>{stat.value}</span>
+                            </div>
+                        ))}
+                    </div>
+                    <div className="space-y-2">
+                        {[
+                            { subject: 'Report PDF not loading', customer: 'Acme Corp', priority: 'High', status: 'Open', time: '2h ago', sla: true },
+                            { subject: 'Request access to project data', customer: 'City of Miami', priority: 'Medium', status: 'In Progress', time: '5h ago', sla: false },
+                        ].map((task, idx) => (
+                            <div key={idx} className="flex items-stretch bg-white rounded-xl border border-gray-100 shadow-sm overflow-hidden">
+                                <div className={`w-1.5 ${task.status === 'Open' ? 'bg-teal-500' : 'bg-amber-500'}`}></div>
+                                <div className="flex-1 p-2.5">
+                                    <div className="flex items-start justify-between">
+                                        <div className="flex-1 min-w-0">
+                                            <p className="text-xs font-semibold text-gray-900 truncate">{task.subject}</p>
+                                            <p className="text-[10px] text-gray-500">{task.customer} • {task.time}</p>
+                                        </div>
+                                        <div className="flex gap-1 ml-2">
+                                            <span className={`px-1.5 py-0.5 rounded text-[9px] font-semibold ${task.priority === 'High' ? 'bg-red-100 text-red-700' : 'bg-yellow-100 text-yellow-700'}`}>{task.priority}</span>
+                                            {task.sla && <span className="px-1.5 py-0.5 rounded text-[9px] font-semibold bg-red-100 text-red-600">SLA</span>}
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
+                        ))}
+                    </div>
+                </div>
+            ),
+        },
+        {
+            id: 'monitoring',
+            moduleKeys: ['rep-monitoring'],
+            title: 'SLA Monitoring 📊',
+            description: 'Track your team\'s Service Level Agreement compliance in real-time. Monitor average first response time, resolution time, SLA compliance percentage, and overdue tickets. Data refreshes every 15 seconds.',
+            tips: ['Green = within SLA targets', 'Yellow = approaching deadline', 'Red = SLA breached, escalate immediately'],
+            icon: Activity,
+            color: 'from-orange-500 to-amber-500',
+            illustration: (
+                <div className="w-full h-64 bg-gray-50 rounded-xl border border-gray-200 p-4">
+                    <h3 className="text-sm font-bold text-gray-900 mb-3">SLA Performance</h3>
+                    <div className="grid grid-cols-2 gap-3 mb-3">
+                        {[
+                            { label: 'Avg First Response', value: '12m', target: '< 15m', ok: true },
+                            { label: 'Avg Resolution', value: '4.2h', target: '< 8h', ok: true },
+                            { label: 'SLA Compliance', value: '94%', target: '> 90%', ok: true },
+                            { label: 'Overdue Tickets', value: '2', target: '0', ok: false },
+                        ].map((metric) => (
+                            <div key={metric.label} className={`p-3 rounded-xl border ${metric.ok ? 'border-green-200 bg-green-50' : 'border-red-200 bg-red-50'}`}>
+                                <p className="text-[10px] text-gray-500 mb-1">{metric.label}</p>
+                                <p className={`text-xl font-bold ${metric.ok ? 'text-green-700' : 'text-red-700'}`}>{metric.value}</p>
+                                <p className="text-[9px] text-gray-400">Target: {metric.target}</p>
+                            </div>
+                        ))}
+                    </div>
+                    <div className="bg-white rounded-lg p-3 border border-gray-100">
+                        <p className="text-xs font-medium text-gray-600 mb-2">SLA Compliance Trend</p>
+                        <div className="flex items-end gap-1 h-10">
+                            {[85, 90, 88, 92, 95, 94, 96].map((h, i) => (
+                                <div key={i} className={`flex-1 rounded-t ${h >= 90 ? 'bg-gradient-to-t from-green-500 to-emerald-400' : 'bg-gradient-to-t from-yellow-500 to-amber-400'}`} style={{ height: `${h}%` }}></div>
+                            ))}
+                        </div>
+                    </div>
+                </div>
+            ),
+        },
+        {
+            id: 'team',
+            moduleKeys: ['rep-team'],
+            title: 'Support Team Overview',
+            description: 'View your support team members, their current workload, and availability status. See who\'s online, how many tickets each person is handling, and coordinate work distribution effectively.',
+            tips: ['Green dot = online and available', 'Check workload before reassigning tickets', 'Team stats show overall performance'],
+            icon: Users,
+            color: 'from-indigo-500 to-blue-500',
+            illustration: (
+                <div className="w-full h-64 bg-gray-50 rounded-xl border border-gray-200 p-4">
+                    <div className="flex items-center justify-between mb-3">
+                        <h3 className="text-sm font-bold text-gray-900">Support Team</h3>
+                        <span className="text-[10px] px-2 py-1 bg-green-100 text-green-700 rounded-full font-medium">3 online</span>
+                    </div>
+                    <div className="space-y-2">
+                        {[
+                            { name: 'Sarah Kim', role: 'Senior Rep', tickets: 4, status: 'online', avatar: 'SK' },
+                            { name: 'James Chen', role: 'Support Rep', tickets: 6, status: 'online', avatar: 'JC' },
+                            { name: 'Maria Lopez', role: 'Support Rep', tickets: 3, status: 'online', avatar: 'ML' },
+                            { name: 'David Park', role: 'Junior Rep', tickets: 0, status: 'offline', avatar: 'DP' },
+                        ].map((member, idx) => (
+                            <div key={idx} className="flex items-center gap-3 p-2.5 bg-white rounded-xl border border-gray-100 shadow-sm">
+                                <div className="relative">
+                                    <div className="w-9 h-9 rounded-full bg-gradient-to-br from-teal-400 to-cyan-500 flex items-center justify-center text-white text-xs font-bold">{member.avatar}</div>
+                                    <div className={`absolute -bottom-0.5 -right-0.5 w-3 h-3 rounded-full border-2 border-white ${member.status === 'online' ? 'bg-green-500' : 'bg-gray-300'}`}></div>
+                                </div>
+                                <div className="flex-1">
+                                    <p className="text-sm font-medium text-gray-900">{member.name}</p>
+                                    <p className="text-[10px] text-gray-500">{member.role}</p>
+                                </div>
+                                <div className="text-right">
+                                    <p className="text-sm font-bold text-gray-700">{member.tickets}</p>
+                                    <p className="text-[9px] text-gray-400">tickets</p>
+                                </div>
+                            </div>
+                        ))}
+                    </div>
+                </div>
+            ),
+        },
+        {
+            id: 'templates',
+            moduleKeys: ['rep-templates'],
+            title: 'Response Templates 📝',
+            description: 'Save time with canned response templates. Create, edit, and organize reusable responses for common support scenarios. Copy templates with one click and personalize them before sending.',
+            tips: ['Create templates for common ticket types', 'Use categories to organize (Greeting, Closing, etc.)', 'Click copy icon to use a template instantly'],
+            icon: FileText,
+            color: 'from-purple-500 to-violet-500',
+            illustration: (
+                <div className="w-full h-64 bg-gray-50 rounded-xl border border-gray-200 p-4">
+                    <div className="flex items-center justify-between mb-3">
+                        <h3 className="text-sm font-bold text-gray-900">My Templates</h3>
+                        <div className="px-3 py-1.5 bg-gradient-to-r from-teal-500 to-cyan-500 rounded-lg text-xs font-medium text-white shadow-sm">
+                            <Plus className="w-3 h-3 inline mr-1" />New Template
+                        </div>
+                    </div>
+                    <div className="space-y-2">
+                        {[
+                            { name: 'Welcome Response', category: 'Greeting', tags: ['new-ticket', 'intro'], preview: 'Thank you for reaching out! We\'ve received your...' },
+                            { name: 'Status Update', category: 'Follow-up', tags: ['update', 'progress'], preview: 'I wanted to update you on the status of your...' },
+                            { name: 'Resolution Confirmation', category: 'Closing', tags: ['resolved', 'closing'], preview: 'Great news! Your issue has been resolved. Here\'s...' },
+                        ].map((template, idx) => (
+                            <div key={idx} className="p-3 bg-white rounded-xl border border-gray-100 shadow-sm">
+                                <div className="flex items-start justify-between mb-1">
+                                    <div>
+                                        <p className="text-sm font-semibold text-gray-900">{template.name}</p>
+                                        <span className="text-[10px] px-2 py-0.5 bg-teal-100 text-teal-700 rounded-full font-medium">{template.category}</span>
+                                    </div>
+                                    <Copy className="w-4 h-4 text-gray-400" />
+                                </div>
+                                <p className="text-[11px] text-gray-500 mt-1.5 line-clamp-1">{template.preview}</p>
+                                <div className="flex gap-1 mt-1.5">
+                                    {template.tags.map((tag) => (
+                                        <span key={tag} className="text-[9px] px-1.5 py-0.5 bg-gray-100 text-gray-500 rounded">{tag}</span>
+                                    ))}
+                                </div>
+                            </div>
+                        ))}
+                    </div>
+                </div>
+            ),
+        },
+        {
+            id: 'complete',
+            moduleKeys: null,
+            title: 'Ready to Support! 💚',
+            description: 'You\'re all set to deliver outstanding customer support. Remember: fast responses and clear communication make all the difference. Your customers are counting on you!',
+            tips: ['Respond to high-priority tickets first', 'Use templates for consistent, fast replies', 'Monitor SLA compliance throughout the day'],
+            icon: Rocket,
+            color: 'from-green-500 to-emerald-500',
+            illustration: (
+                <div className="w-full h-64 bg-gradient-to-br from-green-50 to-emerald-50 rounded-xl border border-green-200 flex items-center justify-center">
+                    <div className="text-center">
+                        <div className="w-24 h-24 mx-auto mb-4 rounded-full bg-gradient-to-br from-teal-400 to-cyan-500 flex items-center justify-center shadow-2xl">
+                            <Headphones className="w-12 h-12 text-white" />
+                        </div>
+                        <h3 className="text-xl font-bold text-gray-800">Ready to Support!</h3>
+                        <p className="text-sm text-gray-500 mt-2">Deliver outstanding customer experiences 🎉</p>
+                        <div className="flex justify-center gap-2 mt-4">
+                            <span className="px-4 py-2 bg-white border border-gray-200 rounded-lg text-sm font-medium text-gray-700 shadow-sm">View Dashboard</span>
+                            <span className="px-4 py-2 bg-gradient-to-r from-teal-500 to-cyan-500 rounded-lg text-sm font-medium text-white shadow-lg">Open Tickets</span>
                         </div>
                     </div>
                 </div>
@@ -1387,8 +1899,24 @@ export const TourGuide = ({ isOpen, onClose, role = 'admin' }) => {
     const [currentStep, setCurrentStep] = useState(0);
     const [activeTab, setActiveTab] = useState('tour'); // 'tour' or 'whats-new'
     const [isAnimating, setIsAnimating] = useState(false);
+    const { userData } = useUser();
 
-    const steps = tourSteps[role] || tourSteps.admin;
+    // Filter tour steps based on user's module permissions
+    const steps = useMemo(() => {
+        const allSteps = tourSteps[role] || tourSteps.admin;
+        const permissions = userData?.modulePermissions;
+
+        // If no permission level assigned (full access) or no permissions data, show all steps
+        if (!permissions || permissions.length === 0) return allSteps;
+
+        return allSteps.filter((step) => {
+            // Always show welcome and complete steps (moduleKeys === null)
+            if (step.moduleKeys === null) return true;
+            // Show step if user has ANY of the required module keys
+            return step.moduleKeys.some((key) => permissions.includes(key));
+        });
+    }, [role, userData?.modulePermissions]);
+
     const currentStepData = steps[currentStep];
     const StepIcon = currentStepData?.icon || HelpCircle;
 

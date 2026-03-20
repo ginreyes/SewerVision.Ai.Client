@@ -2,10 +2,11 @@
 
 import Navbar from "@/components/ui/navbar";
 import Sidebar from "@/components/ui/sidebar";
+import RoleThemeProvider from "@/components/providers/RoleThemeProvider";
 import { useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
 import { api, getCookie, deleteCookie } from "@/lib/helper";
-import AdminSidebar from "@/components/ui/AdminSidebar";
+import UnifiedSidebar from "@/components/ui/UnifiedSidebar";
 import { TourGuide, useTourGuide } from "@/components/TourGuide";
 
 export default function AdminLayout({ children }) {
@@ -71,29 +72,31 @@ export default function AdminLayout({ children }) {
   if (!role) return null;
 
   return (
-    <div className="flex">
-      <div
-        className={`fixed top-0 left-0 h-full transition-all duration-300 border-2 bg-gray-100 ${openSidebar ? "w-[270px]" : "w-[90px]"
-          }`}
-      >
-        <AdminSidebar isOpen={openSidebar} role={role} />
-      </div>
+    <RoleThemeProvider role="admin">
+      <div className="flex">
+        <div
+          className={`fixed top-0 left-0 h-full transition-all duration-300 border-2 bg-gray-100 ${openSidebar ? "w-[270px]" : "w-[90px]"
+            }`}
+        >
+          <UnifiedSidebar isOpen={openSidebar} role={role} />
+        </div>
 
-      <div
-        className={`flex-1 transition-all duration-300 ${openSidebar ? "ml-[270px]" : "ml-[90px]"
-          }`}
-      >
-        <Navbar openSideBar={handleToggleSidebar} role="admin" />
-        <main className="p-4">{children}</main>
-      </div>
+        <div
+          className={`flex-1 transition-all duration-300 ${openSidebar ? "ml-[270px]" : "ml-[90px]"
+            }`}
+        >
+          <Navbar openSideBar={handleToggleSidebar} role="admin" />
+          <main className="p-4">{children}</main>
+        </div>
 
-      {/* Tour Guide Modal */}
-      <TourGuide
-        isOpen={showTour}
-        onClose={closeTour}
-        role="admin"
-      />
-    </div>
+        {/* Tour Guide Modal */}
+        <TourGuide
+          isOpen={showTour}
+          onClose={closeTour}
+          role="admin"
+        />
+      </div>
+    </RoleThemeProvider>
   );
 }
 

@@ -28,65 +28,18 @@ import {
   Shield,
   Target,
   BarChart3,
-  Eye,
   Edit3,
 } from 'lucide-react'
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card'
 import { Button } from '@/components/ui/button'
 import { Badge } from '@/components/ui/badge'
+import { Input } from '@/components/ui/input'
+import { Select, SelectTrigger, SelectValue, SelectContent, SelectItem } from '@/components/ui/select'
 import { useRouter, useParams } from 'next/navigation'
 import { api } from '@/lib/helper'
 import { qcApi } from '@/data/qcApi'
 import Chart from 'chart.js/auto'
-
-/* ─── Status config ─── */
-const statusConfig = {
-  completed: {
-    bg: 'bg-emerald-50', text: 'text-emerald-700', border: 'border-emerald-200',
-    icon: CheckCircle, label: 'Completed',
-  },
-  pending: {
-    bg: 'bg-amber-50', text: 'text-amber-700', border: 'border-amber-200',
-    icon: Clock, label: 'Pending',
-  },
-  'in-review': {
-    bg: 'bg-sky-50', text: 'text-sky-700', border: 'border-sky-200',
-    icon: Eye, label: 'In Review',
-  },
-  in_review: {
-    bg: 'bg-sky-50', text: 'text-sky-700', border: 'border-sky-200',
-    icon: Eye, label: 'In Review',
-  },
-  draft: {
-    bg: 'bg-gray-50', text: 'text-gray-600', border: 'border-gray-200',
-    icon: FileText, label: 'Draft',
-  },
-}
-
-const StatusPill = ({ status }) => {
-  const key = status?.toLowerCase()?.replace(/\s/g, '_')
-  const cfg = statusConfig[key] || statusConfig.draft
-  const Icon = cfg.icon
-  return (
-    <span className={`inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-xs font-semibold border ${cfg.bg} ${cfg.text} ${cfg.border}`}>
-      <Icon className="w-3 h-3" />
-      {cfg.label}
-    </span>
-  )
-}
-
-/* ─── Severity badge ─── */
-const SeverityBadge = ({ severity }) => {
-  const styles = {
-    critical: 'bg-red-100 text-red-800 border-red-200',
-    major: 'bg-orange-100 text-orange-800 border-orange-200',
-    moderate: 'bg-yellow-100 text-yellow-800 border-yellow-200',
-    minor: 'bg-green-100 text-green-800 border-green-200',
-  }
-  const s = severity?.toLowerCase()
-  const cls = styles[s] || 'bg-gray-100 text-gray-800 border-gray-200'
-  return <Badge className={`${cls} border`}>{severity || 'Unknown'}</Badge>
-}
+import { StatusPill, SeverityBadge, statusConfig } from '@/components/qc/reports'
 
 /* ─── Info row ─── */
 const InfoRow = ({ icon: Icon, label, value, subValue, iconColor = 'text-gray-400' }) => (
@@ -836,46 +789,48 @@ const ReportDetailView = () => {
               <CardContent className="p-4 space-y-3 text-xs">
                 <div className="space-y-1">
                   <p className="font-medium text-gray-700">Status</p>
-                  <select
-                    className="w-full border border-gray-200 rounded-md px-2 py-1 text-xs bg-white"
-                    value={editMeta.status}
-                    onChange={(e) => setEditMeta({ ...editMeta, status: e.target.value })}
-                  >
-                    <option value="draft">Draft</option>
-                    <option value="in-review">In Review</option>
-                    <option value="completed">Completed</option>
-                  </select>
+                  <Select value={editMeta.status} onValueChange={(val) => setEditMeta({ ...editMeta, status: val })}>
+                    <SelectTrigger className="w-full text-xs h-8">
+                      <SelectValue />
+                    </SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="draft">Draft</SelectItem>
+                      <SelectItem value="in-review">In Review</SelectItem>
+                      <SelectItem value="completed">Completed</SelectItem>
+                    </SelectContent>
+                  </Select>
                 </div>
                 <div className="space-y-1">
                   <p className="font-medium text-gray-700">Overall Grade</p>
-                  <select
-                    className="w-full border border-gray-200 rounded-md px-2 py-1 text-xs bg-white"
-                    value={editMeta.overallGrade || ''}
-                    onChange={(e) => setEditMeta({ ...editMeta, overallGrade: e.target.value })}
-                  >
-                    <option value="">Not set</option>
-                    <option value="Grade 1">Grade 1</option>
-                    <option value="Grade 2">Grade 2</option>
-                    <option value="Grade 3">Grade 3</option>
-                    <option value="Grade 4">Grade 4</option>
-                  </select>
+                  <Select value={editMeta.overallGrade || 'none'} onValueChange={(val) => setEditMeta({ ...editMeta, overallGrade: val === 'none' ? '' : val })}>
+                    <SelectTrigger className="w-full text-xs h-8">
+                      <SelectValue placeholder="Not set" />
+                    </SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="none">Not set</SelectItem>
+                      <SelectItem value="Grade 1">Grade 1</SelectItem>
+                      <SelectItem value="Grade 2">Grade 2</SelectItem>
+                      <SelectItem value="Grade 3">Grade 3</SelectItem>
+                      <SelectItem value="Grade 4">Grade 4</SelectItem>
+                    </SelectContent>
+                  </Select>
                 </div>
                 <div className="space-y-1">
                   <p className="font-medium text-gray-700">AI Confidence (%)</p>
-                  <input
+                  <Input
                     type="number"
                     min="0"
                     max="100"
-                    className="w-full border border-gray-200 rounded-md px-2 py-1 text-xs"
+                    className="w-full text-xs h-8"
                     value={editMeta.confidence}
                     onChange={(e) => setEditMeta({ ...editMeta, confidence: e.target.value })}
                   />
                 </div>
                 <div className="space-y-1">
                   <p className="font-medium text-gray-700">Footage</p>
-                  <input
+                  <Input
                     type="text"
-                    className="w-full border border-gray-200 rounded-md px-2 py-1 text-xs"
+                    className="w-full text-xs h-8"
                     value={editMeta.footage}
                     onChange={(e) => setEditMeta({ ...editMeta, footage: e.target.value })}
                   />
@@ -883,20 +838,20 @@ const ReportDetailView = () => {
                 <div className="grid grid-cols-2 gap-2">
                   <div className="space-y-1">
                     <p className="font-medium text-gray-700">Total Defects</p>
-                    <input
+                    <Input
                       type="number"
                       min="0"
-                      className="w-full border border-gray-200 rounded-md px-2 py-1 text-xs"
+                      className="w-full text-xs h-8"
                       value={editMeta.totalDefects}
                       onChange={(e) => setEditMeta({ ...editMeta, totalDefects: e.target.value })}
                     />
                   </div>
                   <div className="space-y-1">
                     <p className="font-medium text-gray-700">Critical Defects</p>
-                    <input
+                    <Input
                       type="number"
                       min="0"
-                      className="w-full border border-gray-200 rounded-md px-2 py-1 text-xs"
+                      className="w-full text-xs h-8"
                       value={editMeta.criticalDefects}
                       onChange={(e) => setEditMeta({ ...editMeta, criticalDefects: e.target.value })}
                     />

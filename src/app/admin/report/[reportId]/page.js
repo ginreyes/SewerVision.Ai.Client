@@ -16,37 +16,7 @@ import { Badge } from '@/components/ui/badge';
 import { useAlert } from '@/components/providers/AlertProvider';
 import reportsApi from '@/data/reportsApi';
 import { useAdminReport } from '@/hooks/useQueryHooks';
-
-/* ─── Avatar / User helpers ─── */
-const getInitials = (u) => {
-  if (!u) return '?';
-  if (u.first_name && u.last_name) return `${u.first_name[0]}${u.last_name[0]}`.toUpperCase();
-  if (u.first_name) return u.first_name[0].toUpperCase();
-  if (u.username) return u.username[0].toUpperCase();
-  if (u.email) return u.email[0].toUpperCase();
-  return '?';
-};
-
-const avatarColors = [
-  'from-violet-500 to-purple-600',
-  'from-rose-500 to-pink-600',
-  'from-amber-500 to-orange-500',
-  'from-emerald-500 to-teal-600',
-  'from-sky-500 to-blue-600',
-  'from-indigo-500 to-violet-500',
-];
-const getAvatarGradient = (str = '') => avatarColors[str.charCodeAt(0) % avatarColors.length];
-
-const getBaseUrl = () =>
-  typeof process !== 'undefined' && process.env?.NEXT_PUBLIC_BACKEND_URL
-    ? process.env.NEXT_PUBLIC_BACKEND_URL
-    : '';
-
-const avatarSrc = (u) => {
-  const id = u?._id || u?.id;
-  if (!id) return null;
-  return `${getBaseUrl()}/api/users/avatar/${id}`;
-};
+import { getInitials, getAvatarGradient, avatarSrc } from '@/components/admin/constants';
 
 const getDisplayName = (u) => {
   if (!u) return '—';

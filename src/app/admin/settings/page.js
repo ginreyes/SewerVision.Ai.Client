@@ -27,7 +27,8 @@ import {
   BrainCircuit,
   Settings as SettingsIcon,
   RefreshCcw,
-  RotateCcw
+  RotateCcw,
+  Monitor
 } from 'lucide-react';
 import { Card, CardContent, CardHeader, CardTitle, CardDescription, CardFooter } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
@@ -41,42 +42,12 @@ import { UserAvatar } from '@/components/ui/UserAvatar';
 import { Badge } from '@/components/ui/badge';
 import { Separator } from '@/components/ui/separator';
 import { Slider } from '@/components/ui/slider';
-import {
-  Table,
-  TableBody,
-  TableCell,
-  TableHead,
-  TableHeader,
-  TableRow,
-} from '@/components/ui/table';
 import { useUser } from '@/components/providers/UserContext';
 import { useAlert } from '@/components/providers/AlertProvider';
 import { api, getCookie } from '@/lib/helper';
 import settingsApi from '@/data/settingsApi';
-
-// --- Components ---
-
-const SectionHeader = ({ icon: Icon, title, description }) => (
-  <div className="flex items-center space-x-4 mb-6">
-    <div className="p-2 bg-blue-100 rounded-lg">
-      <Icon className="w-6 h-6 text-blue-600" />
-    </div>
-    <div>
-      <h2 className="text-lg font-semibold text-gray-900">{title}</h2>
-      <p className="text-sm text-gray-500">{description}</p>
-    </div>
-  </div>
-);
-
-const ToggleSetting = ({ label, description, checked, onCheckedChange }) => (
-  <div className="flex items-center justify-between py-4">
-    <div className="space-y-0.5">
-      <Label className="text-base font-medium text-gray-900">{label}</Label>
-      <p className="text-sm text-gray-500">{description}</p>
-    </div>
-    <Switch checked={checked} onCheckedChange={onCheckedChange} />
-  </div>
-);
+import { SectionHeader, ToggleSetting, SettingsPageLoading } from '@/components/admin/settings';
+import { invalidateLoadingModuleCache } from '@/hooks/useLoadingModuleSettings';
 
 function SettingsPageContent() {
   const router = useRouter();
@@ -165,18 +136,22 @@ function SettingsPageContent() {
     debugMode: false,
     logRetentionDays: 30,
   });
+  const [loadingModule, setLoadingModule] = useState({
+    admin: true,
+    operator: true,
+    qcTechnician: true,
+    user: true,
+  });
   const [awsConfig, setAwsConfig] = useState({
+    provider: 'backblaze',
     bucket: '',
     region: 'us-east-1',
+    endpoint: '',
     accessKey: '',
     secretKey: '',
     showSecret: false,
   });
-  const [logs, setLogs] = useState([
-    { id: 1, timestamp: '2025-04-04 10:22:01', level: 'INFO', message: 'AI model v2.1.4 loaded successfully' },
-    { id: 2, timestamp: '2025-04-04 09:45:33', level: 'WARN', message: 'High latency detected in stream segment #8812' },
-    { id: 3, timestamp: '2025-04-04 08:30:12', level: 'ERROR', message: 'Failed to upload video segment #7709 – retrying...' },
-  ]);
+  const snapshotRef = useRef({});
 
   // Sync URL param changes to state
   useEffect(() => {
@@ -187,8 +162,9 @@ function SettingsPageContent() {
   }, [searchParams]);
 
   // Keep profile in sync with UserContext (single source of truth for smooth updates)
+  // Skip syncing while user is actively editing or saving to avoid overwriting their changes
   useEffect(() => {
-    if (userData) {
+    if (userData && !isEditingProfile && !saving) {
       setProfile({
         firstName: userData.first_name || '',
         lastName: userData.last_name || '',
@@ -199,7 +175,7 @@ function SettingsPageContent() {
         avatar: userData.avatar || null
       });
     }
-  }, [userData]);
+  }, [userData, isEditingProfile, saving]);
 
   // Fetch Admin Settings
   useEffect(() => {
@@ -212,56 +188,104 @@ function SettingsPageContent() {
       // settingsApi.getSettings already unwraps the backend { status, data } shape
       const settings = await settingsApi.getSettings();
 
-      if (settings?.aiModels) {
-        setSelectedModels(settings.aiModels.selectedModels || {});
-        setConfidenceThreshold([settings.aiModels.confidenceThreshold || 75]);
+      // Compute next values before setting state so we can also snapshot them
+      const nextSelectedModels = settings?.aiModels?.selectedModels || selectedModels;
+      const nextConfidenceThreshold = settings?.aiModels?.confidenceThreshold || 75;
+      const nextStreamQuality = settings?.cloudStreaming?.streamQuality || 'high';
+      const nextAutoSaveEnabled = settings?.cloudStreaming?.autoSaveEnabled ?? true;
+      const nextQcWorkflow = settings?.qcWorkflow || qcWorkflow;
+      const nextNotificationsEnabled = settings?.notifications?.notifyCustomerOnDeliverables ?? true;
+      const nextNotificationChannels = settings?.notifications?.channels || notificationChannels;
+      const nextAdminAlerts = settings?.notifications?.adminAlerts || adminAlerts;
+      const nextFeedbackLoopEnabled = settings?.aiLearning?.feedbackLoopEnabled ?? true;
+      const nextTrainingFrequency = settings?.aiLearning?.trainingFrequency || 'weekly';
+      const nextMinAnnotations = settings?.aiLearning?.minAnnotationsPerDefect || 50;
+      const nextAwsProvider = settings?.awsConfig?.endpoint ? 'backblaze' : 'aws';
+      const nextAwsBucket = settings?.awsConfig?.bucket || '';
+      const nextAwsRegion = settings?.awsConfig?.region || 'us-east-1';
+      const nextAwsEndpoint = settings?.awsConfig?.endpoint || '';
+      const nextAwsAccessKey = settings?.awsConfig?.accessKeyId || '';
+      const nextAwsSecretKey = settings?.awsConfig?.secretAccessKey || '';
+      const nextModelVersion = settings?.systemAdmin?.currentModelVersion || 'v2.1.4';
+      const nextSystemAdmin = {
+        maintenanceMode: settings?.systemAdmin?.maintenanceMode ?? false,
+        debugMode: settings?.systemAdmin?.debugMode ?? false,
+        logRetentionDays: settings?.systemAdmin?.logRetentionDays || 30,
+      };
+      const nextLoadingModule = {
+        admin: settings?.systemAdmin?.loadingModule?.admin ?? true,
+        operator: settings?.systemAdmin?.loadingModule?.operator ?? true,
+        qcTechnician: settings?.systemAdmin?.loadingModule?.qcTechnician ?? true,
+        user: settings?.systemAdmin?.loadingModule?.user ?? true,
+      };
+
+      // Apply state
+      setSelectedModels(nextSelectedModels);
+      setConfidenceThreshold([nextConfidenceThreshold]);
+      setStreamQuality(nextStreamQuality);
+      setAutoSaveEnabled(nextAutoSaveEnabled);
+      setQcWorkflow(nextQcWorkflow);
+      setNotificationsEnabled(nextNotificationsEnabled);
+      setNotificationChannels(nextNotificationChannels);
+      setAdminAlerts(nextAdminAlerts);
+      setFeedbackLoopEnabled(nextFeedbackLoopEnabled);
+      setTrainingFrequency(nextTrainingFrequency);
+      setMinAnnotations(nextMinAnnotations);
+      if (settings?.aiLearning?.performanceMetrics) {
+        setPerformanceMetrics(prev => ({ ...prev, ...settings.aiLearning.performanceMetrics }));
       }
-      if (settings?.cloudStreaming) {
-        setStreamQuality(settings.cloudStreaming.streamQuality || 'high');
-        setAutoSaveEnabled(settings.cloudStreaming.autoSaveEnabled ?? true);
-      }
-      if (settings?.qcWorkflow) {
-        setQcWorkflow(settings.qcWorkflow || {});
-      }
-      if (settings?.notifications) {
-        setNotificationsEnabled(settings.notifications.notifyCustomerOnDeliverables ?? true);
-        setNotificationChannels(settings.notifications.channels || {});
-        setAdminAlerts(settings.notifications.adminAlerts || {});
-      }
-      if (settings?.aiLearning) {
-        setFeedbackLoopEnabled(settings.aiLearning.feedbackLoopEnabled ?? true);
-        setTrainingFrequency(settings.aiLearning.trainingFrequency || 'weekly');
-        setMinAnnotations(settings.aiLearning.minAnnotationsPerDefect || 50);
-        if (settings.aiLearning.performanceMetrics) {
-          setPerformanceMetrics(prev => ({
-            ...prev,
-            ...settings.aiLearning.performanceMetrics,
-          }));
-        }
-      }
-      if (settings?.awsConfig) {
-        setAwsConfig(prev => ({
-          ...prev,
-          bucket: settings.awsConfig.bucket || '',
-          region: settings.awsConfig.region || 'us-east-1',
-          accessKey: settings.awsConfig.accessKeyId || '',
-          secretKey: settings.awsConfig.secretAccessKey || '',
-        }));
-      }
-      if (settings?.systemAdmin) {
-        setModelVersion(settings.systemAdmin.currentModelVersion || 'v2.1.4');
-        setSystemAdmin({
-          maintenanceMode: settings.systemAdmin.maintenanceMode ?? false,
-          debugMode: settings.systemAdmin.debugMode ?? false,
-          logRetentionDays: settings.systemAdmin.logRetentionDays || 30,
-        });
-      }
+      setAwsConfig(prev => ({ ...prev, provider: nextAwsProvider, bucket: nextAwsBucket, region: nextAwsRegion, endpoint: nextAwsEndpoint, accessKey: nextAwsAccessKey, secretKey: nextAwsSecretKey }));
+      setModelVersion(nextModelVersion);
+      setSystemAdmin(nextSystemAdmin);
+      setLoadingModule(nextLoadingModule);
+
+      // Capture snapshots so we can detect dirty state
+      snapshotRef.current = {
+        'ai-models': JSON.stringify({ selectedModels: nextSelectedModels, confidenceThreshold: nextConfidenceThreshold }),
+        'cloud-streaming': JSON.stringify({ streamQuality: nextStreamQuality, autoSaveEnabled: nextAutoSaveEnabled }),
+        'qc-workflow': JSON.stringify({ qcWorkflow: nextQcWorkflow }),
+        'notifications': JSON.stringify({ notificationsEnabled: nextNotificationsEnabled, notificationChannels: nextNotificationChannels, adminAlerts: nextAdminAlerts }),
+        'ai-learning': JSON.stringify({ feedbackLoopEnabled: nextFeedbackLoopEnabled, trainingFrequency: nextTrainingFrequency, minAnnotations: nextMinAnnotations }),
+        'aws-config': JSON.stringify({ provider: nextAwsProvider, bucket: nextAwsBucket, region: nextAwsRegion, endpoint: nextAwsEndpoint, accessKey: nextAwsAccessKey, secretKey: nextAwsSecretKey }),
+        'system-admin': JSON.stringify({ systemAdmin: nextSystemAdmin, loadingModule: nextLoadingModule, modelVersion: nextModelVersion }),
+      };
     } catch (error) {
       console.error('Error fetching settings:', error);
-      // Instead of alerting, just log it, as default values are already set
     } finally {
       setLoading(false);
     }
+  };
+
+  const isSectionDirty = (section) => {
+    const snap = snapshotRef.current[section];
+    if (snap === undefined) return false;
+    let current;
+    switch (section) {
+      case 'ai-models':
+        current = { selectedModels, confidenceThreshold: confidenceThreshold[0] };
+        break;
+      case 'cloud-streaming':
+        current = { streamQuality, autoSaveEnabled };
+        break;
+      case 'qc-workflow':
+        current = { qcWorkflow };
+        break;
+      case 'notifications':
+        current = { notificationsEnabled, notificationChannels, adminAlerts };
+        break;
+      case 'ai-learning':
+        current = { feedbackLoopEnabled, trainingFrequency, minAnnotations };
+        break;
+      case 'aws-config':
+        current = { provider: awsConfig.provider, bucket: awsConfig.bucket, region: awsConfig.region, endpoint: awsConfig.endpoint, accessKey: awsConfig.accessKey, secretKey: awsConfig.secretKey };
+        break;
+      case 'system-admin':
+        current = { systemAdmin, loadingModule, modelVersion };
+        break;
+      default:
+        return false;
+    }
+    return JSON.stringify(current) !== snap;
   };
 
   const handleTabChange = (value) => {
@@ -439,10 +463,41 @@ function SettingsPageContent() {
           await settingsApi.updateAILearning({ feedbackLoopEnabled, trainingFrequency, minAnnotationsPerDefect: minAnnotations }, userId);
           break;
         case 'aws-config':
-          await settingsApi.updateAWSConfig({ bucket: awsConfig.bucket, region: awsConfig.region, accessKeyId: awsConfig.accessKey, secretAccessKey: awsConfig.secretKey }, userId);
+          await settingsApi.updateAWSConfig({
+            bucket: awsConfig.bucket,
+            region: awsConfig.provider === 'aws' ? awsConfig.region : undefined,
+            endpoint: awsConfig.provider === 'backblaze' ? awsConfig.endpoint : '',
+            accessKeyId: awsConfig.accessKey,
+            secretAccessKey: awsConfig.secretKey,
+          }, userId);
           break;
         case 'system-admin':
-          await settingsApi.updateSystemAdmin({ currentModelVersion: modelVersion, maintenanceMode: systemAdmin.maintenanceMode, debugMode: systemAdmin.debugMode, logRetentionDays: systemAdmin.logRetentionDays }, userId);
+          await settingsApi.updateSystemAdmin({ currentModelVersion: modelVersion, maintenanceMode: systemAdmin.maintenanceMode, debugMode: systemAdmin.debugMode, logRetentionDays: systemAdmin.logRetentionDays, loadingModule }, userId);
+          invalidateLoadingModuleCache();
+          break;
+      }
+      // Update snapshot so save button hides again
+      switch (section) {
+        case 'ai-models':
+          snapshotRef.current['ai-models'] = JSON.stringify({ selectedModels, confidenceThreshold: confidenceThreshold[0] });
+          break;
+        case 'cloud-streaming':
+          snapshotRef.current['cloud-streaming'] = JSON.stringify({ streamQuality, autoSaveEnabled });
+          break;
+        case 'qc-workflow':
+          snapshotRef.current['qc-workflow'] = JSON.stringify({ qcWorkflow });
+          break;
+        case 'notifications':
+          snapshotRef.current['notifications'] = JSON.stringify({ notificationsEnabled, notificationChannels, adminAlerts });
+          break;
+        case 'ai-learning':
+          snapshotRef.current['ai-learning'] = JSON.stringify({ feedbackLoopEnabled, trainingFrequency, minAnnotations });
+          break;
+        case 'aws-config':
+          snapshotRef.current['aws-config'] = JSON.stringify({ provider: awsConfig.provider, bucket: awsConfig.bucket, region: awsConfig.region, endpoint: awsConfig.endpoint, accessKey: awsConfig.accessKey, secretKey: awsConfig.secretKey });
+          break;
+        case 'system-admin':
+          snapshotRef.current['system-admin'] = JSON.stringify({ systemAdmin, loadingModule, modelVersion });
           break;
       }
       showAlert('Settings saved successfully', 'success');
@@ -465,6 +520,7 @@ function SettingsPageContent() {
     }
   }
 
+
   const handleModelToggle = (key) => {
     setSelectedModels(prev => ({ ...prev, [key]: !prev[key] }));
   };
@@ -486,7 +542,7 @@ function SettingsPageContent() {
           <Button variant="outline" className="text-gray-600 gap-2" onClick={fetchSettings}>
             <RefreshCcw className="w-4 h-4" /> Refresh
           </Button>
-          {activeTab !== 'profile' && (
+          {activeTab !== 'profile' && isSectionDirty(activeTab) && (
             <Button onClick={() => saveSettings(activeTab)} disabled={saving} className="bg-blue-600 hover:bg-blue-700">
               {saving ? <Loader2 className="w-4 h-4 mr-2 animate-spin" /> : <Save className="w-4 h-4 mr-2" />}
               Save Changes
@@ -507,7 +563,7 @@ function SettingsPageContent() {
                 { id: 'qc-workflow', label: 'QC Workflow', icon: Activity },
                 { id: 'notifications', label: 'Notifications', icon: Bell },
                 { id: 'ai-learning', label: 'AI Learning', icon: Cpu },
-                { id: 'aws-config', label: 'AWS Config', icon: Server },
+                { id: 'aws-config', label: 'Storage Config', icon: Server },
                 { id: 'system-admin', label: 'System Admin', icon: SettingsIcon },
               ].map((item) => (
                 <button
@@ -771,6 +827,13 @@ function SettingsPageContent() {
                   <SectionHeader icon={Cpu} title="AI Learning Loop" description="Configure continuous learning parameters" />
                 </CardHeader>
                 <CardContent className="space-y-6">
+                  <div className="flex items-start gap-3 p-3 bg-blue-50 border border-blue-200 rounded-lg text-sm text-blue-800">
+                    <BrainCircuit className="w-4 h-4 mt-0.5 shrink-0 text-blue-600" />
+                    <div>
+                      <p className="font-medium">Powered by Roboflow</p>
+                      <p className="text-blue-700 text-xs mt-0.5">AI inference is handled by Roboflow (configured via environment variables). These settings control how QC feedback is collected — actual model retraining is managed in your Roboflow workspace.</p>
+                    </div>
+                  </div>
                   <ToggleSetting label="Feedback Loop" description="Enable automated training from QC data" checked={feedbackLoopEnabled} onCheckedChange={setFeedbackLoopEnabled} />
                   <div className="space-y-2">
                     <Label>Training Frequency</Label>
@@ -794,35 +857,62 @@ function SettingsPageContent() {
               </Card>
             </TabsContent>
 
-            {/* --- AWS Config --- */}
+            {/* --- Storage Config --- */}
             <TabsContent value="aws-config" className="space-y-6 mt-0">
               <Card className="border-0 shadow-sm">
                 <CardHeader>
-                  <SectionHeader icon={Server} title="AWS Storage Config" description="S3 Bucket and credentials" />
+                  <SectionHeader
+                    icon={Server}
+                    title={awsConfig.provider === 'backblaze' ? 'Backblaze B2 Storage' : 'AWS S3 Storage'}
+                    description={awsConfig.provider === 'backblaze' ? 'Backblaze B2 bucket and application credentials' : 'S3 Bucket and credentials'}
+                  />
                 </CardHeader>
                 <CardContent className="space-y-4">
+                  <div className="space-y-2">
+                    <Label>Storage Provider</Label>
+                    <Select value={awsConfig.provider} onValueChange={val => setAwsConfig(prev => ({ ...prev, provider: val }))}>
+                      <SelectTrigger className="w-48"><SelectValue /></SelectTrigger>
+                      <SelectContent>
+                        <SelectItem value="backblaze">Backblaze B2</SelectItem>
+                        <SelectItem value="aws">AWS S3</SelectItem>
+                      </SelectContent>
+                    </Select>
+                  </div>
                   <div className="grid grid-cols-2 gap-4">
                     <div className="space-y-2">
                       <Label>Bucket Name</Label>
                       <Input value={awsConfig.bucket} onChange={e => setAwsConfig(prev => ({ ...prev, bucket: e.target.value }))} />
                     </div>
                     <div className="space-y-2">
-                      <Label>Region</Label>
-                      <Select value={awsConfig.region} onValueChange={val => setAwsConfig(prev => ({ ...prev, region: val }))}>
-                        <SelectTrigger><SelectValue /></SelectTrigger>
-                        <SelectContent>
-                          <SelectItem value="us-east-1">us-east-1</SelectItem>
-                          <SelectItem value="us-west-2">us-west-2</SelectItem>
-                        </SelectContent>
-                      </Select>
+                      {awsConfig.provider === 'backblaze' ? (
+                        <>
+                          <Label>Endpoint URL</Label>
+                          <Input
+                            placeholder="e.g. s3.us-west-004.backblazeb2.com"
+                            value={awsConfig.endpoint}
+                            onChange={e => setAwsConfig(prev => ({ ...prev, endpoint: e.target.value }))}
+                          />
+                        </>
+                      ) : (
+                        <>
+                          <Label>Region</Label>
+                          <Select value={awsConfig.region} onValueChange={val => setAwsConfig(prev => ({ ...prev, region: val }))}>
+                            <SelectTrigger><SelectValue /></SelectTrigger>
+                            <SelectContent>
+                              <SelectItem value="us-east-1">us-east-1</SelectItem>
+                              <SelectItem value="us-west-2">us-west-2</SelectItem>
+                            </SelectContent>
+                          </Select>
+                        </>
+                      )}
                     </div>
                   </div>
                   <div className="space-y-2">
-                    <Label>Access Key ID</Label>
+                    <Label>{awsConfig.provider === 'backblaze' ? 'Application Key ID' : 'Access Key ID'}</Label>
                     <Input value={awsConfig.accessKey} onChange={e => setAwsConfig(prev => ({ ...prev, accessKey: e.target.value }))} />
                   </div>
                   <div className="space-y-2">
-                    <Label>Secret Access Key</Label>
+                    <Label>{awsConfig.provider === 'backblaze' ? 'Application Key' : 'Secret Access Key'}</Label>
                     <div className="flex">
                       <Input type={awsConfig.showSecret ? "text" : "password"} value={awsConfig.secretKey} onChange={e => setAwsConfig(prev => ({ ...prev, secretKey: e.target.value }))} className="flex-1" />
                       <Button variant="outline" size="icon" onClick={toggleSecretKey} className="ml-2">{awsConfig.showSecret ? '🙈' : '👁️'}</Button>
@@ -841,26 +931,21 @@ function SettingsPageContent() {
                 <CardContent className="space-y-6">
                   <ToggleSetting label="Maintenance Mode" description="Disable public access" checked={systemAdmin.maintenanceMode} onCheckedChange={(val) => setSystemAdmin(prev => ({ ...prev, maintenanceMode: val }))} />
                   <ToggleSetting label="Debug Mode" description="Enable verbose logging" checked={systemAdmin.debugMode} onCheckedChange={(val) => setSystemAdmin(prev => ({ ...prev, debugMode: val }))} />
-                  <Separator />
-                  <div>
-                    <Label>System Logs</Label>
-                    <div className="mt-2 border rounded-md max-h-48 overflow-auto">
-                      <Table>
-                        <TableHeader><TableRow><TableHead>Time</TableHead><TableHead>Level</TableHead><TableHead>Message</TableHead></TableRow></TableHeader>
-                        <TableBody>
-                          {logs.map(log => (
-                            <TableRow key={log.id}>
-                              <TableCell className="text-xs">{log.timestamp}</TableCell>
-                              <TableCell><Badge variant={log.level === 'INFO' ? 'default' : log.level === 'WARN' ? 'secondary' : 'destructive'}>{log.level}</Badge></TableCell>
-                              <TableCell className="text-sm">{log.message}</TableCell>
-                            </TableRow>
-                          ))}
-                        </TableBody>
-                      </Table>
-                    </div>
-                  </div>
                 </CardContent>
               </Card>
+
+              <Card className="border-0 shadow-sm">
+                <CardHeader>
+                  <SectionHeader icon={Monitor} title="Loading Module" description="Control the loading animation shown when navigating between pages" />
+                </CardHeader>
+                <CardContent className="space-y-2">
+                  <ToggleSetting label="Admin" description="Show loading animation for admin users" checked={loadingModule.admin} onCheckedChange={(val) => setLoadingModule(prev => ({ ...prev, admin: val }))} />
+                  <ToggleSetting label="Operator" description="Show loading animation for operators" checked={loadingModule.operator} onCheckedChange={(val) => setLoadingModule(prev => ({ ...prev, operator: val }))} />
+                  <ToggleSetting label="QC Technician" description="Show loading animation for QC technicians" checked={loadingModule.qcTechnician} onCheckedChange={(val) => setLoadingModule(prev => ({ ...prev, qcTechnician: val }))} />
+                  <ToggleSetting label="User (Team Lead)" description="Show loading animation for team leads" checked={loadingModule.user} onCheckedChange={(val) => setLoadingModule(prev => ({ ...prev, user: val }))} />
+                </CardContent>
+              </Card>
+
             </TabsContent>
 
           </Tabs>
@@ -869,15 +954,6 @@ function SettingsPageContent() {
     </div>
   );
 }
-
-const SettingsPageLoading = () => (
-  <div className="flex items-center justify-center min-h-screen">
-    <div className="text-center">
-      <Loader2 className="animate-spin h-8 w-8 text-blue-500 mx-auto" />
-      <span className="ml-2 mt-2 block text-gray-500">Loading settings...</span>
-    </div>
-  </div>
-);
 
 const SettingsPage = () => {
   return (

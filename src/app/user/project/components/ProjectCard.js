@@ -8,13 +8,12 @@ import { useRouter } from "next/navigation";
 import { useAlert } from "@/components/providers/AlertProvider";
 import { useDialog } from "@/components/providers/DialogProvider";
 import { api } from "@/lib/helper";
+import { getProjectStatusColor, getProjectPriorityColor } from "@/components/user/constants";
 
 const ProjectCard = memo((props) => {
   const {
     project,
     setSelectedProject,
-    getStatusColor,
-    getPriorityColor,
     loadData,
     hideActions = false, // Hide edit/delete buttons for QC technicians
   } = props;
@@ -312,14 +311,14 @@ const ProjectCard = memo((props) => {
         <div>
           <div className="flex flex-wrap items-center gap-2 mb-2">
             <span
-              className={`px-3 py-1 rounded-full text-xs font-semibold ${getStatusColor(
+              className={`px-3 py-1 rounded-full text-xs font-semibold ${getProjectStatusColor(
                 project.status
               )}`}
             >
               {project.status.replace("-", " ").toUpperCase()}
             </span>
             <span
-              className={`text-xs font-semibold ${getPriorityColor(
+              className={`text-xs font-semibold ${getProjectPriorityColor(
                 project.priority
               )}`}
             >

@@ -38,6 +38,7 @@ import { useRouter, useSearchParams } from 'next/navigation'
 import { useUser } from '@/components/providers/UserContext'
 import { useAlert } from '@/components/providers/AlertProvider'
 import { api } from '@/lib/helper'
+import { getStatusVariant, getGradeColor } from '@/components/qc/constants'
 
 const QualityReportPage = () => {
   const router = useRouter()
@@ -128,25 +129,6 @@ const QualityReportPage = () => {
     fields: [],
     isDefault: false
   })
-
-  const getStatusVariant = (status) => {
-    switch (status) {
-      case 'completed': return 'default'
-      case 'draft': return 'secondary'
-      case 'pending_review': return 'outline'
-      default: return 'outline'
-    }
-  }
-
-  const getGradeColor = (grade) => {
-    switch (grade) {
-      case 'Grade 1': return 'bg-green-100 text-green-700'
-      case 'Grade 2': return 'bg-yellow-100 text-yellow-700'
-      case 'Grade 3': return 'bg-orange-100 text-orange-700'
-      case 'Grade 4': return 'bg-red-100 text-red-700'
-      default: return 'bg-gray-100 text-gray-700'
-    }
-  }
 
   // Fetch data
   useEffect(() => {

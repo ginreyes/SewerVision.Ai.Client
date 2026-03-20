@@ -47,7 +47,7 @@ function SelectTrigger({
         className
       )}
       style={{
-        '--tw-ring-color': '#d76b84' 
+        '--tw-ring-color': 'var(--role-accent, #d76b84)'
       }}
       
       {...props}

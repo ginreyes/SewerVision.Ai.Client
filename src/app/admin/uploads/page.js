@@ -1,5 +1,6 @@
 "use client";
-import React, { useState, useRef, useEffect, useCallback } from "react";
+import React, { useState, useRef, useEffect, useCallback, useMemo } from "react";
+import { useRouter } from "next/navigation";
 import {
   Upload,
   Download,
@@ -21,6 +22,18 @@ import {
   AlertCircle,
   Info,
   Loader2,
+  Cloud,
+  Globe,
+  Key,
+  Database,
+  CheckCircle2,
+  XCircle,
+  Copy,
+  Eye,
+  MapPin,
+  Clock,
+  FileText,
+  Image,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -45,13 +58,15 @@ import { Alert, AlertDescription } from "@/components/ui/alert";
 import { Checkbox } from "@/components/ui/checkbox";
 import { Label } from "@/components/ui/label";
 import uploadsApi from "@/data/uploadsApi";
-import { FileCard } from "./components/FileCard";
+import SewerTable from "@/components/ui/SewerTable";
+import { FileCard } from "@/components/admin/uploads/FileCard";
 import { getFileTypeIcon, getStatusColor } from "@/lib/utils";
-import BulkUploadModal from "./components/BulkUploadModal";
+import BulkUploadModal from "@/components/admin/uploads/BulkUploadModal";
 import { useAlert } from "@/components/providers/AlertProvider";
 import { useAdminUploads, useAdminUploadStats } from "@/hooks/useQueryHooks";
 
 const AdminUploads = () => {
+  const router = useRouter();
   const { showAlert } = useAlert();
   const [searchQuery, setSearchQuery] = useState("");
   const [filterStatus, setFilterStatus] = useState("all");
@@ -76,12 +91,18 @@ const AdminUploads = () => {
     archiveFiles: 0,
     otherFiles: 0,
   });
-  const [loading, setLoading] = useState(true);
+  const [loading, setLoading] = useState(false);
+  const [monitoringLoading, setMonitoringLoading] = useState(false);
   const [monitoringData, setMonitoringData] = useState({
     activeUploads: [],
     processingQueue: [],
     errors: [],
   });
+
+  const [storageConfig, setStorageConfig] = useState(null);
+  const [storageConfigLoading, setStorageConfigLoading] = useState(true);
+  const [storageUsage, setStorageUsage] = useState(null);
+  const [storageUsageLoading, setStorageUsageLoading] = useState(true);
 
   const [uploadSettings, setUploadSettings] = useState({
     maxFileSize: "5gb",
@@ -123,22 +144,15 @@ const AdminUploads = () => {
     refetch: refetchStats,
   } = useAdminUploadStats();
 
-  const fetchMonitoringData = useCallback(async () => {
+  const fetchMonitoringData = useCallback(async (showLoader = false) => {
     try {
-      const data = await uploadsApi.getAllUploads({
-        status: 'uploading',
-        limit: 10,
-      });
+      if (showLoader) setMonitoringLoading(true);
 
-      const processingData = await uploadsApi.getAllUploads({
-        status: 'processing',
-        limit: 10,
-      });
-
-      const failedData = await uploadsApi.getAllUploads({
-        status: 'failed',
-        limit: 5,
-      });
+      const [data, processingData, failedData] = await Promise.all([
+        uploadsApi.getAllUploads({ status: 'uploading', limit: 10 }),
+        uploadsApi.getAllUploads({ status: 'processing', limit: 10 }),
+        uploadsApi.getAllUploads({ status: 'failed', limit: 10 }),
+      ]);
 
       setMonitoringData({
         activeUploads: data.uploads || [],
@@ -147,6 +161,8 @@ const AdminUploads = () => {
       });
     } catch (error) {
       console.error('Error fetching monitoring data:', error);
+    } finally {
+      setMonitoringLoading(false);
     }
   }, []);
 
@@ -186,6 +202,34 @@ const AdminUploads = () => {
     }
   };
 
+  // Fetch storage provider config and usage on mount
+  useEffect(() => {
+    const fetchStorageConfig = async () => {
+      try {
+        setStorageConfigLoading(true);
+        const config = await uploadsApi.getStorageConfig();
+        setStorageConfig(config);
+      } catch (error) {
+        console.error('Error fetching storage config:', error);
+      } finally {
+        setStorageConfigLoading(false);
+      }
+    };
+    const fetchStorageUsage = async () => {
+      try {
+        setStorageUsageLoading(true);
+        const usage = await uploadsApi.getStorageUsage();
+        setStorageUsage(usage);
+      } catch (error) {
+        console.error('Error fetching storage usage:', error);
+      } finally {
+        setStorageUsageLoading(false);
+      }
+    };
+    fetchStorageConfig();
+    fetchStorageUsage();
+  }, []);
+
   // Initial load: monitoring (when needed) and persisted upload settings
   useEffect(() => {
     // Restore upload settings from localStorage if present
@@ -204,7 +248,7 @@ const AdminUploads = () => {
     }
 
     if (activeTab === 'monitoring') {
-      fetchMonitoringData();
+      fetchMonitoringData(true);
       const interval = setInterval(fetchMonitoringData, 5000); // Refresh every 5 seconds
       return () => clearInterval(interval);
     }
@@ -306,6 +350,208 @@ const AdminUploads = () => {
     </Card>
   );
 
+  /* ─── Files Tab: SewerTable config ─── */
+  const fileColumns = [
+    { key: "file", name: "File" },
+    { key: "size", name: "Size" },
+    { key: "status", name: "Status" },
+    { key: "uploadedBy", name: "Uploaded By" },
+    { key: "location", name: "Location" },
+    { key: "uploadedAt", name: "Date" },
+    { key: "actions", name: "" },
+  ];
+
+  const fileFilters = [
+    {
+      key: "status",
+      label: "Status",
+      options: [
+        { value: "all", label: "All Status" },
+        { value: "completed", label: "Completed" },
+        { value: "uploading", label: "Uploading" },
+        { value: "processing", label: "Processing" },
+        { value: "failed", label: "Failed" },
+        { value: "queued", label: "Queued" },
+      ],
+    },
+    {
+      key: "type",
+      label: "Type",
+      options: [
+        { value: "all", label: "All Types" },
+        { value: "video", label: "Video" },
+        { value: "document", label: "Document" },
+        { value: "image", label: "Image" },
+        { value: "archive", label: "Archive" },
+        { value: "data", label: "Data" },
+      ],
+    },
+  ];
+
+  const fileTableData = useMemo(() => {
+    return filteredUploads.map((upload) => ({
+      _id: upload._id || upload.id,
+      file: {
+        name: upload.originalName || upload.filename,
+        filename: upload.filename,
+        type: upload.type,
+        aiStatus: upload.aiStatus,
+        processingStatus: upload.processingStatus,
+        qcStatus: upload.qcStatus,
+        defectsFound: upload.defectsFound,
+        confidence: upload.confidence,
+        duration: upload.duration,
+        isPublic: upload.isPublic,
+        tags: upload.tags,
+      },
+      size: upload.size,
+      status: upload.status,
+      uploadedBy: typeof upload.uploadedBy === 'object' ? upload.uploadedBy?.email || 'Unknown' : upload.uploadedBy || 'Unknown',
+      location: upload.location || '—',
+      uploadedAt: upload.uploadedAt,
+      actions: upload,
+    }));
+  }, [filteredUploads]);
+
+  const handleFileFilterChange = (key, val) => {
+    if (key === "status") setFilterStatus(val);
+    if (key === "type") setFilterType(val);
+  };
+
+  const renderFileCell = (item, col) => {
+    if (col.key === "file") {
+      const f = item.file;
+      return (
+        <div className="flex items-center gap-3 min-w-0">
+          <div className="p-2 rounded-lg bg-gray-50 border border-gray-100 flex-shrink-0">
+            {getFileTypeIcon(f.type)}
+          </div>
+          <div className="min-w-0">
+            <p className="text-sm font-medium text-gray-900 truncate">{f.name}</p>
+            <div className="flex items-center gap-1.5 mt-0.5 flex-wrap">
+              <span className="text-[11px] text-gray-400 truncate">{f.filename}</span>
+              {f.type === "video" && f.aiStatus === "processed" && (
+                <Badge className="bg-purple-100 text-purple-700 border-purple-200 text-[10px] px-1.5 py-0">
+                  AI Processed
+                </Badge>
+              )}
+              {f.type === "video" && (f.processingStatus === "in_progress" || f.aiStatus === "pending") && (
+                <Badge className="bg-amber-100 text-amber-700 border-amber-200 text-[10px] px-1.5 py-0 animate-pulse">
+                  <Loader2 className="w-2.5 h-2.5 mr-0.5 animate-spin inline" />
+                  AI Processing
+                </Badge>
+              )}
+              {f.qcStatus && f.qcStatus !== "not_applicable" && (
+                <Badge className={`text-[10px] px-1.5 py-0 ${
+                  f.qcStatus === "approved"
+                    ? "bg-emerald-100 text-emerald-700 border-emerald-200"
+                    : "bg-amber-100 text-amber-700 border-amber-200"
+                }`}>
+                  QC: {f.qcStatus}
+                </Badge>
+              )}
+              {f.isPublic && (
+                <Badge className="bg-blue-100 text-blue-700 border-blue-200 text-[10px] px-1.5 py-0">
+                  Public
+                </Badge>
+              )}
+            </div>
+          </div>
+        </div>
+      );
+    }
+
+    if (col.key === "size") {
+      return <span className="text-sm text-gray-600 font-mono">{item.size}</span>;
+    }
+
+    if (col.key === "status") {
+      return (
+        <Badge variant="outline" className={`${getStatusColor(item.status)} text-xs font-semibold capitalize`}>
+          {item.status === "uploading" && <Loader2 className="w-3 h-3 mr-1 animate-spin inline" />}
+          {item.status}
+        </Badge>
+      );
+    }
+
+    if (col.key === "uploadedBy") {
+      return <span className="text-sm text-gray-600 truncate">{item.uploadedBy}</span>;
+    }
+
+    if (col.key === "location") {
+      return (
+        <span className="text-sm text-gray-500 truncate flex items-center gap-1">
+          <MapPin className="w-3 h-3 flex-shrink-0" />
+          {item.location}
+        </span>
+      );
+    }
+
+    if (col.key === "uploadedAt") {
+      if (!item.uploadedAt) return <span className="text-sm text-gray-400">—</span>;
+      const date = new Date(item.uploadedAt);
+      const now = new Date();
+      const diffMs = now - date;
+      const diffMin = Math.floor(diffMs / 60000);
+      const diffHr = Math.floor(diffMin / 60);
+      const diffDay = Math.floor(diffHr / 24);
+
+      let relative;
+      if (diffMin < 1) relative = "Just now";
+      else if (diffMin < 60) relative = `${diffMin}m ago`;
+      else if (diffHr < 24) relative = `${diffHr}h ago`;
+      else if (diffDay < 7) relative = `${diffDay}d ago`;
+      else relative = date.toLocaleDateString("en-US", { month: "short", day: "numeric" });
+
+      return (
+        <div className="min-w-0">
+          <p className="text-sm font-medium text-gray-900">{relative}</p>
+          <p className="text-[11px] text-gray-400">{date.toLocaleDateString()}</p>
+        </div>
+      );
+    }
+
+    if (col.key === "actions") {
+      const upload = item.actions;
+      const uploadId = upload._id || upload.id;
+      return (
+        <div className="flex items-center gap-1">
+          <Button
+            variant="ghost"
+            size="sm"
+            className="h-8 w-8 p-0"
+            onClick={(e) => {
+              e.stopPropagation();
+              router.push(`/admin/uploads/view/${uploadId}`);
+            }}
+            title="View"
+          >
+            <Eye className="w-4 h-4 text-gray-500" />
+          </Button>
+          <Button
+            variant="ghost"
+            size="sm"
+            className="h-8 w-8 p-0"
+            onClick={async (e) => {
+              e.stopPropagation();
+              try {
+                await uploadsApi.downloadFile(uploadId, upload.originalName || upload.filename);
+                showAlert('File downloaded successfully', 'success');
+              } catch (error) {
+                showAlert(error?.message || 'Failed to download file', 'error');
+              }
+            }}
+            title="Download"
+          >
+            <Download className="w-4 h-4 text-gray-500" />
+          </Button>
+        </div>
+      );
+    }
+
+    return null;
+  };
+
   return (
     <div className="max-w-7xl mx-auto bg-gray-50">
       {/* Header */}
@@ -324,16 +570,10 @@ const AdminUploads = () => {
                 Admin Access
               </Badge>
             </div>
-            <div className="flex items-center space-x-4">
-              <Button variant="outline" onClick={() => { handleFetchUploads(); fetchSystemStats(); }}>
-                <RefreshCw className="w-4 h-4 mr-2" />
-                Refresh
-              </Button>
-              <Button variant="gradient" onClick={() => setShowBulkUploadModal(true)}>
-                <CloudUpload className="w-4 h-4 mr-2" />
-                Bulk Upload
-              </Button>
-            </div>
+            <Button variant="outline" onClick={() => { handleFetchUploads(); fetchSystemStats(); }}>
+              <RefreshCw className="w-4 h-4 mr-2" />
+              Refresh
+            </Button>
           </div>
         </div>
       </div>
@@ -657,109 +897,269 @@ const AdminUploads = () => {
 
           {/* Files Tab */}
           <TabsContent value="files" className="space-y-6">
-            {/* Filters and Bulk Actions */}
-            <Card>
-              <CardContent className="p-6">
-                <div className="flex flex-col lg:flex-row gap-4 mb-4">
-                  <div className="relative flex-1">
-                    <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400 w-4 h-4" />
-                    <Input
-                      placeholder="Search files, users, locations..."
-                      value={searchQuery}
-                      onChange={(e) => setSearchQuery(e.target.value)}
-                      className="pl-10"
-                    />
-                  </div>
-                  <Select value={filterStatus} onValueChange={setFilterStatus}>
-                    <SelectTrigger className="w-48">
-                      <SelectValue placeholder="Filter by status" />
-                    </SelectTrigger>
-                    <SelectContent>
-                      <SelectItem value="all">All Status</SelectItem>
-                      <SelectItem value="completed">Completed</SelectItem>
-                      <SelectItem value="uploading">Uploading</SelectItem>
-                      <SelectItem value="processing">Processing</SelectItem>
-                      <SelectItem value="failed">Failed</SelectItem>
-                    </SelectContent>
-                  </Select>
-                  <Select value={filterType} onValueChange={setFilterType}>
-                    <SelectTrigger className="w-48">
-                      <SelectValue placeholder="Filter by type" />
-                    </SelectTrigger>
-                    <SelectContent>
-                      <SelectItem value="all">All Types</SelectItem>
-                      <SelectItem value="video">Video</SelectItem>
-                      <SelectItem value="document">Document</SelectItem>
-                      <SelectItem value="archive">Archive</SelectItem>
-                      <SelectItem value="data">Data</SelectItem>
-                    </SelectContent>
-                  </Select>
+            {/* Bulk Actions Bar */}
+            {selectedFiles.length > 0 && (
+              <div className="bg-blue-50 border border-blue-200 rounded-lg p-3 flex items-center justify-between">
+                <span className="text-sm font-medium text-blue-800">
+                  {selectedFiles.length} file{selectedFiles.length !== 1 ? 's' : ''} selected
+                </span>
+                <div className="flex items-center gap-2">
+                  <Button variant="outline" size="sm" onClick={() => handleBulkAction("download")}>
+                    <Download className="w-4 h-4 mr-1.5" /> Download
+                  </Button>
+                  <Button variant="outline" size="sm" onClick={() => handleBulkAction("archive")}>
+                    <Archive className="w-4 h-4 mr-1.5" /> Archive
+                  </Button>
+                  <Button variant="destructive" size="sm" onClick={() => handleBulkAction("delete")}>
+                    <Trash2 className="w-4 h-4 mr-1.5" /> Delete
+                  </Button>
+                  <Button variant="ghost" size="sm" onClick={() => setSelectedFiles([])}>
+                    Clear
+                  </Button>
                 </div>
+              </div>
+            )}
 
-                {/* Bulk Actions */}
-                <div className="flex items-center justify-between">
-                  <div className="flex items-center space-x-4">
-                    <Checkbox
-                      checked={
-                        selectedFiles.length === filteredUploads.length &&
-                        filteredUploads.length > 0
-                      }
-                      onCheckedChange={handleSelectAll}
-                    />
-                    <span className="text-sm text-gray-600">
-                      {selectedFiles.length > 0
-                        ? `${selectedFiles.length} selected`
-                        : "Select all"}
-                    </span>
-                  </div>
-
-                  {selectedFiles.length > 0 && (
-                    <div className="flex space-x-2">
-                      <Button
-                        variant="outline"
-                        size="sm"
-                        onClick={() => handleBulkAction("download")}
-                      >
-                        <Download className="w-4 h-4 mr-2" />
-                        Download
-                      </Button>
-                      <Button
-                        variant="outline"
-                        size="sm"
-                        onClick={() => handleBulkAction("archive")}
-                      >
-                        <Archive className="w-4 h-4 mr-2" />
-                        Archive
-                      </Button>
-                      <Button
-                        variant="destructive"
-                        size="sm"
-                        onClick={() => handleBulkAction("delete")}
-                      >
-                        <Trash2 className="w-4 h-4 mr-2" />
-                        Delete
-                      </Button>
-                    </div>
-                  )}
-                </div>
-              </CardContent>
-            </Card>
-
-            {/* Files Grid */}
-            <div className="space-y-4">
-              {filteredUploads.map((upload) => (
-                <FileCard
-                  key={upload._id}
-                  upload={upload}
-                  selectedFiles={selectedFiles}
-                  handleFileSelect={handleFileSelect}
-                />
-              ))}
-            </div>
+            {/* SewerTable for Files */}
+            <SewerTable
+              data={fileTableData}
+              columns={fileColumns}
+              filters={fileFilters}
+              search={searchQuery}
+              onSearch={setSearchQuery}
+              onFilterChange={handleFileFilterChange}
+              loading={uploadsLoading}
+              renderCell={renderFileCell}
+              showCheckbox={true}
+              showActions={false}
+              showCsvActions={false}
+              selectedRows={selectedFiles}
+              onSelectionChange={setSelectedFiles}
+              getRowId={(row) => row._id}
+              emptyMessage="No files found"
+              emptySubtext="Try adjusting your filters or search, or upload new files"
+              columnDefaults={{
+                file: 300,
+                size: 100,
+                status: 120,
+                uploadedBy: 150,
+                location: 150,
+                uploadedAt: 140,
+                actions: 80,
+              }}
+              rowsPerPageOptions={[10, 20, 50]}
+              ButtonPlacement={
+                <Button variant="rose" size="sm" onClick={() => setShowBulkUploadModal(true)}>
+                  <CloudUpload className="w-4 h-4 mr-1.5" />
+                  Upload Files
+                </Button>
+              }
+            />
           </TabsContent>
 
           {/* Storage Tab */}
           <TabsContent value="storage" className="space-y-6">
+            {/* Cloud Storage Provider */}
+            <Card className="border-blue-200 bg-gradient-to-r from-blue-50/50 to-indigo-50/50">
+              <CardHeader>
+                <div className="flex items-center justify-between">
+                  <div className="flex items-center space-x-3">
+                    <div className="p-2.5 bg-blue-100 rounded-xl">
+                      <Cloud className="w-5 h-5 text-blue-600" />
+                    </div>
+                    <div>
+                      <CardTitle className="text-lg">Cloud Storage Provider</CardTitle>
+                      <CardDescription>Active storage backend configuration</CardDescription>
+                    </div>
+                  </div>
+                  {storageConfig && (
+                    <Badge className={storageConfig.configured
+                      ? "bg-emerald-100 text-emerald-700 border-emerald-200"
+                      : "bg-red-100 text-red-700 border-red-200"
+                    }>
+                      {storageConfig.configured ? (
+                        <><CheckCircle2 className="w-3 h-3 mr-1" /> Connected</>
+                      ) : (
+                        <><XCircle className="w-3 h-3 mr-1" /> Not Configured</>
+                      )}
+                    </Badge>
+                  )}
+                </div>
+              </CardHeader>
+              <CardContent>
+                {storageConfigLoading ? (
+                  <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                    {[1, 2, 3, 4, 5, 6].map((i) => (
+                      <div key={i} className="space-y-2">
+                        <div className="h-3 w-20 bg-gray-200 rounded animate-pulse" />
+                        <div className="h-9 bg-gray-100 rounded-lg animate-pulse" />
+                      </div>
+                    ))}
+                  </div>
+                ) : storageConfig ? (
+                  <div className="space-y-5">
+                    {/* Provider Header */}
+                    <div className="flex items-center gap-3 p-3 bg-white rounded-lg border border-blue-100">
+                      <img
+                        src="https://www.backblaze.com/favicon.ico"
+                        alt="Backblaze"
+                        className="w-8 h-8 rounded"
+                        onError={(e) => { e.target.style.display = 'none'; }}
+                      />
+                      <div>
+                        <p className="font-semibold text-gray-900">{storageConfig.providerName}</p>
+                        <p className="text-xs text-gray-500">S3-Compatible Cloud Object Storage</p>
+                      </div>
+                      {storageConfig.s3Compatible && (
+                        <Badge variant="outline" className="ml-auto text-xs bg-indigo-50 text-indigo-600 border-indigo-200">
+                          S3 Compatible
+                        </Badge>
+                      )}
+                    </div>
+
+                    {/* Credentials Grid */}
+                    <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                      <div className="space-y-1.5">
+                        <label className="flex items-center gap-1.5 text-xs font-medium text-gray-500 uppercase tracking-wide">
+                          <Database className="w-3 h-3" /> Bucket Name
+                        </label>
+                        <div className="flex items-center gap-2 px-3 py-2 bg-gray-50 rounded-lg border border-gray-200 font-mono text-sm text-gray-800">
+                          {storageConfig.bucketName || '—'}
+                        </div>
+                      </div>
+
+                      <div className="space-y-1.5">
+                        <label className="flex items-center gap-1.5 text-xs font-medium text-gray-500 uppercase tracking-wide">
+                          <Globe className="w-3 h-3" /> Region
+                        </label>
+                        <div className="flex items-center gap-2 px-3 py-2 bg-gray-50 rounded-lg border border-gray-200 font-mono text-sm text-gray-800">
+                          {storageConfig.region || '—'}
+                        </div>
+                      </div>
+
+                      <div className="space-y-1.5">
+                        <label className="flex items-center gap-1.5 text-xs font-medium text-gray-500 uppercase tracking-wide">
+                          <Server className="w-3 h-3" /> S3 Endpoint
+                        </label>
+                        <div className="flex items-center gap-2 px-3 py-2 bg-gray-50 rounded-lg border border-gray-200 font-mono text-sm text-gray-800 truncate">
+                          {storageConfig.endpoint || '—'}
+                        </div>
+                      </div>
+
+                      <div className="space-y-1.5">
+                        <label className="flex items-center gap-1.5 text-xs font-medium text-gray-500 uppercase tracking-wide">
+                          <Key className="w-3 h-3" /> Application Key ID
+                        </label>
+                        <div className="flex items-center gap-2 px-3 py-2 bg-gray-50 rounded-lg border border-gray-200 font-mono text-sm text-gray-800">
+                          {storageConfig.keyId || '—'}
+                        </div>
+                      </div>
+
+                      <div className="space-y-1.5">
+                        <label className="flex items-center gap-1.5 text-xs font-medium text-gray-500 uppercase tracking-wide">
+                          <HardDrive className="w-3 h-3" /> Bucket ID
+                        </label>
+                        <div className="flex items-center gap-2 px-3 py-2 bg-gray-50 rounded-lg border border-gray-200 font-mono text-sm text-gray-800">
+                          {storageConfig.bucketId || '—'}
+                        </div>
+                      </div>
+
+                      <div className="space-y-1.5">
+                        <label className="flex items-center gap-1.5 text-xs font-medium text-gray-500 uppercase tracking-wide">
+                          <ShieldCheck className="w-3 h-3" /> Application Key
+                        </label>
+                        <div className="flex items-center gap-2 px-3 py-2 bg-gray-50 rounded-lg border border-gray-200 font-mono text-sm text-gray-800">
+                          ••••••••••••••••
+                        </div>
+                      </div>
+                    </div>
+
+                    {/* Storage Usage Section */}
+                    <div className="mt-5 pt-5 border-t border-blue-100">
+                      <h4 className="text-sm font-semibold text-gray-700 mb-3 flex items-center gap-2">
+                        <HardDrive className="w-4 h-4 text-blue-500" />
+                        Bucket Storage Usage
+                      </h4>
+                      {storageUsageLoading ? (
+                        <div className="space-y-3">
+                          <div className="h-4 w-48 bg-gray-200 rounded animate-pulse" />
+                          <div className="h-2 w-full bg-gray-100 rounded animate-pulse" />
+                          <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
+                            {[1, 2, 3, 4].map((i) => (
+                              <div key={i} className="h-16 bg-gray-100 rounded-lg animate-pulse" />
+                            ))}
+                          </div>
+                        </div>
+                      ) : storageUsage ? (
+                        <div className="space-y-4">
+                          {/* Total Usage Summary */}
+                          <div className="flex items-center justify-between">
+                            <div>
+                              <span className="text-2xl font-bold text-gray-900">{storageUsage.totalFormatted}</span>
+                              <span className="text-sm text-gray-500 ml-2">across {storageUsage.fileCount.toLocaleString()} files</span>
+                            </div>
+                            <Button
+                              variant="outline"
+                              size="sm"
+                              className="text-xs"
+                              onClick={async () => {
+                                try {
+                                  setStorageUsageLoading(true);
+                                  const usage = await uploadsApi.getStorageUsage();
+                                  setStorageUsage(usage);
+                                } catch (err) {
+                                  console.error(err);
+                                } finally {
+                                  setStorageUsageLoading(false);
+                                }
+                              }}
+                            >
+                              <RefreshCw className="w-3 h-3 mr-1" />
+                              Refresh
+                            </Button>
+                          </div>
+
+                          {/* Breakdown by Folder/Prefix */}
+                          {storageUsage.byPrefix && Object.keys(storageUsage.byPrefix).length > 0 && (
+                            <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-3">
+                              {Object.entries(storageUsage.byPrefix)
+                                .sort(([, a], [, b]) => b.bytes - a.bytes)
+                                .map(([prefix, info]) => {
+                                  const percentage = storageUsage.totalBytes > 0
+                                    ? ((info.bytes / storageUsage.totalBytes) * 100).toFixed(1)
+                                    : 0;
+                                  return (
+                                    <div key={prefix} className="p-3 bg-white rounded-lg border border-gray-200 hover:shadow-sm transition-shadow">
+                                      <div className="flex items-center gap-2 mb-1">
+                                        <FolderOpen className="w-3.5 h-3.5 text-blue-500 flex-shrink-0" />
+                                        <span className="text-xs font-semibold text-gray-700 capitalize truncate">{prefix}</span>
+                                      </div>
+                                      <p className="text-sm font-bold text-gray-900">{info.formatted}</p>
+                                      <p className="text-[11px] text-gray-400">{info.count} files · {percentage}%</p>
+                                    </div>
+                                  );
+                                })}
+                            </div>
+                          )}
+                        </div>
+                      ) : (
+                        <p className="text-sm text-gray-400 italic">Unable to load storage usage</p>
+                      )}
+                    </div>
+
+                    <p className="text-xs text-gray-400 mt-4">
+                      Credentials are configured via environment variables. Contact your system administrator to update storage settings.
+                    </p>
+                  </div>
+                ) : (
+                  <div className="text-center py-6">
+                    <Cloud className="w-10 h-10 text-gray-300 mx-auto mb-2" />
+                    <p className="text-sm text-gray-500">Unable to load storage configuration</p>
+                  </div>
+                )}
+              </CardContent>
+            </Card>
+
             <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
               {/* Storage Analytics */}
               <Card>
@@ -902,180 +1302,384 @@ const AdminUploads = () => {
 
           {/* Monitoring Tab */}
           <TabsContent value="monitoring" className="space-y-6">
-            {/* Real-time Status */}
+            {/* Refresh Header */}
+            <div className="flex items-center justify-between">
+              <div>
+                <h2 className="text-lg font-semibold text-gray-900">Real-time Monitoring</h2>
+                <p className="text-sm text-gray-500">Auto-refreshes every 5 seconds when active</p>
+              </div>
+              <Button
+                variant="outline"
+                size="sm"
+                onClick={() => {
+                  fetchMonitoringData(true);
+                  refetchStats();
+                }}
+                disabled={monitoringLoading}
+              >
+                <RefreshCw className={`w-4 h-4 mr-2 ${monitoringLoading ? 'animate-spin' : ''}`} />
+                Refresh
+              </Button>
+            </div>
+
+            {/* Status Cards Row */}
             <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
+              {/* System Status */}
               <Card>
-                <CardHeader>
-                  <CardTitle className="flex items-center space-x-2">
+                <CardHeader className="pb-3">
+                  <CardTitle className="flex items-center space-x-2 text-base">
                     <Activity className="w-5 h-5 text-green-600" />
                     <span>System Status</span>
                   </CardTitle>
                 </CardHeader>
                 <CardContent>
-                  <div className="space-y-3">
-                    <div className="flex items-center justify-between">
-                      <span className="text-sm">Upload Service</span>
-                      <Badge className="bg-green-100 text-green-800">
-                        Online
-                      </Badge>
+                  {statsLoading ? (
+                    <div className="space-y-3">
+                      {[1, 2, 3, 4].map((i) => (
+                        <div key={i} className="flex items-center justify-between">
+                          <div className="h-4 w-24 bg-gray-200 rounded animate-pulse" />
+                          <div className="h-5 w-16 bg-gray-100 rounded-full animate-pulse" />
+                        </div>
+                      ))}
                     </div>
-                    <div className="flex items-center justify-between">
-                      <span className="text-sm">AI Processing</span>
-                      <Badge className="bg-green-100 text-green-800">
-                        Active
-                      </Badge>
+                  ) : (
+                    <div className="space-y-3">
+                      <div className="flex items-center justify-between">
+                        <span className="text-sm">Upload Service</span>
+                        <Badge className="bg-green-100 text-green-800 border-green-200">
+                          Online
+                        </Badge>
+                      </div>
+                      <div className="flex items-center justify-between">
+                        <span className="text-sm">AI Processing</span>
+                        <Badge className={
+                          monitoringData.processingQueue.length > 0
+                            ? "bg-purple-100 text-purple-800 border-purple-200"
+                            : "bg-green-100 text-green-800 border-green-200"
+                        }>
+                          {monitoringData.processingQueue.length > 0 ? `${monitoringData.processingQueue.length} Active` : 'Idle'}
+                        </Badge>
+                      </div>
+                      <div className="flex items-center justify-between">
+                        <span className="text-sm">Storage Health</span>
+                        <Badge className={
+                          systemStats.diskHealthStatus === 'critical'
+                            ? "bg-red-100 text-red-800 border-red-200"
+                            : systemStats.diskHealthStatus === 'warning'
+                              ? "bg-amber-100 text-amber-800 border-amber-200"
+                              : "bg-green-100 text-green-800 border-green-200"
+                        }>
+                          {systemStats.diskHealthStatus === 'critical' ? 'Critical' :
+                           systemStats.diskHealthStatus === 'warning' ? 'Warning' : 'Healthy'}
+                        </Badge>
+                      </div>
+                      <div className="flex items-center justify-between">
+                        <span className="text-sm">Backblaze B2</span>
+                        <Badge className={
+                          storageConfig?.configured
+                            ? "bg-green-100 text-green-800 border-green-200"
+                            : "bg-red-100 text-red-800 border-red-200"
+                        }>
+                          {storageConfig?.configured ? 'Connected' : 'Disconnected'}
+                        </Badge>
+                      </div>
                     </div>
-                    <div className="flex items-center justify-between">
-                      <span className="text-sm">Storage</span>
-                      <Badge className="bg-amber-100 text-amber-800">
-                        Warning
-                      </Badge>
-                    </div>
-                    <div className="flex items-center justify-between">
-                      <span className="text-sm">Backup Service</span>
-                      <Badge className="bg-green-100 text-green-800">
-                        Running
-                      </Badge>
-                    </div>
-                  </div>
+                  )}
                 </CardContent>
               </Card>
 
+              {/* Storage & Upload Metrics */}
               <Card>
-                <CardHeader>
-                  <CardTitle className="flex items-center space-x-2">
+                <CardHeader className="pb-3">
+                  <CardTitle className="flex items-center space-x-2 text-base">
                     <TrendingUp className="w-5 h-5 text-blue-600" />
-                    <span>Performance</span>
+                    <span>Upload Metrics</span>
                   </CardTitle>
                 </CardHeader>
                 <CardContent>
-                  <div className="space-y-3">
-                    <div>
-                      <div className="flex justify-between text-sm mb-1">
-                        <span>Upload Speed</span>
-                        <span>145 MB/s</span>
-                      </div>
-                      <Progress value={85} className="h-2" />
+                  {statsLoading ? (
+                    <div className="space-y-3">
+                      {[1, 2, 3].map((i) => (
+                        <div key={i}>
+                          <div className="flex justify-between mb-1">
+                            <div className="h-4 w-20 bg-gray-200 rounded animate-pulse" />
+                            <div className="h-4 w-12 bg-gray-200 rounded animate-pulse" />
+                          </div>
+                          <div className="h-2 w-full bg-gray-100 rounded animate-pulse" />
+                        </div>
+                      ))}
                     </div>
-                    <div>
-                      <div className="flex justify-between text-sm mb-1">
-                        <span>CPU Usage</span>
-                        <span>34%</span>
+                  ) : (
+                    <div className="space-y-3">
+                      <div>
+                        <div className="flex justify-between text-sm mb-1">
+                          <span>Disk Usage</span>
+                          <span className="font-medium">{systemStats.usedStorage || '—'} / {systemStats.totalStorage || '—'}</span>
+                        </div>
+                        <Progress value={systemStats.storageUsage || 0} className="h-2" />
+                        <p className="text-[11px] text-gray-400 mt-0.5">{systemStats.storageUsage || 0}% used · {systemStats.availableStorage || '—'} free</p>
                       </div>
-                      <Progress value={34} className="h-2" />
-                    </div>
-                    <div>
-                      <div className="flex justify-between text-sm mb-1">
-                        <span>Memory Usage</span>
-                        <span>67%</span>
+                      <div>
+                        <div className="flex justify-between text-sm mb-1">
+                          <span>Upload Storage</span>
+                          <span className="font-medium">{systemStats.totalUploadSize || '0 Bytes'}</span>
+                        </div>
+                        <Progress value={systemStats.uploadStorageUsage || 0} className="h-2" />
+                        <p className="text-[11px] text-gray-400 mt-0.5">{systemStats.uploadStorageUsage || 0}% of disk · {systemStats.totalFiles || 0} files</p>
                       </div>
-                      <Progress value={67} className="h-2" />
+                      <div>
+                        <div className="flex justify-between text-sm mb-1">
+                          <span>Avg File Size</span>
+                          <span className="font-medium">{systemStats.avgUploadSize || '—'}</span>
+                        </div>
+                      </div>
                     </div>
-                  </div>
+                  )}
                 </CardContent>
               </Card>
 
+              {/* Alerts */}
               <Card>
-                <CardHeader>
-                  <CardTitle className="flex items-center space-x-2">
+                <CardHeader className="pb-3">
+                  <CardTitle className="flex items-center space-x-2 text-base">
                     <AlertTriangle className="w-5 h-5 text-orange-600" />
                     <span>Alerts</span>
                   </CardTitle>
                 </CardHeader>
                 <CardContent>
-                  <div className="space-y-3">
-                    <Alert>
-                      <AlertTriangle className="h-4 w-4" />
-                      <AlertDescription className="text-xs">
-                        Storage usage approaching 70%
-                      </AlertDescription>
-                    </Alert>
-                    <Alert>
-                      <Info className="h-4 w-4" />
-                      <AlertDescription className="text-xs">
-                        2 failed uploads require attention
-                      </AlertDescription>
-                    </Alert>
+                  {statsLoading ? (
+                    <div className="space-y-3">
+                      {[1, 2].map((i) => (
+                        <div key={i} className="h-12 bg-gray-100 rounded-lg animate-pulse" />
+                      ))}
+                    </div>
+                  ) : (() => {
+                    const alerts = [];
+
+                    // Storage alerts
+                    if (systemStats.diskHealthStatus === 'critical') {
+                      alerts.push({ type: 'error', icon: AlertTriangle, message: `Storage critically full at ${systemStats.storageUsage}%` });
+                    } else if (systemStats.diskHealthStatus === 'warning') {
+                      alerts.push({ type: 'warning', icon: AlertTriangle, message: `Storage usage at ${systemStats.storageUsage}%` });
+                    }
+
+                    // Failed uploads
+                    if (systemStats.failedUploads > 0) {
+                      alerts.push({ type: 'error', icon: AlertCircle, message: `${systemStats.failedUploads} failed upload${systemStats.failedUploads !== 1 ? 's' : ''} require attention` });
+                    }
+
+                    // Active uploads
+                    if (systemStats.activeUploads > 0) {
+                      alerts.push({ type: 'info', icon: Upload, message: `${systemStats.activeUploads} upload${systemStats.activeUploads !== 1 ? 's' : ''} in progress` });
+                    }
+
+                    // Processing queue
+                    if (monitoringData.processingQueue.length > 0) {
+                      alerts.push({ type: 'info', icon: Brain, message: `${monitoringData.processingQueue.length} file${monitoringData.processingQueue.length !== 1 ? 's' : ''} in AI processing queue` });
+                    }
+
+                    if (alerts.length === 0) {
+                      return (
+                        <div className="text-center py-4 text-gray-500">
+                          <CheckCircle className="w-10 h-10 mx-auto mb-2 text-green-400" />
+                          <p className="text-sm">All systems normal</p>
+                        </div>
+                      );
+                    }
+
+                    return (
+                      <div className="space-y-2">
+                        {alerts.map((alert, idx) => (
+                          <Alert key={idx} className={
+                            alert.type === 'error' ? 'border-red-200 bg-red-50' :
+                            alert.type === 'warning' ? 'border-amber-200 bg-amber-50' :
+                            'border-blue-200 bg-blue-50'
+                          }>
+                            <alert.icon className={`h-4 w-4 ${
+                              alert.type === 'error' ? 'text-red-600' :
+                              alert.type === 'warning' ? 'text-amber-600' :
+                              'text-blue-600'
+                            }`} />
+                            <AlertDescription className="text-xs">
+                              {alert.message}
+                            </AlertDescription>
+                          </Alert>
+                        ))}
+                      </div>
+                    );
+                  })()}
+                </CardContent>
+              </Card>
+            </div>
+
+            {/* File Type Breakdown */}
+            <Card>
+              <CardHeader className="pb-3">
+                <CardTitle className="text-base">File Distribution</CardTitle>
+                <CardDescription>Breakdown of uploaded files by type</CardDescription>
+              </CardHeader>
+              <CardContent>
+                {statsLoading ? (
+                  <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
+                    {[1, 2, 3, 4].map((i) => (
+                      <div key={i} className="h-20 bg-gray-100 rounded-lg animate-pulse" />
+                    ))}
+                  </div>
+                ) : (
+                  <div className="grid grid-cols-2 md:grid-cols-5 gap-4">
+                    {[
+                      { label: 'Videos', count: systemStats.videoFiles, icon: FileVideo, color: 'text-purple-600', bg: 'bg-purple-50 border-purple-100' },
+                      { label: 'Documents', count: systemStats.documentFiles, icon: FolderOpen, color: 'text-blue-600', bg: 'bg-blue-50 border-blue-100' },
+                      { label: 'Archives', count: systemStats.archiveFiles, icon: Archive, color: 'text-amber-600', bg: 'bg-amber-50 border-amber-100' },
+                      { label: 'Other', count: systemStats.otherFiles, icon: HardDrive, color: 'text-gray-600', bg: 'bg-gray-50 border-gray-100' },
+                      { label: 'Total', count: systemStats.totalFiles, icon: Database, color: 'text-green-600', bg: 'bg-green-50 border-green-100' },
+                    ].map((item) => (
+                      <div key={item.label} className={`p-4 rounded-lg border ${item.bg}`}>
+                        <div className="flex items-center gap-2 mb-2">
+                          <item.icon className={`w-4 h-4 ${item.color}`} />
+                          <span className="text-xs font-medium text-gray-600">{item.label}</span>
+                        </div>
+                        <p className={`text-2xl font-bold ${item.color}`}>{item.count || 0}</p>
+                        {systemStats.totalFiles > 0 && item.label !== 'Total' && (
+                          <p className="text-[11px] text-gray-400">
+                            {((item.count / systemStats.totalFiles) * 100).toFixed(1)}% of total
+                          </p>
+                        )}
+                      </div>
+                    ))}
+                  </div>
+                )}
+              </CardContent>
+            </Card>
+
+            {/* Upload Activity Summary */}
+            <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
+              <Card>
+                <CardContent className="pt-6">
+                  <div className="flex items-center justify-between">
+                    <div>
+                      <p className="text-sm text-gray-600 font-medium">Monthly Uploads</p>
+                      <p className="text-2xl font-bold text-gray-900 mt-1">{systemStats.monthlyUploads || 0}</p>
+                      <p className="text-xs text-gray-500 mt-1">Last 30 days</p>
+                    </div>
+                    <div className="p-3 rounded-xl bg-blue-500">
+                      <TrendingUp className="w-6 h-6 text-white" />
+                    </div>
+                  </div>
+                </CardContent>
+              </Card>
+              <Card>
+                <CardContent className="pt-6">
+                  <div className="flex items-center justify-between">
+                    <div>
+                      <p className="text-sm text-gray-600 font-medium">Completed</p>
+                      <p className="text-2xl font-bold text-green-600 mt-1">{systemStats.completedUploads || 0}</p>
+                      <p className="text-xs text-gray-500 mt-1">Successfully processed</p>
+                    </div>
+                    <div className="p-3 rounded-xl bg-green-500">
+                      <CheckCircle className="w-6 h-6 text-white" />
+                    </div>
+                  </div>
+                </CardContent>
+              </Card>
+              <Card>
+                <CardContent className="pt-6">
+                  <div className="flex items-center justify-between">
+                    <div>
+                      <p className="text-sm text-gray-600 font-medium">Failed</p>
+                      <p className="text-2xl font-bold text-red-600 mt-1">{systemStats.failedUploads || 0}</p>
+                      <p className="text-xs text-gray-500 mt-1">Requires attention</p>
+                    </div>
+                    <div className="p-3 rounded-xl bg-red-500">
+                      <AlertCircle className="w-6 h-6 text-white" />
+                    </div>
                   </div>
                 </CardContent>
               </Card>
             </div>
 
-            {/* Active Uploads */}
+            {/* Active Uploads & Processing */}
             <Card>
-              <CardHeader>
-                <CardTitle>Active Uploads & Processing</CardTitle>
-                <CardDescription>
-                  Real-time monitoring of file operations
-                </CardDescription>
+              <CardHeader className="pb-3">
+                <div className="flex items-center justify-between">
+                  <div>
+                    <CardTitle className="text-base">Active Uploads & Processing</CardTitle>
+                    <CardDescription>Real-time monitoring of file operations</CardDescription>
+                  </div>
+                  {(monitoringData.activeUploads.length > 0 || monitoringData.processingQueue.length > 0) && (
+                    <Badge className="bg-blue-100 text-blue-800 border-blue-200">
+                      {monitoringData.activeUploads.length + monitoringData.processingQueue.length} active
+                    </Badge>
+                  )}
+                </div>
               </CardHeader>
               <CardContent>
-                {loading ? (
-                  <div className="flex items-center justify-center py-8">
-                    <Loader2 className="w-6 h-6 animate-spin text-gray-400" />
+                {monitoringLoading ? (
+                  <div className="space-y-3">
+                    {[1, 2, 3].map((i) => (
+                      <div key={i} className="flex items-center justify-between p-4 border border-gray-100 rounded-lg">
+                        <div className="flex items-center space-x-4">
+                          <div className="w-10 h-10 bg-gray-200 rounded animate-pulse" />
+                          <div className="space-y-2">
+                            <div className="h-4 w-40 bg-gray-200 rounded animate-pulse" />
+                            <div className="h-3 w-24 bg-gray-100 rounded animate-pulse" />
+                          </div>
+                        </div>
+                        <div className="h-6 w-20 bg-gray-100 rounded-full animate-pulse" />
+                      </div>
+                    ))}
+                  </div>
+                ) : monitoringData.activeUploads.length === 0 && monitoringData.processingQueue.length === 0 ? (
+                  <div className="text-center py-10 text-gray-500">
+                    <Activity className="w-12 h-12 mx-auto mb-3 text-gray-300" />
+                    <p className="font-medium">No active uploads or processing</p>
+                    <p className="text-sm text-gray-400 mt-1">Files will appear here when uploading or being processed by AI</p>
                   </div>
                 ) : (
-                  <div className="space-y-4">
-                    {monitoringData.activeUploads.length === 0 && monitoringData.processingQueue.length === 0 ? (
-                      <div className="text-center py-8 text-gray-500">
-                        <Activity className="w-12 h-12 mx-auto mb-3 text-gray-400" />
-                        <p>No active uploads or processing</p>
+                  <div className="space-y-3">
+                    {monitoringData.activeUploads.map((upload) => (
+                      <div key={upload._id} className="flex items-center justify-between p-4 border border-blue-100 bg-blue-50/50 rounded-lg">
+                        <div className="flex items-center space-x-4">
+                          <div className="p-2 bg-blue-100 rounded-lg">
+                            {getFileTypeIcon(upload.type)}
+                          </div>
+                          <div>
+                            <h4 className="font-medium text-sm">{upload.originalName}</h4>
+                            <p className="text-xs text-gray-500">
+                              {upload.uploadedBy} · {upload.size} · {upload.location}
+                            </p>
+                          </div>
+                        </div>
+                        <div className="flex items-center space-x-3">
+                          <Loader2 className="w-4 h-4 animate-spin text-blue-500" />
+                          <Badge className="bg-blue-100 text-blue-800 border-blue-200">
+                            Uploading
+                          </Badge>
+                        </div>
                       </div>
-                    ) : (
-                      <>
-                        {monitoringData.activeUploads.map((upload) => (
-                          <div key={upload._id} className="flex items-center justify-between p-4 border border-gray-200 rounded-lg">
-                            <div className="flex items-center space-x-4">
-                              {getFileTypeIcon(upload.type)}
-                              <div>
-                                <h4 className="font-medium">{upload.originalName}</h4>
-                                <p className="text-sm text-gray-500">
-                                  {upload.uploadedBy} • {upload.size}
-                                </p>
-                              </div>
-                            </div>
-                            <div className="flex items-center space-x-4">
-                              <div className="text-right">
-                                <div className="text-sm font-medium capitalize">{upload.status}</div>
-                                <div className="text-xs text-gray-500">
-                                  {upload.location}
-                                </div>
-                              </div>
-                              <Badge className={getStatusColor(upload.status)}>
-                                {upload.status}
-                              </Badge>
-                            </div>
-                          </div>
-                        ))}
+                    ))}
 
-                        {monitoringData.processingQueue.map((upload) => (
-                          <div key={upload._id} className="flex items-center justify-between p-4 border border-gray-200 rounded-lg">
-                            <div className="flex items-center space-x-4">
-                              <Brain className="w-5 h-5 text-purple-600" />
-                              <div>
-                                <h4 className="font-medium">
-                                  AI Processing: {upload.originalName}
-                                </h4>
-                                <p className="text-sm text-gray-500">
-                                  Defect detection in progress
-                                </p>
-                              </div>
-                            </div>
-                            <div className="flex items-center space-x-4">
-                              <div className="text-right">
-                                <div className="text-sm font-medium">Processing</div>
-                                <div className="text-xs text-gray-500">
-                                  {upload.processingStatus || 'pending'}
-                                </div>
-                              </div>
-                              <Badge className="bg-purple-100 text-purple-800">
-                                Processing
-                              </Badge>
-                            </div>
+                    {monitoringData.processingQueue.map((upload) => (
+                      <div key={upload._id} className="flex items-center justify-between p-4 border border-purple-100 bg-purple-50/50 rounded-lg">
+                        <div className="flex items-center space-x-4">
+                          <div className="p-2 bg-purple-100 rounded-lg">
+                            <Brain className="w-5 h-5 text-purple-600" />
                           </div>
-                        ))}
-                      </>
-                    )}
+                          <div>
+                            <h4 className="font-medium text-sm">{upload.originalName}</h4>
+                            <p className="text-xs text-gray-500">
+                              AI processing · {upload.processingStatus || 'pending'} · {upload.size}
+                            </p>
+                          </div>
+                        </div>
+                        <div className="flex items-center space-x-3">
+                          <Loader2 className="w-4 h-4 animate-spin text-purple-500" />
+                          <Badge className="bg-purple-100 text-purple-800 border-purple-200">
+                            Processing
+                          </Badge>
+                        </div>
+                      </div>
+                    ))}
                   </div>
                 )}
               </CardContent>
@@ -1083,34 +1687,58 @@ const AdminUploads = () => {
 
             {/* Error Logs */}
             <Card>
-              <CardHeader>
-                <CardTitle>Recent Errors & Issues</CardTitle>
+              <CardHeader className="pb-3">
+                <div className="flex items-center justify-between">
+                  <div>
+                    <CardTitle className="text-base">Recent Errors & Issues</CardTitle>
+                    <CardDescription>Failed uploads and processing errors</CardDescription>
+                  </div>
+                  {monitoringData.errors.length > 0 && (
+                    <Badge className="bg-red-100 text-red-800 border-red-200">
+                      {monitoringData.errors.length} error{monitoringData.errors.length !== 1 ? 's' : ''}
+                    </Badge>
+                  )}
+                </div>
               </CardHeader>
               <CardContent>
-                {loading ? (
-                  <div className="flex items-center justify-center py-8">
-                    <Loader2 className="w-6 h-6 animate-spin text-gray-400" />
+                {monitoringLoading ? (
+                  <div className="space-y-3">
+                    {[1, 2].map((i) => (
+                      <div key={i} className="h-16 bg-red-50 rounded-lg animate-pulse" />
+                    ))}
                   </div>
                 ) : monitoringData.errors.length === 0 ? (
-                  <div className="text-center py-8 text-gray-500">
+                  <div className="text-center py-10 text-gray-500">
                     <CheckCircle className="w-12 h-12 mx-auto mb-3 text-green-400" />
-                    <p>No recent errors</p>
+                    <p className="font-medium">No recent errors</p>
+                    <p className="text-sm text-gray-400 mt-1">All uploads have been processed successfully</p>
                   </div>
                 ) : (
                   <div className="space-y-3">
                     {monitoringData.errors.map((upload) => (
-                      <div key={upload._id} className="flex items-start space-x-3 p-3 bg-red-50 border border-red-200 rounded-lg">
-                        <AlertCircle className="w-5 h-5 text-red-600 mt-0.5" />
-                        <div>
-                          <h4 className="font-medium text-red-900">
-                            Upload Failed
-                          </h4>
-                          <p className="text-sm text-red-700">
-                            {upload.originalName} - {upload.processingError || 'Upload failed'}
+                      <div key={upload._id} className="flex items-start space-x-3 p-4 bg-red-50 border border-red-200 rounded-lg">
+                        <div className="p-1.5 bg-red-100 rounded-lg mt-0.5">
+                          <AlertCircle className="w-4 h-4 text-red-600" />
+                        </div>
+                        <div className="flex-1 min-w-0">
+                          <div className="flex items-center justify-between">
+                            <h4 className="font-medium text-sm text-red-900 truncate">
+                              {upload.originalName}
+                            </h4>
+                            <Badge className="bg-red-100 text-red-700 border-red-200 text-[10px] ml-2 flex-shrink-0">
+                              Failed
+                            </Badge>
+                          </div>
+                          <p className="text-sm text-red-700 mt-0.5">
+                            {upload.processingError || 'Upload failed — unknown error'}
                           </p>
-                          <p className="text-xs text-red-600">
-                            {new Date(upload.uploadedAt).toLocaleString()}
-                          </p>
+                          <div className="flex items-center gap-3 mt-1.5 text-xs text-red-500">
+                            <span>{upload.uploadedBy}</span>
+                            <span>·</span>
+                            <span>{upload.size}</span>
+                            <span>·</span>
+                            <span>{new Date(upload.uploadedAt).toLocaleString()}</span>
+                          </div>
                         </div>
                       </div>
                     ))}

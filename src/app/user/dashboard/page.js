@@ -1,6 +1,6 @@
 'use client';
 
-import React, { useEffect, useState, useRef } from 'react';
+import React, { useEffect, useState, useRef, useMemo } from 'react';
 import {
   LayoutDashboard,
   FolderOpen,
@@ -11,126 +11,53 @@ import {
   Inbox,
   Loader2,
   ChevronRight,
-  ArrowLeft,
-  Monitor,
-  ClipboardCheck,
 } from 'lucide-react';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { useUser } from '@/components/providers/UserContext';
-import { useAlert } from '@/components/providers/AlertProvider';
-import { api } from '@/lib/helper';
 import Link from 'next/link';
-import { UserAvatar } from '@/components/ui/UserAvatar';
 
-const getAvatarUrl = (id) => (id ? `${process.env.NEXT_PUBLIC_BACKEND_URL || 'http://localhost:5000'}/api/users/avatar/${id}` : null);
-const getInitials = (name) => {
-  if (!name || name === '—') return '?';
-  const parts = name.trim().split(/\s+/);
-  if (parts.length >= 2) return `${parts[0][0]}${parts[parts.length - 1][0]}`.toUpperCase();
-  return (name[0] || '?').toUpperCase();
-};
+import StatsCards from '@/components/user/dashboard/StatsCards';
+import TeamMemberList from '@/components/user/dashboard/TeamMemberList';
+import UserDashboardDetail from '@/components/user/dashboard/UserDashboardDetail';
+import { useUserDashboard, useUserTeamMemberDashboard } from '@/hooks/useQueryHooks';
+import { CHART_COLORS } from '@/components/user/constants';
 
 const loadChart = async () => {
   const chartModule = await import('chart.js/auto');
   return chartModule.default || chartModule;
 };
 
-const CHART_COLORS = ['#D76A84', '#696CFF', '#10B981', '#F59E0B', '#6366F1', '#EC4899'];
-
 export default function UserDashboardPage() {
   const { userId, userData } = useUser() || {};
-  const { showAlert } = useAlert();
-  const [loading, setLoading] = useState(true);
-  const [events, setEvents] = useState([]);
-  const [projects, setProjects] = useState([]);
-  const [teamCounts, setTeamCounts] = useState({ operators: 0, qc: 0 });
-  const [reportsCount, setReportsCount] = useState(0);
+  const [chartReady, setChartReady] = useState(false);
+  const [activeTab, setActiveTab] = useState('overview');
+  const [selectedTeamUser, setSelectedTeamUser] = useState(null);
+
   const chartRef = useRef(null);
   const teamChartRef = useRef(null);
   const chartInstanceRef = useRef(null);
   const teamChartInstanceRef = useRef(null);
-  const [chartReady, setChartReady] = useState(false);
-  const [activeTab, setActiveTab] = useState('overview');
-  const [teamList, setTeamList] = useState([]);
-  const [selectedTeamUser, setSelectedTeamUser] = useState(null);
-  const [userDashboardData, setUserDashboardData] = useState(null);
-  const [loadingUserDashboard, setLoadingUserDashboard] = useState(false);
- 
+
   const displayName =
     (userData && `${userData.first_name || ''} ${userData.last_name || ''}`.trim()) ||
     userData?.username ||
     'Team Manager';
 
-  useEffect(() => {
-    const fetchData = async () => {
-      if (!userId) {
-        setLoading(false);
-        return;
-      }
-      try {
-        setLoading(true);
-        const [eventsRes, projectsRes, reportsRes, teamRes] = await Promise.all([
-          api('/api/calendar/get-event', 'GET'),
-          api(`/api/projects/get-all-projects?managerId=${userId}&limit=50`, 'GET'),
-          api(`/api/reports/get-all-report?managerId=${userId}`, 'GET'),
-          api(`/api/projects/get-team-members?managerId=${userId}`, 'GET'),
-        ]);
+  // ── Data fetching via TanStack Query ──
+  const { data: dashboardData, isLoading: loading } = useUserDashboard(userId);
+  const { data: teamMemberData, isLoading: loadingUserDashboard } = useUserTeamMemberDashboard(
+    selectedTeamUser?.id,
+    selectedTeamUser?.role
+  );
 
-        const eventsList = Array.isArray(eventsRes?.data) ? eventsRes.data : eventsRes?.data?.data ?? [];
-        setEvents(eventsList);
+  const events = dashboardData?.events ?? [];
+  const projects = dashboardData?.projects ?? [];
+  const teamList = dashboardData?.teamList ?? [];
+  const teamCounts = dashboardData?.teamCounts ?? { operators: 0, qc: 0 };
+  const reportsCount = dashboardData?.reportsCount ?? 0;
 
-        const projectsList = projectsRes?.data?.data ?? projectsRes?.data ?? [];
-        setProjects(Array.isArray(projectsList) ? projectsList : []);
-
-        const teamData = teamRes?.data ?? teamRes;
-        const teamListData = Array.isArray(teamData?.data) ? teamData.data : [];
-        setTeamList(teamListData);
-        if (teamData?.teamCounts) setTeamCounts({ operators: teamData.teamCounts.operators ?? 0, qc: teamData.teamCounts.qc ?? 0 });
-
-        const reportsData = reportsRes?.data ?? [];
-        const reportsList = Array.isArray(reportsData) ? reportsData : reportsData?.data ?? [];
-        setReportsCount(reportsList.length);
-      } catch (err) {
-        console.error('Dashboard fetch error:', err);
-        showAlert(err?.message || 'Failed to load dashboard data', 'error');
-      } finally {
-        setLoading(false);
-      }
-    };
-    fetchData();
-  }, [userId, showAlert]);
-
-  useEffect(() => {
-    if (!selectedTeamUser?.id) {
-      setUserDashboardData(null);
-      return;
-    }
-    const role = String(selectedTeamUser.role || '').toLowerCase();
-    const isOperator = role === 'operator';
-    const isQc = role === 'qc-technician';
-    let cancelled = false;
-    setLoadingUserDashboard(true);
-    setUserDashboardData(null);
-    const url = isOperator
-      ? `/api/dashboard/operator/${selectedTeamUser.id}`
-      : `/api/qc-technicians/dashboard-stats/${selectedTeamUser.id}`;
-    api(url, 'GET')
-      .then((res) => {
-        if (cancelled) return;
-        const raw = res?.data ?? res;
-        const payload = raw?.data !== undefined ? raw.data : raw;
-        setUserDashboardData(payload);
-      })
-      .catch((err) => {
-        if (!cancelled) showAlert(err?.message || 'Failed to load user dashboard', 'error');
-      })
-      .finally(() => {
-        if (!cancelled) setLoadingUserDashboard(false);
-      });
-    return () => { cancelled = true; };
-  }, [selectedTeamUser?.id, selectedTeamUser?.role, showAlert]);
-
+  // ── Chart loading ──
   useEffect(() => {
     loadChart().then((Chart) => {
       if (typeof window !== 'undefined') window.Chart = Chart;
@@ -138,7 +65,7 @@ export default function UserDashboardPage() {
     });
   }, []);
 
-  const projectStatusCounts = React.useMemo(() => {
+  const projectStatusCounts = useMemo(() => {
     const counts = {};
     projects.forEach((p) => {
       const s = p.status || 'planning';
@@ -150,6 +77,7 @@ export default function UserDashboardPage() {
     }));
   }, [projects]);
 
+  // ── Project status chart ──
   useEffect(() => {
     if (!chartReady) return;
     const Chart = typeof window !== 'undefined' ? window.Chart : null;
@@ -172,9 +100,7 @@ export default function UserDashboardPage() {
         responsive: true,
         maintainAspectRatio: false,
         cutout: '60%',
-        plugins: {
-          legend: { position: 'bottom', labels: { padding: 12, usePointStyle: true } },
-        },
+        plugins: { legend: { position: 'bottom', labels: { padding: 12, usePointStyle: true } } },
       },
     });
     return () => {
@@ -182,6 +108,7 @@ export default function UserDashboardPage() {
     };
   }, [chartReady, projectStatusCounts]);
 
+  // ── Team chart ──
   useEffect(() => {
     if (!chartReady || !teamChartRef.current) return;
     const Chart = typeof window !== 'undefined' ? window.Chart : null;
@@ -206,9 +133,7 @@ export default function UserDashboardPage() {
           legend: { display: false },
           tooltip: { callbacks: { label: (ctx) => `${ctx.raw} people` } },
         },
-        scales: {
-          x: { beginAtZero: true, ticks: { stepSize: 1 } },
-        },
+        scales: { x: { beginAtZero: true, ticks: { stepSize: 1 } } },
       },
     });
     return () => {
@@ -240,16 +165,16 @@ export default function UserDashboardPage() {
         <div>
           <h1 className="text-2xl font-bold text-gray-900">Dashboard</h1>
           <p className="text-sm text-gray-500 mt-0.5">
-            Welcome back, {displayName}. Here’s your team, projects, and events at a glance.
+            Welcome back, {displayName}. Here&apos;s your team, projects, and events at a glance.
           </p>
         </div>
       </div>
 
-      {/* Tab bar: Operator and QC Tech | Calendar | Reports */}
+      {/* Tab bar */}
       <div className="flex rounded-lg border border-gray-200 bg-gray-100/60 p-1 gap-0.5 w-fit">
         <button
           type="button"
-          onClick={() => { setActiveTab('operator-qc'); setSelectedTeamUser(null); setUserDashboardData(null); }}
+          onClick={() => { setActiveTab('operator-qc'); setSelectedTeamUser(null); }}
           className={`flex items-center gap-2 px-4 py-2.5 rounded-md text-sm font-medium transition-colors ${
             activeTab === 'operator-qc'
               ? 'bg-gray-900 text-white shadow-sm'
@@ -279,61 +204,11 @@ export default function UserDashboardPage() {
       {activeTab === 'operator-qc' && (
         <div className="space-y-6">
           <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
-            <Card className="lg:col-span-1 border-0 shadow-sm">
-              <CardHeader className="pb-2">
-                <CardTitle className="text-base">Operators & QC Technicians</CardTitle>
-                <p className="text-xs text-gray-500 font-normal">Assigned to your projects. Click a user to view their dashboard.</p>
-              </CardHeader>
-              <CardContent className="p-0">
-                <div className="max-h-[420px] overflow-y-auto divide-y">
-                  {teamList.length === 0 ? (
-                    <div className="p-4 text-sm text-gray-500">No operators or QC technicians found.</div>
-                  ) : (
-                    teamList.map((u) => {
-                      const id = u._id ?? u.id;
-                      const role = String(u.role || '').toLowerCase();
-                      const isOperator = role === 'operator';
-                      const name = u.name || [u.first_name, u.last_name].filter(Boolean).join(' ') || u.username || '—';
-                      const isSelected = selectedTeamUser?.id === id;
-                      return (
-                        <button
-                          key={id}
-                          type="button"
-                          onClick={() =>
-                            setSelectedTeamUser({
-                              id,
-                              name,
-                              role,
-                              firstName: u.first_name,
-                              lastName: u.last_name,
-                            })
-                          }
-                          className={`w-full flex items-center gap-3 px-4 py-3 text-left transition-colors ${
-                            isSelected ? 'bg-[#d76b84] text-white shadow-sm' : 'hover:bg-gray-50'
-                          }`}
-                        >
-                          <UserAvatar
-                            src={getAvatarUrl(id)}
-                            fallback={getInitials(name)}
-                            size="sm"
-                            className="shrink-0"
-                          />
-                          <div className="min-w-0 flex-1">
-                            <p className={`font-medium truncate ${isSelected ? 'text-white' : 'text-gray-900'}`}>
-                              {name}
-                            </p>
-                            <p className={`text-xs truncate ${isSelected ? 'text-white/90' : 'text-gray-500'}`}>
-                              {isOperator ? 'Operator' : 'QC Technician'}
-                            </p>
-                          </div>
-                          <ChevronRight className={`w-4 h-4 shrink-0 ${isSelected ? 'text-white' : 'text-gray-400'}`} />
-                        </button>
-                      );
-                    })
-                  )}
-                </div>
-              </CardContent>
-            </Card>
+            <TeamMemberList
+              teamList={teamList}
+              selectedTeamUser={selectedTeamUser}
+              onSelectUser={(user) => setSelectedTeamUser(user)}
+            />
             <div className="lg:col-span-2">
               {!selectedTeamUser ? (
                 <Card className="border-0 shadow-sm h-full min-h-[300px] flex items-center justify-center">
@@ -350,10 +225,10 @@ export default function UserDashboardPage() {
               ) : (
                 <UserDashboardDetail
                   user={selectedTeamUser}
-                  data={userDashboardData}
+                  data={teamMemberData}
                   isOperator={selectedTeamUser.role === 'operator'}
-                  onBack={() => { setSelectedTeamUser(null); setUserDashboardData(null); }}
-                  onBackToDashboard={() => { setActiveTab('overview'); setSelectedTeamUser(null); setUserDashboardData(null); }}
+                  onBack={() => setSelectedTeamUser(null)}
+                  onBackToDashboard={() => { setActiveTab('overview'); setSelectedTeamUser(null); }}
                 />
               )}
             </div>
@@ -364,321 +239,159 @@ export default function UserDashboardPage() {
       {/* Overview content (default) */}
       {activeTab !== 'operator-qc' && (
         <>
-      {/* Stat cards */}
-      <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
-        <Card className="border-0 shadow-sm bg-gradient-to-br from-rose-50 to-pink-50">
-          <CardContent className="pt-4 pb-4">
-            <div className="flex items-center justify-between">
-              <div>
-                <p className="text-xs font-medium text-gray-500 uppercase tracking-wide">Projects</p>
-                <p className="text-2xl font-bold text-gray-900 mt-1">{projects.length}</p>
-              </div>
-              <FolderOpen className="w-8 h-8 text-rose-500 opacity-80" />
-            </div>
-          </CardContent>
-        </Card>
-        <Card className="border-0 shadow-sm bg-gradient-to-br from-indigo-50 to-purple-50">
-          <CardContent className="pt-4 pb-4">
-            <div className="flex items-center justify-between">
-              <div>
-                <p className="text-xs font-medium text-gray-500 uppercase tracking-wide">Operators</p>
-                <p className="text-2xl font-bold text-gray-900 mt-1">{teamCounts.operators}</p>
-              </div>
-              <User className="w-8 h-8 text-indigo-500 opacity-80" />
-            </div>
-          </CardContent>
-        </Card>
-        <Card className="border-0 shadow-sm bg-gradient-to-br from-emerald-50 to-green-50">
-          <CardContent className="pt-4 pb-4">
-            <div className="flex items-center justify-between">
-              <div>
-                <p className="text-xs font-medium text-gray-500 uppercase tracking-wide">QC Technicians</p>
-                <p className="text-2xl font-bold text-gray-900 mt-1">{teamCounts.qc}</p>
-              </div>
-              <UserCheck className="w-8 h-8 text-emerald-500 opacity-80" />
-            </div>
-          </CardContent>
-        </Card>
-        <Card className="border-0 shadow-sm bg-gradient-to-br from-amber-50 to-orange-50">
-          <CardContent className="pt-4 pb-4">
-            <div className="flex items-center justify-between">
-              <div>
-                <p className="text-xs font-medium text-gray-500 uppercase tracking-wide">Reports</p>
-                <p className="text-2xl font-bold text-gray-900 mt-1">{reportsCount}</p>
-              </div>
-              <FileText className="w-8 h-8 text-amber-500 opacity-80" />
-            </div>
-          </CardContent>
-        </Card>
-      </div>
+          <StatsCards
+            projectCount={projects.length}
+            operatorCount={teamCounts.operators}
+            qcCount={teamCounts.qc}
+            reportsCount={reportsCount}
+          />
 
-      {/* Charts row */}
-      <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-        <Card className="border-0 shadow-sm">
-          <CardHeader className="pb-2">
-            <CardTitle className="text-base flex items-center gap-2">
-              <FolderOpen className="w-4 h-4 text-rose-500" />
-              Projects by status
-            </CardTitle>
-          </CardHeader>
-          <CardContent>
-            <div className="h-[220px]">
-              {projectStatusCounts.length > 0 ? (
-                <canvas ref={chartRef} />
-              ) : (
-                <div className="h-full flex items-center justify-center text-sm text-gray-500">
-                  No project data yet
-                </div>
-              )}
-            </div>
-          </CardContent>
-        </Card>
-        <Card className="border-0 shadow-sm">
-          <CardHeader className="pb-2">
-            <CardTitle className="text-base flex items-center gap-2">
-              <User className="w-4 h-4 text-indigo-500" />
-              Team: Operators & QC
-            </CardTitle>
-          </CardHeader>
-          <CardContent>
-            <div className="h-[220px]">
-              <canvas ref={teamChartRef} />
-            </div>
-          </CardContent>
-        </Card>
-      </div>
-
-      {/* Events list & Projects list */}
-      <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-        <Card className="border-0 shadow-sm">
-          <CardHeader className="pb-3 flex flex-row items-center justify-between">
-            <CardTitle className="text-base flex items-center gap-2">
-              <CalendarIcon className="w-4 h-4 text-blue-500" />
-              Upcoming events
-            </CardTitle>
-            <Link href="/user/calendar">
-              <Button variant="ghost" size="sm" className="gap-1 text-xs">
-                View calendar
-                <ChevronRight className="w-3 h-3" />
-              </Button>
-            </Link>
-          </CardHeader>
-          <CardContent className="space-y-2">
-            {upcomingEvents.length === 0 ? (
-              <p className="text-sm text-gray-500 py-4">No upcoming events.</p>
-            ) : (
-              upcomingEvents.map((ev) => (
-                <div
-                  key={ev._id || ev.id}
-                  className="flex items-center justify-between py-2 px-3 rounded-lg border border-gray-100 hover:bg-gray-50"
-                >
-                  <div>
-                    <p className="font-medium text-gray-900 text-sm">{ev.title || 'Event'}</p>
-                    <p className="text-xs text-gray-500">
-                      {ev.start_date || ev.start
-                        ? new Date(ev.start_date || ev.start).toLocaleString(undefined, {
-                            month: 'short',
-                            day: 'numeric',
-                            hour: 'numeric',
-                            minute: '2-digit',
-                          })
-                        : '—'}
-                    </p>
-                  </div>
-                  <span className="text-xs px-2 py-0.5 rounded bg-gray-100 text-gray-600 capitalize">
-                    {ev.category || 'event'}
-                  </span>
-                </div>
-              ))
-            )}
-          </CardContent>
-        </Card>
-
-        <Card className="border-0 shadow-sm">
-          <CardHeader className="pb-3 flex flex-row items-center justify-between">
-            <CardTitle className="text-base flex items-center gap-2">
-              <FolderOpen className="w-4 h-4 text-indigo-500" />
-              Recent projects
-            </CardTitle>
-            <Link href="/user/project">
-              <Button variant="ghost" size="sm" className="gap-1 text-xs">
-                View all
-                <ChevronRight className="w-3 h-3" />
-              </Button>
-            </Link>
-          </CardHeader>
-          <CardContent className="space-y-2">
-            {recentProjects.length === 0 ? (
-              <p className="text-sm text-gray-500 py-4">No projects yet.</p>
-            ) : (
-              recentProjects.map((p) => (
-                <Link key={p._id} href={`/user/project?selectedProject=${p._id}`}>
-                  <div className="flex items-center justify-between py-2 px-3 rounded-lg border border-gray-100 hover:bg-gray-50 transition">
-                    <div>
-                      <p className="font-medium text-gray-900 text-sm">{p.name}</p>
-                      <p className="text-xs text-gray-500">
-                        {p.client || p.location || '—'} · {p.progress ?? 0}%
-                      </p>
+          {/* Charts row */}
+          <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+            <Card className="border-0 shadow-sm">
+              <CardHeader className="pb-2">
+                <CardTitle className="text-base flex items-center gap-2">
+                  <FolderOpen className="w-4 h-4 text-rose-500" />
+                  Projects by status
+                </CardTitle>
+              </CardHeader>
+              <CardContent>
+                <div className="h-[220px]">
+                  {projectStatusCounts.length > 0 ? (
+                    <canvas ref={chartRef} />
+                  ) : (
+                    <div className="h-full flex items-center justify-center text-sm text-gray-500">
+                      No project data yet
                     </div>
-                    <span className="text-xs px-2 py-0.5 rounded bg-gray-100 text-gray-600 capitalize">
-                      {(p.status || '').replace(/-/g, ' ')}
-                    </span>
-                  </div>
-                </Link>
-              ))
-            )}
-          </CardContent>
-        </Card>
-      </div>
-
-      {/* Quick links */}
-      <Card className="border-0 shadow-sm bg-gray-50/50">
-        <CardContent className="py-4">
-          <div className="flex flex-wrap gap-3">
-            <Link href="/user/team">
-              <Button variant="outline" size="sm" className="gap-2">
-                <LayoutDashboard className="w-4 h-4" />
-                Team management
-              </Button>
-            </Link>
-            <Link href="/user/device-assignments">
-              <Button variant="outline" size="sm" className="gap-2">
-                <User className="w-4 h-4" />
-                Device assignments
-              </Button>
-            </Link>
-            <Link href="/user/inbox">
-              <Button variant="outline" size="sm" className="gap-2">
-                <Inbox className="w-4 h-4" />
-                Inbox
-              </Button>
-            </Link>
+                  )}
+                </div>
+              </CardContent>
+            </Card>
+            <Card className="border-0 shadow-sm">
+              <CardHeader className="pb-2">
+                <CardTitle className="text-base flex items-center gap-2">
+                  <User className="w-4 h-4 text-indigo-500" />
+                  Team: Operators & QC
+                </CardTitle>
+              </CardHeader>
+              <CardContent>
+                <div className="h-[220px]">
+                  <canvas ref={teamChartRef} />
+                </div>
+              </CardContent>
+            </Card>
           </div>
-        </CardContent>
-      </Card>
+
+          {/* Events & Projects list */}
+          <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+            <Card className="border-0 shadow-sm">
+              <CardHeader className="pb-3 flex flex-row items-center justify-between">
+                <CardTitle className="text-base flex items-center gap-2">
+                  <CalendarIcon className="w-4 h-4 text-blue-500" />
+                  Upcoming events
+                </CardTitle>
+                <Link href="/user/calendar">
+                  <Button variant="ghost" size="sm" className="gap-1 text-xs">
+                    View calendar
+                    <ChevronRight className="w-3 h-3" />
+                  </Button>
+                </Link>
+              </CardHeader>
+              <CardContent className="space-y-2">
+                {upcomingEvents.length === 0 ? (
+                  <p className="text-sm text-gray-500 py-4">No upcoming events.</p>
+                ) : (
+                  upcomingEvents.map((ev) => (
+                    <div
+                      key={ev._id || ev.id}
+                      className="flex items-center justify-between py-2 px-3 rounded-lg border border-gray-100 hover:bg-gray-50"
+                    >
+                      <div>
+                        <p className="font-medium text-gray-900 text-sm">{ev.title || 'Event'}</p>
+                        <p className="text-xs text-gray-500">
+                          {ev.start_date || ev.start
+                            ? new Date(ev.start_date || ev.start).toLocaleString(undefined, {
+                                month: 'short',
+                                day: 'numeric',
+                                hour: 'numeric',
+                                minute: '2-digit',
+                              })
+                            : '—'}
+                        </p>
+                      </div>
+                      <span className="text-xs px-2 py-0.5 rounded bg-gray-100 text-gray-600 capitalize">
+                        {ev.category || 'event'}
+                      </span>
+                    </div>
+                  ))
+                )}
+              </CardContent>
+            </Card>
+
+            <Card className="border-0 shadow-sm">
+              <CardHeader className="pb-3 flex flex-row items-center justify-between">
+                <CardTitle className="text-base flex items-center gap-2">
+                  <FolderOpen className="w-4 h-4 text-indigo-500" />
+                  Recent projects
+                </CardTitle>
+                <Link href="/user/project">
+                  <Button variant="ghost" size="sm" className="gap-1 text-xs">
+                    View all
+                    <ChevronRight className="w-3 h-3" />
+                  </Button>
+                </Link>
+              </CardHeader>
+              <CardContent className="space-y-2">
+                {recentProjects.length === 0 ? (
+                  <p className="text-sm text-gray-500 py-4">No projects yet.</p>
+                ) : (
+                  recentProjects.map((p) => (
+                    <Link key={p._id} href={`/user/project?selectedProject=${p._id}`}>
+                      <div className="flex items-center justify-between py-2 px-3 rounded-lg border border-gray-100 hover:bg-gray-50 transition">
+                        <div>
+                          <p className="font-medium text-gray-900 text-sm">{p.name}</p>
+                          <p className="text-xs text-gray-500">
+                            {p.client || p.location || '—'} · {p.progress ?? 0}%
+                          </p>
+                        </div>
+                        <span className="text-xs px-2 py-0.5 rounded bg-gray-100 text-gray-600 capitalize">
+                          {(p.status || '').replace(/-/g, ' ')}
+                        </span>
+                      </div>
+                    </Link>
+                  ))
+                )}
+              </CardContent>
+            </Card>
+          </div>
+
+          {/* Quick links */}
+          <Card className="border-0 shadow-sm bg-gray-50/50">
+            <CardContent className="py-4">
+              <div className="flex flex-wrap gap-3">
+                <Link href="/user/team">
+                  <Button variant="outline" size="sm" className="gap-2">
+                    <LayoutDashboard className="w-4 h-4" />
+                    Team management
+                  </Button>
+                </Link>
+                <Link href="/user/device-assignments">
+                  <Button variant="outline" size="sm" className="gap-2">
+                    <User className="w-4 h-4" />
+                    Device assignments
+                  </Button>
+                </Link>
+                <Link href="/user/inbox">
+                  <Button variant="outline" size="sm" className="gap-2">
+                    <Inbox className="w-4 h-4" />
+                    Inbox
+                  </Button>
+                </Link>
+              </div>
+            </CardContent>
+          </Card>
         </>
       )}
-    </div>
-  );
-}
-
-function UserDashboardDetail({ user, data, isOperator, onBack, onBackToDashboard }) {
-  if (!data) return null;
-  return (
-    <Card className="border-0 shadow-sm">
-      <CardHeader className="pb-2 flex flex-row items-center justify-between gap-2 flex-wrap">
-        <div className="flex items-center gap-2 flex-wrap">
-          <Button variant="ghost" size="sm" className="gap-1 -ml-2" onClick={onBack}>
-            <ArrowLeft className="w-4 h-4" />
-            Back to list
-          </Button>
-          <Button variant="outline" size="sm" className="gap-1" onClick={onBackToDashboard}>
-            <LayoutDashboard className="w-4 h-4" />
-            Back to dashboard
-          </Button>
-          <CardTitle className="text-base">
-            {user?.name} — {isOperator ? 'Operator' : 'QC Technician'} dashboard
-          </CardTitle>
-        </div>
-      </CardHeader>
-      <CardContent className="space-y-4">
-        {isOperator ? (
-          <OperatorDashboardContent data={data} />
-        ) : (
-          <QCDashboardContent data={data} />
-        )}
-      </CardContent>
-    </Card>
-  );
-}
-
-function OperatorDashboardContent({ data }) {
-  const stats = data?.operationalStats ?? {};
-  const recent = data?.recentOperations ?? [];
-  const devices = data?.devices ?? [];
-  return (
-    <div className="space-y-4">
-      <div className="grid grid-cols-2 md:grid-cols-5 gap-3">
-        <div className="rounded-lg border bg-gray-50 p-3">
-          <p className="text-xs text-gray-500">Active operations</p>
-          <p className="text-xl font-bold text-gray-900">{stats.activeOperations ?? 0}</p>
-        </div>
-        <div className="rounded-lg border bg-gray-50 p-3">
-          <p className="text-xs text-gray-500">Equipment online</p>
-          <p className="text-xl font-bold text-gray-900">{stats.equipmentOnline ?? 0}</p>
-        </div>
-        <div className="rounded-lg border bg-gray-50 p-3">
-          <p className="text-xs text-gray-500">Maintenance due</p>
-          <p className="text-xl font-bold text-gray-900">{stats.maintenanceDue ?? 0}</p>
-        </div>
-        <div className="rounded-lg border bg-gray-50 p-3">
-          <p className="text-xs text-gray-500">System uptime</p>
-          <p className="text-xl font-bold text-gray-900">{stats.systemUptime ?? 0}%</p>
-        </div>
-        <div className="rounded-lg border bg-gray-50 p-3">
-          <p className="text-xs text-gray-500">Critical alerts</p>
-          <p className="text-xl font-bold text-gray-900">{stats.criticalAlerts ?? 0}</p>
-        </div>
-      </div>
-      <div>
-        <h4 className="text-sm font-semibold text-gray-900 mb-2">Devices / recent operations</h4>
-        <div className="rounded-lg border divide-y max-h-48 overflow-y-auto">
-          {(devices.length ? devices : recent).slice(0, 10).map((d) => (
-            <div key={d.id} className="flex items-center justify-between px-3 py-2 text-sm">
-              <span className="font-medium">{d.name}</span>
-              <span className="text-gray-500 capitalize">{d.status || '—'}</span>
-            </div>
-          ))}
-          {!(devices.length || recent.length) && (
-            <div className="px-3 py-4 text-sm text-gray-500">No devices or operations</div>
-          )}
-        </div>
-      </div>
-    </div>
-  );
-}
-
-function QCDashboardContent({ data }) {
-  const stats = data?.stats ?? {};
-  const recent = data?.recentAssignments ?? [];
-  return (
-    <div className="space-y-4">
-      <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
-        <div className="rounded-lg border bg-gray-50 p-3">
-          <p className="text-xs text-gray-500">Total assignments</p>
-          <p className="text-xl font-bold text-gray-900">{stats.totalAssignments ?? 0}</p>
-        </div>
-        <div className="rounded-lg border bg-gray-50 p-3">
-          <p className="text-xs text-gray-500">Pending</p>
-          <p className="text-xl font-bold text-gray-900">{stats.pendingAssignments ?? 0}</p>
-        </div>
-        <div className="rounded-lg border bg-gray-50 p-3">
-          <p className="text-xs text-gray-500">In review</p>
-          <p className="text-xl font-bold text-gray-900">{stats.inReviewAssignments ?? 0}</p>
-        </div>
-        <div className="rounded-lg border bg-gray-50 p-3">
-          <p className="text-xs text-gray-500">Completed</p>
-          <p className="text-xl font-bold text-gray-900">{stats.completedAssignments ?? 0}</p>
-        </div>
-      </div>
-      <div className="rounded-lg border bg-gray-50 p-3">
-        <p className="text-xs text-gray-500 mb-1">Review summary</p>
-        <p className="text-sm text-gray-700">
-          Approved: {stats.totalApproved ?? 0} · Rejected: {stats.totalRejected ?? 0} · Modified: {stats.totalModified ?? 0}
-        </p>
-      </div>
-      <div>
-        <h4 className="text-sm font-semibold text-gray-900 mb-2">Recent assignments</h4>
-        <div className="rounded-lg border divide-y max-h-48 overflow-y-auto">
-          {recent.slice(0, 8).map((a) => (
-            <div key={a.id} className="flex items-center justify-between px-3 py-2 text-sm">
-              <span className="font-medium truncate">{a.projectName}</span>
-              <span className="text-gray-500 capitalize shrink-0 ml-2">{a.status}</span>
-            </div>
-          ))}
-          {!recent.length && <div className="px-3 py-4 text-sm text-gray-500">No assignments</div>}
-        </div>
-      </div>
     </div>
   );
 }

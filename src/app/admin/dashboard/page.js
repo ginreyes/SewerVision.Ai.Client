@@ -23,6 +23,7 @@ import {
   Filter
 } from 'lucide-react'
 import dashboardApi from '@/data/dashboardApi'
+import { COLORS } from '@/components/admin/constants'
 
 // Lazy load Chart.js for better performance
 const loadChart = async () => {
@@ -50,7 +51,6 @@ const AdminDashboard = () => {
   const defectTrendChartInstance = useRef(null)
   const aiPerformanceChartInstance = useRef(null)
 
-  const COLORS = ['#3B82F6', '#8B5CF6', '#F59E0B', '#10B981']
   const [ChartLoaded, setChartLoaded] = useState(false);
 
   // Data state
@@ -752,11 +752,7 @@ const AdminDashboard = () => {
         {activeTab === 'ai-models' && (
           <div className="space-y-6">
             <div className="flex items-center justify-between">
-              <h2 className="text-2xl font-bold text-gray-900">AI Model Management</h2>
-              <button className="flex items-center space-x-2 bg-purple-600 text-white px-4 py-2 rounded-lg hover:bg-purple-700">
-                <Brain className="w-4 h-4" />
-                <span>Train Model</span>
-              </button>
+              <h2 className="text-2xl font-bold text-gray-900">AI Model Management</h2>      
             </div>
 
             {/* AI Performance Chart */}
@@ -805,8 +801,8 @@ const AdminDashboard = () => {
                             style={{ width: `${detection.confidence}%` }}
                           ></div>
                         </div>
-                        <span className="text-sm text-gray-600 w-12">{detection.confidence}%</span>
-                        <button className="text-blue-600 hover:text-blue-800 text-sm">Adjust</button>
+                        <span className="text-sm text-gray-600 w-12">{Math.round(detection.confidence)}%</span>
+                        <button onClick={() => router.push('/admin/settings?tab=ai-models')} className="text-blue-600 hover:text-blue-800 text-sm">Adjust</button>
                       </div>
                     </div>
                   ))}

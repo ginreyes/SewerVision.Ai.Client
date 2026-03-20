@@ -47,41 +47,7 @@ import { useAlert } from '@/components/providers/AlertProvider';
 import { useQuery } from '@tanstack/react-query';
 import { qcApi } from '@/data/qcApi';
 import { api, getCookie } from '@/lib/helper';
-
-// --- Components ---
-
-const ProfileStats = ({ stats }) => (
-  <div className="grid grid-cols-2 gap-4 py-4">
-    <div className="text-center p-3 bg-rose-50 rounded-lg">
-      <div className="text-2xl font-bold text-rose-600">{stats.reviews}</div>
-      <div className="text-xs text-rose-600 font-medium">Reviews</div>
-    </div>
-    <div className="text-center p-3 bg-green-50 rounded-lg">
-      <div className="text-2xl font-bold text-green-600">{stats.reports}</div>
-      <div className="text-xs text-green-600 font-medium">Reports</div>
-    </div>
-    <div className="text-center p-3 bg-purple-50 rounded-lg">
-      <div className="text-2xl font-bold text-purple-600">{stats.accuracy}%</div>
-      <div className="text-xs text-purple-600 font-medium">Accuracy</div>
-    </div>
-    <div className="text-center p-3 bg-orange-50 rounded-lg">
-      <div className="text-2xl font-bold text-orange-600">{stats.hours}</div>
-      <div className="text-xs text-orange-600 font-medium">Hours</div>
-    </div>
-  </div>
-);
-
-const SectionHeader = ({ icon: Icon, title, description }) => (
-  <div className="flex items-center space-x-4 mb-6">
-    <div className="p-2 bg-rose-100 rounded-lg">
-      <Icon className="w-6 h-6 text-rose-600" />
-    </div>
-    <div>
-      <h2 className="text-lg font-semibold text-gray-900">{title}</h2>
-      <p className="text-sm text-gray-500">{description}</p>
-    </div>
-  </div>
-);
+import { ProfileStats, SectionHeader } from '@/components/qc/settings';
 
 const ToggleSetting = ({ label, description, checked, onCheckedChange }) => (
   <div className="flex items-center justify-between py-4">
@@ -177,9 +143,9 @@ function QCSettingsContent() {
     if (tab) setActiveTab(tab);
   }, [searchParams]);
 
-  // Load User Data
+  // Load User Data — skip while user is editing or saving to avoid overwriting their changes
   useEffect(() => {
-    if (userData) {
+    if (userData && !isEditingProfile && !saving) {
       setProfile({
         firstName: userData.first_name || '',
         lastName: userData.last_name || '',
@@ -190,7 +156,7 @@ function QCSettingsContent() {
         avatar: userData.avatar || null
       });
     }
-  }, [userData]);
+  }, [userData, isEditingProfile, saving]);
 
   // Load QC preferences from backend (aligned with QC tech workflow)
   useEffect(() => {

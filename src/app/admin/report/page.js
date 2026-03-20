@@ -1,6 +1,7 @@
 'use client'
 import React, { useState, useEffect, useCallback } from 'react'
 import { useRouter } from 'next/navigation'
+import * as XLSX from 'xlsx'
 import {
   FileText, Download, Share2, Plus, Search, Filter, Calendar, MapPin,
   User, Camera, Brain, AlertTriangle, CheckCircle, Clock, Eye, MoreVertical,
@@ -29,78 +30,7 @@ import {
 import { useAlert } from "@/components/providers/AlertProvider"
 import reportsApi from '@/data/reportsApi'
 import { useAdminReports } from '@/hooks/useQueryHooks'
-
-// ─── Avatar Helper ───────────────────────────────────────────────
-const getInitials = (firstName, lastName, username, email) => {
-  if (firstName && lastName) return `${firstName[0]}${lastName[0]}`.toUpperCase()
-  if (firstName) return firstName[0].toUpperCase()
-  if (username) return username[0].toUpperCase()
-  if (email) return email[0].toUpperCase()
-  return '?'
-}
-
-const avatarColors = [
-  'bg-violet-500', 'bg-rose-500', 'bg-amber-500', 'bg-emerald-500',
-  'bg-sky-500', 'bg-pink-500', 'bg-indigo-500', 'bg-teal-500'
-]
-
-const getAvatarColor = (str = '') => avatarColors[str.charCodeAt(0) % avatarColors.length]
-
-const getBaseUrl = () => typeof process !== 'undefined' && process.env?.NEXT_PUBLIC_BACKEND_URL ? process.env.NEXT_PUBLIC_BACKEND_URL : ''
-// Use backend avatar endpoint so the actual profile picture is always loaded (or server placeholder)
-const avatarSrc = (user) => {
-  const id = user?._id || user?.id
-  if (!id) return null
-  return `${getBaseUrl()}/api/users/avatar/${id}`
-}
-
-const UserAvatar = ({ user, size = 'md', showRole = false }) => {
-  if (!user) return null
-  const initials = getInitials(user.first_name, user.last_name, user.username, user.email)
-  const name = [user.first_name, user.last_name].filter(Boolean).join(' ') || user.username || user.email || ''
-  const color = user._avatarOverrideColor || getAvatarColor(name)
-  const sizeClass = size === 'sm' ? 'w-7 h-7 text-xs' : size === 'lg' ? 'w-10 h-10 text-sm' : 'w-8 h-8 text-xs'
-  const src = avatarSrc(user)
-
-  const handleImgError = (e) => {
-    e.target.style.display = 'none'
-    const fallback = e.target.nextElementSibling
-    if (fallback) fallback.classList.remove('hidden')
-  }
-  if (showRole) {
-    return (
-      <div className="flex items-center gap-2">
-        <div className={`${sizeClass} ${color} rounded-full flex items-center justify-center text-white font-semibold flex-shrink-0 ring-2 ring-white shadow-sm overflow-hidden relative`}>
-          {src ? (
-            <>
-              <img src={src} alt={name} className="w-full h-full rounded-full object-cover absolute inset-0" onError={handleImgError} />
-              <span className="hidden">{initials}</span>
-            </>
-          ) : (
-            <span>{initials}</span>
-          )}
-        </div>
-        <div className="min-w-0">
-          <p className="text-sm font-medium text-gray-900 truncate">{name || '—'}</p>
-          {user.role && <p className="text-xs text-gray-400 capitalize truncate">{user.role}</p>}
-        </div>
-      </div>
-    )
-  }
-
-  return (
-    <div className={`${sizeClass} ${color} rounded-full flex items-center justify-center text-white font-semibold flex-shrink-0 ring-2 ring-white shadow-sm overflow-hidden relative`} title={name}>
-      {src ? (
-        <>
-          <img src={src} alt={name} className="w-full h-full rounded-full object-cover absolute inset-0" onError={handleImgError} />
-          <span className="hidden">{initials}</span>
-        </>
-      ) : (
-        <span>{initials}</span>
-      )}
-    </div>
-  )
-}
+import { UserAvatar } from '@/components/admin/report'
 
 // ─── Leader Select with Avatar ────────────────────────────────────
 const LeaderOption = ({ leader }) => {
@@ -135,7 +65,7 @@ const Reports = () => {
   // Admin is reviewer only – no template or report creation from this screen.
   const [templates] = useState([])
 
-  const roseGradientClass = "bg-gradient-to-r from-[#D76A84] to-rose-500 hover:from-rose-600 hover:to-pink-600 text-white shadow-lg hover:shadow-xl transition-all duration-200"
+  const roseGradientClass = "bg-[var(--role-accent,#D76A84)] hover:opacity-90 text-white shadow-lg hover:shadow-xl transition-all duration-200"
 
   // TanStack Query: admin reports list + analytics/templates still via direct API
   const {
@@ -174,14 +104,11 @@ const Reports = () => {
     }
     const headers = ['Inspection ID', 'Location', 'Date', 'Status', 'Project', 'Leader', 'Operator', 'QC', 'Footage', 'Defects', 'Critical', 'Confidence']
     const rows = reports.map((r) => [r.inspectionId || '', r.location || '', r.date || '', r.status || '', (r.projectId && (r.projectId.name || r.projectId._id)) || '', leaderName(r), (r.operator && (r.operator.first_name + ' ' + r.operator.last_name)) || '', (r.qcTechnician && (r.qcTechnician.first_name + ' ' + r.qcTechnician.last_name)) || '', r.footage || '0', r.totalDefects ?? '', r.criticalDefects ?? '', r.confidence ?? ''])
-    const csv = [headers.join(','), ...rows.map((row) => row.map((c) => `"${String(c).replace(/"/g, '""')}"`).join(','))].join('\n')
-    const blob = new Blob([csv], { type: 'text/csv;charset=utf-8;' })
-    const link = document.createElement('a')
-    link.href = URL.createObjectURL(blob)
-    link.download = `reports-export-${new Date().toISOString().slice(0, 10)}.csv`
-    link.click()
-    URL.revokeObjectURL(link.href)
-    showAlert('Report exported as CSV', 'success')
+    const ws = XLSX.utils.aoa_to_sheet([headers, ...rows])
+    const wb = XLSX.utils.book_new()
+    XLSX.utils.book_append_sheet(wb, ws, 'Reports')
+    XLSX.writeFile(wb, `reports-export-${new Date().toISOString().slice(0, 10)}.xlsx`)
+    showAlert('Report exported as Excel', 'success')
   }
 
   // Template/report creation & import handlers removed – admin reviews only.

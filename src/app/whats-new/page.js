@@ -12,7 +12,8 @@ import {
     FaImage,
     FaTimes,
     FaChevronLeft,
-    FaChevronRight
+    FaChevronRight,
+    FaUserTie 
 } from "react-icons/fa";
 import Link from "next/link";
 import { Dialog, DialogContent, DialogTitle } from "@/components/ui/dialog";
@@ -30,8 +31,9 @@ const WhatsNew = () => {
 
     const getImageList = (item) => {
         if (!item) return [];
-        if (item.images && Array.isArray(item.images) && item.images.length > 0) return item.images;
-        if (item.image) return [item.image];
+        if (item.images && Array.isArray(item.images) && item.images.length > 0) return item.images.filter(Boolean);
+        if (Array.isArray(item.image) && item.image.length > 0) return item.image.filter(Boolean);
+        if (item.image && typeof item.image === 'string' && item.image.trim() !== '') return [item.image];
         return [];
     };
 
@@ -65,6 +67,7 @@ const WhatsNew = () => {
         qc: { icon: FaCog, label: 'QC Tech', color: 'text-purple-600' },
         operator: { icon: FaTools, label: 'Operator', color: 'text-orange-600' },
         customer: { icon: FaUserTag, label: 'Customer', color: 'text-green-600' },
+        customer_rep: { icon: FaUserTie, label: 'Customer Representative', color: 'text-green-600' },
         other: { icon: FaEllipsisH, label: 'General', color: 'text-gray-600' }
     };
 
@@ -298,7 +301,9 @@ const WhatsNew = () => {
                                 {(() => {
                                     const imageList = getImageList(selectedItem);
                                     if (imageList.length === 0) return null;
-                                    const currentSrc = imageList[selectedImageIndex] ?? imageList[0];
+                                    const safeIndex = selectedImageIndex < imageList.length ? selectedImageIndex : 0;
+                                    const currentSrc = imageList[safeIndex] ?? imageList[0];
+                                    if (!currentSrc) return null;
                                     const hasMultiple = imageList.length > 1;
                                     return (
                                         <div className="space-y-3">
@@ -382,7 +387,8 @@ const WhatsNew = () => {
                     <div className="relative w-full h-full max-w-7xl max-h-[90vh] flex items-center justify-center" onClick={e => e.stopPropagation()}>
                         {(() => {
                             const imageList = getImageList(selectedItem);
-                            const src = imageList[selectedImageIndex] ?? imageList[0];
+                            const safeIdx = selectedImageIndex < imageList.length ? selectedImageIndex : 0;
+                            const src = imageList[safeIdx] ?? imageList[0];
                             if (!src) return null;
                             const hasMultiple = imageList.length > 1;
                             return (

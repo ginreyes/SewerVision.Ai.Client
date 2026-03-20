@@ -15,7 +15,7 @@ const buttonVariants = cva(
         secondary: "bg-secondary text-secondary-foreground shadow-xs hover:bg-secondary/80",
         ghost: "hover:bg-accent hover:text-accent-foreground dark:hover:bg-accent/50",
         link: "text-primary underline-offset-4 hover:underline",
-        rose: "bg-[#d76b84] text-white shadow-xs hover:bg-[#d76b84]/90",
+        rose: "bg-[var(--role-accent,#d76b84)] text-white shadow-xs hover:bg-[var(--role-accent,#d76b84)]/90",
         success: "bg-green-600 text-white hover:bg-green-700 shadow-xs focus-visible:ring-green-300 dark:bg-green-700 dark:hover:bg-green-600",
         
         // SewerVision.ai Custom Variants

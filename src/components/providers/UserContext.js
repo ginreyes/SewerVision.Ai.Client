@@ -64,8 +64,9 @@ export const UserProvider = ({ children }) => {
     deleteCookie("rememberedUsername");
     setUserId(null);
     setUserData(null);
-    router.push("/login");
-  }, [router]);
+    // Use window.location for a full page redirect to ensure all state is cleared
+    window.location.href = "/login";
+  }, []);
 
   return (
     <UserContext.Provider value={{

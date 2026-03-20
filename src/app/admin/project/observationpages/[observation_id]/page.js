@@ -10,11 +10,8 @@ import {
   Clock,
   Tag,
   User,
-  Edit3,
   Trash2,
   Download,
-  Save,
-  X,
 } from "lucide-react";
 import { api } from "@/lib/helper";
 import { Button } from "@/components/ui/button";
@@ -30,67 +27,7 @@ import {
 } from "@/components/ui/select";
 import { useAlert } from "@/components/providers/AlertProvider";
 import { useDialog } from "@/components/providers/DialogProvider";
-
-const SelectCustom = ({
-  value,
-  onChange,
-  options,
-  className = "",
-  disabled = false,
-}) => {
-  return (
-    <select
-      value={value}
-      onChange={onChange}
-      disabled={disabled}
-      className={`w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500 disabled:bg-gray-50 disabled:text-gray-500 ${className}`}
-    >
-      {options.map((option) => (
-        <option key={option.value} value={option.value}>
-          {option.label}
-        </option>
-      ))}
-    </select>
-  );
-};
-
-const EditableSection = ({
-  title,
-  children,
-  isEditing,
-  onEdit,
-  onSave,
-  onCancel,
-  saving = false,
-}) => {
-  return (
-    <div className="bg-white rounded-lg shadow-sm p-6">
-      <div className="flex items-center justify-between mb-4">
-        <h2 className="text-lg font-semibold text-gray-900">{title}</h2>
-        <div className="flex items-center space-x-2">
-          {!isEditing ? (
-            <Button variant="ghost" onClick={onEdit}>
-              <Edit3 className="h-3 w-3 mr-1" />
-              Edit
-            </Button>
-          ) : (
-            <>
-              <Button variant="ghost" onClick={onCancel}>
-                <X className="h-3 w-3 mr-1" />
-                Cancel
-              </Button>
-              <Button variant="success" onClick={onSave} disabled={saving}>
-                <Save className="h-3 w-3 mr-1" />
-                {saving ? "Saving..." : "Save"}
-              </Button>
-            </>
-          )}
-        </div>
-      </div>
-      {children}
-    </div>
-  );
-};
+import { SelectCustom, EditableSection } from "@/components/admin/project";
 
 const ObservationDetailsPageContent = () => {
   const router = useRouter();

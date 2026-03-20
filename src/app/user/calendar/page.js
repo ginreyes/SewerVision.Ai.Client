@@ -3,12 +3,12 @@
 import { Button } from '@/components/ui/button';
 import { Card } from '@/components/ui/card';
 import { Calendar as ShadcnCalendar } from '@/components/ui/calendar';
-import React, { useState, useEffect } from 'react';
+import React, { useState } from 'react';
 import EventFilters from '@/app/user/calendar/components/FilterComponent';
 import { ArrowLeft, ArrowRight } from 'lucide-react';
 import EventModal from '@/app/user/calendar/components/AddEventModal';
 import { useUser } from '@/components/providers/UserContext';
-import { api } from '@/lib/helper';
+import { useUserEvents } from '@/hooks/useQueryHooks';
 import MonthViewCalendar from '@/app/user/calendar/components/MonthView';
 import ListViewCalendar from '@/app/user/calendar/components/ListViewCalendar';
 import WeekView from '@/app/user/calendar/components/WeekView';
@@ -49,7 +49,6 @@ export default function UserCalendarPage() {
   const [drawerOpen, setDrawerOpen] = useState(false);
   const [selectedDate, setSelectedDate] = useState(null);
   const [selectedEvent, setSelectedEvent] = useState(null);
-  const [event_list, setEventList] = useState([]);
   const { monthNames } = generateCalendarGrid();
   const { userId } = useUser() || {};
 
@@ -62,17 +61,10 @@ export default function UserCalendarPage() {
     etc: true,
   });
 
-  const handleFetchListEvents = async () => {
-    try {
-      const result = await api('/api/calendar/get-event', 'GET');
-      const raw = result?.data;
-      const list = raw?.data ?? raw;
-      const events = Array.isArray(list) ? list : Array.isArray(raw) ? raw : [];
-      setEventList(events);
-    } catch (error) {
-      console.error('Failed to fetch events:', error?.message || error);
-      setEventList([]);
-    }
+  const { data: eventsData, refetch: refetchEvents } = useUserEvents();
+
+  const handleFetchListEvents = () => {
+    refetchEvents();
   };
 
   const AddEvent = (date) => {
@@ -81,9 +73,11 @@ export default function UserCalendarPage() {
     setDrawerOpen(true);
   };
 
+  const event_list = Array.isArray(eventsData) ? eventsData : [];
+
   const filteredEvents = filters.viewAll
-    ? (Array.isArray(event_list) ? event_list : [])
-    : (Array.isArray(event_list) ? event_list.filter((event) => filters[event.category]) : []);
+    ? event_list
+    : event_list.filter((event) => filters[event.category]);
 
   const handlePrevious = () => {
     const newDate = new Date(date);
@@ -129,10 +123,6 @@ export default function UserCalendarPage() {
     if (viewMode === 'list') return `${monthNames[currentMonth]} ${currentYear}`;
     return '';
   };
-
-  useEffect(() => {
-    handleFetchListEvents();
-  }, []);
 
   const handleAddOrEditEvent = (data) => {
     if (data instanceof Date) {

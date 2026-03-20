@@ -4,12 +4,19 @@ import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { dashboardApi } from '@/data/dashboardApi';
 import { qcApi } from '@/data/qcApi';
 import { notesApi } from '@/data/notesApi';
-import { reportsApi } from '@/data/reportsApi';
+import reportsApi from '@/data/reportsApi';
 import { settingsApi } from '@/data/settingsApi';
 import { uploadsApi } from '@/data/uploadsApi';
 import { operatorApi } from '@/data/operatorApi';
 import { devicesApi } from '@/data/devicesApi';
 import notificationApi from '@/data/notificationApi ';
+import { customerApi } from '@/data/customerApi';
+import { userApi } from '@/data/userApi';
+import { maintenanceApi } from '@/data/maintenanceApi';
+import supportApi from '@/data/supportApi';
+import messageApi from '@/data/messageApi';
+import cannedResponseApi from '@/data/cannedResponseApi';
+import complaintApi from '@/data/complaintApi';
 
 /**
  * Query Keys - Centralized key management for cache invalidation
@@ -34,6 +41,19 @@ export const queryKeys = {
     operatorTasks: (operatorId, status) => ['operator', 'tasks', operatorId, status],
     operatorReports: (operatorId) => ['operator', 'reports', operatorId],
     operatorOverview: ['operator', 'overview'],
+    operatorTodayEvents: (userId) => ['operator', 'todayEvents', userId],
+    operatorAssignedProjects: (userId) => ['operator', 'assignedProjects', userId],
+    operatorCalendarEvents: (userId) => ['operator', 'calendar', userId],
+    operatorCalendarStats: (userId) => ['operator', 'calendar-stats', userId],
+    operatorProjects: (userId, filters) => ['operator', 'projects', userId, filters ?? {}],
+    operatorProject: (projectId) => ['operator', 'project', projectId],
+    operatorDevices: (operatorId) => ['operator', 'devices', operatorId],
+    operatorUploads: (limit) => ['operator', 'uploads', limit],
+    operatorLogs: (username) => ['operator', 'logs', username],
+    operatorNotificationPreferences: (userId) => ['operator', 'notification-preferences', userId],
+
+    // Maintenance
+    maintenanceOverview: () => ['maintenance', 'overview'],
 
     // Notes
     notes: (userId, filters) => ['notes', userId, filters],
@@ -74,10 +94,51 @@ export const queryKeys = {
     // Customer views
     customerDashboard: (customerId) => ['customer', 'dashboard', customerId],
     customerProjects: (customerId, filters) => ['customer', 'projects', customerId, filters ?? {}],
+    customerProject: (projectId, userId) => ['customer', 'project', projectId, userId],
+    customerObservations: (projectId) => ['customer', 'observations', projectId],
+    customerSnapshots: (projectId) => ['customer', 'snapshots', projectId],
+    customerReports: (userId) => ['customer', 'reports', userId],
+    customerReport: (userId, reportId) => ['customer', 'report', userId, reportId],
+    customerNotifications: (userId) => ['customer', 'notifications', userId],
+    customerNotificationPreferences: (userId) => ['customer', 'notification-preferences', userId],
 
     // Devices (admin)
     devices: (params) => ['devices', params ?? {}],
     device: (deviceId) => ['devices', deviceId],
+
+    // User (Team Lead)
+    userDashboard: (userId) => ['user', 'dashboard', userId],
+    userProjects: (userId, filters) => ['user', 'projects', userId, filters ?? {}],
+    userProject: (projectId) => ['user', 'project', projectId],
+    userTeamMembers: () => ['user', 'team-members'],
+    userTeamMemberDetail: (memberId) => ['user', 'team-member', memberId],
+    userTeamMemberDashboard: (memberId) => ['user', 'team-member-dashboard', memberId],
+    userDevices: (userId) => ['user', 'devices', userId],
+    userEvents: () => ['user', 'events'],
+    userReports: (userId, filters) => ['user', 'reports', userId, filters ?? {}],
+    userNotificationPreferences: (userId) => ['user', 'notification-preferences', userId],
+
+    // Support (Customer-Rep)
+    supportAllTickets: (params) => ['support', 'tickets', params ?? {}],
+    supportGlobalStats: ['support', 'global-stats'],
+    supportTicket: (ticketId) => ['support', 'ticket', ticketId],
+    supportAssigned: (repId) => ['support', 'assigned', repId],
+    supportTeam: ['support', 'team'],
+    supportCustomerStats: (userId) => ['support', 'customer-stats', userId],
+
+    // Complaints
+    complaintsAll: (params) => ['complaints', 'all', params ?? {}],
+    complaintsStats: ['complaints', 'stats'],
+    complaint: (id) => ['complaints', 'detail', id],
+    complaintsAssigned: (repId) => ['complaints', 'assigned', repId],
+    customerComplaints: (customerId) => ['complaints', 'customer', customerId],
+
+    // Messages (Inbox)
+    messagesInbox: (userId, params) => ['messages', 'inbox', userId, params ?? {}],
+    messagesSent: (userId) => ['messages', 'sent', userId],
+    messagesThread: (threadId) => ['messages', 'thread', threadId],
+    messagesUnreadCount: (userId) => ['messages', 'unread', userId],
+    messagesContacts: (userId) => ['messages', 'contacts', userId],
 };
 
 /**
@@ -172,6 +233,271 @@ export function useStopRecording() {
         mutationFn: (deviceId) => operatorApi.stopRecording(deviceId),
         onSuccess: () => {
             queryClient.invalidateQueries({ queryKey: ['operator'] });
+        },
+    });
+}
+
+// ── Operator Dashboard extras ──
+
+export function useOperatorTodayEvents(userId, options = {}) {
+    return useQuery({
+        queryKey: queryKeys.operatorTodayEvents(userId),
+        queryFn: () => operatorApi.getTodayEvents(userId),
+        enabled: !!userId,
+        staleTime: 1000 * 60 * 2,
+        ...options,
+    });
+}
+
+export function useOperatorAssignedProjects(userId, limit = 10, options = {}) {
+    return useQuery({
+        queryKey: queryKeys.operatorAssignedProjects(userId),
+        queryFn: () => operatorApi.getAssignedProjects(userId, limit),
+        enabled: !!userId,
+        staleTime: 1000 * 60 * 2,
+        ...options,
+    });
+}
+
+// ── Operator Calendar ──
+
+export function useOperatorCalendarEvents(userId, options = {}) {
+    return useQuery({
+        queryKey: queryKeys.operatorCalendarEvents(userId),
+        queryFn: () => operatorApi.getCalendarEvents(userId),
+        enabled: !!userId,
+        staleTime: 1000 * 60 * 2,
+        ...options,
+    });
+}
+
+export function useOperatorCalendarStats(userId, options = {}) {
+    return useQuery({
+        queryKey: queryKeys.operatorCalendarStats(userId),
+        queryFn: () => operatorApi.getCalendarStatistics(userId),
+        enabled: !!userId,
+        staleTime: 1000 * 60 * 2,
+        ...options,
+    });
+}
+
+export function useCreateOperatorEvent() {
+    const queryClient = useQueryClient();
+    return useMutation({
+        mutationFn: (payload) => operatorApi.createCalendarEvent(payload),
+        onSuccess: () => {
+            queryClient.invalidateQueries({ queryKey: ['operator', 'calendar'] });
+            queryClient.invalidateQueries({ queryKey: ['operator', 'calendar-stats'] });
+            queryClient.invalidateQueries({ queryKey: ['operator', 'todayEvents'] });
+        },
+    });
+}
+
+export function useUpdateOperatorEventStatus() {
+    const queryClient = useQueryClient();
+    return useMutation({
+        mutationFn: ({ eventId, status }) => operatorApi.updateCalendarEventStatus(eventId, status),
+        onSuccess: () => {
+            queryClient.invalidateQueries({ queryKey: ['operator', 'calendar'] });
+            queryClient.invalidateQueries({ queryKey: ['operator', 'calendar-stats'] });
+        },
+    });
+}
+
+export function useDeleteOperatorEvent() {
+    const queryClient = useQueryClient();
+    return useMutation({
+        mutationFn: (eventId) => operatorApi.deleteCalendarEvent(eventId),
+        onSuccess: () => {
+            queryClient.invalidateQueries({ queryKey: ['operator', 'calendar'] });
+            queryClient.invalidateQueries({ queryKey: ['operator', 'calendar-stats'] });
+            queryClient.invalidateQueries({ queryKey: ['operator', 'todayEvents'] });
+        },
+    });
+}
+
+// ── Operator Projects ──
+
+export function useOperatorProjects(userId, { page = 1, limit = 20, search = '', status = '' } = {}, options = {}) {
+    return useQuery({
+        queryKey: queryKeys.operatorProjects(userId, { page, limit, search, status }),
+        queryFn: () => operatorApi.getProjects(userId, { page, limit, search, status }),
+        enabled: !!userId,
+        staleTime: 1000 * 60 * 2,
+        ...options,
+    });
+}
+
+export function useOperatorProject(projectId, options = {}) {
+    return useQuery({
+        queryKey: queryKeys.operatorProject(projectId),
+        queryFn: () => operatorApi.getProject(projectId),
+        enabled: !!projectId,
+        staleTime: 1000 * 60 * 2,
+        ...options,
+    });
+}
+
+// ── Operator Equipment / Devices ──
+
+export function useOperatorDevices(operatorId, options = {}) {
+    return useQuery({
+        queryKey: queryKeys.operatorDevices(operatorId),
+        queryFn: () => operatorApi.getDevices(operatorId),
+        enabled: !!operatorId,
+        staleTime: 1000 * 60 * 2,
+        ...options,
+    });
+}
+
+export function useReportDeviceStatus() {
+    const queryClient = useQueryClient();
+    return useMutation({
+        mutationFn: ({ deviceId, data }) => operatorApi.reportDeviceStatus(deviceId, data),
+        onSuccess: () => {
+            queryClient.invalidateQueries({ queryKey: ['operator', 'devices'] });
+            queryClient.invalidateQueries({ queryKey: ['devices'] });
+        },
+    });
+}
+
+// ── Operator Operations ──
+
+export function useOperatorUploads(limit = 10, options = {}) {
+    return useQuery({
+        queryKey: queryKeys.operatorUploads(limit),
+        queryFn: () => operatorApi.getUploads(limit),
+        staleTime: 1000 * 30,
+        ...options,
+    });
+}
+
+export function useStartOperationsRecording() {
+    const queryClient = useQueryClient();
+    return useMutation({
+        mutationFn: (deviceId) => operatorApi.startOperationsRecording(deviceId),
+        onSuccess: () => {
+            queryClient.invalidateQueries({ queryKey: ['operator'] });
+        },
+    });
+}
+
+export function useStopOperationsRecording() {
+    const queryClient = useQueryClient();
+    return useMutation({
+        mutationFn: (deviceId) => operatorApi.stopOperationsRecording(deviceId),
+        onSuccess: () => {
+            queryClient.invalidateQueries({ queryKey: ['operator'] });
+        },
+    });
+}
+
+// ── Operator Reports ──
+
+export function useCreateOperatorReport() {
+    const queryClient = useQueryClient();
+    return useMutation({
+        mutationFn: (reportData) => operatorApi.createReport(reportData),
+        onSuccess: () => {
+            queryClient.invalidateQueries({ queryKey: ['operator', 'reports'] });
+        },
+    });
+}
+
+export function useOperatorAllProjects(options = {}) {
+    return useQuery({
+        queryKey: ['operator', 'allProjects'],
+        queryFn: () => operatorApi.getAllProjectsForReports(),
+        staleTime: 1000 * 60 * 5,
+        ...options,
+    });
+}
+
+// ── Operator Logs ──
+
+export function useOperatorLogs(username, limit = 100, options = {}) {
+    return useQuery({
+        queryKey: queryKeys.operatorLogs(username),
+        queryFn: () => operatorApi.getInspectionLogs(username, limit),
+        enabled: !!username,
+        staleTime: 1000 * 30,
+        ...options,
+    });
+}
+
+// ── Operator Settings ──
+
+export function useUpdateOperatorProfile() {
+    return useMutation({
+        mutationFn: ({ username, data }) => operatorApi.updateProfile(username, data),
+    });
+}
+
+export function useChangeOperatorPassword() {
+    return useMutation({
+        mutationFn: (data) => operatorApi.changePassword(data),
+    });
+}
+
+export function useSaveOperatorSettings() {
+    return useMutation({
+        mutationFn: (settings) => operatorApi.saveSettings(settings),
+    });
+}
+
+// ── Operator Notifications ──
+
+export function useOperatorNotificationPreferences(userId, options = {}) {
+    return useQuery({
+        queryKey: queryKeys.operatorNotificationPreferences(userId),
+        queryFn: () => operatorApi.getNotificationPreferences(userId),
+        enabled: !!userId,
+        staleTime: 1000 * 60 * 10,
+        ...options,
+    });
+}
+
+export function useUpdateOperatorNotificationPreferences() {
+    const queryClient = useQueryClient();
+    return useMutation({
+        mutationFn: ({ userId, preferences }) => operatorApi.updateNotificationPreferences(userId, preferences),
+        onSuccess: (_data, { userId }) => {
+            queryClient.invalidateQueries({ queryKey: queryKeys.operatorNotificationPreferences(userId) });
+        },
+    });
+}
+
+// ── Maintenance Hooks ──
+
+export function useMaintenanceOverview(options = {}) {
+    return useQuery({
+        queryKey: queryKeys.maintenanceOverview(),
+        queryFn: async () => {
+            const response = await maintenanceApi.getOverview();
+            if (response.error) throw new Error(response.error);
+            return response.data?.data ?? response.data;
+        },
+        staleTime: 1000 * 30,
+        ...options,
+    });
+}
+
+export function useRefreshMaintenanceSystems() {
+    const queryClient = useQueryClient();
+    return useMutation({
+        mutationFn: () => maintenanceApi.refreshSystems(),
+        onSuccess: () => {
+            queryClient.invalidateQueries({ queryKey: queryKeys.maintenanceOverview() });
+        },
+    });
+}
+
+export function useDismissMaintenanceAlert() {
+    const queryClient = useQueryClient();
+    return useMutation({
+        mutationFn: (alertId) => maintenanceApi.deleteAlert(alertId),
+        onSuccess: () => {
+            queryClient.invalidateQueries({ queryKey: queryKeys.maintenanceOverview() });
         },
     });
 }
@@ -670,6 +996,635 @@ export function useUpdateReport(options = {}) {
 }
 
 /**
+ * ============ USER (TEAM LEAD) HOOKS ============
+ */
+
+export function useUserDashboard(userId, options = {}) {
+    return useQuery({
+        queryKey: queryKeys.userDashboard(userId),
+        queryFn: () => userApi.getDashboardData(userId),
+        enabled: !!userId,
+        staleTime: 1000 * 60 * 2,
+        ...options,
+    });
+}
+
+export function useUserProjects(userId, { page = 1, limit = 20, search = '', status = '' } = {}, options = {}) {
+    return useQuery({
+        queryKey: queryKeys.userProjects(userId, { page, limit, search, status }),
+        queryFn: () => userApi.getAllProjects(userId, { page, limit, search, status }),
+        enabled: !!userId,
+        staleTime: 1000 * 60 * 5,
+        ...options,
+    });
+}
+
+export function useUserProject(projectId, options = {}) {
+    return useQuery({
+        queryKey: queryKeys.userProject(projectId),
+        queryFn: () => userApi.getProject(projectId),
+        enabled: !!projectId,
+        staleTime: 1000 * 60 * 5,
+        ...options,
+    });
+}
+
+export function useUserTeamMembers(options = {}) {
+    return useQuery({
+        queryKey: queryKeys.userTeamMembers(),
+        queryFn: () => userApi.getTeamMembers(),
+        staleTime: 1000 * 60 * 5,
+        ...options,
+    });
+}
+
+export function useUserTeamMemberDetail(memberId, options = {}) {
+    return useQuery({
+        queryKey: queryKeys.userTeamMemberDetail(memberId),
+        queryFn: () => userApi.getTeamMemberDetails(memberId),
+        enabled: !!memberId,
+        staleTime: 1000 * 60 * 5,
+        ...options,
+    });
+}
+
+export function useUserTeamMemberDashboard(memberId, role, options = {}) {
+    return useQuery({
+        queryKey: queryKeys.userTeamMemberDashboard(memberId),
+        queryFn: () => userApi.getTeamMemberDashboard(memberId, role),
+        enabled: !!memberId && !!role,
+        staleTime: 1000 * 60 * 2,
+        ...options,
+    });
+}
+
+export function useUserDevices(userId, role, options = {}) {
+    return useQuery({
+        queryKey: queryKeys.userDevices(userId),
+        queryFn: () => userApi.getDevices(userId, role),
+        staleTime: 1000 * 60 * 2,
+        ...options,
+    });
+}
+
+export function useUserEvents(options = {}) {
+    return useQuery({
+        queryKey: queryKeys.userEvents(),
+        queryFn: () => userApi.getEvents(),
+        staleTime: 1000 * 60 * 2,
+        ...options,
+    });
+}
+
+export function useUserNotificationPreferences(userId, options = {}) {
+    return useQuery({
+        queryKey: queryKeys.userNotificationPreferences(userId),
+        queryFn: () => userApi.getNotificationPreferences(userId),
+        enabled: !!userId,
+        staleTime: 1000 * 60 * 10,
+        ...options,
+    });
+}
+
+export function useUserReports(userId, filters = {}, options = {}) {
+    return useQuery({
+        queryKey: queryKeys.userReports(userId, filters),
+        queryFn: () => userApi.getReports({ managerId: userId, ...filters }),
+        enabled: !!userId,
+        staleTime: 1000 * 60 * 2,
+        ...options,
+    });
+}
+
+// ── User Mutations ──
+
+export function useRequestDeleteProject() {
+    const queryClient = useQueryClient();
+    return useMutation({
+        mutationFn: (projectId) => userApi.requestDeleteProject(projectId),
+        onSuccess: () => {
+            queryClient.invalidateQueries({ queryKey: ['user', 'projects'] });
+        },
+    });
+}
+
+export function useApproveDeleteProject() {
+    const queryClient = useQueryClient();
+    return useMutation({
+        mutationFn: (projectId) => userApi.approveDeleteProject(projectId),
+        onSuccess: () => {
+            queryClient.invalidateQueries({ queryKey: ['user', 'projects'] });
+        },
+    });
+}
+
+export function useRejectDeleteProject() {
+    const queryClient = useQueryClient();
+    return useMutation({
+        mutationFn: (projectId) => userApi.rejectDeleteProject(projectId),
+        onSuccess: () => {
+            queryClient.invalidateQueries({ queryKey: ['user', 'projects'] });
+        },
+    });
+}
+
+export function useDeleteUserProject() {
+    const queryClient = useQueryClient();
+    return useMutation({
+        mutationFn: (projectId) => userApi.deleteProject(projectId),
+        onSuccess: () => {
+            queryClient.invalidateQueries({ queryKey: ['user', 'projects'] });
+        },
+    });
+}
+
+export function useCreateObservation() {
+    const queryClient = useQueryClient();
+    return useMutation({
+        mutationFn: ({ projectId, userId, data }) => userApi.createObservation(projectId, userId, data),
+        onSuccess: () => {
+            queryClient.invalidateQueries({ queryKey: ['user', 'projects'] });
+        },
+    });
+}
+
+export function useCreateUserSnapshot() {
+    const queryClient = useQueryClient();
+    return useMutation({
+        mutationFn: ({ projectId, userId, data }) => userApi.createSnapshot(projectId, userId, data),
+        onSuccess: () => {
+            queryClient.invalidateQueries({ queryKey: ['user', 'projects'] });
+        },
+    });
+}
+
+export function useUpdateDeviceAssignment() {
+    const queryClient = useQueryClient();
+    return useMutation({
+        mutationFn: ({ deviceId, assignments }) => userApi.updateDeviceAssignment(deviceId, assignments),
+        onSuccess: () => {
+            queryClient.invalidateQueries({ queryKey: ['user', 'devices'] });
+            queryClient.invalidateQueries({ queryKey: ['devices'] });
+        },
+    });
+}
+
+export function useCreateEvent() {
+    const queryClient = useQueryClient();
+    return useMutation({
+        mutationFn: (eventData) => userApi.createEvent(eventData),
+        onSuccess: () => {
+            queryClient.invalidateQueries({ queryKey: queryKeys.userEvents() });
+        },
+    });
+}
+
+export function useUpdateEvent() {
+    const queryClient = useQueryClient();
+    return useMutation({
+        mutationFn: ({ eventId, data }) => userApi.updateEvent(eventId, data),
+        onSuccess: () => {
+            queryClient.invalidateQueries({ queryKey: queryKeys.userEvents() });
+        },
+    });
+}
+
+export function useDeleteEvent() {
+    const queryClient = useQueryClient();
+    return useMutation({
+        mutationFn: (eventId) => userApi.deleteEvent(eventId),
+        onSuccess: () => {
+            queryClient.invalidateQueries({ queryKey: queryKeys.userEvents() });
+        },
+    });
+}
+
+export function useUpdateUserProfile() {
+    return useMutation({
+        mutationFn: ({ username, data }) => userApi.updateProfile(username, data),
+    });
+}
+
+export function useChangeUserPassword() {
+    return useMutation({
+        mutationFn: (passwordData) => userApi.changePassword(passwordData),
+    });
+}
+
+export function useSaveUserSettings() {
+    return useMutation({
+        mutationFn: (settings) => userApi.saveSettings(settings),
+    });
+}
+
+export function useUpdateUserNotificationPreferences() {
+    const queryClient = useQueryClient();
+    return useMutation({
+        mutationFn: ({ userId, preferences }) => userApi.updateNotificationPreferences(userId, preferences),
+        onSuccess: (_data, { userId }) => {
+            queryClient.invalidateQueries({ queryKey: queryKeys.userNotificationPreferences(userId) });
+        },
+    });
+}
+
+/**
+ * ============ SUPPORT / CUSTOMER-REP HOOKS ============
+ */
+
+export function useSupportAllTickets(params = {}, options = {}) {
+    return useQuery({
+        queryKey: queryKeys.supportAllTickets(params),
+        queryFn: () => supportApi.getAllTickets(params),
+        staleTime: 1000 * 30,
+        ...options,
+    });
+}
+
+export function useSupportGlobalStats(options = {}) {
+    return useQuery({
+        queryKey: queryKeys.supportGlobalStats,
+        queryFn: () => supportApi.getGlobalStats(),
+        staleTime: 1000 * 30,
+        ...options,
+    });
+}
+
+export function useSupportTicket(ticketId, options = {}) {
+    return useQuery({
+        queryKey: queryKeys.supportTicket(ticketId),
+        queryFn: () => supportApi.getTicketById(ticketId),
+        enabled: !!ticketId,
+        staleTime: 1000 * 15,
+        ...options,
+    });
+}
+
+export function useSupportAssignedTickets(repId, options = {}) {
+    return useQuery({
+        queryKey: queryKeys.supportAssigned(repId),
+        queryFn: () => supportApi.getAssignedTickets(repId),
+        enabled: !!repId,
+        staleTime: 1000 * 30,
+        ...options,
+    });
+}
+
+export function useSupportTeam(options = {}) {
+    return useQuery({
+        queryKey: queryKeys.supportTeam,
+        queryFn: () => supportApi.getTeam(),
+        staleTime: 1000 * 60 * 2,
+        ...options,
+    });
+}
+
+export function useSupportCustomerStats(userId, options = {}) {
+    return useQuery({
+        queryKey: queryKeys.supportCustomerStats(userId),
+        queryFn: () => supportApi.getCustomerStats(userId),
+        enabled: !!userId,
+        staleTime: 1000 * 30,
+        ...options,
+    });
+}
+
+export function useCreateSupportTicket() {
+    const queryClient = useQueryClient();
+    return useMutation({
+        mutationFn: (data) => supportApi.createTicket(data),
+        onSuccess: () => {
+            queryClient.invalidateQueries({ queryKey: ['support'] });
+        },
+    });
+}
+
+export function useUpdateSupportTicket() {
+    const queryClient = useQueryClient();
+    return useMutation({
+        mutationFn: ({ ticketId, ...data }) => supportApi.updateTicket(ticketId, data),
+        onSuccess: () => {
+            queryClient.invalidateQueries({ queryKey: ['support'] });
+        },
+    });
+}
+
+export function useAddTicketResponse() {
+    const queryClient = useQueryClient();
+    return useMutation({
+        mutationFn: ({ ticketId, ...data }) => supportApi.addResponse(ticketId, data),
+        onSuccess: (_data, { ticketId }) => {
+            queryClient.invalidateQueries({ queryKey: queryKeys.supportTicket(ticketId) });
+            queryClient.invalidateQueries({ queryKey: ['support', 'tickets'] });
+        },
+    });
+}
+
+export function useDeleteSupportTicket() {
+    const queryClient = useQueryClient();
+    return useMutation({
+        mutationFn: (ticketId) => supportApi.deleteTicket(ticketId),
+        onSuccess: () => {
+            queryClient.invalidateQueries({ queryKey: ['support'] });
+        },
+    });
+}
+
+export function useAddInternalNote() {
+    const queryClient = useQueryClient();
+    return useMutation({
+        mutationFn: ({ ticketId, ...data }) => supportApi.addInternalNote(ticketId, data),
+        onSuccess: (_data, { ticketId }) => {
+            queryClient.invalidateQueries({ queryKey: queryKeys.supportTicket(ticketId) });
+        },
+    });
+}
+
+export function useSupportTags(options = {}) {
+    return useQuery({
+        queryKey: ['support', 'tags'],
+        queryFn: () => supportApi.getTags(),
+        staleTime: 1000 * 60 * 5,
+        ...options,
+    });
+}
+
+export function useSupportCustomerHistory(customerId, options = {}) {
+    return useQuery({
+        queryKey: ['support', 'customer-history', customerId],
+        queryFn: () => supportApi.getCustomerHistory(customerId),
+        enabled: !!customerId,
+        staleTime: 1000 * 30,
+        ...options,
+    });
+}
+
+/**
+ * ============ CANNED RESPONSE HOOKS ============
+ */
+
+export function useCannedResponses(userId, options = {}) {
+    return useQuery({
+        queryKey: ['canned-responses', userId],
+        queryFn: () => cannedResponseApi.getAll(userId),
+        staleTime: 1000 * 60 * 2,
+        ...options,
+    });
+}
+
+export function useCreateCannedResponse() {
+    const queryClient = useQueryClient();
+    return useMutation({
+        mutationFn: (data) => cannedResponseApi.create(data),
+        onSuccess: () => { queryClient.invalidateQueries({ queryKey: ['canned-responses'] }); },
+    });
+}
+
+export function useUpdateCannedResponse() {
+    const queryClient = useQueryClient();
+    return useMutation({
+        mutationFn: ({ id, ...data }) => cannedResponseApi.update(id, data),
+        onSuccess: () => { queryClient.invalidateQueries({ queryKey: ['canned-responses'] }); },
+    });
+}
+
+export function useDeleteCannedResponse() {
+    const queryClient = useQueryClient();
+    return useMutation({
+        mutationFn: (id) => cannedResponseApi.delete(id),
+        onSuccess: () => { queryClient.invalidateQueries({ queryKey: ['canned-responses'] }); },
+    });
+}
+
+/**
+ * ============ COMPLAINT HOOKS ============
+ */
+
+export function useComplaintsAll(params = {}, options = {}) {
+    return useQuery({
+        queryKey: queryKeys.complaintsAll(params),
+        queryFn: () => complaintApi.getAllComplaints(params),
+        staleTime: 1000 * 30,
+        ...options,
+    });
+}
+
+export function useComplaintStats(options = {}) {
+    return useQuery({
+        queryKey: queryKeys.complaintsStats,
+        queryFn: () => complaintApi.getStats(),
+        staleTime: 1000 * 30,
+        ...options,
+    });
+}
+
+export function useComplaint(complaintId, options = {}) {
+    return useQuery({
+        queryKey: queryKeys.complaint(complaintId),
+        queryFn: () => complaintApi.getById(complaintId),
+        enabled: !!complaintId,
+        staleTime: 1000 * 15,
+        ...options,
+    });
+}
+
+export function useComplaintsAssigned(repId, options = {}) {
+    return useQuery({
+        queryKey: queryKeys.complaintsAssigned(repId),
+        queryFn: () => complaintApi.getAssigned(repId),
+        enabled: !!repId,
+        staleTime: 1000 * 30,
+        ...options,
+    });
+}
+
+export function useCreateComplaint() {
+    const queryClient = useQueryClient();
+    return useMutation({
+        mutationFn: (data) => complaintApi.create(data),
+        onSuccess: () => {
+            queryClient.invalidateQueries({ queryKey: ['complaints'] });
+        },
+    });
+}
+
+export function useUpdateComplaint() {
+    const queryClient = useQueryClient();
+    return useMutation({
+        mutationFn: ({ complaintId, ...data }) => complaintApi.update(complaintId, data),
+        onSuccess: () => {
+            queryClient.invalidateQueries({ queryKey: ['complaints'] });
+        },
+    });
+}
+
+export function useDeleteComplaint() {
+    const queryClient = useQueryClient();
+    return useMutation({
+        mutationFn: (complaintId) => complaintApi.delete(complaintId),
+        onSuccess: () => {
+            queryClient.invalidateQueries({ queryKey: ['complaints'] });
+        },
+    });
+}
+
+export function useAddComplaintNote() {
+    const queryClient = useQueryClient();
+    return useMutation({
+        mutationFn: ({ complaintId, ...data }) => complaintApi.addNote(complaintId, data),
+        onSuccess: (_data, { complaintId }) => {
+            queryClient.invalidateQueries({ queryKey: queryKeys.complaint(complaintId) });
+        },
+    });
+}
+
+export function useCreateTicketFromComplaint() {
+    const queryClient = useQueryClient();
+    return useMutation({
+        mutationFn: ({ complaintId, ...data }) => complaintApi.createTicket(complaintId, data),
+        onSuccess: () => {
+            queryClient.invalidateQueries({ queryKey: ['complaints'] });
+            queryClient.invalidateQueries({ queryKey: ['support'] });
+        },
+    });
+}
+
+// ── Customer-side complaint hooks ──
+
+export function useCustomerComplaints(customerId, options = {}) {
+    return useQuery({
+        queryKey: queryKeys.customerComplaints(customerId),
+        queryFn: () => complaintApi.getCustomerComplaints(customerId),
+        enabled: !!customerId,
+        staleTime: 1000 * 30,
+        ...options,
+    });
+}
+
+export function useCreateCustomerComplaint() {
+    const queryClient = useQueryClient();
+    return useMutation({
+        mutationFn: (data) => complaintApi.createCustomerComplaint(data),
+        onSuccess: () => {
+            queryClient.invalidateQueries({ queryKey: ['complaints'] });
+        },
+    });
+}
+
+/**
+ * ============ MESSAGES / INBOX HOOKS ============
+ */
+
+export function useMessagesInbox(userId, params = {}, options = {}) {
+    return useQuery({
+        queryKey: queryKeys.messagesInbox(userId, params),
+        queryFn: () => messageApi.getInbox(userId, params),
+        enabled: !!userId,
+        staleTime: 1000 * 15,
+        ...options,
+    });
+}
+
+export function useMessagesSent(userId, options = {}) {
+    return useQuery({
+        queryKey: queryKeys.messagesSent(userId),
+        queryFn: () => messageApi.getSent(userId),
+        enabled: !!userId,
+        staleTime: 1000 * 30,
+        ...options,
+    });
+}
+
+export function useMessagesThread(threadId, options = {}) {
+    return useQuery({
+        queryKey: queryKeys.messagesThread(threadId),
+        queryFn: () => messageApi.getThread(threadId),
+        enabled: !!threadId,
+        staleTime: 1000 * 10,
+        ...options,
+    });
+}
+
+export function useMessagesUnreadCount(userId, options = {}) {
+    return useQuery({
+        queryKey: queryKeys.messagesUnreadCount(userId),
+        queryFn: () => messageApi.getUnreadCount(userId),
+        enabled: !!userId,
+        staleTime: 1000 * 15,
+        ...options,
+    });
+}
+
+export function useMessagesContacts(userId, options = {}) {
+    return useQuery({
+        queryKey: queryKeys.messagesContacts(userId),
+        queryFn: () => messageApi.getContacts(userId),
+        enabled: !!userId,
+        staleTime: 1000 * 60 * 5,
+        ...options,
+    });
+}
+
+export function useSendMessage() {
+    const queryClient = useQueryClient();
+    return useMutation({
+        mutationFn: (data) => messageApi.send(data),
+        onSuccess: () => {
+            queryClient.invalidateQueries({ queryKey: ['messages'] });
+        },
+    });
+}
+
+export function useToggleMessageStar() {
+    const queryClient = useQueryClient();
+    return useMutation({
+        mutationFn: (messageId) => messageApi.toggleStar(messageId),
+        onSuccess: () => {
+            queryClient.invalidateQueries({ queryKey: ['messages'] });
+        },
+    });
+}
+
+export function useMarkMessageRead() {
+    const queryClient = useQueryClient();
+    return useMutation({
+        mutationFn: (messageId) => messageApi.markAsRead(messageId),
+        onSuccess: () => {
+            queryClient.invalidateQueries({ queryKey: ['messages'] });
+        },
+    });
+}
+
+export function useArchiveMessage() {
+    const queryClient = useQueryClient();
+    return useMutation({
+        mutationFn: (messageId) => messageApi.archive(messageId),
+        onSuccess: () => {
+            queryClient.invalidateQueries({ queryKey: ['messages'] });
+        },
+    });
+}
+
+export function useDeleteMessage() {
+    const queryClient = useQueryClient();
+    return useMutation({
+        mutationFn: (messageId) => messageApi.delete(messageId),
+        onSuccess: () => {
+            queryClient.invalidateQueries({ queryKey: ['messages'] });
+        },
+    });
+}
+
+export function useMarkAllMessagesRead() {
+    const queryClient = useQueryClient();
+    return useMutation({
+        mutationFn: (userId) => messageApi.markAllAsRead(userId),
+        onSuccess: () => {
+            queryClient.invalidateQueries({ queryKey: ['messages'] });
+        },
+    });
+}
+
+/**
  * ============ CACHE UTILITIES ============
  */
 
@@ -739,6 +1694,202 @@ export function useQueryUtilities() {
     };
 }
 
+/**
+ * ============ CUSTOMER HOOKS ============
+ */
+
+/**
+ * Hook for fetching all customer projects
+ */
+export function useCustomerProjects(userId, { page = 1, limit = 100, status = '' } = {}, options = {}) {
+    return useQuery({
+        queryKey: queryKeys.customerProjects(userId, { page, limit, status }),
+        queryFn: () => customerApi.getAllProjects(userId, { page, limit, status }),
+        enabled: !!userId,
+        staleTime: 1000 * 60 * 5,
+        ...options,
+    });
+}
+
+/**
+ * Hook for fetching a single customer project
+ */
+export function useCustomerProject(projectId, userId, options = {}) {
+    return useQuery({
+        queryKey: queryKeys.customerProject(projectId, userId),
+        queryFn: () => customerApi.getProject(projectId, userId),
+        enabled: !!projectId && !!userId,
+        staleTime: 1000 * 60 * 5,
+        ...options,
+    });
+}
+
+/**
+ * Hook for fetching project observations/defects
+ */
+export function useCustomerObservations(projectId, { limit = 100 } = {}, options = {}) {
+    return useQuery({
+        queryKey: queryKeys.customerObservations(projectId),
+        queryFn: () => customerApi.getProjectObservations(projectId, { limit }),
+        enabled: !!projectId,
+        staleTime: 1000 * 60 * 5,
+        ...options,
+    });
+}
+
+/**
+ * Hook for fetching project snapshots
+ */
+export function useCustomerSnapshots(projectId, { limit = 100 } = {}, options = {}) {
+    return useQuery({
+        queryKey: queryKeys.customerSnapshots(projectId),
+        queryFn: () => customerApi.getProjectSnapshots(projectId, { limit }),
+        enabled: !!projectId,
+        staleTime: 1000 * 60 * 5,
+        ...options,
+    });
+}
+
+/**
+ * Hook for fetching AI detections for a project (for snapshot images)
+ */
+export function useCustomerDetections(projectId, options = {}) {
+    return useQuery({
+        queryKey: [...queryKeys.customerSnapshots(projectId), 'detections'],
+        queryFn: () => customerApi.getProjectDetections(projectId),
+        enabled: !!projectId,
+        staleTime: 1000 * 60 * 5,
+        ...options,
+    });
+}
+
+/**
+ * Hook for fetching all customer reports
+ */
+export function useCustomerReports(userId, options = {}) {
+    return useQuery({
+        queryKey: queryKeys.customerReports(userId),
+        queryFn: () => customerApi.getAllReports(userId),
+        enabled: !!userId,
+        staleTime: 1000 * 60 * 5,
+        ...options,
+    });
+}
+
+/**
+ * Hook for fetching a single report
+ */
+export function useCustomerReport(userId, reportId, options = {}) {
+    return useQuery({
+        queryKey: queryKeys.customerReport(userId, reportId),
+        queryFn: () => customerApi.getReport(userId, reportId),
+        enabled: !!userId && !!reportId,
+        staleTime: 1000 * 60 * 5,
+        ...options,
+    });
+}
+
+/**
+ * Hook for fetching customer notifications
+ */
+export function useCustomerNotifications(userId, { limit = 50 } = {}, options = {}) {
+    return useQuery({
+        queryKey: queryKeys.customerNotifications(userId),
+        queryFn: () => customerApi.getNotifications(userId, { limit }),
+        enabled: !!userId,
+        staleTime: 1000 * 60 * 2,
+        ...options,
+    });
+}
+
+/**
+ * Hook for fetching notification preferences
+ */
+export function useCustomerNotificationPreferences(userId, options = {}) {
+    return useQuery({
+        queryKey: queryKeys.customerNotificationPreferences(userId),
+        queryFn: () => customerApi.getNotificationPreferences(userId),
+        enabled: !!userId,
+        staleTime: 1000 * 60 * 10,
+        ...options,
+    });
+}
+
+/**
+ * Mutation: Mark a single notification as read
+ */
+export function useMarkCustomerNotificationRead() {
+    const queryClient = useQueryClient();
+    return useMutation({
+        mutationFn: ({ notificationId, userId }) =>
+            customerApi.markNotificationRead(notificationId, userId),
+        onSuccess: (_data, { userId }) => {
+            queryClient.invalidateQueries({ queryKey: queryKeys.customerNotifications(userId) });
+        },
+    });
+}
+
+/**
+ * Mutation: Mark all notifications as read
+ */
+export function useMarkAllCustomerNotificationsRead() {
+    const queryClient = useQueryClient();
+    return useMutation({
+        mutationFn: ({ userId }) => customerApi.markAllNotificationsRead(userId),
+        onSuccess: (_data, { userId }) => {
+            queryClient.invalidateQueries({ queryKey: queryKeys.customerNotifications(userId) });
+        },
+    });
+}
+
+/**
+ * Mutation: Delete a notification
+ */
+export function useDeleteCustomerNotification() {
+    const queryClient = useQueryClient();
+    return useMutation({
+        mutationFn: ({ notificationId, userId }) =>
+            customerApi.deleteNotification(notificationId, userId),
+        onSuccess: (_data, { userId }) => {
+            queryClient.invalidateQueries({ queryKey: queryKeys.customerNotifications(userId) });
+        },
+    });
+}
+
+/**
+ * Mutation: Update notification preferences
+ */
+export function useUpdateCustomerNotificationPreferences() {
+    const queryClient = useQueryClient();
+    return useMutation({
+        mutationFn: ({ userId, preferences }) =>
+            customerApi.updateNotificationPreferences(userId, preferences),
+        onSuccess: (_data, { userId }) => {
+            queryClient.invalidateQueries({ queryKey: queryKeys.customerNotificationPreferences(userId) });
+        },
+    });
+}
+
+/**
+ * Mutation: Submit support ticket
+ */
+export function useSubmitCustomerSupportTicket() {
+    return useMutation({
+        mutationFn: ({ userId, subject, category, message }) =>
+            customerApi.submitSupportTicket(userId, { subject, category, message }),
+    });
+}
+
+/**
+ * Mutation: Download project report
+ */
+export function useDownloadCustomerReport() {
+    return useMutation({
+        mutationFn: ({ projectId, userId }) =>
+            customerApi.downloadReport(projectId, userId),
+    });
+}
+
 export default {
     useDashboardStats,
     useQCDashboardStats,
@@ -772,5 +1923,104 @@ export default {
     useDeleteDevice,
     useAssignDeviceToTeamLeader,
     useQueryUtilities,
+    // Operator hooks (extended)
+    useOperatorTodayEvents,
+    useOperatorAssignedProjects,
+    useOperatorCalendarEvents,
+    useOperatorCalendarStats,
+    useCreateOperatorEvent,
+    useUpdateOperatorEventStatus,
+    useDeleteOperatorEvent,
+    useOperatorProjects,
+    useOperatorProject,
+    useOperatorDevices,
+    useReportDeviceStatus,
+    useOperatorUploads,
+    useStartOperationsRecording,
+    useStopOperationsRecording,
+    useCreateOperatorReport,
+    useOperatorAllProjects,
+    useOperatorLogs,
+    useUpdateOperatorProfile,
+    useChangeOperatorPassword,
+    useSaveOperatorSettings,
+    useOperatorNotificationPreferences,
+    useUpdateOperatorNotificationPreferences,
+    // Maintenance hooks
+    useMaintenanceOverview,
+    useRefreshMaintenanceSystems,
+    useDismissMaintenanceAlert,
+    // Customer hooks
+    useCustomerProjects,
+    useCustomerProject,
+    useCustomerObservations,
+    useCustomerSnapshots,
+    useCustomerDetections,
+    useCustomerReports,
+    useCustomerReport,
+    useCustomerNotifications,
+    useCustomerNotificationPreferences,
+    useMarkCustomerNotificationRead,
+    useMarkAllCustomerNotificationsRead,
+    useDeleteCustomerNotification,
+    useUpdateCustomerNotificationPreferences,
+    useSubmitCustomerSupportTicket,
+    useDownloadCustomerReport,
+    // User (Team Lead) hooks
+    useUserDashboard,
+    useUserProjects,
+    useUserProject,
+    useUserTeamMembers,
+    useUserTeamMemberDetail,
+    useUserTeamMemberDashboard,
+    useUserDevices,
+    useUserEvents,
+    useUserReports,
+    useUserNotificationPreferences,
+    useRequestDeleteProject,
+    useApproveDeleteProject,
+    useRejectDeleteProject,
+    useDeleteUserProject,
+    useCreateObservation,
+    useCreateUserSnapshot,
+    useUpdateDeviceAssignment,
+    useCreateEvent,
+    useUpdateEvent,
+    useDeleteEvent,
+    useUpdateUserProfile,
+    useChangeUserPassword,
+    useSaveUserSettings,
+    useUpdateUserNotificationPreferences,
     queryKeys,
+    // Support (Customer-Rep) hooks
+    useSupportAllTickets,
+    useSupportGlobalStats,
+    useSupportTicket,
+    useSupportAssignedTickets,
+    useSupportTeam,
+    useSupportCustomerStats,
+    useCreateSupportTicket,
+    useUpdateSupportTicket,
+    useAddTicketResponse,
+    useDeleteSupportTicket,
+    useAddInternalNote,
+    useSupportTags,
+    useSupportCustomerHistory,
+    // Canned Response hooks
+    useCannedResponses,
+    useCreateCannedResponse,
+    useUpdateCannedResponse,
+    useDeleteCannedResponse,
+    // Messages / Inbox hooks
+    useMessagesInbox,
+    useMessagesSent,
+    useMessagesThread,
+    useMessagesUnreadCount,
+    useMessagesContacts,
+    useSendMessage,
+    useToggleMessageStar,
+    useMarkMessageRead,
+    useArchiveMessage,
+    useDeleteMessage,
+    useMarkAllMessagesRead,
 };

@@ -1,150 +1,176 @@
 "use client";
 
-import React, { useState, useEffect, Suspense } from "react";
-import { Search, Plus, Loader2, FolderOpen, LayoutGrid, Rows, MoreVertical, Eye, Pencil, Trash2 } from "lucide-react";
+import React, { useState, useEffect, Suspense, useCallback, useMemo } from "react";
+import { Search, Plus, Loader2, FolderOpen, LayoutGrid, Rows, MapPin, Video } from "lucide-react";
 import { Button } from "@/components/ui/button";
-import {
-  DropdownMenu,
-  DropdownMenuTrigger,
-  DropdownMenuContent,
-  DropdownMenuItem,
-  DropdownMenuLabel,
-} from "@/components/ui/dropdown-menu";
+import { Input } from "@/components/ui/input";
+import { Select, SelectTrigger, SelectValue, SelectContent, SelectItem } from "@/components/ui/select";
 import ProjectDetail from "./components/ProjectDetail";
 import ProjectCard from "./components/ProjectCard";
-import { api } from "@/lib/helper";
-import { useAlert } from "@/components/providers/AlertProvider";
-import { useDialog } from "@/components/providers/DialogProvider";
 import { useUser } from "@/components/providers/UserContext";
 import debounce from "lodash/debounce";
 import { useRouter, useSearchParams } from "next/navigation";
+import { useUserProjects, useUserProject } from "@/hooks/useQueryHooks";
+import { getProjectStatusColor, getProjectPriorityColor } from "@/components/user/constants";
+import SewerTable from "@/components/ui/SewerTable";
+import { Badge } from "@/components/ui/badge";
 
 const UserProjectModuleContent = () => {
   const { userId } = useUser();
-  const [projects, setProjects] = useState([]);
   const [selectedProject, setSelectedProject] = useState(null);
   const [searchTerm, setSearchTerm] = useState("");
   const [statusFilter, setStatusFilter] = useState("all");
-  const [loading, setLoading] = useState(true);
-  const [viewMode, setViewMode] = useState("grid"); // 'grid' | 'table'
+  const [viewMode, setViewMode] = useState("grid");
 
   const searchParams = useSearchParams();
   const selectedProjectId = searchParams.get("selectedProject");
 
   const [page, setPage] = useState(1);
-  const [limit] = useState(6);
-  const [totalPages, setTotalPages] = useState(1);
+  const limit = 6;
 
-  const { showAlert } = useAlert();
-  const { showDelete } = useDialog();
   const router = useRouter();
 
-  const handleLoadData = async (search = "", status = "all", pageNumber = 1) => {
-    if (!userId) {
-      setLoading(false);
-      return;
-    }
-    try {
-      setLoading(true);
-      const query = new URLSearchParams({
-        page: pageNumber.toString(),
-        limit: limit.toString(),
-        managerId: userId,
-        search: search || "",
-        status: status === "all" ? "" : status,
-      });
+  // ── Data fetching via TanStack Query ──
+  const {
+    data: projectsData,
+    isLoading: loading,
+    refetch,
+  } = useUserProjects(userId, { page, limit, search: searchTerm, status: statusFilter });
 
-      const response = await api(
-        `/api/projects/get-all-projects?${query}`,
-        "GET"
-      );
-      const { data, totalPages: total } = response.data ?? {};
-      setProjects(Array.isArray(data) ? data : []);
-      setTotalPages(total ?? 1);
-    } catch (err) {
-      console.error("Error fetching projects:", err);
-      showAlert(err?.message || "Failed to load projects", "error");
-      setProjects([]);
-    } finally {
-      setLoading(false);
-    }
-  };
+  const projects = projectsData?.data ?? [];
+  const totalPages = projectsData?.totalPages ?? 1;
 
-  const debouncedSearch = debounce((value, status, pageNum) => {
-    handleLoadData(value, status, pageNum);
-  }, 400);
+  // Hook for fetching a single project by ID (URL param)
+  const { data: projectById } = useUserProject(
+    selectedProjectId && !selectedProject ? selectedProjectId : null
+  );
+
+
+  const debouncedSearch = useCallback(
+    debounce((value) => {
+      setPage(1);
+    }, 400),
+    []
+  );
 
   const handleSearchChange = (e) => {
-    const value = e.target.value;
-    setSearchTerm(value);
-    debouncedSearch(value, statusFilter, 1);
-    setPage(1);
+    setSearchTerm(e.target.value);
+    debouncedSearch(e.target.value);
   };
 
   const handleStatusChange = (e) => {
-    const value = e.target.value;
-    setStatusFilter(value);
-    debouncedSearch(searchTerm, value, 1);
+    setStatusFilter(e.target.value);
     setPage(1);
-  };
-
-  const getStatusColor = (status) => {
-    const colors = {
-      planning: "bg-slate-100 text-slate-800",
-      "field-capture": "bg-blue-100 text-blue-800",
-      uploading: "bg-indigo-100 text-indigo-800",
-      "ai-processing": "bg-yellow-100 text-yellow-800",
-      "qc-review": "bg-purple-100 text-purple-800",
-      "in-progress": "bg-emerald-100 text-emerald-800",
-      completed: "bg-green-100 text-green-800",
-      "customer-notified": "bg-teal-100 text-teal-800",
-      "on-hold": "bg-gray-100 text-gray-600",
-    };
-    return colors[status] || "bg-gray-100 text-gray-600";
-  };
-
-  const getPriorityColor = (priority) => {
-    const colors = {
-      high: "text-red-600",
-      medium: "text-yellow-600",
-      low: "text-green-600",
-    };
-    return colors[priority] || "text-gray-600";
   };
 
   const handleNewProject = () => {
     router.push("/user/project/create");
   };
 
+  // Sync URL-selected project
   useEffect(() => {
-    if (userId) handleLoadData(searchTerm, statusFilter, page);
-  }, [userId, page]);
+    if (!selectedProjectId) return;
+    if (selectedProject && selectedProject._id === selectedProjectId) return;
 
-  useEffect(() => {
-    const fetchProjectById = async () => {
-      if (!selectedProjectId) return;
-      if (selectedProject && selectedProject._id === selectedProjectId) return;
+    const found = projects.find((p) => p._id === selectedProjectId);
+    if (found) {
+      setSelectedProject(found);
+      return;
+    }
+    if (projectById) {
+      setSelectedProject(projectById);
+    }
+  }, [selectedProjectId, projects, projectById, selectedProject]);
 
-      const found = projects.find((p) => p._id === selectedProjectId);
-      if (found) {
-        setSelectedProject(found);
-        return;
-      }
+  /* ─── SewerTable config for table view ─── */
+  const projectColumns = [
+    { key: "project", name: "Project" },
+    { key: "client", name: "Client" },
+    { key: "location", name: "Location" },
+    { key: "status", name: "Status" },
+    { key: "priority", name: "Priority" },
+    { key: "videos", name: "Videos" },
+  ];
 
-      try {
-        const { data } = await api(
-          `/api/projects/get-project/${selectedProjectId}`,
-          "GET"
-        );
-        if (data?.data) setSelectedProject(data.data);
-      } catch (error) {
-        console.error("Error fetching project:", error);
-        showAlert("Failed to load project from URL", "error");
-      }
-    };
+  const projectTableData = useMemo(() => {
+    return projects.map((p) => ({
+      _id: p._id,
+      project: { name: p.name, workOrder: p.workOrder, deleteStatus: p.deleteStatus },
+      client: p.client || "—",
+      location: p.location || "—",
+      status: p.status,
+      priority: p.priority,
+      videos: p.videoCount ?? (p.videoUrl ? 1 : 0),
+      _raw: p,
+    }));
+  }, [projects]);
 
-    fetchProjectById();
-  }, [selectedProjectId, projects, selectedProject]);
+  const renderProjectCell = (item, col) => {
+    if (col.key === "project") {
+      const p = item.project;
+      const isPending = p.deleteStatus === "pending";
+      return (
+        <div className="min-w-0">
+          <p className={`text-sm font-semibold truncate ${isPending ? "text-gray-600" : "text-gray-900"}`}>{p.name}</p>
+          <p className="text-[11px] text-gray-500">Work Order: {p.workOrder}</p>
+          {isPending && (
+            <p className="text-[11px] text-amber-700 font-medium mt-0.5">
+              Pending deletion — awaiting admin approval
+            </p>
+          )}
+        </div>
+      );
+    }
+    if (col.key === "location") {
+      return (
+        <span className="text-sm text-gray-600 flex items-center gap-1">
+          <MapPin className="w-3 h-3 flex-shrink-0" />
+          {item.location}
+        </span>
+      );
+    }
+    if (col.key === "status") {
+      const isPending = item._raw?.deleteStatus === "pending";
+      return (
+        <div className="flex items-center gap-1.5 flex-wrap">
+          <Badge variant="outline" className={`text-xs font-semibold ${getProjectStatusColor(item.status)}`}>
+            {item.status?.replace("-", " ").toUpperCase()}
+          </Badge>
+          {isPending && (
+            <Badge className="bg-amber-100 text-amber-800 border-amber-200 text-[10px] px-1.5 py-0">
+              PENDING DELETION
+            </Badge>
+          )}
+        </div>
+      );
+    }
+    if (col.key === "priority") {
+      return (
+        <span className={`text-xs font-semibold ${getProjectPriorityColor(item.priority)}`}>
+          {item.priority?.toUpperCase?.() || item.priority}
+        </span>
+      );
+    }
+    if (col.key === "videos") {
+      return (
+        <span className="text-sm text-gray-600 flex items-center gap-1">
+          <Video className="w-3.5 h-3.5" />
+          {item.videos}
+        </span>
+      );
+    }
+    if (col.key === "client") {
+      return <span className="text-sm text-gray-700">{item.client}</span>;
+    }
+    return null;
+  };
+
+  const handleProjectRowView = (row) => {
+    const projectId = row._id;
+    router.push(`?selectedProject=${projectId}`, { scroll: false });
+    const found = projects.find((p) => p._id === projectId);
+    if (found) setSelectedProject(found);
+  };
 
   if (!userId) {
     return (
@@ -222,32 +248,36 @@ const UserProjectModuleContent = () => {
             </div>
 
             <div className="mb-6 flex flex-wrap gap-4 items-center">
-              <div className="flex items-center gap-2">
-                <Search className="text-gray-400" size={20} />
-                <input
+              <div className="relative flex items-center gap-2">
+                <Search className="absolute left-3 text-gray-400" size={16} />
+                <Input
                   type="text"
                   placeholder="Search projects, clients, locations..."
                   value={searchTerm}
                   onChange={handleSearchChange}
-                  className="px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-indigo-500 focus:border-transparent bg-white text-gray-900 w-64"
+                  className="pl-9 w-64"
                 />
               </div>
-              <select
+              <Select
                 value={statusFilter}
-                onChange={handleStatusChange}
-                className="px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-indigo-500 focus:border-transparent bg-white text-gray-900"
+                onValueChange={(val) => handleStatusChange({ target: { value: val } })}
               >
-                <option value="all">All Status</option>
-                <option value="planning">Planning</option>
-                <option value="field-capture">Field Capture</option>
-                <option value="uploading">Uploading</option>
-                <option value="ai-processing">AI Processing</option>
-                <option value="qc-review">QC Review</option>
-                <option value="in-progress">In Progress</option>
-                <option value="completed">Completed</option>
-                <option value="customer-notified">Customer Notified</option>
-                <option value="on-hold">On Hold</option>
-              </select>
+                <SelectTrigger className="w-[180px]">
+                  <SelectValue placeholder="All Status" />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="all">All Status</SelectItem>
+                  <SelectItem value="planning">Planning</SelectItem>
+                  <SelectItem value="field-capture">Field Capture</SelectItem>
+                  <SelectItem value="uploading">Uploading</SelectItem>
+                  <SelectItem value="ai-processing">AI Processing</SelectItem>
+                  <SelectItem value="qc-review">QC Review</SelectItem>
+                  <SelectItem value="in-progress">In Progress</SelectItem>
+                  <SelectItem value="completed">Completed</SelectItem>
+                  <SelectItem value="customer-notified">Customer Notified</SelectItem>
+                  <SelectItem value="on-hold">On Hold</SelectItem>
+                </SelectContent>
+              </Select>
             </div>
 
             {loading ? (
@@ -263,253 +293,33 @@ const UserProjectModuleContent = () => {
                         key={project._id}
                         project={project}
                         setSelectedProject={setSelectedProject}
-                        getStatusColor={getStatusColor}
-                        getPriorityColor={getPriorityColor}
-                        loadData={() =>
-                          handleLoadData(searchTerm, statusFilter, page)
-                        }
+                        loadData={() => refetch()}
                       />
                     ))}
                   </div>
                 ) : (
-                  <div className="bg-white rounded-xl shadow-sm border border-gray-200 overflow-hidden">
-                    <div className="min-w-full overflow-x-auto">
-                      <table className="min-w-full text-sm">
-                        <thead className="bg-gray-50">
-                          <tr>
-                            <th className="px-4 py-3 text-left font-medium text-gray-600">
-                              Project
-                            </th>
-                            <th className="px-4 py-3 text-left font-medium text-gray-600">
-                              Client
-                            </th>
-                            <th className="px-4 py-3 text-left font-medium text-gray-600">
-                              Location
-                            </th>
-                            <th className="px-4 py-3 text-left font-medium text-gray-600">
-                              Status
-                            </th>
-                            <th className="px-4 py-3 text-left font-medium text-gray-600">
-                              Priority
-                            </th>
-                            <th className="px-4 py-3 text-left font-medium text-gray-600">
-                              Videos
-                            </th>
-                            <th className="px-4 py-3 text-right font-medium text-gray-600">
-                              Actions
-                            </th>
-                          </tr>
-                        </thead>
-                        <tbody>
-                          {projects.length === 0 ? (
-                            <tr>
-                              <td
-                                className="px-4 py-6 text-center text-gray-500"
-                                colSpan={7}
-                              >
-                                No projects found.
-                              </td>
-                            </tr>
-                          ) : (
-                            projects.map((project) => {
-                              const isPendingDelete = project.deleteStatus === "pending";
-                              const handleSelect = () => {
-                                router.push(
-                                  `?selectedProject=${project._id}`,
-                                  { scroll: false }
-                                );
-                                setSelectedProject(project);
-                              };
-
-                              return (
-                                <tr
-                                  key={project._id}
-                                  className={`border-t border-gray-100 cursor-pointer ${
-                                    isPendingDelete
-                                      ? "bg-gray-50 hover:bg-gray-100"
-                                      : "hover:bg-gray-50"
-                                  }`}
-                                  onClick={handleSelect}
-                                >
-                                  <td className="px-4 py-3">
-                                    <div
-                                      className={`font-semibold ${
-                                        isPendingDelete ? "text-gray-700" : "text-gray-900"
-                                      }`}
-                                    >
-                                      {project.name}
-                                    </div>
-                                    <div className="text-xs text-gray-500">
-                                      Work Order: {project.workOrder}
-                                    </div>
-                                    {isPendingDelete && (
-                                      <div className="mt-1 text-[11px] text-amber-700 font-medium">
-                                        Pending deletion — waiting for admin approval
-                                      </div>
-                                    )}
-                                  </td>
-                                  <td className="px-4 py-3 text-gray-700">
-                                    {project.client}
-                                  </td>
-                                  <td className="px-4 py-3 text-gray-700">
-                                    {project.location}
-                                  </td>
-                                  <td className="px-4 py-3">
-                                    <span
-                                      className={`inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-semibold ${getStatusColor(
-                                        project.status
-                                      )}`}
-                                    >
-                                      {project.status
-                                        ?.replace("-", " ")
-                                        .toUpperCase()}
-                                    </span>
-                                    {isPendingDelete && (
-                                      <span className="ml-2 inline-flex items-center px-2 py-0.5 rounded-full text-[10px] font-semibold bg-amber-100 text-amber-800">
-                                        PENDING DELETION
-                                      </span>
-                                    )}
-                                  </td>
-                                  <td className="px-4 py-3">
-                                    <span
-                                      className={`text-xs font-semibold ${getPriorityColor(
-                                        project.priority
-                                      )}`}
-                                    >
-                                      {project.priority?.toUpperCase?.() ||
-                                        project.priority}
-                                    </span>
-                                  </td>
-                                  <td className="px-4 py-3 text-gray-700">
-                                    {project.videoCount ??
-                                      (project.videoUrl ? 1 : 0)}
-                                  </td>
-                                  <td
-                                    className="px-4 py-3 text-right"
-                                    onClick={(e) => e.stopPropagation()}
-                                  >
-                                    <DropdownMenu>
-                                      <DropdownMenuTrigger asChild>
-                                        <Button
-                                          variant="ghost"
-                                          size="icon"
-                                          className="h-8 w-8 p-0 hover:bg-gray-100"
-                                        >
-                                          <MoreVertical className="w-4 h-4 text-gray-600" />
-                                        </Button>
-                                      </DropdownMenuTrigger>
-                                      <DropdownMenuContent
-                                        align="end"
-                                        className="w-44"
-                                      >
-                                        <DropdownMenuLabel className="text-xs text-gray-500">
-                                          Actions
-                                        </DropdownMenuLabel>
-                                      <DropdownMenuItem
-                                        onClick={handleSelect}
-                                        className="cursor-pointer"
-                                      >
-                                        <Eye className="w-4 h-4 mr-2" />
-                                        Open Project
-                                      </DropdownMenuItem>
-                                      <DropdownMenuItem
-                                        onClick={() =>
-                                          router.push(
-                                            `/user/project/editProject/${project._id}`
-                                          )
-                                        }
-                                        className="cursor-pointer"
-                                      >
-                                        <Pencil className="w-4 h-4 mr-2" />
-                                        Edit Project
-                                      </DropdownMenuItem>
-                                      {project.deleteStatus !== "pending" ? (
-                                        <DropdownMenuItem
-                                          onClick={() => {
-                                            showDelete({
-                                              title: "Request project deletion",
-                                              description:
-                                                "This will send a delete request to the admin. The project will only be permanently removed after admin approval, and assigned members plus the customer will be notified.",
-                                              onConfirm: async () => {
-                                                try {
-                                                  const response = await api(
-                                                    `/api/projects/request-delete/${project._id}`,
-                                                    "POST",
-                                                    {}
-                                                  );
-                                                  if (!response.ok) {
-                                                    showAlert(
-                                                      "Delete request failed",
-                                                      "error"
-                                                    );
-                                                  } else {
-                                                    showAlert(
-                                                      "Delete request submitted for admin approval",
-                                                      "success"
-                                                    );
-                                                    handleLoadData(
-                                                      searchTerm,
-                                                      statusFilter,
-                                                      page
-                                                    );
-                                                  }
-                                                } catch (error) {
-                                                  showAlert(
-                                                    "Failed to request project deletion",
-                                                    "error"
-                                                  );
-                                                }
-                                              },
-                                              onCancel: () =>
-                                                showAlert("Cancelled", "info"),
-                                            });
-                                          }}
-                                          className="cursor-pointer text-red-600 focus:text-red-600"
-                                        >
-                                          <Trash2 className="w-4 h-4 mr-2" />
-                                          Request deletion
-                                        </DropdownMenuItem>
-                                      ) : (
-                                        <DropdownMenuItem
-                                          disabled
-                                          className="cursor-default text-gray-400 focus:text-gray-400"
-                                        >
-                                          <Trash2 className="w-4 h-4 mr-2" />
-                                          Pending deletion
-                                        </DropdownMenuItem>
-                                      )}
-                                      </DropdownMenuContent>
-                                    </DropdownMenu>
-                                  </td>
-                                </tr>
-                              );
-                            })
-                          )}
-                        </tbody>
-                      </table>
-                    </div>
-                  </div>
+                  <SewerTable
+                    data={projectTableData}
+                    columns={projectColumns}
+                    loading={loading}
+                    renderCell={renderProjectCell}
+                    showCheckbox={false}
+                    showActions={false}
+                    showCsvActions={false}
+                    onView={handleProjectRowView}
+                    emptyMessage="No projects found"
+                    emptySubtext="Try adjusting your filters or create a new project"
+                    columnDefaults={{
+                      project: 220,
+                      client: 140,
+                      location: 160,
+                      status: 160,
+                      priority: 100,
+                      videos: 80,
+                    }}
+                    rowsPerPageOptions={[6, 12, 24]}
+                  />
                 )}
-
-                <div className="flex justify-center mt-6 gap-4">
-                  <Button
-                    disabled={page === 1}
-                    onClick={() => setPage((p) => p - 1)}
-                    variant="outline"
-                  >
-                    Previous
-                  </Button>
-                  <span className="text-gray-700 font-medium">
-                    Page {page} of {totalPages}
-                  </span>
-                  <Button
-                    disabled={page >= totalPages}
-                    onClick={() => setPage((p) => p + 1)}
-                    variant="outline"
-                  >
-                    Next
-                  </Button>
-                </div>
               </>
             )}
           </>

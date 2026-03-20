@@ -22,11 +22,13 @@ import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/com
 import { Badge } from "@/components/ui/badge"
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar"
 import { Switch } from "@/components/ui/switch"
-import { SeparatorVertical } from "@/components/ui/separator"
-import CustomerDetailed from "../components/CustomerDetailed"
-import QcTechnicianDetailed from "../components/QcTechnicianDetailed"
-import TeamLeadDetailed from "../components/TeamLeadDetailed"
-import OperatorDetailed, { OperatorWorkspaceOverview } from "../components/OperatorDetailed"
+import { Separator } from "@/components/ui/separator"
+import CustomerDetailed from "@/components/admin/users/user-management/CustomerDetailed"
+import QcTechnicianDetailed from "@/components/admin/users/user-management/QcTechnicianDetailed"
+import TeamLeadDetailed from "@/components/admin/users/user-management/TeamLeadDetailed"
+import OperatorDetailed, { OperatorWorkspaceOverview } from "@/components/admin/users/user-management/OperatorDetailed"
+import CustomerRepresentativeDetailed from "@/components/admin/users/user-management/CustomerRepresentativeDetailed"
+import PermissionsTab from "@/components/admin/users/permissions/PermissionsTab"
 
 const roleOptions = [
   {
@@ -63,6 +65,13 @@ const roleOptions = [
     icon: <FaUserTag className="h-4 w-4" />,
     color: "bg-emerald-100 text-emerald-800 border-emerald-200",
     description: "Team lead / management workspace"
+  },
+  {
+    value: "customer-rep",
+    label: "Customer Representative",
+    icon: <FaEnvelope className="h-4 w-4" />,
+    color: "bg-teal-100 text-teal-800 border-teal-200",
+    description: "Customer support & complaints"
   }
 ]
 
@@ -80,6 +89,7 @@ const UserProfile = () => {
   const [user, setUser] = useState(null)
   const [loading, setLoading] = useState(true)
   const [isEdit, setIsEdit] = useState(false)
+  const [refreshKey, setRefreshKey] = useState(0)
   const { showProfile } = useDialog();
 
   const [form, setForm] = useState({
@@ -90,7 +100,12 @@ const UserProfile = () => {
     shift_preference: "", equipment_experience: "",
     company_name: "", industry: "", phone_number: "", address: "",
     account_type: "standard", company_size: "", tax_id: "", billing_contact: "",
+    department: "", support_specialty: "", languages_spoken: "", bio: "",
+    availability_status: "available", max_concurrent_tickets: 10,
   })
+
+  // Permission level (pending until Save)
+  const [pendingPermissionLevelId, setPendingPermissionLevelId] = useState(undefined) // undefined = no change
 
   // Team lead → members they manage
   const [managedMembers, setManagedMembers] = useState([])
@@ -115,6 +130,8 @@ const UserProfile = () => {
           shift_preference: u.shift_preference || "", equipment_experience: u.equipment_experience || "",
           company_name: u.company_name || "", industry: u.industry || "", phone_number: u.phone_number || "", address: u.address || "",
           account_type: u.account_type || "standard", company_size: u.company_size || "", tax_id: u.tax_id || "", billing_contact: u.billing_contact || "",
+          department: u.department || "", support_specialty: u.support_specialty || "", languages_spoken: u.languages_spoken || "", bio: u.bio || "",
+          availability_status: u.availability_status || "available", max_concurrent_tickets: u.max_concurrent_tickets || 10,
         });
 
         // Load potential team members (operators & QC techs)
@@ -139,7 +156,7 @@ const UserProfile = () => {
     };
 
     if (user_id) fetchUser();
-  }, [user_id]);
+  }, [user_id, refreshKey]);
 
   const handleSave = async () => {
     // Prepare payload
@@ -166,6 +183,12 @@ const UserProfile = () => {
       company_size: form.company_size,
       tax_id: form.tax_id,
       billing_contact: form.billing_contact,
+      department: form.department,
+      support_specialty: form.support_specialty,
+      languages_spoken: form.languages_spoken,
+      bio: form.bio,
+      availability_status: form.availability_status,
+      max_concurrent_tickets: form.max_concurrent_tickets,
       managedMembers: managedMembers.map((m) => m._id || m.user_id)
     };
 
@@ -189,7 +212,16 @@ const UserProfile = () => {
           const { ok: updateOk, data: updateData } = await api("/api/users/change-info", "PUT", payload);
           if (!updateOk) throw new Error(updateData?.message || "Failed to update user");
 
-          setUser((prev) => ({ ...prev, ...form, managedMembers }));
+          // Save permission level if changed
+          if (pendingPermissionLevelId !== undefined) {
+            await api(`/api/users/${user_id}/assign-permission`, "PATCH", {
+              permissionLevelId: pendingPermissionLevelId,
+            });
+            setPendingPermissionLevelId(undefined);
+          }
+
+          // Re-fetch fresh user data to get updated permissionLevel populated
+          setRefreshKey((k) => k + 1);
           setIsEdit(false);
           showAlert("User profile updated successfully", "success");
         } catch (err) {
@@ -280,6 +312,14 @@ const UserProfile = () => {
                     backgroundPosition: 'center',
                   };
                 }
+                if (normalizedRole === 'customer-rep') {
+                  return {
+                    backgroundImage:
+                      "url('/background_pictures/customer-bg-header.png')",
+                    backgroundSize: 'cover',
+                    backgroundPosition: 'center',
+                  };
+                }
                 return {
                   backgroundImage:
                     'linear-gradient(to right, #f43f5e, #ec4899)',
@@ -353,6 +393,55 @@ const UserProfile = () => {
               </CardContent>
             </Card>
           )}
+
+          {/* Module Access */}
+          {normalizedRole !== 'admin' && (
+            <Card className="border-gray-200">
+              <CardHeader className="pb-3">
+                <CardTitle className="text-md font-semibold flex items-center gap-2">
+                  <FaCog className="text-rose-500" />
+                  Module Access
+                </CardTitle>
+              </CardHeader>
+              <CardContent>
+                {(() => {
+                  const pl = user?.permissionLevel;
+                  const levelName = typeof pl === 'object' && pl ? pl.name : null;
+                  const modules = user?.modulePermissions?.length > 0
+                    ? user.modulePermissions
+                    : (typeof pl === 'object' && pl?.modules) || [];
+                  const hasPermission = !!pl || modules.length > 0;
+
+                  if (hasPermission && modules.length > 0) {
+                    return (
+                      <div className="space-y-3">
+                        <div className="flex items-center justify-between">
+                          <span className="text-sm text-gray-500">Level</span>
+                          <Badge className="bg-rose-100 text-rose-700 border-rose-200">
+                            {levelName || 'Assigned'}
+                          </Badge>
+                        </div>
+                        <div className="flex flex-wrap gap-1.5 pt-2 border-t border-gray-100">
+                          {modules.map((mod) => (
+                            <Badge key={mod} variant="outline" className="text-[11px] bg-emerald-50 text-emerald-700 border-emerald-200">
+                              {mod.replace(/-/g, ' ').replace(/\b\w/g, c => c.toUpperCase())}
+                            </Badge>
+                          ))}
+                        </div>
+                      </div>
+                    );
+                  }
+                  return (
+                    <div className="flex items-center gap-2 px-3 py-2 bg-blue-50 rounded-lg border border-blue-100">
+                      <FaCheckCircle className="text-blue-500 flex-shrink-0" />
+                      <span className="text-sm text-blue-700 font-medium">Default Access</span>
+                      <span className="text-xs text-blue-500">— Full module access</span>
+                    </div>
+                  );
+                })()}
+              </CardContent>
+            </Card>
+          )}
         </div>
 
         {/* Right Column: Details Forms */}
@@ -412,11 +501,10 @@ const UserProfile = () => {
                   <div className="space-y-2">
                     <Label>Role</Label>
                     <Select
-                      disabled={!isEdit}
+                      disabled
                       value={form.role}
-                      onValueChange={v => setForm({ ...form, role: v })}
                     >
-                      <SelectTrigger className={!isEdit ? "bg-gray-50" : "bg-white"}>
+                      <SelectTrigger className="bg-gray-50">
                         <SelectValue />
                       </SelectTrigger>
                       <SelectContent>
@@ -434,6 +522,7 @@ const UserProfile = () => {
           {/* Role Specific Modules */}
           {normalizedRole === 'customer' && (
             <CustomerDetailed
+              user={user}
               form={form}
               isEdit={isEdit}
               setForm={setForm}
@@ -470,6 +559,21 @@ const UserProfile = () => {
               selectedMemberId={selectedMemberId}
               setSelectedMemberId={setSelectedMemberId}
             />
+          )}
+
+          {/* Customer Representative */}
+          {normalizedRole === 'customer-rep' && (
+            <CustomerRepresentativeDetailed
+              user={user}
+              form={form}
+              isEdit={isEdit}
+              setForm={setForm}
+            />
+          )}
+
+          {/* Module Permissions */}
+          {normalizedRole !== 'admin' && (
+            <PermissionsTab user={user} isEdit={isEdit} onPermissionChange={setPendingPermissionLevelId} />
           )}
 
         </div>
@@ -569,7 +673,7 @@ const OperatorCurrentProjects = ({ operatorId }) => {
         )}
       </div>
 
-      <SeparatorVertical className="my-1 border-blue-100" />
+      <Separator className="my-1 border-blue-100" />
 
       {/* Current projects list (can be empty) */}
       {projects.length ? (

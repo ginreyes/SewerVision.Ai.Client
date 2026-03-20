@@ -1,6 +1,6 @@
 "use client"
 
-import React, { useState } from "react"
+import React, { useState, useCallback, useRef } from "react"
 import {
   Select,
   SelectTrigger,
@@ -19,50 +19,40 @@ import {
   Search,
   ChevronLeft,
   ChevronRight,
-  ArrowUpDown,
   Filter,
 } from "lucide-react"
 
+/* ─── action config ─── */
 const ACTION_CONFIG = {
   created: {
     icon: UserPlus,
-    color: "text-emerald-600",
-    bg: "bg-emerald-50",
-    border: "border-emerald-200",
-    badge: "bg-emerald-100 text-emerald-700 ring-emerald-600/20",
+    badge: "bg-emerald-100 text-emerald-700 ring-1 ring-inset ring-emerald-600/20",
     label: "Created",
   },
   updated: {
     icon: UserCog,
-    color: "text-blue-600",
-    bg: "bg-blue-50",
-    border: "border-blue-200",
-    badge: "bg-blue-100 text-blue-700 ring-blue-600/20",
+    badge: "bg-blue-100 text-blue-700 ring-1 ring-inset ring-blue-600/20",
     label: "Updated",
   },
   deleted: {
     icon: UserMinus,
-    color: "text-red-600",
-    bg: "bg-red-50",
-    border: "border-red-200",
-    badge: "bg-red-100 text-red-700 ring-red-600/20",
+    badge: "bg-red-100 text-red-700 ring-1 ring-inset ring-red-600/20",
     label: "Deleted",
   },
   enabled: {
     icon: ShieldCheck,
-    color: "text-emerald-600",
-    bg: "bg-emerald-50",
-    border: "border-emerald-200",
-    badge: "bg-emerald-100 text-emerald-700 ring-emerald-600/20",
+    badge: "bg-emerald-100 text-emerald-700 ring-1 ring-inset ring-emerald-600/20",
     label: "Enabled",
   },
   disabled: {
     icon: ShieldOff,
-    color: "text-amber-600",
-    bg: "bg-amber-50",
-    border: "border-amber-200",
-    badge: "bg-amber-100 text-amber-700 ring-amber-600/20",
+    badge: "bg-amber-100 text-amber-700 ring-1 ring-inset ring-amber-600/20",
     label: "Disabled",
+  },
+  password_changed_by_admin: {
+    icon: ShieldCheck,
+    badge: "bg-purple-100 text-purple-700 ring-1 ring-inset ring-purple-600/20",
+    label: "Password Changed",
   },
 }
 
@@ -73,10 +63,7 @@ function getActionConfig(action) {
   return (
     ACTION_CONFIG[key] || {
       icon: Clock,
-      color: "text-gray-600",
-      bg: "bg-gray-50",
-      border: "border-gray-200",
-      badge: "bg-gray-100 text-gray-700 ring-gray-600/20",
+      badge: "bg-gray-100 text-gray-700 ring-1 ring-inset ring-gray-600/20",
       label: action || "Unknown",
     }
   )
@@ -102,6 +89,53 @@ function formatRelativeTime(dateStr) {
   })
 }
 
+/* ─── role badge colors (matching SewerTable) ─── */
+const roleBadgeClasses = {
+  admin: "bg-rose-100 text-rose-700 border-rose-200",
+  user: "bg-red-100 text-red-700 border-red-200",
+  operator: "bg-blue-100 text-blue-700 border-blue-200",
+  "qc-technician": "bg-emerald-100 text-emerald-700 border-emerald-200",
+  customer: "bg-amber-100 text-amber-700 border-amber-200",
+}
+
+/* ─── resize hook ─── */
+function useColumnResize(columns, defaults = {}) {
+  const [widths, setWidths] = useState(() => {
+    const initial = {}
+    columns.forEach((col) => {
+      initial[col.key] = defaults[col.key] || 200
+    })
+    return initial
+  })
+
+  const startResize = useCallback((colKey, startX) => {
+    const startWidth = widths[colKey] || 200
+
+    const onMouseMove = (e) => {
+      const delta = e.clientX - startX
+      setWidths((prev) => ({
+        ...prev,
+        [colKey]: Math.max(80, startWidth + delta),
+      }))
+    }
+
+    const onMouseUp = () => {
+      document.removeEventListener("mousemove", onMouseMove)
+      document.removeEventListener("mouseup", onMouseUp)
+      document.body.style.cursor = ""
+      document.body.style.userSelect = ""
+    }
+
+    document.body.style.cursor = "col-resize"
+    document.body.style.userSelect = "none"
+    document.addEventListener("mousemove", onMouseMove)
+    document.addEventListener("mouseup", onMouseUp)
+  }, [widths])
+
+  return { widths, startResize }
+}
+
+/* ─── main component ─── */
 const AuditTable = ({
   data = [],
   columns = [],
@@ -114,173 +148,207 @@ const AuditTable = ({
   onSearch = () => {},
   onFilterChange = () => {},
 }) => {
-  const [hoveredRow, setHoveredRow] = useState(null)
+  const { widths, startResize } = useColumnResize(columns, {
+    time: 180,
+    action: 140,
+    target: 280,
+    actor: 160,
+  })
 
   return (
-    <div className="space-y-4">
+    <div className="max-w-7xl mx-auto space-y-4">
       {/* Search & Filter Bar */}
-      <div className="flex flex-wrap items-center gap-3">
+      <div className="bg-white dark:bg-zinc-900 p-4 rounded-lg shadow-sm border border-gray-100 flex flex-wrap gap-3 items-center justify-between">
+        <div className="flex flex-wrap gap-2">
+          {filters.map(({ key, label, options }) => (
+            <Select key={key} onValueChange={(val) => onFilterChange(key, val)}>
+              <SelectTrigger className="w-[160px] h-9 text-xs rounded-md border-gray-300 dark:border-zinc-700">
+                <div className="flex items-center gap-1.5">
+                  <Filter className="w-3.5 h-3.5 text-gray-400" />
+                  <SelectValue placeholder={label} />
+                </div>
+              </SelectTrigger>
+              <SelectContent>
+                {options.map((opt) => (
+                  <SelectItem key={opt.value} value={opt.value} className="text-xs">
+                    {opt.label}
+                  </SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
+          ))}
+        </div>
+
         <div className="relative flex-1 min-w-[220px] max-w-sm">
           <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-gray-400" />
           <input
             placeholder="Search by actor, user, or email..."
             value={search}
             onChange={(e) => onSearch(e.target.value)}
-            className="w-full h-9 pl-9 pr-3 text-sm rounded-lg border border-gray-200 bg-gray-50/50 focus:bg-white focus:outline-none focus:ring-2 focus:ring-rose-500/20 focus:border-rose-300 transition-all"
+            className="w-full h-9 pl-9 pr-3 text-xs rounded-md border border-gray-300 dark:border-zinc-700 focus:outline-none focus:ring-2 focus:ring-rose-500"
           />
         </div>
-
-        {filters.map(({ key, label, options }) => (
-          <Select key={key} onValueChange={(val) => onFilterChange(key, val)}>
-            <SelectTrigger className="w-[160px] h-9 text-xs rounded-lg border-gray-200 bg-gray-50/50 hover:bg-white transition-colors">
-              <div className="flex items-center gap-1.5">
-                <Filter className="w-3.5 h-3.5 text-gray-400" />
-                <SelectValue placeholder={label} />
-              </div>
-            </SelectTrigger>
-            <SelectContent>
-              {options.map((opt) => (
-                <SelectItem key={opt.value} value={opt.value} className="text-xs">
-                  {opt.label}
-                </SelectItem>
-              ))}
-            </SelectContent>
-          </Select>
-        ))}
       </div>
 
-      {/* Timeline Table */}
-      <div className="rounded-xl border border-gray-200 bg-white overflow-hidden">
-        {/* Header */}
-        <div className="grid grid-cols-[minmax(140px,1fr)_120px_minmax(180px,2fr)_minmax(120px,1fr)] gap-0 bg-gray-50/80 border-b border-gray-200 px-4 py-3">
-          <span className="text-[11px] font-semibold uppercase tracking-wider text-gray-500 flex items-center gap-1">
-            <Clock className="w-3 h-3" /> Timestamp
-          </span>
-          <span className="text-[11px] font-semibold uppercase tracking-wider text-gray-500 flex items-center gap-1">
-            <ArrowUpDown className="w-3 h-3" /> Action
-          </span>
-          <span className="text-[11px] font-semibold uppercase tracking-wider text-gray-500">
-            Target User
-          </span>
-          <span className="text-[11px] font-semibold uppercase tracking-wider text-gray-500">
-            Performed By
-          </span>
-        </div>
-
-        {/* Body */}
-        <div className="divide-y divide-gray-100">
-          {loading ? (
-            <div className="flex flex-col items-center justify-center py-16 gap-3">
-              <div className="relative">
-                <div className="w-10 h-10 rounded-full border-[3px] border-gray-200"></div>
-                <div className="absolute inset-0 w-10 h-10 rounded-full border-[3px] border-rose-500 border-t-transparent animate-spin"></div>
-              </div>
-              <p className="text-sm text-gray-500">Loading audit logs...</p>
-            </div>
-          ) : data.length > 0 ? (
-            data.map((item, idx) => {
-              const config = getActionConfig(item.action)
-              const Icon = config.icon
-              const isHovered = hoveredRow === idx
-
-              return (
-                <div
-                  key={item.id || idx}
-                  onMouseEnter={() => setHoveredRow(idx)}
-                  onMouseLeave={() => setHoveredRow(null)}
-                  className={`grid grid-cols-[minmax(140px,1fr)_120px_minmax(180px,2fr)_minmax(120px,1fr)] gap-0 px-4 py-3.5 transition-all duration-150 ${
-                    isHovered ? "bg-gray-50/80" : "bg-white"
-                  }`}
+      {/* Table */}
+      <div className="bg-white dark:bg-zinc-900 rounded-lg shadow-sm border border-gray-100 overflow-auto">
+        <table className="w-full text-sm" style={{ tableLayout: "fixed" }}>
+          <thead className="bg-gray-50 dark:bg-zinc-800 text-left text-xs font-semibold text-gray-600">
+            <tr>
+              {columns.map((col) => (
+                <th
+                  key={col.key}
+                  className="p-3 relative select-none"
+                  style={{ width: widths[col.key] }}
                 >
-                  {/* Timestamp */}
-                  <div className="flex items-center gap-3">
-                    <div
-                      className={`w-8 h-8 rounded-lg ${config.bg} ${config.border} border flex items-center justify-center flex-shrink-0 transition-transform duration-150 ${
-                        isHovered ? "scale-110" : ""
-                      }`}
-                    >
-                      <Icon className={`w-4 h-4 ${config.color}`} />
-                    </div>
-                    <div className="min-w-0">
-                      <p className="text-sm font-medium text-gray-900 truncate">
-                        {formatRelativeTime(item.time)}
-                      </p>
-                      <p className="text-[11px] text-gray-400 truncate">{item.time}</p>
-                    </div>
+                  <span className="flex items-center gap-1.5">
+                    {col.key === "time" && <Clock className="w-3 h-3" />}
+                    {col.name}
+                  </span>
+                  {/* Resize Handle */}
+                  <div
+                    className="absolute right-0 top-0 bottom-0 w-1.5 cursor-col-resize group hover:bg-rose-200 active:bg-rose-400 transition-colors"
+                    onMouseDown={(e) => {
+                      e.preventDefault()
+                      startResize(col.key, e.clientX)
+                    }}
+                  >
+                    <div className="w-px h-full mx-auto bg-gray-200 group-hover:bg-rose-400" />
                   </div>
-
-                  {/* Action Badge */}
-                  <div className="flex items-center">
-                    <span
-                      className={`inline-flex items-center px-2.5 py-1 rounded-full text-xs font-semibold ring-1 ring-inset ${config.badge}`}
-                    >
-                      {config.label}
-                    </span>
+                </th>
+              ))}
+            </tr>
+          </thead>
+          <tbody className="text-zinc-700 dark:text-zinc-300">
+            {loading ? (
+              <tr>
+                <td className="p-3 text-center" colSpan={columns.length}>
+                  <div className="flex items-center justify-center gap-2 py-8">
+                    <div className="relative">
+                      <div className="w-10 h-10 rounded-full border-[3px] border-gray-200" />
+                      <div className="absolute inset-0 w-10 h-10 rounded-full border-[3px] border-rose-500 border-t-transparent animate-spin" />
+                    </div>
+                    <span className="text-gray-500 text-sm">Loading audit logs...</span>
                   </div>
+                </td>
+              </tr>
+            ) : data.length > 0 ? (
+              data.map((item, idx) => {
+                const config = getActionConfig(item.action)
 
-                  {/* Target */}
-                  <div className="flex items-center gap-3 min-w-0">
-                    {item.target?.username ? (
-                      <>
-                        <div className="w-8 h-8 rounded-full bg-gradient-to-br from-rose-400 to-rose-600 flex items-center justify-center flex-shrink-0 text-white text-xs font-bold shadow-sm">
-                          {item.target.username.charAt(0).toUpperCase()}
-                        </div>
-                        <div className="min-w-0">
-                          <p className="text-sm font-medium text-gray-900 truncate">
-                            {item.target.username}
-                          </p>
-                          <div className="flex items-center gap-1.5">
-                            {item.target.email && (
-                              <p className="text-[11px] text-gray-400 truncate">
-                                {item.target.email}
-                              </p>
-                            )}
-                            {item.target.role && (
-                              <span className="inline-flex px-1.5 py-0.5 rounded text-[10px] font-medium bg-gray-100 text-gray-600 capitalize">
-                                {item.target.role}
-                              </span>
-                            )}
+                return (
+                  <tr
+                    key={item.id || idx}
+                    className="border-t border-gray-100 hover:bg-gray-50 dark:hover:bg-zinc-800 transition-colors"
+                  >
+                    {/* Timestamp */}
+                    <td className="p-3" style={{ width: widths.time }}>
+                      <div className="min-w-0">
+                        <p className="text-sm font-medium text-gray-900 truncate">
+                          {formatRelativeTime(item.time)}
+                        </p>
+                        <p className="text-[11px] text-gray-400 truncate">
+                          {item.time}
+                        </p>
+                      </div>
+                    </td>
+
+                    {/* Action Badge */}
+                    <td className="p-3" style={{ width: widths.action }}>
+                      <span
+                        className={`inline-flex items-center px-2.5 py-1 rounded-full text-xs font-semibold ${config.badge}`}
+                      >
+                        {config.label}
+                      </span>
+                    </td>
+
+                    {/* Target User */}
+                    <td className="p-3" style={{ width: widths.target }}>
+                      {item.target?.username ? (
+                        <div className="flex items-center gap-3 min-w-0">
+                          <img
+                            src={
+                              item.target.avatar ||
+                              `https://ui-avatars.com/api/?name=${encodeURIComponent(
+                                item.target.username
+                              )}&background=random&color=fff`
+                            }
+                            alt={item.target.username}
+                            className="w-9 h-9 rounded-full object-cover shadow-sm flex-shrink-0"
+                          />
+                          <div className="min-w-0">
+                            <div className="font-medium text-sm truncate">
+                              {item.target.username}
+                            </div>
+                            <div className="flex items-center gap-1.5">
+                              {item.target.email && (
+                                <span className="text-xs text-gray-500 truncate">
+                                  {item.target.email}
+                                </span>
+                              )}
+                              {item.target.role && (
+                                <span
+                                  className={`inline-flex px-2 py-0.5 rounded-full text-[10px] font-semibold border capitalize ${
+                                    roleBadgeClasses[item.target.role?.toLowerCase()] ||
+                                    "bg-gray-100 text-gray-700 border-gray-200"
+                                  }`}
+                                >
+                                  {item.target.role}
+                                </span>
+                              )}
+                            </div>
                           </div>
                         </div>
-                      </>
-                    ) : (
-                      <span className="text-sm text-gray-400 italic">—</span>
-                    )}
-                  </div>
+                      ) : (
+                        <span className="text-sm text-gray-400 italic">—</span>
+                      )}
+                    </td>
 
-                  {/* Actor */}
-                  <div className="flex items-center min-w-0">
-                    <div className="flex items-center gap-2 min-w-0">
-                      <div className="w-6 h-6 rounded-full bg-gray-200 flex items-center justify-center flex-shrink-0">
-                        <span className="text-[10px] font-bold text-gray-600">
-                          {(item.actor || "?").charAt(0).toUpperCase()}
+                    {/* Actor / Performed By */}
+                    <td className="p-3" style={{ width: widths.actor }}>
+                      <div className="flex items-center gap-2 min-w-0">
+                        <img
+                          src={
+                            item.actorAvatar ||
+                            `https://ui-avatars.com/api/?name=${encodeURIComponent(
+                              item.actor || "System"
+                            )}&background=random&color=fff`
+                          }
+                          alt={item.actor || "System"}
+                          className="w-7 h-7 rounded-full object-cover shadow-sm flex-shrink-0"
+                        />
+                        <span className="text-sm text-gray-600 truncate">
+                          {item.actor || "System"}
                         </span>
                       </div>
-                      <span className="text-sm text-gray-600 truncate">
-                        {item.actor || "System"}
-                      </span>
-                    </div>
+                    </td>
+                  </tr>
+                )
+              })
+            ) : (
+              <tr>
+                <td className="p-3 text-center" colSpan={columns.length}>
+                  <div className="flex flex-col items-center justify-center py-12">
+                    <img
+                      src="/background_pictures/empty_search.jpg"
+                      alt="No results"
+                      className="w-48 h-48 object-contain opacity-80 mb-4"
+                    />
+                    <p className="text-sm font-medium text-gray-500">No audit logs found</p>
+                    <p className="text-xs text-gray-400 mt-1">
+                      Try adjusting your filters or search query
+                    </p>
                   </div>
-                </div>
-              )
-            })
-          ) : (
-            <div className="flex flex-col items-center justify-center py-16 gap-2">
-              <div className="w-14 h-14 rounded-2xl bg-gray-100 flex items-center justify-center mb-1">
-                <Clock className="w-7 h-7 text-gray-400" />
-              </div>
-              <p className="text-sm font-medium text-gray-500">No audit logs found</p>
-              <p className="text-xs text-gray-400">
-                Activity will appear here as changes are made
-              </p>
-            </div>
-          )}
-        </div>
+                </td>
+              </tr>
+            )}
+          </tbody>
+        </table>
       </div>
 
       {/* Pagination */}
       {data.length > 0 && (
-        <div className="flex items-center justify-between pt-1">
+        <div className="flex items-center justify-between bg-white dark:bg-zinc-900 p-3 rounded-lg shadow-sm border border-gray-100">
           <p className="text-xs text-gray-500">
             Page <span className="font-semibold text-gray-700">{currentPage}</span> of{" "}
             <span className="font-semibold text-gray-700">{totalPages}</span>
@@ -291,9 +359,10 @@ const AuditTable = ({
               size="sm"
               disabled={currentPage <= 1}
               onClick={() => onPageChange(currentPage - 1)}
-              className="h-8 w-8 p-0 rounded-lg"
+              className="h-8 text-xs"
             >
-              <ChevronLeft className="w-4 h-4" />
+              <ChevronLeft className="w-4 h-4 mr-1" />
+              Previous
             </Button>
 
             {/* Page numbers */}
@@ -330,9 +399,10 @@ const AuditTable = ({
               size="sm"
               disabled={currentPage >= totalPages}
               onClick={() => onPageChange(currentPage + 1)}
-              className="h-8 w-8 p-0 rounded-lg"
+              className="h-8 text-xs"
             >
-              <ChevronRight className="w-4 h-4" />
+              Next
+              <ChevronRight className="w-4 h-4 ml-1" />
             </Button>
           </div>
         </div>

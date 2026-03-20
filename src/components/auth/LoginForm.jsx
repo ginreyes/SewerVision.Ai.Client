@@ -48,7 +48,6 @@ const LoginForm = ({ className }) => {
                 password: data.password,
             });
 
-            console.log("API Response:", result);
 
             if (!result.ok) {
                 const errorData = result.data?.error;
@@ -97,6 +96,7 @@ const LoginForm = ({ className }) => {
                 "operator": "/operator/dashboard",
                 "qc-technician": "/qc-technician/dashboard",
                 "customer": "/customer/dashboard",
+                "customer-rep": "/customer-rep/dashboard",
                 "user": "/user/dashboard",
             };
 

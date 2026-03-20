@@ -20,126 +20,9 @@ import { Label } from '@/components/ui/label'
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select'
 import qcApi from '@/data/qcApi'
 import { useAlert } from '@/components/providers/AlertProvider'
-
-const BACKEND_API_URL = process.env.NEXT_PUBLIC_BACKEND_URL || 'http://localhost:5000'
-
-const CertCardSkeleton = () => (
-  <Card className="animate-pulse">
-    <CardContent className="pt-6">
-      <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">
-        <div className="flex-1 space-y-3">
-          <div className="flex items-start gap-3">
-            <div className="w-9 h-9 rounded-lg bg-gray-200" />
-            <div className="flex-1 space-y-2">
-              <div className="h-4 bg-gray-200 rounded w-48" />
-              <div className="h-3 bg-gray-200 rounded w-32" />
-            </div>
-            <div className="h-6 bg-gray-200 rounded-full w-20" />
-          </div>
-          <div className="grid grid-cols-3 gap-4">
-            <div className="h-3 bg-gray-200 rounded w-28" />
-            <div className="h-3 bg-gray-200 rounded w-28" />
-            <div className="h-3 bg-gray-200 rounded w-20" />
-          </div>
-        </div>
-        <div className="flex gap-2">
-          {[1, 2, 3].map(i => (
-            <div key={i} className="w-9 h-9 rounded-md bg-gray-200" />
-          ))}
-        </div>
-      </div>
-    </CardContent>
-  </Card>
-);
-
-const ExpiryProgress = ({ issueDate, expiryDate, status }) => {
-  const now = new Date()
-  const start = new Date(issueDate)
-  const end = new Date(expiryDate)
-  const total = end - start
-  const elapsed = now - start
-  const pct = total > 0 ? Math.min(100, Math.max(0, (elapsed / total) * 100)) : 100
-
-  const daysLeft = Math.max(0, Math.ceil((end - now) / (1000 * 60 * 60 * 24)))
-
-  let barColor = 'bg-emerald-500'
-  if (status === 'expired' || daysLeft === 0) barColor = 'bg-red-500'
-  else if (status === 'expiring' || daysLeft <= 30) barColor = 'bg-amber-500'
-
-  return (
-    <div className="mt-2">
-      <div className="flex items-center justify-between text-xs text-gray-500 mb-1">
-        <span>Validity</span>
-        <span className="font-medium">
-          {status === 'expired' ? 'Expired' : `${daysLeft} day${daysLeft !== 1 ? 's' : ''} left`}
-        </span>
-      </div>
-      <div className="w-full h-1.5 bg-gray-100 rounded-full overflow-hidden">
-        <div
-          className={`h-full rounded-full transition-all duration-500 ${barColor}`}
-          style={{ width: `${pct}%` }}
-        />
-      </div>
-    </div>
-  )
-};
-
-const EmptyState = ({ filter, onAdd }) => (
-  <Card className="border-dashed border-2 border-gray-200">
-    <CardContent className="py-16 text-center">
-      <div className="inline-flex items-center justify-center w-16 h-16 rounded-full bg-rose-50 mb-4">
-        <Award className="w-8 h-8 text-rose-400" />
-      </div>
-      <h3 className="text-lg font-semibold text-gray-900 mb-1">
-        {filter === 'all' ? 'No certifications yet' : `No ${filter} certifications`}
-      </h3>
-      <p className="text-sm text-gray-500 mb-6 max-w-sm mx-auto">
-        {filter === 'all'
-          ? 'Start tracking your professional certifications by adding your first one.'
-          : `You don't have any certifications with "${filter}" status.`}
-      </p>
-      {filter === 'all' && (
-        <Button onClick={onAdd} variant="rose" className="gap-2">
-          <Plus className="w-4 h-4" />
-          Add Your First Certification
-        </Button>
-      )}
-    </CardContent>
-  </Card>
-);
-
-const StatCard = ({ icon: Icon, value, label, gradient, onClick, isActive }) => (
-  <button
-    type="button"
-    onClick={onClick}
-    className={`bg-white rounded-xl border p-4 hover:shadow-md transition-all text-left w-full
-      ${isActive ? 'border-rose-300 ring-2 ring-rose-100' : 'border-gray-100'}`}
-  >
-    <div className="flex items-center justify-between">
-      <div className={`p-2 rounded-lg bg-gradient-to-br ${gradient}`}>
-        <Icon className="w-5 h-5 text-white" />
-      </div>
-    </div>
-    <div className="mt-3">
-      <p className="text-2xl font-bold text-gray-900">{value}</p>
-      <p className="text-sm text-gray-500">{label}</p>
-    </div>
-  </button>
-);
-
-const defaultFormData = {
-  name: '',
-  issuer: '',
-  issueDate: '',
-  expiryDate: '',
-  credentialId: '',
-  description: '',
-  category: '',
-  skills: '',
-  verificationUrl: '',
-  fileUrl: '',
-  status: 'active'
-}
+import { defaultFormData, BACKEND_URL } from '@/components/qc/constants'
+import { CertCardSkeleton, ExpiryProgress } from '@/components/qc/reports'
+import { StatCard, EmptyState } from '@/components/qc/certifications'
 
 
 const CertificationsPage = () => {
@@ -230,7 +113,7 @@ const CertificationsPage = () => {
   // ─── Helpers ───────────────────────────────────────────────────
   const buildCertFileSrc = (cert) => {
     if (!cert?._id || !cert?.fileUrl) return null
-    return `${BACKEND_API_URL}/api/qc-technicians/certificates/file/${cert._id}`
+    return `${BACKEND_URL}/api/qc-technicians/certificates/file/${cert._id}`
   }
 
   const getStatusVariant = (status) => {

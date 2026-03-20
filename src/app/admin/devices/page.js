@@ -24,9 +24,9 @@ import {
 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from '@/components/ui/dialog';
-import AddDeviceModal from './components/AddDeviceModal';
-import ViewFootage from './components/ViewFotage';
-import DeviceSettingsModal from './components/DeviceSettingModal';
+import AddDeviceModal from '../../../components/admin/device/AddDeviceModal';
+import ViewFootage from '../../../components/admin/device/ViewFotage';
+import DeviceSettingsModal from '../../../components/admin/device/DeviceSettingModal';
 import { useDevices } from '@/hooks/useQueryHooks';
 import { useAlert } from '@/components/providers/AlertProvider';
 import { getCookie } from '@/lib/helper';

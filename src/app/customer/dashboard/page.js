@@ -1,160 +1,158 @@
 'use client';
 
-import { useEffect, useState } from 'react';
+import { useMemo } from 'react';
 import { useRouter } from 'next/navigation';
 import {
-  Search,
-  MapPin,
-  Calendar,
   AlertCircle,
-  ChevronRight,
-  FileText,
-  CheckCircle,
-  Clock,
   Loader2,
+  FolderOpen,
+  FileText,
+  ArrowRight,
+  AlertTriangle,
+  Clock,
 } from 'lucide-react';
+import Link from 'next/link';
 
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
-import { Input } from '@/components/ui/input';
-import {
-  Select,
-  SelectContent,
-  SelectItem,
-  SelectTrigger,
-  SelectValue,
-} from '@/components/ui/select';
 import { Badge } from '@/components/ui/badge';
 import { useUser } from '@/components/providers/UserContext';
-import { api } from '@/lib/helper';
+import {
+  useCustomerProjects,
+  useCustomerReports,
+  useCustomerNotifications,
+} from '@/hooks/useQueryHooks';
+import { statusConfig } from '@/components/customer/constants';
 
-// Helper: status config
-const statusConfig = {
-  completed: { label: 'Ready for Review', color: 'success' },
-  'customer-notified': { label: 'Completed', color: 'purple' },
-  'qc-review': { label: 'QC Review', color: 'warning' },
-  'ai-processing': { label: 'Processing', color: 'secondary' },
-  'field-capture': { label: 'Field Capture', color: 'default' },
-  uploading: { label: 'Uploading', color: 'secondary' },
-  'on-hold': { label: 'On Hold', color: 'destructive' },
-  planning: { label: 'Planning', color: 'outline' },
-};
-
-// Helper: severity config
-const getSeverityConfig = (count) => {
-  if (count > 20) return { label: 'High', variant: 'destructive' };
-  if (count > 10) return { label: 'Medium', variant: 'warning' };
-  return { label: 'Low', variant: 'success' };
-};
+import StatsCards from '@/components/customer/dashboard/StatsCards';
+import ProjectListCard from '@/components/customer/dashboard/ProjectListCard';
 
 export default function CustomerDashboard() {
-  const [projects, setProjects] = useState([]);
-  const [loading, setLoading] = useState(true);
-  const [error, setError] = useState(null);
-  const [searchQuery, setSearchQuery] = useState('');
-  const [filterStatus, setFilterStatus] = useState('all');
   const router = useRouter();
-  const { userId } = useUser();
+  const { userId, userData } = useUser();
 
-  useEffect(() => {
-  const fetchProjects = async () => {
-    try {
-      setLoading(true);
-      setError(null);
-      
-      const { data, ok, error: apiError } = await api(
-        `/api/customer/get-all-projects/${userId}?page=1&limit=20&status=${filterStatus !== 'all' ? filterStatus : ''}`,
-        'GET'
-      );
-      
-      if (!ok || apiError) {
-        console.error('Error fetching projects:', apiError);
-        setError(apiError || 'Failed to load projects');
-        return;
-      }
+  const {
+    data: projects = [],
+    isLoading: loadingProjects,
+    error: projectsError,
+  } = useCustomerProjects(userId);
 
-      setProjects(data.data || []);
-    } catch (err) {
-      console.error('Fetch error:', err);
-      setError('Failed to load projects');
-    } finally {
-      setLoading(false);
-    }
-  };
+  const { data: reports = [] } = useCustomerReports(userId);
+  const { data: notificationsData } = useCustomerNotifications(userId);
 
-    if (userId) {
-      fetchProjects();
-    }
-  }, [userId]);
+  const notifications = notificationsData?.data || notificationsData || [];
+  const unreadCount = Array.isArray(notifications)
+    ? notifications.filter((n) => !n.read).length
+    : 0;
 
-  // Filter projects
-  const filteredProjects = projects.filter((project) => {
-    const matchesSearch =
-      project.name.toLowerCase().includes(searchQuery.toLowerCase()) ||
-      project.location.toLowerCase().includes(searchQuery.toLowerCase());
-    const matchesFilter = filterStatus === 'all' || project.status === filterStatus;
-    return matchesSearch && matchesFilter;
-  });
-
-  // Stats
-  const stats = {
-    total: projects.length,
-    completed: projects.filter((p) =>
+  // Compute all dashboard stats from projects
+  const stats = useMemo(() => {
+    const active = projects.filter(
+      (p) => !['completed', 'customer-notified', 'on-hold'].includes(p.status)
+    ).length;
+    const completed = projects.filter((p) =>
       ['completed', 'customer-notified'].includes(p.status)
-    ).length,
-    inReview: projects.filter((p) => p.status === 'qc-review').length,
-  };
+    ).length;
+    const totalDefects = projects.reduce(
+      (sum, p) => sum + (p.aiDetections?.total || 0),
+      0
+    );
 
-  // Render status badge
-  const renderStatusBadge = (status) => {
-    const config = statusConfig[status] || { label: 'In Progress', color: 'outline' };
-    return <Badge variant={config.color}>{config.label}</Badge>;
+    return { total: projects.length, active, completed, totalDefects };
+  }, [projects]);
+
+  // Status distribution for breakdown bar
+  const statusBreakdown = useMemo(() => {
+    const counts = {};
+    projects.forEach((p) => {
+      counts[p.status] = (counts[p.status] || 0) + 1;
+    });
+    return Object.entries(counts)
+      .map(([status, count]) => ({
+        status,
+        count,
+        label: statusConfig[status]?.label || status,
+        bgColor: statusConfig[status]?.bgColor || 'bg-gray-100 text-gray-800',
+      }))
+      .sort((a, b) => b.count - a.count);
+  }, [projects]);
+
+  // Defect severity distribution across all projects
+  const severityStats = useMemo(() => {
+    let high = 0, medium = 0, low = 0, aiCount = 0;
+    projects.forEach((p) => {
+      const det = p.aiDetections;
+      if (!det) return;
+      high += det.high || 0;
+      medium += det.medium || 0;
+      low += det.low || 0;
+      aiCount += det.total || 0;
+    });
+    const total = high + medium + low;
+    return { high, medium, low, total, aiCount };
+  }, [projects]);
+
+  // Recent projects (last 5 by created date)
+  const recentProjects = useMemo(() => {
+    return [...projects]
+      .sort((a, b) => new Date(b.created_at) - new Date(a.created_at))
+      .slice(0, 5);
+  }, [projects]);
+
+  // Projects needing attention (in-review or with high defects)
+  const attentionProjects = useMemo(() => {
+    return projects
+      .filter(
+        (p) =>
+          p.status === 'completed' ||
+          p.status === 'qc-review' ||
+          (p.aiDetections?.high || 0) > 0
+      )
+      .slice(0, 3);
+  }, [projects]);
+
+  const handleNavigate = (projectId) => {
+    router.push(`/customer/projects/${projectId}`);
   };
 
   // Loading state
-  if (loading) {
+  if (loadingProjects) {
     return (
       <div className="space-y-6 p-4 md:p-6">
         <div>
-          <h1 className="text-3xl font-bold">My Projects</h1>
-          <p className="text-muted-foreground">View and manage your inspection projects</p>
+          <h1 className="text-2xl font-bold">Dashboard</h1>
+          <p className="text-muted-foreground">Overview of your inspection projects</p>
         </div>
-
-        <div className="grid gap-4 md:grid-cols-3">
-          {[1, 2, 3].map((i) => (
+        <div className="grid gap-4 grid-cols-2 lg:grid-cols-4">
+          {[1, 2, 3, 4].map((i) => (
             <Card key={i}>
-              <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-                <div className="h-4 w-24 bg-gray-200 rounded animate-pulse" />
-                <div className="h-4 w-4 bg-gray-200 rounded animate-pulse" />
-              </CardHeader>
-              <CardContent>
-                <div className="h-8 w-16 bg-gray-200 rounded animate-pulse" />
+              <CardContent className="p-4">
+                <div className="h-4 w-20 bg-muted rounded animate-pulse mb-2" />
+                <div className="h-7 w-12 bg-muted rounded animate-pulse" />
               </CardContent>
             </Card>
           ))}
         </div>
-
         <div className="flex items-center justify-center py-12">
           <Loader2 className="h-8 w-8 animate-spin text-primary" />
-          <span className="ml-3 text-muted-foreground">Loading projects...</span>
+          <span className="ml-3 text-muted-foreground">Loading dashboard...</span>
         </div>
       </div>
     );
   }
 
   // Error state
-  if (error) {
+  if (projectsError) {
     return (
       <div className="space-y-6 p-4 md:p-6">
         <div>
-          <h1 className="text-3xl font-bold">My Projects</h1>
-          <p className="text-muted-foreground">View and manage your inspection projects</p>
+          <h1 className="text-2xl font-bold">Dashboard</h1>
+          <p className="text-muted-foreground">Overview of your inspection projects</p>
         </div>
-
         <Card>
           <CardContent className="py-12 text-center">
             <AlertCircle className="h-12 w-12 text-destructive mx-auto mb-4" />
             <p className="text-destructive mb-4">
-              {typeof error === 'string' ? error : 'Failed to load projects'}
+              {projectsError?.message || 'Failed to load dashboard'}
             </p>
             <button
               onClick={() => window.location.reload()}
@@ -171,138 +169,238 @@ export default function CustomerDashboard() {
   return (
     <div className="space-y-6 p-4 md:p-6">
       {/* Header */}
-      <div>
-        <h1 className="text-3xl font-bold">My Projects</h1>
-        <p className="text-muted-foreground">View and manage your inspection projects</p>
+      <div className="flex items-center justify-between">
+        <div>
+          <h1 className="text-2xl font-bold">
+            Welcome back{userData?.first_name ? `, ${userData.first_name}` : ''}
+          </h1>
+          <p className="text-muted-foreground">
+            Here&apos;s an overview of your inspection projects
+          </p>
+        </div>
+        {unreadCount > 0 && (
+          <Link
+            href="/customer/notifications"
+            className="flex items-center gap-2 text-sm text-primary hover:underline"
+          >
+            <span className="relative flex h-2.5 w-2.5">
+              <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-primary opacity-75" />
+              <span className="relative inline-flex rounded-full h-2.5 w-2.5 bg-primary" />
+            </span>
+            {unreadCount} unread notification{unreadCount !== 1 ? 's' : ''}
+          </Link>
+        )}
       </div>
 
       {/* Stats Cards */}
-      <div className="grid gap-4 md:grid-cols-3">
-        <Card>
-          <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-            <CardTitle className="text-sm font-medium">Total Projects</CardTitle>
-            <FileText className="h-4 w-4 text-muted-foreground" />
-          </CardHeader>
-          <CardContent>
-            <div className="text-2xl font-bold">{stats.total}</div>
-          </CardContent>
-        </Card>
-        <Card>
-          <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-            <CardTitle className="text-sm font-medium">Completed</CardTitle>
-            <CheckCircle className="h-4 w-4 text-green-500" />
-          </CardHeader>
-          <CardContent>
-            <div className="text-2xl font-bold">{stats.completed}</div>
-          </CardContent>
-        </Card>
-        <Card>
-          <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-            <CardTitle className="text-sm font-medium">In Review</CardTitle>
-            <Clock className="h-4 w-4 text-yellow-500" />
-          </CardHeader>
-          <CardContent>
-            <div className="text-2xl font-bold">{stats.inReview}</div>
-          </CardContent>
-        </Card>
-      </div>
+      <StatsCards stats={stats} />
 
-      {/* Search & Filter */}
-      <div className="flex flex-col gap-4 md:flex-row">
-        <div className="relative flex-grow">
-          <Search className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
-          <Input
-            placeholder="Search projects..."
-            value={searchQuery}
-            onChange={(e) => setSearchQuery(e.target.value)}
-            className="pl-10"
-          />
-        </div>
-        <Select value={filterStatus} onValueChange={setFilterStatus}>
-          <SelectTrigger className="w-full md:w-[180px]">
-            <SelectValue placeholder="All Status" />
-          </SelectTrigger>
-          <SelectContent>
-            <SelectItem value="all">All Status</SelectItem>
-            <SelectItem value="planning">Planning</SelectItem>
-            <SelectItem value="field-capture">Field Capture</SelectItem>
-            <SelectItem value="uploading">Uploading</SelectItem>
-            <SelectItem value="ai-processing">Processing</SelectItem>
-            <SelectItem value="qc-review">QC Review</SelectItem>
-            <SelectItem value="completed">Ready for Review</SelectItem>
-            <SelectItem value="customer-notified">Completed</SelectItem>
-            <SelectItem value="on-hold">On Hold</SelectItem>
-          </SelectContent>
-        </Select>
-      </div>
-
-      {/* Projects List */}
-      <div className="space-y-4">
-        {filteredProjects.length === 0 ? (
-          <Card>
-            <CardContent className="py-12 text-center">
-              <FileText className="h-12 w-12 text-muted-foreground mx-auto mb-4" />
-              <p className="text-muted-foreground">
-                {searchQuery || filterStatus !== 'all' 
-                  ? 'No projects match your filters' 
-                  : 'No projects found'}
-              </p>
-              {(searchQuery || filterStatus !== 'all') && (
-                <button
-                  onClick={() => {
-                    setSearchQuery('');
-                    setFilterStatus('all');
-                  }}
-                  className="mt-4 text-sm text-primary hover:underline"
-                >
-                  Clear filters
-                </button>
-              )}
-            </CardContent>
-          </Card>
-        ) : (
-          filteredProjects.map((project) => (
-            <Card
-              key={project._id}
-              className="cursor-pointer transition-shadow hover:shadow-md"
-              onClick={() => router.push(`/customer/projects/${project._id}`)}
-            >
-              <CardContent className="p-6">
-                <div className="flex items-start justify-between">
-                  <div className="space-y-2">
-                    <div className="flex items-center gap-2">
-                      <h3 className="font-semibold">{project.name}</h3>
-                      {renderStatusBadge(project.status)}
-                    </div>
-                    <div className="flex flex-wrap items-center gap-4 text-sm text-muted-foreground">
-                      <div className="flex items-center gap-1">
-                        <MapPin className="h-3.5 w-3.5" />
-                        {project.location}
+      {/* Main Grid */}
+      <div className="grid gap-6 lg:grid-cols-3">
+        {/* Left Column – 2/3 width */}
+        <div className="lg:col-span-2 space-y-6">
+          {/* Project Status Breakdown */}
+          {projects.length > 0 && (
+            <Card>
+              <CardHeader className="pb-3">
+                <CardTitle className="text-base font-semibold">Project Status Overview</CardTitle>
+              </CardHeader>
+              <CardContent className="space-y-4">
+                {/* Stacked bar */}
+                <div className="flex h-3 rounded-full overflow-hidden bg-muted">
+                  {statusBreakdown.map(({ status, count }) => {
+                    const pct = (count / projects.length) * 100;
+                    const colorMap = {
+                      completed: 'bg-green-500',
+                      'customer-notified': 'bg-purple-500',
+                      'qc-review': 'bg-yellow-500',
+                      'ai-processing': 'bg-blue-500',
+                      'field-capture': 'bg-gray-400',
+                      uploading: 'bg-sky-400',
+                      'on-hold': 'bg-red-500',
+                      planning: 'bg-slate-400',
+                    };
+                    return (
+                      <div
+                        key={status}
+                        className={`${colorMap[status] || 'bg-gray-300'} transition-all`}
+                        style={{ width: `${pct}%` }}
+                        title={`${statusConfig[status]?.label || status}: ${count}`}
+                      />
+                    );
+                  })}
+                </div>
+                {/* Legend */}
+                <div className="flex flex-wrap gap-3">
+                  {statusBreakdown.map(({ status, count, label }) => {
+                    const colorMap = {
+                      completed: 'bg-green-500',
+                      'customer-notified': 'bg-purple-500',
+                      'qc-review': 'bg-yellow-500',
+                      'ai-processing': 'bg-blue-500',
+                      'field-capture': 'bg-gray-400',
+                      uploading: 'bg-sky-400',
+                      'on-hold': 'bg-red-500',
+                      planning: 'bg-slate-400',
+                    };
+                    return (
+                      <div key={status} className="flex items-center gap-1.5 text-xs text-muted-foreground">
+                        <div className={`h-2.5 w-2.5 rounded-full ${colorMap[status] || 'bg-gray-300'}`} />
+                        {label} ({count})
                       </div>
-                      <div className="flex items-center gap-1">
-                        <Calendar className="h-3.5 w-3.5" />
-                        {new Date(project.created_at).toLocaleDateString()}
-                      </div>
-                      <div className="flex items-center gap-1">
-                        <AlertCircle className="h-3.5 w-3.5" />
-                        {project.aiDetections?.total || 0} defects
-                      </div>
-                    </div>
-                    {project.aiDetections?.total > 0 && (
-                      <div className="mt-2 flex items-center gap-2">
-                        <span className="text-sm text-muted-foreground">Severity:</span>
-                        <Badge variant={getSeverityConfig(project.aiDetections.total).variant}>
-                          {getSeverityConfig(project.aiDetections.total).label}
-                        </Badge>
-                      </div>
-                    )}
-                  </div>
-                  <ChevronRight className="h-5 w-5 text-muted-foreground" />
+                    );
+                  })}
                 </div>
               </CardContent>
             </Card>
-          ))
-        )}
+          )}
+
+          {/* Recent Projects */}
+          <Card>
+            <CardHeader className="pb-2 flex flex-row items-center justify-between">
+              <CardTitle className="text-base font-semibold">Recent Projects</CardTitle>
+              <Link
+                href="/customer/projects"
+                className="text-xs text-primary hover:underline flex items-center gap-1"
+              >
+                View all <ArrowRight className="h-3 w-3" />
+              </Link>
+            </CardHeader>
+            <CardContent>
+              {recentProjects.length === 0 ? (
+                <div className="py-8 text-center text-muted-foreground">
+                  <FolderOpen className="h-10 w-10 mx-auto mb-2 opacity-40" />
+                  <p className="text-sm">No projects yet</p>
+                </div>
+              ) : (
+                <div className="divide-y">
+                  {recentProjects.map((project) => (
+                    <ProjectListCard
+                      key={project._id}
+                      project={project}
+                      onNavigate={handleNavigate}
+                    />
+                  ))}
+                </div>
+              )}
+            </CardContent>
+          </Card>
+        </div>
+
+        {/* Right Column – 1/3 width */}
+        <div className="space-y-6">
+          {/* Defect Severity Summary */}
+          <Card>
+            <CardHeader className="pb-3">
+              <CardTitle className="text-base font-semibold flex items-center gap-2">
+                <AlertTriangle className="h-4 w-4 text-orange-500" />
+                Defect Summary
+              </CardTitle>
+            </CardHeader>
+            <CardContent className="space-y-4">
+              {severityStats.total === 0 ? (
+                <p className="text-sm text-muted-foreground text-center py-4">
+                  No defects detected
+                </p>
+              ) : (
+                <>
+                  <div className="text-center">
+                    <p className="text-3xl font-bold">{severityStats.total}</p>
+                    <p className="text-xs text-muted-foreground">Total defects across all projects</p>
+                  </div>
+                  <div className="space-y-3">
+                    {[
+                      { label: 'High', value: severityStats.high, color: 'bg-red-500', text: 'text-red-700' },
+                      { label: 'Medium', value: severityStats.medium, color: 'bg-orange-400', text: 'text-orange-700' },
+                      { label: 'Low', value: severityStats.low, color: 'bg-emerald-500', text: 'text-emerald-700' },
+                    ].map(({ label, value, color, text }) => (
+                      <div key={label} className="space-y-1">
+                        <div className="flex items-center justify-between text-sm">
+                          <span className={`font-medium ${text}`}>{label}</span>
+                          <span className="text-muted-foreground">{value}</span>
+                        </div>
+                        <div className="h-2 rounded-full bg-muted overflow-hidden">
+                          <div
+                            className={`h-full rounded-full ${color} transition-all`}
+                            style={{
+                              width: severityStats.total
+                                ? `${(value / severityStats.total) * 100}%`
+                                : '0%',
+                            }}
+                          />
+                        </div>
+                      </div>
+                    ))}
+                  </div>
+                </>
+              )}
+            </CardContent>
+          </Card>
+
+          {/* Needs Attention */}
+          {attentionProjects.length > 0 && (
+            <Card>
+              <CardHeader className="pb-3">
+                <CardTitle className="text-base font-semibold flex items-center gap-2">
+                  <Clock className="h-4 w-4 text-yellow-500" />
+                  Needs Attention
+                </CardTitle>
+              </CardHeader>
+              <CardContent className="space-y-3">
+                {attentionProjects.map((p) => {
+                  const cfg = statusConfig[p.status] || { label: p.status, bgColor: 'bg-gray-100 text-gray-800' };
+                  return (
+                    <div
+                      key={p._id}
+                      className="flex items-center justify-between p-2 rounded-md hover:bg-muted/50 cursor-pointer transition-colors"
+                      onClick={() => handleNavigate(p._id)}
+                    >
+                      <div className="min-w-0">
+                        <p className="text-sm font-medium truncate">{p.name}</p>
+                        <Badge variant="outline" className={`text-[10px] mt-0.5 ${cfg.bgColor}`}>
+                          {cfg.label}
+                        </Badge>
+                      </div>
+                      {(p.aiDetections?.high || 0) > 0 && (
+                        <Badge variant="destructive" className="text-[10px] ml-2 flex-shrink-0">
+                          {p.aiDetections.high} high
+                        </Badge>
+                      )}
+                    </div>
+                  );
+                })}
+              </CardContent>
+            </Card>
+          )}
+
+          {/* Quick Links */}
+          <Card>
+            <CardHeader className="pb-3">
+              <CardTitle className="text-base font-semibold">Quick Links</CardTitle>
+            </CardHeader>
+            <CardContent className="space-y-2">
+              {[
+                { href: '/customer/projects', label: 'All Projects', icon: FolderOpen, count: stats.total },
+                { href: '/customer/reports', label: 'Reports', icon: FileText, count: reports.length },
+              ].map(({ href, label, icon: Icon, count }) => (
+                <Link
+                  key={href}
+                  href={href}
+                  className="flex items-center justify-between p-2.5 rounded-lg hover:bg-muted/50 transition-colors group"
+                >
+                  <div className="flex items-center gap-3">
+                    <Icon className="h-4 w-4 text-muted-foreground" />
+                    <span className="text-sm font-medium">{label}</span>
+                  </div>
+                  <div className="flex items-center gap-2">
+                    <span className="text-xs text-muted-foreground">{count}</span>
+                    <ArrowRight className="h-3.5 w-3.5 text-muted-foreground opacity-0 group-hover:opacity-100 transition-opacity" />
+                  </div>
+                </Link>
+              ))}
+            </CardContent>
+          </Card>
+        </div>
       </div>
     </div>
   );

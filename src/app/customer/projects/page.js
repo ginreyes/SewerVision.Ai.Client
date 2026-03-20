@@ -1,86 +1,60 @@
 'use client';
 
-import { useEffect, useState } from 'react';
+import { useState, useMemo } from 'react';
 import {
-  Search,
-  Filter,
-  Plus,
-  MapPin,
-  AlertCircle,
-  Eye,
   FileText,
-  Clock,
+  AlertCircle,
   Loader2,
+  FolderOpen,
+  CheckCircle2,
+  Activity,
+  AlertTriangle,
+  MapPin,
+  Clock,
+  ArrowRight,
 } from 'lucide-react';
 
 import { Card, CardContent } from '@/components/ui/card';
-import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
-import {
-  Select,
-  SelectContent,
-  SelectItem,
-  SelectTrigger,
-  SelectValue,
-} from '@/components/ui/select';
+import { Progress } from '@/components/ui/progress';
+import { Button } from '@/components/ui/button';
 import { useRouter } from 'next/navigation';
 import { useUser } from '@/components/providers/UserContext';
-import { api } from '@/lib/helper';
-import { useAlert } from '@/components/providers/AlertProvider';
+import { useCustomerProjects } from '@/hooks/useQueryHooks';
+import { statusConfig } from '@/components/customer/constants';
 
-// Status configuration
-const statusConfig = {
-  completed: { label: 'Ready for Review', bgColor: 'bg-green-100 text-green-800 dark:bg-green-900 dark:text-green-200' },
-  'customer-notified': { label: 'Completed', bgColor: 'bg-purple-100 text-purple-800 dark:bg-purple-900 dark:text-purple-200' },
-  'qc-review': { label: 'QC Review', bgColor: 'bg-yellow-100 text-yellow-800 dark:bg-yellow-900 dark:text-yellow-200' },
-  'ai-processing': { label: 'Processing', bgColor: 'bg-blue-100 text-blue-800 dark:bg-blue-900 dark:text-blue-200' },
-  'field-capture': { label: 'Field Capture', bgColor: 'bg-gray-100 text-gray-800 dark:bg-gray-900 dark:text-gray-200' },
-  uploading: { label: 'Uploading', bgColor: 'bg-blue-100 text-blue-800 dark:bg-blue-900 dark:text-blue-200' },
-  'on-hold': { label: 'On Hold', bgColor: 'bg-red-100 text-red-800 dark:bg-red-900 dark:text-red-200' },
-  planning: { label: 'Planning', bgColor: 'bg-slate-100 text-slate-800 dark:bg-slate-900 dark:text-slate-200' },
-};
+import ProjectCard from '@/components/customer/projects/ProjectCard';
+import ProjectSearchFilter from '@/components/customer/projects/ProjectSearchFilter';
 
 export default function ProjectPage() {
-  const [projects, setProjects] = useState([]);
-  const [loading, setLoading] = useState(true);
-  const [error, setError] = useState(null);
   const [searchQuery, setSearchQuery] = useState('');
   const [statusFilter, setStatusFilter] = useState('all');
   const [sortBy, setSortBy] = useState('newest');
+  const [viewMode, setViewMode] = useState('grid');
   const router = useRouter();
   const { userId } = useUser();
-  const { showAlert } = useAlert();
 
-  // Fetch projects
-  useEffect(() => {
-    const fetchProjects = async () => {
-      if (!userId) return;
+  const {
+    data: projects = [],
+    isLoading: loading,
+    error,
+  } = useCustomerProjects(userId);
 
-      try {
-        setLoading(true);
-        setError(null);
-
-        const { data, ok, error: apiError } = await api(
-          `/api/customer/get-all-projects/${userId}?page=1&limit=100`,
-          'GET'
-        );
-
-        if (!ok || apiError) {
-          throw new Error(apiError || 'Failed to fetch projects');
-        }
-
-        setProjects(data.data || []);
-      } catch (err) {
-        console.error('Error fetching projects:', err);
-        setError(err.message || 'Failed to load projects');
-        showAlert(err.message || 'Failed to load projects', 'error');
-      } finally {
-        setLoading(false);
-      }
-    };
-
-    fetchProjects();
-  }, [userId, showAlert]);
+  // Summary stats
+  const stats = useMemo(() => {
+    const total = projects.length;
+    const active = projects.filter(
+      (p) => !['completed', 'customer-notified', 'on-hold'].includes(p.status)
+    ).length;
+    const completed = projects.filter(
+      (p) => p.status === 'completed' || p.status === 'customer-notified'
+    ).length;
+    const totalDefects = projects.reduce(
+      (sum, p) => sum + (p.aiDetections?.total || 0),
+      0
+    );
+    return { total, active, completed, totalDefects };
+  }, [projects]);
 
   // Filter and sort projects
   const filteredProjects = projects
@@ -102,27 +76,8 @@ export default function ProjectPage() {
       return 0;
     });
 
-  const renderStatusBadge = (status) => {
-    const config = statusConfig[status] || { label: 'In Progress', bgColor: 'bg-gray-100 text-gray-800' };
-    return (
-      <Badge variant="outline" className={config.bgColor}>
-        {config.label}
-      </Badge>
-    );
-  };
-
   const handleViewProject = (projectId) => {
     router.push(`/customer/projects/${projectId}`);
-  };
-
-  // Get operator name
-  const getOperatorName = (project) => {
-    if (project.assignedOperator?.userId) {
-      const firstName = project.assignedOperator.userId.first_name || '';
-      const lastName = project.assignedOperator.userId.last_name || '';
-      return `${firstName} ${lastName}`.trim() || project.assignedOperator.name || 'Not Assigned';
-    }
-    return project.assignedOperator?.name || 'Not Assigned';
   };
 
   // Loading state
@@ -161,7 +116,7 @@ export default function ProjectPage() {
           <Card>
             <CardContent className="py-12 text-center">
               <AlertCircle className="h-12 w-12 text-destructive mx-auto mb-4" />
-              <p className="text-destructive mb-4">{error}</p>
+              <p className="text-destructive mb-4">{error?.message || 'Failed to load projects'}</p>
               <Button onClick={() => window.location.reload()}>
                 Try Again
               </Button>
@@ -185,136 +140,149 @@ export default function ProjectPage() {
           </div>
         </div>
 
-        {/* Filters and Search */}
-        <Card>
-          <CardContent className="pt-6">
-            <div className="flex flex-col gap-4 md:flex-row md:items-center">
-              <div className="relative flex-1">
-                <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 h-4 w-4 text-muted-foreground pointer-events-none" />
-                <input
-                  type="text"
-                  placeholder="Search projects by name or location..."
-                  value={searchQuery}
-                  onChange={(e) => setSearchQuery(e.target.value)}
-                  className="flex h-10 w-full rounded-md border border-input bg-background px-3 py-2 pl-9 text-sm ring-offset-background file:border-0 file:bg-transparent file:text-sm file:font-medium placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 disabled:cursor-not-allowed disabled:opacity-50"
-                />
-              </div>
-              <div className="flex gap-2 flex-wrap">
-                <Select value={statusFilter} onValueChange={setStatusFilter}>
-                  <SelectTrigger className="w-[180px]">
-                    <Filter className="mr-2 h-4 w-4" />
-                    <SelectValue placeholder="All Status" />
-                  </SelectTrigger>
-                  <SelectContent>
-                    <SelectItem value="all">All Status</SelectItem>
-                    <SelectItem value="planning">Planning</SelectItem>
-                    <SelectItem value="field-capture">Field Capture</SelectItem>
-                    <SelectItem value="uploading">Uploading</SelectItem>
-                    <SelectItem value="ai-processing">Processing</SelectItem>
-                    <SelectItem value="qc-review">QC Review</SelectItem>
-                    <SelectItem value="completed">Ready for Review</SelectItem>
-                    <SelectItem value="customer-notified">Completed</SelectItem>
-                    <SelectItem value="on-hold">On Hold</SelectItem>
-                  </SelectContent>
-                </Select>
-                <Select value={sortBy} onValueChange={setSortBy}>
-                  <SelectTrigger className="w-[140px]">
-                    <SelectValue placeholder="Sort by" />
-                  </SelectTrigger>
-                  <SelectContent>
-                    <SelectItem value="newest">Newest First</SelectItem>
-                    <SelectItem value="oldest">Oldest First</SelectItem>
-                    <SelectItem value="name">Name (A-Z)</SelectItem>
-                  </SelectContent>
-                </Select>
-              </div>
-            </div>
-          </CardContent>
-        </Card>
-
-        {/* Projects Grid */}
-        <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-3">
-          {filteredProjects.map((project) => (
-            <Card
-              key={project._id}
-              className="hover:shadow-lg transition-shadow cursor-pointer group"
-              onClick={() => handleViewProject(project._id)}
-            >
-              <CardContent className="pt-6">
-                <div className="space-y-4">
-                  {/* Header */}
-                  <div className="flex items-start justify-between">
-                    <div className="flex-1 min-w-0">
-                      <h3 className="font-semibold text-lg truncate group-hover:text-primary transition-colors">
-                        {project.name}
-                      </h3>
-                      <div className="flex items-center gap-1 mt-1 text-sm text-muted-foreground">
-                        <MapPin className="h-3.5 w-3.5 flex-shrink-0" />
-                        <span className="truncate">{project.location}</span>
-                      </div>
-                    </div>
+        {/* Summary Stats */}
+        {projects.length > 0 && (
+          <div className="grid gap-3 grid-cols-2 lg:grid-cols-4">
+            <Card>
+              <CardContent className="pt-4 pb-3 px-4">
+                <div className="flex items-center gap-3">
+                  <div className="rounded-lg bg-blue-50 p-2">
+                    <FolderOpen className="h-4 w-4 text-blue-600" />
                   </div>
-
-                  {/* Status Badge */}
                   <div>
-                    {renderStatusBadge(project.status)}
+                    <p className="text-2xl font-bold">{stats.total}</p>
+                    <p className="text-xs text-muted-foreground">Total Projects</p>
                   </div>
-
-                  {/* Project Stats */}
-                  <div className="grid grid-cols-2 gap-3 pt-3 border-t">
-                    <div className="space-y-1">
-                      <p className="text-xs text-muted-foreground">Operator</p>
-                      <p className="text-sm font-medium truncate">{getOperatorName(project)}</p>
-                    </div>
-                    <div className="space-y-1">
-                      <p className="text-xs text-muted-foreground">Date</p>
-                      <p className="text-sm font-medium">
-                        {new Date(project.created_at).toLocaleDateString('en-US', {
-                          month: 'short',
-                          day: 'numeric',
-                          year: 'numeric',
-                        })}
-                      </p>
-                    </div>
-                  </div>
-
-                  {/* Metrics */}
-                  <div className="flex items-center justify-between pt-3 border-t text-sm">
-                    <div className="flex items-center gap-4">
-                      <div className="flex items-center gap-1">
-                        <Clock className="h-3.5 w-3.5 text-muted-foreground" />
-                        <span className="text-muted-foreground">{project.totalLength}</span>
-                      </div>
-                      <div className="flex items-center gap-1">
-                        <FileText className="h-3.5 w-3.5 text-muted-foreground" />
-                        <span className="text-muted-foreground">{project.videoCount || 0} video</span>
-                      </div>
-                    </div>
-                    {(project.aiDetections?.total || 0) > 0 && (
-                      <div className="flex items-center gap-1">
-                        <AlertCircle className="h-3.5 w-3.5 text-orange-500" />
-                        <span className="font-medium text-orange-500">{project.aiDetections.total}</span>
-                      </div>
-                    )}
-                  </div>
-
-                  {/* Action Button */}
-                  <Button
-                    variant="outline"
-                    className="w-full"
-                    onClick={(e) => {
-                      e.stopPropagation();
-                      handleViewProject(project._id);
-                    }}
-                  >
-                    <Eye className="mr-2 h-4 w-4" />
-                    View Project
-                  </Button>
                 </div>
               </CardContent>
             </Card>
-          ))}
-        </div>
+            <Card>
+              <CardContent className="pt-4 pb-3 px-4">
+                <div className="flex items-center gap-3">
+                  <div className="rounded-lg bg-green-50 p-2">
+                    <Activity className="h-4 w-4 text-green-600" />
+                  </div>
+                  <div>
+                    <p className="text-2xl font-bold">{stats.active}</p>
+                    <p className="text-xs text-muted-foreground">Active</p>
+                  </div>
+                </div>
+              </CardContent>
+            </Card>
+            <Card>
+              <CardContent className="pt-4 pb-3 px-4">
+                <div className="flex items-center gap-3">
+                  <div className="rounded-lg bg-purple-50 p-2">
+                    <CheckCircle2 className="h-4 w-4 text-purple-600" />
+                  </div>
+                  <div>
+                    <p className="text-2xl font-bold">{stats.completed}</p>
+                    <p className="text-xs text-muted-foreground">Completed</p>
+                  </div>
+                </div>
+              </CardContent>
+            </Card>
+            <Card>
+              <CardContent className="pt-4 pb-3 px-4">
+                <div className="flex items-center gap-3">
+                  <div className="rounded-lg bg-red-50 p-2">
+                    <AlertTriangle className="h-4 w-4 text-red-600" />
+                  </div>
+                  <div>
+                    <p className="text-2xl font-bold">{stats.totalDefects}</p>
+                    <p className="text-xs text-muted-foreground">Total Defects</p>
+                  </div>
+                </div>
+              </CardContent>
+            </Card>
+          </div>
+        )}
+
+        {/* Filters and Search */}
+        <ProjectSearchFilter
+          searchQuery={searchQuery}
+          onSearchChange={setSearchQuery}
+          statusFilter={statusFilter}
+          onStatusChange={setStatusFilter}
+          sortBy={sortBy}
+          onSortChange={setSortBy}
+          viewMode={viewMode}
+          onViewModeChange={setViewMode}
+          resultCount={filteredProjects.length}
+          totalCount={projects.length}
+        />
+
+        {/* Projects Grid */}
+        {viewMode === 'grid' ? (
+          <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-3" data-tour="customer-projects-grid">
+            {filteredProjects.map((project) => (
+              <ProjectCard
+                key={project._id}
+                project={project}
+                onView={handleViewProject}
+              />
+            ))}
+          </div>
+        ) : (
+          <div className="space-y-2" data-tour="customer-projects-grid">
+            {filteredProjects.map((project) => {
+              const config = statusConfig[project.status] || { label: 'In Progress', bgColor: 'bg-gray-100 text-gray-800' };
+              const progress = project.progress || 0;
+              const totalDefects = project.aiDetections?.total || 0;
+              return (
+                <Card
+                  key={project._id}
+                  className="hover:shadow-md transition-all cursor-pointer group"
+                  onClick={() => handleViewProject(project._id)}
+                >
+                  <CardContent className="py-3 px-4">
+                    <div className="flex items-center gap-4">
+                      <div className="flex-1 min-w-0">
+                        <div className="flex items-center gap-2">
+                          <h3 className="font-semibold truncate group-hover:text-primary transition-colors">
+                            {project.name}
+                          </h3>
+                          <Badge variant="outline" className={`${config.bgColor} flex-shrink-0 text-[10px]`}>
+                            {config.label}
+                          </Badge>
+                        </div>
+                        <div className="flex items-center gap-3 mt-1 text-xs text-muted-foreground">
+                          <span className="flex items-center gap-1">
+                            <MapPin className="h-3 w-3" />
+                            {project.location}
+                          </span>
+                          <span className="flex items-center gap-1">
+                            <Clock className="h-3 w-3" />
+                            {project.totalLength || 'N/A'}
+                          </span>
+                        </div>
+                      </div>
+
+                      <div className="hidden sm:flex items-center gap-4 flex-shrink-0">
+                        <div className="w-24">
+                          <div className="flex items-center justify-between text-[10px] mb-1">
+                            <span className="text-muted-foreground">Progress</span>
+                            <span className="font-medium">{progress}%</span>
+                          </div>
+                          <Progress value={progress} className="h-1.5" />
+                        </div>
+
+                        <div className="text-center w-16">
+                          <p className={`text-sm font-semibold ${totalDefects >= 10 ? 'text-red-600' : totalDefects >= 5 ? 'text-orange-500' : 'text-emerald-600'}`}>
+                            {totalDefects}
+                          </p>
+                          <p className="text-[10px] text-muted-foreground">defects</p>
+                        </div>
+                      </div>
+
+                      <ArrowRight className="h-4 w-4 text-muted-foreground group-hover:text-primary group-hover:translate-x-0.5 transition-all flex-shrink-0" />
+                    </div>
+                  </CardContent>
+                </Card>
+              );
+            })}
+          </div>
+        )}
 
         {/* Empty State */}
         {filteredProjects.length === 0 && (
@@ -340,15 +308,6 @@ export default function ProjectPage() {
               )}
             </CardContent>
           </Card>
-        )}
-
-        {/* Summary */}
-        {projects.length > 0 && (
-          <div className="flex items-center justify-between text-sm text-muted-foreground">
-            <p>
-              Showing {filteredProjects.length} of {projects.length} projects
-            </p>
-          </div>
         )}
       </div>
     </div>

@@ -1,16 +1,16 @@
 'use client'
 
-import React, { useState, useEffect } from 'react'
-import { 
-  Search, 
-  Filter, 
-  Upload, 
-  Play, 
-  Eye, 
-  CheckCircle, 
-  Clock, 
-  AlertCircle, 
-  Download, 
+import React, { useState, useMemo } from 'react'
+import {
+  Search,
+  Filter,
+  Upload,
+  Play,
+  Eye,
+  CheckCircle,
+  Clock,
+  AlertCircle,
+  Download,
   Share2,
   FileText,
   RefreshCw,
@@ -23,7 +23,8 @@ import {
   MoreVertical,
   ChevronRight
 } from 'lucide-react'
-import { api } from '@/lib/helper'
+import { useOperatorLogs } from '@/hooks/useQueryHooks'
+import { useUser } from '@/components/providers/UserContext'
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
 import { Button } from '@/components/ui/button'
 import { Badge } from '@/components/ui/badge'
@@ -79,71 +80,48 @@ const statusConfig = {
 }
 
 const LogsPage = () => {
+  const { userData } = useUser()
+  const username = userData?.username ?? userData?.email ?? ''
   const [selectedFilter, setSelectedFilter] = useState('all')
   const [searchTerm, setSearchTerm] = useState('')
-  const [inspectionLogs, setInspectionLogs] = useState([])
-  const [loading, setLoading] = useState(true)
   const [refreshing, setRefreshing] = useState(false)
-  const [stats, setStats] = useState({
-    total: 0,
-    processing: 0,
-    qcReview: 0,
-    completed: 0
-  })
 
-  useEffect(() => {
-    fetchLogs()
-  }, [])
+  const { data: logsRaw, isLoading: loading, refetch } = useOperatorLogs(username || null)
 
-  const fetchLogs = async () => {
-    try {
-      const username = localStorage.getItem('username')
-      if (!username) return
-
-      // Fetch uploads for this operator
-      const uploadsResponse = await api(`/api/uploads/get-all-uploads?uploadedBy=${username}&limit=100`, 'GET')
-      if (uploadsResponse.ok && uploadsResponse.data?.data?.uploads) {
-        const uploads = uploadsResponse.data.data.uploads
-        
-        const formattedLogs = uploads.map((upload, index) => ({
-          id: upload._id,
-          pipelineId: upload.location || `PL-${upload._id.slice(-6)}`,
-          location: upload.location || 'Unknown',
-          date: new Date(upload.uploadedAt).toISOString().split('T')[0],
-          time: new Date(upload.uploadedAt).toLocaleTimeString('en-US', { hour: '2-digit', minute: '2-digit' }),
-          operator: username,
-          status: upload.status || 'uploaded',
-          aiProcessingStatus: upload.aiStatus === 'processed' ? 'completed' : upload.aiStatus === 'pending' ? 'in-progress' : 'pending',
-          qcReviewStatus: upload.qcStatus === 'approved' ? 'completed' : upload.qcStatus === 'pending' ? 'pending' : 'pending',
-          videoSize: upload.size || '0 MB',
-          duration: upload.duration || 'N/A',
-          issuesDetected: upload.defectsFound || 0,
-          confidenceScore: upload.confidence || 0,
-          deliveryStatus: upload.status === 'completed' ? 'delivered' : 'pending',
-          customerNotified: upload.qcStatus === 'approved'
-        }))
-        
-        setInspectionLogs(formattedLogs)
-        
-        // Calculate stats
-        setStats({
-          total: formattedLogs.length,
-          processing: formattedLogs.filter(l => l.aiProcessingStatus === 'in-progress').length,
-          qcReview: formattedLogs.filter(l => l.qcReviewStatus === 'pending').length,
-          completed: formattedLogs.filter(l => l.status === 'completed').length
-        })
+  const { inspectionLogs, stats } = useMemo(() => {
+    const uploads = Array.isArray(logsRaw) ? logsRaw : logsRaw?.data?.uploads ?? []
+    const formattedLogs = uploads.map((upload) => ({
+      id: upload._id,
+      pipelineId: upload.location || `PL-${upload._id.slice(-6)}`,
+      location: upload.location || 'Unknown',
+      date: new Date(upload.uploadedAt).toISOString().split('T')[0],
+      time: new Date(upload.uploadedAt).toLocaleTimeString('en-US', { hour: '2-digit', minute: '2-digit' }),
+      operator: username,
+      status: upload.status || 'uploaded',
+      aiProcessingStatus: upload.aiStatus === 'processed' ? 'completed' : upload.aiStatus === 'pending' ? 'in-progress' : 'pending',
+      qcReviewStatus: upload.qcStatus === 'approved' ? 'completed' : upload.qcStatus === 'pending' ? 'pending' : 'pending',
+      videoSize: upload.size || '0 MB',
+      duration: upload.duration || 'N/A',
+      issuesDetected: upload.defectsFound || 0,
+      confidenceScore: upload.confidence || 0,
+      deliveryStatus: upload.status === 'completed' ? 'delivered' : 'pending',
+      customerNotified: upload.qcStatus === 'approved'
+    }))
+    return {
+      inspectionLogs: formattedLogs,
+      stats: {
+        total: formattedLogs.length,
+        processing: formattedLogs.filter(l => l.aiProcessingStatus === 'in-progress').length,
+        qcReview: formattedLogs.filter(l => l.qcReviewStatus === 'pending').length,
+        completed: formattedLogs.filter(l => l.status === 'completed').length
       }
-    } catch (error) {
-      console.error('Error fetching logs:', error)
-    } finally {
-      setLoading(false)
-      setRefreshing(false)
     }
-  }
+  }, [logsRaw, username])
 
-  const handleRefresh = () => {
+  const handleRefresh = async () => {
     setRefreshing(true)
-    fetchLogs()
+    await refetch()
+    setRefreshing(false)
   }
 
   const filteredLogs = inspectionLogs.filter(log => {

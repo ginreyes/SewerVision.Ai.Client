@@ -5,15 +5,16 @@ import { Calendar as ShadcnCalendar } from "@/components/ui/calendar";
 import React, { useState, useEffect } from "react";
 import QCEventFilters from "./components/QCFilterComponent";
 import { ArrowLeft, ArrowRight, CalendarCheck } from "lucide-react";
-import EventModal from "@/app/admin/calendar/components/AddEventModal";
+import EventModal from "@/components/admin/calendar/AddEventModal";
 import { useUser } from "@/components/providers/UserContext";
 import { api } from "@/lib/helper";
 import QCMonthViewCalendar from "./components/QCMonthView";
-import ListViewCalendar from "@/app/admin/calendar/components/ListViewCalendar";
-import WeekView from "@/app/admin/calendar/components/WeekView";
-import DayView from "@/app/admin/calendar/components/DayView";
+import ListViewCalendar from "@/components/admin/calendar/ListViewCalendar";
+import WeekView from "@/components/admin/calendar/WeekView";
+import DayView from "@/components/admin/calendar/DayView";
 import { useAlert } from "@/components/providers/AlertProvider";
 import qcApi from "@/data/qcApi";
+import { monthNames } from '@/components/qc/constants';
 
 const QCCalendarPage = () => {
   const [date, setDate] = useState(new Date());
@@ -28,11 +29,6 @@ const QCCalendarPage = () => {
   const [selectedEvent, setSelectedEvent] = useState(null);
   const { userId } = useUser();
   const { showAlert } = useAlert();
-
-  const monthNames = [
-    "January", "February", "March", "April", "May", "June",
-    "July", "August", "September", "October", "November", "December"
-  ];
 
   const [filters, setFilters] = useState({
     viewAll: true,

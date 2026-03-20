@@ -26,64 +26,20 @@ import {
   Camera,
 } from 'lucide-react';
 import { api } from '@/lib/helper';
+import { Input } from '@/components/ui/input';
+import { Button } from '@/components/ui/button';
+import { Select, SelectTrigger, SelectValue, SelectContent, SelectItem } from '@/components/ui/select';
 import { useUser } from '@/components/providers/UserContext';
 import { useAlert } from '@/components/providers/AlertProvider';
 import { useRouter } from 'next/navigation';
-
-// ─── Helpers ────────────────────────────────────────────────
-/** Normalize confidence to 0-100 range (handles both 0-1 decimals and 0-100 integers) */
-const normalizeConfidence = (value) => {
-  if (value == null || isNaN(value)) return 0;
-  const num = Number(value);
-  return num > 1 ? num : num * 100;
-};
-
-/** Convert seconds to mm:ss display */
-const formatTimestamp = (seconds) => {
-  if (seconds == null || isNaN(seconds)) return '0:00';
-  const totalSec = Math.round(Number(seconds));
-  const m = Math.floor(totalSec / 60);
-  const s = totalSec % 60;
-  return `${m}:${s.toString().padStart(2, '0')}`;
-};
-
-const getConfidenceColor = (pct) => {
-  if (pct >= 85) return 'text-green-700 bg-green-50 border-green-200';
-  if (pct >= 70) return 'text-amber-700 bg-amber-50 border-amber-200';
-  return 'text-red-700 bg-red-50 border-red-200';
-};
-
-const getSeverityStyle = (severity) => {
-  switch ((severity || '').toLowerCase()) {
-    case 'critical': return 'bg-red-100 text-red-800 border-red-200';
-    case 'major': return 'bg-orange-100 text-orange-800 border-orange-200';
-    case 'moderate': return 'bg-yellow-100 text-yellow-800 border-yellow-200';
-    case 'minor': return 'bg-green-100 text-green-800 border-green-200';
-    case 'high': return 'bg-red-100 text-red-800 border-red-200';
-    case 'medium': return 'bg-amber-100 text-amber-800 border-amber-200';
-    case 'low': return 'bg-blue-100 text-blue-800 border-blue-200';
-    default: return 'bg-gray-100 text-gray-700 border-gray-200';
-  }
-};
-
-const getPriorityColor = (priority) => {
-  switch (priority?.toLowerCase()) {
-    case 'high': return 'text-red-600 bg-red-50 border-red-100';
-    case 'medium': return 'text-amber-600 bg-amber-50 border-amber-100';
-    case 'low': return 'text-blue-600 bg-blue-50 border-blue-100';
-    default: return 'text-gray-600 bg-gray-50 border-gray-100';
-  }
-};
-
-const getStatusColor = (status) => {
-  switch (status) {
-    case 'assigned':
-    case 'pending': return 'bg-amber-100 text-amber-700';
-    case 'in-progress': return 'bg-rose-100 text-rose-700';
-    case 'completed': return 'bg-green-100 text-green-700';
-    default: return 'bg-gray-100 text-gray-700';
-  }
-};
+import {
+  normalizeConfidence,
+  formatTimestamp,
+  getConfidenceColor,
+  getSeverityStyle,
+  getPriorityColor,
+  getStatusColor,
+} from '@/components/qc/constants';
 
 // ─── Page ───────────────────────────────────────────────────
 const QualityControlPage = () => {
@@ -393,17 +349,21 @@ const QualityControlPage = () => {
             </div>
             <div className="space-y-3">
               <div className="relative">
-                <Search className="absolute left-2.5 top-1/2 transform -translate-y-1/2 w-3.5 h-3.5 text-gray-400" />
-                <input type="text" placeholder="Search projects..." value={searchTerm} onChange={(e) => setSearchTerm(e.target.value)}
-                  className="w-full pl-8 pr-3 py-2 bg-gray-50 border border-gray-200 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-rose-500/20 focus:border-rose-500 transition-all" />
+                <Search className="absolute left-2.5 top-1/2 transform -translate-y-1/2 w-3.5 h-3.5 text-gray-400 z-10" />
+                <Input type="text" placeholder="Search projects..." value={searchTerm} onChange={(e) => setSearchTerm(e.target.value)}
+                  className="w-full pl-8 text-sm bg-gray-50" />
               </div>
-              <select value={filterStatus} onChange={(e) => setFilterStatus(e.target.value)}
-                className="w-full p-2 bg-white border border-gray-200 rounded-lg text-xs font-medium text-gray-600 focus:outline-none focus:border-rose-500">
-                <option value="assigned">Pending</option>
-                <option value="in-progress">In Progress</option>
-                <option value="completed">Completed</option>
-                <option value="all">All Status</option>
-              </select>
+              <Select value={filterStatus} onValueChange={(val) => setFilterStatus(val)}>
+                <SelectTrigger className="w-full text-xs font-medium text-gray-600" size="sm">
+                  <SelectValue placeholder="Status" />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="assigned">Pending</SelectItem>
+                  <SelectItem value="in-progress">In Progress</SelectItem>
+                  <SelectItem value="completed">Completed</SelectItem>
+                  <SelectItem value="all">All Status</SelectItem>
+                </SelectContent>
+              </Select>
             </div>
           </div>
 
@@ -493,18 +453,22 @@ const QualityControlPage = () => {
                     </div>
                     <div className="flex gap-2">
                       <div className="relative flex-1">
-                        <Search className="absolute left-2 top-1/2 transform -translate-y-1/2 w-3 h-3 text-gray-400" />
-                        <input type="text" placeholder="Search detections..." value={detectionSearch} onChange={(e) => setDetectionSearch(e.target.value)}
-                          className="w-full pl-7 pr-2 py-1.5 bg-white border border-gray-200 rounded-lg text-xs focus:outline-none focus:ring-2 focus:ring-rose-500/20 focus:border-rose-500 transition-all" />
+                        <Search className="absolute left-2 top-1/2 transform -translate-y-1/2 w-3 h-3 text-gray-400 z-10" />
+                        <Input type="text" placeholder="Search detections..." value={detectionSearch} onChange={(e) => setDetectionSearch(e.target.value)}
+                          className="w-full pl-7 text-xs h-8" />
                       </div>
-                      <select value={detectionSeverityFilter} onChange={(e) => setDetectionSeverityFilter(e.target.value)}
-                        className="py-1.5 pl-2 pr-6 bg-white border border-gray-200 rounded-lg text-xs focus:outline-none focus:ring-2 focus:ring-rose-500/20 focus:border-rose-500">
-                        <option value="all">All</option>
-                        <option value="critical">Critical</option>
-                        <option value="major">Major</option>
-                        <option value="moderate">Moderate</option>
-                        <option value="minor">Minor</option>
-                      </select>
+                      <Select value={detectionSeverityFilter} onValueChange={(val) => setDetectionSeverityFilter(val)}>
+                        <SelectTrigger className="text-xs h-8 w-[100px]">
+                          <SelectValue placeholder="All" />
+                        </SelectTrigger>
+                        <SelectContent>
+                          <SelectItem value="all">All</SelectItem>
+                          <SelectItem value="critical">Critical</SelectItem>
+                          <SelectItem value="major">Major</SelectItem>
+                          <SelectItem value="moderate">Moderate</SelectItem>
+                          <SelectItem value="minor">Minor</SelectItem>
+                        </SelectContent>
+                      </Select>
                     </div>
                   </div>
 

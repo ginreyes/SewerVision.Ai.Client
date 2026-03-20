@@ -1,6 +1,6 @@
 'use client'
 
-import React, { useState, useEffect, useCallback } from 'react'
+import React, { useState, useMemo, useCallback } from 'react'
 import { useRouter } from 'next/navigation'
 import {
   Upload,
@@ -29,8 +29,13 @@ import {
   Power,
   Activity
 } from 'lucide-react'
-import { api } from '@/lib/helper'
 import { devicesApi } from '@/data/devicesApi'
+import {
+  useOperatorDevices,
+  useOperatorUploads,
+  useStartOperationsRecording,
+  useStopOperationsRecording,
+} from '@/hooks/useQueryHooks'
 import { useUser } from '@/components/providers/UserContext'
 import { useAlert } from '@/components/providers/AlertProvider'
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
@@ -217,99 +222,77 @@ const OperationsPage = () => {
   const { showAlert } = useAlert()
   const { userId, userData } = useUser() || {}
   const [selectedDevice, setSelectedDevice] = useState(null)
-  const [devices, setDevices] = useState([])
-  const [uploads, setUploads] = useState([])
-  const [loading, setLoading] = useState(true)
   const [refreshing, setRefreshing] = useState(false)
   const [powerModalOpen, setPowerModalOpen] = useState(false)
   const [sendingPower, setSendingPower] = useState(false)
 
   const username = userData?.username ?? userData?.email ?? ''
 
-  // Helper function to format devices
-  const formatDevice = (device, index, uname) => ({
-    id: device._id,
-    name: device.name || `Device ${index + 1}`,
-    status: device.status || 'offline',
-    location: device.location || 'Unknown',
-    recordingTime: '00:00:00',
-    footage: '0 ft',
-    aiDetections: 0,
-    battery: device.specifications?.battery ? (typeof device.specifications.battery === 'number' ? device.specifications.battery : parseInt(device.specifications.battery, 10) || 0) : 0,
-    signal: device.status === 'online' ? 'strong' : device.status === 'offline' ? 'none' : 'weak',
-    operator: device.operator?.first_name && device.operator?.last_name
-      ? `${device.operator.first_name} ${device.operator.last_name}`
-      : uname
-  })
+  // ── Data fetching via TanStack Query ──
+  const { data: devicesRaw, isLoading: loadingDevices, refetch: refetchDevices } = useOperatorDevices(userId)
+  const { data: uploadsRaw, isLoading: loadingUploads, refetch: refetchUploads } = useOperatorUploads(10)
+  const startRecordingMutation = useStartOperationsRecording()
+  const stopRecordingMutation = useStopOperationsRecording()
 
-  const fetchData = useCallback(async () => {
-    try {
-      setLoading(true)
-      if (!userId) {
-        setLoading(false)
-        return
-      }
+  const loading = loadingDevices || loadingUploads
 
-      // Fetch devices assigned to this operator (backend filters by operatorId)
-      const devicesResponse = await api(`/api/devices/get-all-devices?operatorId=${userId}`, 'GET')
-      const raw = devicesResponse.data
-      const list = Array.isArray(raw) ? raw : raw?.data ?? []
-      if (devicesResponse.ok && list.length >= 0) {
-        const formattedDevices = list.map((device, index) => formatDevice(device, index, username))
-        setDevices(formattedDevices)
-        if (formattedDevices.length > 0 && !selectedDevice) {
-          setSelectedDevice(formattedDevices[0].id)
-        }
-      }
-
-      // Fetch uploads
-      const uploadsResponse = await api('/api/uploads/get-all-uploads?limit=10', 'GET')
-      if (uploadsResponse.ok && uploadsResponse.data?.data?.uploads) {
-        const allUploads = uploadsResponse.data.data.uploads
-        const formattedUploads = allUploads.slice(0, 5).map((upload, index) => ({
-          id: upload._id,
-          device: upload.device || `Device ${index + 1}`,
-          name: upload.originalName || upload.filename || `Upload ${index + 1}`,
-          size: upload.size || '0 MB',
-          status: upload.status || 'pending',
-          progress: upload.status === 'completed' ? 100 : upload.status === 'uploading' ? 67 : upload.status === 'failed' ? 23 : 0
-        }))
-        setUploads(formattedUploads)
-      }
-    } catch (error) {
-      console.error('Error fetching operations data:', error)
-    } finally {
-      setLoading(false)
+  const devices = useMemo(() => {
+    const raw = devicesRaw
+    const list = Array.isArray(raw) ? raw : raw?.data ?? []
+    const formatted = list.map((device, index) => ({
+      id: device._id,
+      name: device.name || `Device ${index + 1}`,
+      status: device.status || 'offline',
+      location: device.location || 'Unknown',
+      recordingTime: '00:00:00',
+      footage: '0 ft',
+      aiDetections: 0,
+      battery: device.specifications?.battery ? (typeof device.specifications.battery === 'number' ? device.specifications.battery : parseInt(device.specifications.battery, 10) || 0) : 0,
+      signal: device.status === 'online' ? 'strong' : device.status === 'offline' ? 'none' : 'weak',
+      operator: device.operator?.first_name && device.operator?.last_name
+        ? `${device.operator.first_name} ${device.operator.last_name}`
+        : username
+    }))
+    // Auto-select first device
+    if (formatted.length > 0 && !selectedDevice) {
+      setSelectedDevice(formatted[0].id)
     }
-  }, [userId, username, selectedDevice])
+    return formatted
+  }, [devicesRaw, username, selectedDevice])
 
-  useEffect(() => {
-    fetchData()
-  }, [fetchData])
+  const uploads = useMemo(() => {
+    const allUploads = Array.isArray(uploadsRaw) ? uploadsRaw : uploadsRaw?.data?.uploads ?? []
+    return allUploads.slice(0, 5).map((upload, index) => ({
+      id: upload._id,
+      device: upload.device || `Device ${index + 1}`,
+      name: upload.originalName || upload.filename || `Upload ${index + 1}`,
+      size: upload.size || '0 MB',
+      status: upload.status || 'pending',
+      progress: upload.status === 'completed' ? 100 : upload.status === 'uploading' ? 67 : upload.status === 'failed' ? 23 : 0
+    }))
+  }, [uploadsRaw])
 
   const handleRefresh = async () => {
     setRefreshing(true)
-    await fetchData()
+    await Promise.all([refetchDevices(), refetchUploads()])
     setRefreshing(false)
   }
 
   const handleStartRecording = useCallback(async (deviceId) => {
     try {
-      await api(`/api/operations/devices/${deviceId}/start-recording`, 'POST')
-      await fetchData()
+      await startRecordingMutation.mutateAsync(deviceId)
     } catch (error) {
       console.error('Error starting recording:', error)
     }
-  }, [fetchData])
+  }, [startRecordingMutation])
 
   const handleStopRecording = useCallback(async (deviceId) => {
     try {
-      await api(`/api/operations/devices/${deviceId}/stop-recording`, 'POST')
-      await fetchData()
+      await stopRecordingMutation.mutateAsync(deviceId)
     } catch (error) {
       console.error('Error stopping recording:', error)
     }
-  }, [fetchData])
+  }, [stopRecordingMutation])
 
   if (loading) {
     return (

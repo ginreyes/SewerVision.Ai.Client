@@ -1,33 +1,25 @@
 'use client'
 
-import React, { useState, useEffect, useCallback } from 'react'
+import React, { useState, useMemo } from 'react'
 import {
   Settings,
   Server,
   Database,
   Cpu,
-  HardDrive,
-  Wifi,
+  Monitor,
   AlertTriangle,
-  CheckCircle,
   Clock,
   Activity,
   BarChart3,
   RefreshCw,
   Shield,
-  Zap,
-  Monitor,
   Wrench,
-  Plus,
   Calendar,
-  User,
   Loader2,
-  ChevronRight,
   Filter,
-  XCircle
 } from 'lucide-react'
 import { Button } from '@/components/ui/button'
-import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card'
+import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
 import { Badge } from '@/components/ui/badge'
 import {
   Select,
@@ -39,9 +31,13 @@ import {
 import { Input } from '@/components/ui/input'
 import { useUser } from '@/components/providers/UserContext'
 import { useAlert } from '@/components/providers/AlertProvider'
-import maintenanceApi from '@/data/maintenanceApi'
+import {
+  useMaintenanceOverview,
+  useRefreshMaintenanceSystems,
+  useDismissMaintenanceAlert,
+} from '@/hooks/useQueryHooks'
+import { StatCard, SystemStatusCard, AlertItem, TaskRow } from '@/components/operator/maintenance'
 
-// Icon mapping for system categories
 const categoryIcons = {
   cloud: Server,
   ai: Cpu,
@@ -50,254 +46,19 @@ const categoryIcons = {
   security: Shield,
 }
 
-// Stat Card Component - Reusable card for displaying metrics
-const StatCard = ({ title, value, subtitle, icon: Icon, color, trend }) => (
-  <Card className="overflow-hidden hover:shadow-lg transition-all duration-300 border-0 shadow-md">
-    <CardContent className="p-6">
-      <div className="flex items-center justify-between">
-        <div className="flex-1">
-          <p className="text-sm font-medium text-gray-500">{title}</p>
-          <div className="flex items-baseline gap-2 mt-1">
-            <p className="text-2xl font-bold text-gray-900">{value}</p>
-            {trend && (
-              <span className={`text-xs font-medium ${trend.type === 'up' ? 'text-green-600' : trend.type === 'down' ? 'text-red-600' : 'text-gray-500'}`}>
-                {trend.value}
-              </span>
-            )}
-          </div>
-          <p className="text-xs text-gray-400 mt-1">{subtitle}</p>
-        </div>
-        <div className={`p-3 rounded-xl ${color} shadow-lg`}>
-          <Icon className="w-6 h-6 text-white" />
-        </div>
-      </div>
-    </CardContent>
-  </Card>
-)
+const formatTimeAgo = (dateString) => {
+  if (!dateString) return 'Unknown'
+  const date = new Date(dateString)
+  const now = new Date()
+  const diffMs = now - date
+  const diffSec = Math.floor(diffMs / 1000)
+  const diffMin = Math.floor(diffSec / 60)
+  const diffHr = Math.floor(diffMin / 60)
 
-// Progress Bar Component
-const ProgressBar = ({ value, color = 'blue', size = 'md', showLabel = true }) => {
-  const getColorClass = () => {
-    if (value > 80) return 'bg-red-500'
-    if (value > 60) return 'bg-yellow-500'
-    return `bg-${color}-500`
-  }
-
-  const sizeClass = size === 'sm' ? 'h-1.5' : size === 'lg' ? 'h-3' : 'h-2'
-
-  return (
-    <div className="flex items-center gap-2">
-      <div className={`flex-1 bg-gray-100 rounded-full ${sizeClass} overflow-hidden`}>
-        <div
-          className={`${getColorClass()} ${sizeClass} rounded-full transition-all duration-500`}
-          style={{ width: `${Math.min(value, 100)}%` }}
-        />
-      </div>
-      {showLabel && <span className="text-xs font-medium text-gray-600 w-10 text-right">{value}%</span>}
-    </div>
-  )
-}
-
-// System Status Card Component
-const SystemStatusCard = ({ system, onViewDetails }) => {
-  const IconComponent = system.icon
-
-  const getStatusStyles = (status) => {
-    switch (status) {
-      case 'healthy': return { bg: 'bg-green-100', text: 'text-green-700', border: 'border-green-200', dot: 'bg-green-500' }
-      case 'warning': return { bg: 'bg-yellow-100', text: 'text-yellow-700', border: 'border-yellow-200', dot: 'bg-yellow-500' }
-      case 'error': return { bg: 'bg-red-100', text: 'text-red-700', border: 'border-red-200', dot: 'bg-red-500' }
-      default: return { bg: 'bg-gray-100', text: 'text-gray-700', border: 'border-gray-200', dot: 'bg-gray-500' }
-    }
-  }
-
-  const statusStyles = getStatusStyles(system.status)
-
-  return (
-    <Card className="hover:shadow-xl transition-all duration-300 cursor-pointer group border-0 shadow-md overflow-hidden">
-      <CardContent className="p-6">
-        <div className="flex items-start justify-between mb-4">
-          <div className={`p-3 rounded-xl bg-gradient-to-br from-blue-500 to-indigo-600 shadow-lg group-hover:scale-105 transition-transform`}>
-            <IconComponent className="h-6 w-6 text-white" />
-          </div>
-          <div className={`flex items-center gap-1.5 px-3 py-1 rounded-full text-xs font-semibold ${statusStyles.bg} ${statusStyles.text} border ${statusStyles.border}`}>
-            <div className={`w-2 h-2 rounded-full ${statusStyles.dot} animate-pulse`} />
-            {system.status.charAt(0).toUpperCase() + system.status.slice(1)}
-          </div>
-        </div>
-
-        <h3 className="font-bold text-gray-900 mb-1 group-hover:text-blue-600 transition-colors">{system.name}</h3>
-
-        <div className="flex items-center gap-4 text-sm text-gray-500 mb-4">
-          <span className="flex items-center gap-1">
-            <CheckCircle className="w-3.5 h-3.5 text-green-500" />
-            {system.uptime} uptime
-          </span>
-          <span className="flex items-center gap-1">
-            <Clock className="w-3.5 h-3.5" />
-            {system.lastCheck}
-          </span>
-        </div>
-
-        {/* Resource Metrics */}
-        <div className="space-y-3 mt-4">
-          <div>
-            <div className="flex justify-between text-xs mb-1">
-              <span className="text-gray-500 flex items-center gap-1">
-                <Cpu className="w-3 h-3" /> CPU
-              </span>
-              <span className="font-medium text-gray-700">{system.cpu}%</span>
-            </div>
-            <ProgressBar value={system.cpu} showLabel={false} />
-          </div>
-
-          <div>
-            <div className="flex justify-between text-xs mb-1">
-              <span className="text-gray-500 flex items-center gap-1">
-                <HardDrive className="w-3 h-3" /> Memory
-              </span>
-              <span className="font-medium text-gray-700">{system.memory}%</span>
-            </div>
-            <ProgressBar value={system.memory} showLabel={false} />
-          </div>
-
-          <div>
-            <div className="flex justify-between text-xs mb-1">
-              <span className="text-gray-500 flex items-center gap-1">
-                <Database className="w-3 h-3" /> Storage
-              </span>
-              <span className="font-medium text-gray-700">{system.storage}%</span>
-            </div>
-            <ProgressBar value={system.storage} color="purple" showLabel={false} />
-          </div>
-        </div>
-      </CardContent>
-    </Card>
-  )
-}
-
-// Alert Item Component
-const AlertItem = ({ alert, onDismiss }) => {
-  const getAlertStyles = (type) => {
-    switch (type) {
-      case 'error': return {
-        bg: 'bg-red-50',
-        border: 'border-red-200',
-        icon: XCircle,
-        iconColor: 'text-red-500'
-      }
-      case 'warning': return {
-        bg: 'bg-yellow-50',
-        border: 'border-yellow-200',
-        icon: AlertTriangle,
-        iconColor: 'text-yellow-500'
-      }
-      case 'info': return {
-        bg: 'bg-blue-50',
-        border: 'border-blue-200',
-        icon: CheckCircle,
-        iconColor: 'text-blue-500'
-      }
-      default: return {
-        bg: 'bg-gray-50',
-        border: 'border-gray-200',
-        icon: AlertTriangle,
-        iconColor: 'text-gray-500'
-      }
-    }
-  }
-
-  const styles = getAlertStyles(alert.type)
-  const IconComponent = styles.icon
-
-  return (
-    <div className={`flex items-center p-4 ${styles.bg} border ${styles.border} rounded-xl transition-all hover:shadow-sm`}>
-      <div className="flex-shrink-0 mr-3">
-        <IconComponent className={`h-5 w-5 ${styles.iconColor}`} />
-      </div>
-      <div className="flex-1 min-w-0">
-        <p className="text-sm font-medium text-gray-900">{alert.message}</p>
-        <div className="flex items-center mt-1 text-xs text-gray-500 gap-2">
-          <span className="flex items-center gap-1">
-            <Clock className="w-3 h-3" />
-            {alert.timestamp}
-          </span>
-          <span className="text-gray-300">•</span>
-          <span className="capitalize font-medium">{alert.system.replace('-', ' ')}</span>
-        </div>
-      </div>
-      <Button
-        variant="ghost"
-        size="sm"
-        className="ml-2 text-gray-400 hover:text-gray-600"
-        onClick={() => onDismiss && onDismiss(alert.id)}
-      >
-        <XCircle className="h-4 w-4" />
-      </Button>
-    </div>
-  )
-}
-
-// Task Row Component  
-const TaskRow = ({ task }) => {
-  const getStatusStyles = (status) => {
-    switch (status) {
-      case 'completed': return 'bg-green-100 text-green-700 border-green-200'
-      case 'in-progress': return 'bg-blue-100 text-blue-700 border-blue-200'
-      case 'scheduled': return 'bg-purple-100 text-purple-700 border-purple-200'
-      case 'pending': return 'bg-orange-100 text-orange-700 border-orange-200'
-      default: return 'bg-gray-100 text-gray-700 border-gray-200'
-    }
-  }
-
-  const getPriorityStyles = (priority) => {
-    switch (priority) {
-      case 'high': return 'bg-red-100 text-red-700'
-      case 'medium': return 'bg-yellow-100 text-yellow-700'
-      case 'low': return 'bg-green-100 text-green-700'
-      default: return 'bg-gray-100 text-gray-700'
-    }
-  }
-
-  return (
-    <tr className="hover:bg-gray-50/50 transition-colors">
-      <td className="px-6 py-4">
-        <div>
-          <div className="text-sm font-semibold text-gray-900">{task.task}</div>
-          <div className="text-xs text-gray-500 flex items-center gap-1 mt-1">
-            <span className="font-mono">{task.id}</span>
-          </div>
-        </div>
-      </td>
-      <td className="px-6 py-4">
-        <span className={`inline-flex items-center px-2.5 py-1 rounded-full text-xs font-semibold ${getPriorityStyles(task.priority)}`}>
-          {task.priority.charAt(0).toUpperCase() + task.priority.slice(1)}
-        </span>
-      </td>
-      <td className="px-6 py-4">
-        <span className={`inline-flex items-center px-2.5 py-1 rounded-full text-xs font-semibold border ${getStatusStyles(task.status)}`}>
-          {task.status.split('-').map(s => s.charAt(0).toUpperCase() + s.slice(1)).join(' ')}
-        </span>
-      </td>
-      <td className="px-6 py-4">
-        <div className="flex items-center gap-2 text-sm text-gray-700">
-          <User className="w-4 h-4 text-gray-400" />
-          {task.assignedTo}
-        </div>
-      </td>
-      <td className="px-6 py-4">
-        <div className="flex items-center gap-2 w-32">
-          <ProgressBar value={task.progress} size="sm" />
-        </div>
-      </td>
-      <td className="px-6 py-4">
-        <div className="flex items-center gap-2 text-sm text-gray-600">
-          <Calendar className="w-4 h-4 text-gray-400" />
-          {new Date(task.estimatedCompletion).toLocaleDateString()}
-        </div>
-      </td>
-    </tr>
-  )
+  if (diffSec < 60) return 'Just now'
+  if (diffMin < 60) return `${diffMin} min ago`
+  if (diffHr < 24) return `${diffHr} hr ago`
+  return date.toLocaleDateString()
 }
 
 // Main Component
@@ -305,30 +66,54 @@ const MaintenancePage = () => {
   const { userId, userData } = useUser()
   const { showAlert } = useAlert()
 
-  const [loading, setLoading] = useState(true)
-  const [refreshing, setRefreshing] = useState(false)
   const [statusFilter, setStatusFilter] = useState('all')
   const [searchQuery, setSearchQuery] = useState('')
 
-  // Data states
-  const [systemStatus, setSystemStatus] = useState([])
-  const [maintenanceTasks, setMaintenanceTasks] = useState([])
-  const [alerts, setAlerts] = useState([])
-  const [performanceMetrics, setPerformanceMetrics] = useState({
-    aiProcessingSpeed: '+15%',
-    errorRate: '0.02%',
-    avgResponseTime: '285ms',
-  })
-  const [securityStatus, setSecurityStatus] = useState({
-    lastScan: new Date(),
-    vulnerabilities: 0,
-    firewallStatus: 'active',
-  })
-  const [resourceUsage, setResourceUsage] = useState({
-    totalStorage: { used: 2.4, total: 5, unit: 'TB' },
-    bandwidthPeak: '1.8 GB/s',
-    activeConnections: 1247,
-  })
+  // ── Data fetching via TanStack Query ──
+  const { data: overviewData, isLoading: loading } = useMaintenanceOverview()
+  const refreshMutation = useRefreshMaintenanceSystems()
+  const dismissAlertMutation = useDismissMaintenanceAlert()
+
+  const refreshing = refreshMutation.isPending
+
+  // Derive state from query data
+  const { systemStatus, maintenanceTasks, alerts, performanceMetrics, securityStatus, resourceUsage } = useMemo(() => {
+    if (!overviewData) return {
+      systemStatus: [],
+      maintenanceTasks: [],
+      alerts: [],
+      performanceMetrics: { aiProcessingSpeed: '+15%', errorRate: '0.02%', avgResponseTime: '285ms' },
+      securityStatus: { lastScan: new Date(), vulnerabilities: 0, firewallStatus: 'active' },
+      resourceUsage: { totalStorage: { used: 2.4, total: 5, unit: 'TB' }, bandwidthPeak: '1.8 GB/s', activeConnections: 1247 },
+    }
+
+    const systemsWithIcons = (overviewData.systems || []).map(system => ({
+      ...system,
+      id: system.systemId,
+      icon: categoryIcons[system.category] || Server,
+      lastCheck: formatTimeAgo(system.lastCheck)
+    }))
+
+    const mappedTasks = (overviewData.tasks || []).map(task => ({
+      ...task,
+      id: task.taskId,
+    }))
+
+    const mappedAlerts = (overviewData.alerts || []).map(alert => ({
+      ...alert,
+      id: alert.alertId,
+      timestamp: formatTimeAgo(alert.createdAt)
+    }))
+
+    return {
+      systemStatus: systemsWithIcons,
+      maintenanceTasks: mappedTasks,
+      alerts: mappedAlerts,
+      performanceMetrics: overviewData.performanceMetrics || { aiProcessingSpeed: '+15%', errorRate: '0.02%', avgResponseTime: '285ms' },
+      securityStatus: overviewData.securityStatus || { lastScan: new Date(), vulnerabilities: 0, firewallStatus: 'active' },
+      resourceUsage: overviewData.resourceUsage || { totalStorage: { used: 2.4, total: 5, unit: 'TB' }, bandwidthPeak: '1.8 GB/s', activeConnections: 1247 },
+    }
+  }, [overviewData])
 
   // Stats calculations
   const stats = {
@@ -340,115 +125,20 @@ const MaintenancePage = () => {
     criticalAlerts: alerts.filter(a => a.type === 'error' || a.type === 'critical').length
   }
 
-  // Fetch maintenance data from API
-  const fetchMaintenanceData = useCallback(async () => {
-    try {
-      const { data, error } = await maintenanceApi.getOverview()
-
-      if (error) {
-        console.error('Error fetching maintenance data:', error)
-        showAlert('Failed to load maintenance data', 'error')
-        return
-      }
-
-      if (data?.data) {
-        // Map systems with icons
-        const systemsWithIcons = (data.data.systems || []).map(system => ({
-          ...system,
-          id: system.systemId,
-          icon: categoryIcons[system.category] || Server,
-          lastCheck: formatTimeAgo(system.lastCheck)
-        }))
-        setSystemStatus(systemsWithIcons)
-
-        // Map tasks
-        const mappedTasks = (data.data.tasks || []).map(task => ({
-          ...task,
-          id: task.taskId,
-        }))
-        setMaintenanceTasks(mappedTasks)
-
-        // Map alerts
-        const mappedAlerts = (data.data.alerts || []).map(alert => ({
-          ...alert,
-          id: alert.alertId,
-          timestamp: formatTimeAgo(alert.createdAt)
-        }))
-        setAlerts(mappedAlerts)
-
-        // Set additional metrics if available
-        if (data.data.performanceMetrics) {
-          setPerformanceMetrics(data.data.performanceMetrics)
-        }
-        if (data.data.securityStatus) {
-          setSecurityStatus(data.data.securityStatus)
-        }
-        if (data.data.resourceUsage) {
-          setResourceUsage(data.data.resourceUsage)
-        }
-      }
-    } catch (error) {
-      console.error('Error fetching maintenance data:', error)
-      showAlert('Failed to load maintenance data', 'error')
-    } finally {
-      setLoading(false)
-    }
-  }, [showAlert])
-
-  // Format time ago helper
-  const formatTimeAgo = (dateString) => {
-    if (!dateString) return 'Unknown'
-    const date = new Date(dateString)
-    const now = new Date()
-    const diffMs = now - date
-    const diffSec = Math.floor(diffMs / 1000)
-    const diffMin = Math.floor(diffSec / 60)
-    const diffHr = Math.floor(diffMin / 60)
-
-    if (diffSec < 60) return 'Just now'
-    if (diffMin < 60) return `${diffMin} min ago`
-    if (diffHr < 24) return `${diffHr} hr ago`
-    return date.toLocaleDateString()
-  }
-
-  // Initial data load
-  useEffect(() => {
-    fetchMaintenanceData()
-  }, [fetchMaintenanceData])
-
   // Handle refresh
-  const handleRefresh = useCallback(async () => {
-    setRefreshing(true)
-
+  const handleRefresh = async () => {
     try {
-      const { data, error } = await maintenanceApi.refreshSystems()
-
-      if (error) {
-        showAlert('Failed to refresh status', 'error')
-        return
-      }
-
-      // Refetch all data
-      await fetchMaintenanceData()
+      await refreshMutation.mutateAsync()
       showAlert('System status refreshed successfully', 'success')
     } catch (error) {
       showAlert('Failed to refresh status', 'error')
-    } finally {
-      setRefreshing(false)
     }
-  }, [showAlert, fetchMaintenanceData])
+  }
 
   // Handle alert dismiss
   const handleDismissAlert = async (alertId) => {
     try {
-      const { error } = await maintenanceApi.deleteAlert(alertId)
-
-      if (error) {
-        showAlert('Failed to dismiss alert', 'error')
-        return
-      }
-
-      setAlerts(prev => prev.filter(a => a.id !== alertId && a.alertId !== alertId))
+      await dismissAlertMutation.mutateAsync(alertId)
       showAlert('Alert dismissed', 'success')
     } catch (error) {
       showAlert('Failed to dismiss alert', 'error')
@@ -663,15 +353,15 @@ const MaintenancePage = () => {
               <div className="space-y-4">
                 <div className="flex justify-between items-center">
                   <span className="text-gray-600">AI Processing Speed</span>
-                  <span className="text-green-600 font-semibold text-sm">+15% ↑</span>
+                  <span className="text-green-600 font-semibold text-sm">{performanceMetrics.aiProcessingSpeed} &#8593;</span>
                 </div>
                 <div className="flex justify-between items-center">
                   <span className="text-gray-600">Error Rate</span>
-                  <span className="text-green-600 font-semibold text-sm">0.02%</span>
+                  <span className="text-green-600 font-semibold text-sm">{performanceMetrics.errorRate}</span>
                 </div>
                 <div className="flex justify-between items-center">
                   <span className="text-gray-600">Avg Response Time</span>
-                  <span className="text-blue-600 font-semibold text-sm">285ms</span>
+                  <span className="text-blue-600 font-semibold text-sm">{performanceMetrics.avgResponseTime}</span>
                 </div>
               </div>
             </CardContent>
@@ -688,15 +378,15 @@ const MaintenancePage = () => {
               <div className="space-y-4">
                 <div className="flex justify-between items-center">
                   <span className="text-gray-600">Last Security Scan</span>
-                  <span className="text-green-600 font-semibold text-sm">2 hrs ago</span>
+                  <span className="text-green-600 font-semibold text-sm">{formatTimeAgo(securityStatus.lastScan)}</span>
                 </div>
                 <div className="flex justify-between items-center">
                   <span className="text-gray-600">Critical Vulnerabilities</span>
-                  <span className="text-green-600 font-semibold text-sm">0 found</span>
+                  <span className="text-green-600 font-semibold text-sm">{securityStatus.vulnerabilities} found</span>
                 </div>
                 <div className="flex justify-between items-center">
                   <span className="text-gray-600">Firewall Status</span>
-                  <span className="text-green-600 font-semibold text-sm">Active ✓</span>
+                  <span className="text-green-600 font-semibold text-sm">{securityStatus.firewallStatus === 'active' ? 'Active' : securityStatus.firewallStatus}</span>
                 </div>
               </div>
             </CardContent>
@@ -713,15 +403,17 @@ const MaintenancePage = () => {
               <div className="space-y-4">
                 <div className="flex justify-between items-center">
                   <span className="text-gray-600">Total Storage</span>
-                  <span className="text-blue-600 font-semibold text-sm">2.4 / 5 TB</span>
+                  <span className="text-blue-600 font-semibold text-sm">
+                    {resourceUsage.totalStorage?.used} / {resourceUsage.totalStorage?.total} {resourceUsage.totalStorage?.unit}
+                  </span>
                 </div>
                 <div className="flex justify-between items-center">
                   <span className="text-gray-600">Bandwidth Peak</span>
-                  <span className="text-purple-600 font-semibold text-sm">1.8 GB/s</span>
+                  <span className="text-purple-600 font-semibold text-sm">{resourceUsage.bandwidthPeak}</span>
                 </div>
                 <div className="flex justify-between items-center">
                   <span className="text-gray-600">Active Connections</span>
-                  <span className="text-yellow-600 font-semibold text-sm">1,247</span>
+                  <span className="text-yellow-600 font-semibold text-sm">{resourceUsage.activeConnections?.toLocaleString()}</span>
                 </div>
               </div>
             </CardContent>
