@@ -35,6 +35,7 @@ import {
   Ticket,
   Activity,
   MessageSquareWarning,
+  Headphones,
 } from 'lucide-react';
 import ModuleLoading from './SewerVisionLoadingAnimation';
 import { useLoadingModuleSetting } from '@/hooks/useLoadingModuleSettings';
@@ -69,6 +70,7 @@ const ICON_MAP = {
   Ticket,
   Activity,
   MessageSquareWarning,
+  Headphones,
 };
 
 // ── Hardcoded admin sidebar (never filtered by permissions) ──
@@ -195,6 +197,23 @@ const ROLE_THEMES = {
     title: 'Team Manager',
     subtitle: 'Active Access',
   },
+  customer: {
+    gradient: 'from-emerald-600 via-green-500 to-emerald-700',
+    activeBg: 'from-emerald-50 to-green-50',
+    activeText: 'text-emerald-700',
+    activeIcon: 'text-emerald-600',
+    activeBar: 'from-emerald-500 to-green-500',
+    hoverOverlay: 'group-hover:from-emerald-500/5 group-hover:to-green-500/5',
+    loaderColor: 'text-emerald-500',
+    chevronColor: 'text-emerald-400',
+    footerBg: 'from-emerald-50 to-green-50',
+    footerBorder: 'border-emerald-200/50',
+    footerText: 'text-emerald-700',
+    footerSub: 'text-emerald-600/70',
+    portal: 'Customer Portal',
+    title: 'Customer',
+    subtitle: 'Active Access',
+  },
 };
 
 // ── Hardcoded fallback menus per role (used when DB has no SecurityModules seeded) ──
@@ -265,9 +284,8 @@ const FALLBACK_MENUS = {
   customer: [
     { label: 'Main', items: [
       { label: 'Dashboard', icon: 'LayoutDashboard', path: '/customer/dashboard', key: 'dashboard', locked: true },
-      { label: 'Projects', icon: 'FolderOpen', path: '/customer/project', key: 'projects' },
-      { label: 'Support', icon: 'Headphones', path: '/customer/support', key: 'customer-support' },
-      { label: 'Complaints', icon: 'MessageSquareWarning', path: '/customer/complaints', key: 'customer-complaints' },
+      { label: 'Projects', icon: 'FolderOpen', path: '/customer/projects', key: 'projects', locked: true },
+      { label: 'Help Center', icon: 'Headphones', path: '/customer/support', key: 'customer-support', locked: true },
       { label: 'Notifications', icon: 'Bell', path: '/customer/notifications', key: 'notifications', locked: true },
       { label: 'Settings', icon: 'Settings', path: '/customer/settings', key: 'settings', locked: true },
     ]},
@@ -279,8 +297,12 @@ const FALLBACK_MENUS = {
     ]},
     { label: 'Support', items: [
       { label: 'Tickets', icon: 'Ticket', path: '/customer-rep/tickets', key: 'tickets' },
+      { label: 'My Queue', icon: 'ClipboardCheck', path: '/customer-rep/tasks', key: 'tasks' },
       { label: 'Complaints', icon: 'MessageSquareWarning', path: '/customer-rep/complaints', key: 'rep-complaints' },
-      { label: 'Tasks', icon: 'ClipboardCheck', path: '/customer-rep/tasks', key: 'tasks' },
+      { label: 'Templates', icon: 'FileText', path: '/customer-rep/templates', key: 'templates' },
+    ]},
+    { label: 'Insights', items: [
+      { label: 'Analytics', icon: 'BarChart2', path: '/customer-rep/analytics', key: 'analytics' },
       { label: 'Monitoring', icon: 'Activity', path: '/customer-rep/monitoring', key: 'monitoring' },
     ]},
     { label: 'Team', items: [
@@ -299,6 +321,7 @@ const LOADING_KEYS = {
   operator: 'operator',
   'qc-technician': 'qcTechnician',
   user: 'user',
+  customer: 'customer',
   'customer-rep': 'customerRep',
 };
 
@@ -312,7 +335,7 @@ const UnifiedSidebar = ({ isOpen, role, displayName }) => {
   // Fetch modules from SecurityModule API for non-admin roles
   const [dbModules, setDbModules] = useState(null); // null = not loaded yet
   useEffect(() => {
-    if (role === 'admin') return; // Admin uses hardcoded
+    if (role === 'admin' || role === 'customer') return; // These use hardcoded menus
     const fetchModules = async () => {
       try {
         const response = await api(`/api/security-modules/by-role/${role}`, 'GET');
@@ -344,7 +367,9 @@ const UnifiedSidebar = ({ isOpen, role, displayName }) => {
     // Find which item matches current path
     const allItems = role === 'admin'
       ? ADMIN_MENU_GROUPS.flatMap((g) => g.items)
-      : (dbModules || []).flatMap((g) => g.items || []);
+      : role === 'customer'
+        ? (FALLBACK_MENUS.customer || []).flatMap((g) => g.items || [])
+        : (dbModules || []).flatMap((g) => g.items || []);
 
     for (const item of allItems) {
       const path = item.path;
@@ -357,10 +382,9 @@ const UnifiedSidebar = ({ isOpen, role, displayName }) => {
 
   // Build menu groups
   const menuGroups = useMemo(() => {
-    // Admin: hardcoded, no permission filtering
-    if (role === 'admin') {
-      return ADMIN_MENU_GROUPS;
-    }
+    // Admin & customer: hardcoded, no permission filtering
+    if (role === 'admin') return ADMIN_MENU_GROUPS;
+    if (role === 'customer') return FALLBACK_MENUS.customer || [];
 
     // Other roles: use DB modules, filter by permissions
     if (!dbModules) return []; // Still loading

@@ -1278,6 +1278,16 @@ export function useSupportTeam(options = {}) {
     });
 }
 
+export function useManagedTeam(repId, options = {}) {
+    return useQuery({
+        queryKey: ['managedTeam', repId],
+        queryFn: () => supportApi.getManagedTeam(repId),
+        staleTime: 1000 * 60 * 2,
+        enabled: !!repId,
+        ...options,
+    });
+}
+
 export function useSupportCustomerStats(userId, options = {}) {
     return useQuery({
         queryKey: queryKeys.supportCustomerStats(userId),
@@ -1353,6 +1363,37 @@ export function useSupportCustomerHistory(customerId, options = {}) {
         queryKey: ['support', 'customer-history', customerId],
         queryFn: () => supportApi.getCustomerHistory(customerId),
         enabled: !!customerId,
+        staleTime: 1000 * 30,
+        ...options,
+    });
+}
+
+export function useRequestTicketDeletion() {
+    const queryClient = useQueryClient();
+    return useMutation({
+        mutationFn: ({ ticketId, ...data }) => supportApi.requestDeletion(ticketId, data),
+        onSuccess: (_data, { ticketId }) => {
+            queryClient.invalidateQueries({ queryKey: queryKeys.supportTicket(ticketId) });
+            queryClient.invalidateQueries({ queryKey: ['support', 'deletion-requests'] });
+        },
+    });
+}
+
+export function useReviewTicketDeletion() {
+    const queryClient = useQueryClient();
+    return useMutation({
+        mutationFn: ({ ticketId, ...data }) => supportApi.reviewDeletion(ticketId, data),
+        onSuccess: () => {
+            queryClient.invalidateQueries({ queryKey: ['support'] });
+            queryClient.invalidateQueries({ queryKey: ['support', 'deletion-requests'] });
+        },
+    });
+}
+
+export function usePendingDeletionRequests(options = {}) {
+    return useQuery({
+        queryKey: ['support', 'deletion-requests'],
+        queryFn: () => supportApi.getPendingDeletionRequests(),
         staleTime: 1000 * 30,
         ...options,
     });
@@ -1998,6 +2039,7 @@ export default {
     useSupportTicket,
     useSupportAssignedTickets,
     useSupportTeam,
+    useManagedTeam,
     useSupportCustomerStats,
     useCreateSupportTicket,
     useUpdateSupportTicket,
@@ -2006,6 +2048,9 @@ export default {
     useAddInternalNote,
     useSupportTags,
     useSupportCustomerHistory,
+    useRequestTicketDeletion,
+    useReviewTicketDeletion,
+    usePendingDeletionRequests,
     // Canned Response hooks
     useCannedResponses,
     useCreateCannedResponse,

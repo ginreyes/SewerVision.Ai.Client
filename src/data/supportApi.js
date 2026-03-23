@@ -59,6 +59,15 @@ const supportApi = {
     return res.data?.data ?? res.data;
   },
 
+  /** Upload a ticket reply attachment, returns { url, filename, originalname, mimetype, size } */
+  uploadTicketAttachment: async (ticketId, file) => {
+    const formData = new FormData();
+    formData.append("file", file);
+    const res = await api(`/api/support/ticket/${ticketId}/upload-attachment`, "POST", formData);
+    if (!res?.ok) throw new Error(res?.message || "Failed to upload file");
+    return res.data?.data ?? res.data;
+  },
+
   /** Delete a ticket */
   deleteTicket: async (ticketId) => {
     const res = await api(`/api/support/ticket/${ticketId}`, "DELETE");
@@ -80,6 +89,13 @@ const supportApi = {
     return res.data?.data ?? res.data;
   },
 
+  /** Get managed team members for a specific customer-rep */
+  getManagedTeam: async (repId) => {
+    const res = await api(`/api/support/team/managed/${repId}`, "GET");
+    if (!res?.ok) throw new Error(res?.message || "Failed to fetch managed team");
+    return res.data?.data ?? res.data;
+  },
+
   /** Add internal note to a ticket */
   addInternalNote: async (ticketId, data) => {
     const res = await api(`/api/support/ticket/${ticketId}/note`, "POST", data);
@@ -98,6 +114,27 @@ const supportApi = {
   getCustomerHistory: async (customerId) => {
     const res = await api(`/api/support/customer/${customerId}/history`, "GET");
     if (!res?.ok) throw new Error(res?.message || "Failed to fetch history");
+    return res.data?.data ?? res.data;
+  },
+
+  /** Request deletion of a ticket */
+  requestDeletion: async (ticketId, data) => {
+    const res = await api(`/api/support/ticket/${ticketId}/delete-request`, "POST", data);
+    if (!res?.ok) throw new Error(res?.message || "Failed to request deletion");
+    return res.data?.data ?? res.data;
+  },
+
+  /** Team leader reviews a deletion request */
+  reviewDeletion: async (ticketId, data) => {
+    const res = await api(`/api/support/ticket/${ticketId}/delete-review`, "POST", data);
+    if (!res?.ok) throw new Error(res?.message || "Failed to review deletion");
+    return res.data?.data ?? res.data;
+  },
+
+  /** Get all pending deletion requests (team leaders) */
+  getPendingDeletionRequests: async () => {
+    const res = await api("/api/support/deletion-requests", "GET");
+    if (!res?.ok) throw new Error(res?.message || "Failed to fetch deletion requests");
     return res.data?.data ?? res.data;
   },
 };

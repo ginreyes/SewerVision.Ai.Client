@@ -4,7 +4,7 @@ import Navbar from "@/components/ui/navbar";
 import { useEffect, useState, useCallback } from "react";
 import { usePathname, useRouter } from "next/navigation";
 import { api, getCookie, deleteCookie } from "@/lib/helper";
-import CustomerSidebar from "@/components/customer/CustomerSidebar";
+import UnifiedSidebar from "@/components/ui/UnifiedSidebar";
 import { TourGuide, useTourGuide } from "@/components/TourGuide";
 import RoleThemeProvider from "@/components/providers/RoleThemeProvider";
 import CustomerReactTour, { useCustomerReactTour } from "@/components/customer/CustomerReactTour";
@@ -89,7 +89,7 @@ export default function CustomerLayout({ children }) {
             className={`fixed top-0 left-0 h-full transition-all duration-300 border-2  ${openSidebar ? "w-[270px]" : "w-[90px]"
               }`}
           >
-            <CustomerSidebar isOpen={openSidebar} />
+            <UnifiedSidebar isOpen={openSidebar} role="customer" displayName={null} />
           </div>
 
           <div

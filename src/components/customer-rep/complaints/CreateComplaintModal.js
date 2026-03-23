@@ -33,12 +33,6 @@ import {
 import { getUserName } from "../constants";
 import { CATEGORY_OPTIONS, SOURCE_OPTIONS, SEVERITY_OPTIONS } from "./constants";
 
-// Simple customer search (uses the team endpoint for now, or you can wire up a user search)
-function useCustomerSearch(query) {
-  // For MVP, customer info is entered manually.
-  // In production, you'd search via /api/users?role=customer&search=query
-  return { customers: [], isSearching: false };
-}
 
 export default function CreateComplaintModal({ open, onOpenChange, onCreated }) {
   const { userId } = useUser();

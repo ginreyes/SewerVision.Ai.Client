@@ -134,15 +134,16 @@ const UserProfile = () => {
           availability_status: u.availability_status || "available", max_concurrent_tickets: u.max_concurrent_tickets || 10,
         });
 
-        // Load potential team members (operators & QC techs)
+        // Load potential team members based on the user's role
         const { ok, data } = await api("/api/users/get-all-user?limit=200", "GET");
         if (ok && Array.isArray(data.users)) {
-          const candidates = data.users.filter(
-            (m) =>
-              m._id !== u._id &&
-              m.role !== "admin" &&
-              m.role !== "customer"
-          );
+          const candidates = data.users.filter((m) => {
+            if (m._id === u._id) return false;
+            // Customer-rep can only manage other customer-rep users
+            if (u.role === 'customer-rep') return m.role === 'customer-rep';
+            // Team lead manages operators & QC techs (exclude admin & customer)
+            return m.role !== "admin" && m.role !== "customer";
+          });
           setAvailableMembers(candidates);
         } else {
           setAvailableMembers([]);
@@ -568,6 +569,11 @@ const UserProfile = () => {
               form={form}
               isEdit={isEdit}
               setForm={setForm}
+              managedMembers={managedMembers}
+              setManagedMembers={setManagedMembers}
+              availableMembers={availableMembers}
+              selectedMemberId={selectedMemberId}
+              setSelectedMemberId={setSelectedMemberId}
             />
           )}
 
