@@ -1,6 +1,7 @@
 'use client';
 
 import Navbar from "@/components/ui/navbar";
+import AnnouncementBanner from "@/components/ui/AnnouncementBanner";
 import { useEffect, useState, useCallback } from "react";
 import { usePathname, useRouter } from "next/navigation";
 import { api, getCookie, deleteCookie } from "@/lib/helper";
@@ -97,7 +98,7 @@ export default function CustomerLayout({ children }) {
               }`}
           >
             <Navbar openSideBar={handleToggleSidebar} role="customer" />
-            <main className="p-4  min-h-screen">{children}</main>
+            <main className="p-4  min-h-screen"><AnnouncementBanner role="customer" />{children}</main>
           </div>
 
           {/* Tour Guide Modal (existing) */}

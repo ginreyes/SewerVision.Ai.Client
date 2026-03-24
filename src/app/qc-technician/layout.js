@@ -2,6 +2,7 @@
 
 import UnifiedSidebar from "@/components/ui/UnifiedSidebar";
 import Navbar from "@/components/ui/navbar";
+import AnnouncementBanner from "@/components/ui/AnnouncementBanner";
 import { api, getCookie, deleteCookie } from "@/lib/helper";
 import { useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
@@ -85,7 +86,7 @@ export default function QcTechLayout({ children }) {
               }`}
           >
             <Navbar openSideBar={handleToggleSidebar} role="qc-technician" />
-            <main className="p-4">{children}</main>
+            <main className="p-4"><AnnouncementBanner role="qc-technician" />{children}</main>
           </div>
         </div>
 

@@ -245,6 +245,181 @@ export const customerApi = {
 
         return response.data;
     },
+
+    // ─── Live Tracker ───────────────────────────────────────
+
+    /**
+     * Get live tracker projects for a customer
+     */
+    async getTrackerProjects(customerId) {
+        const response = await api(`/api/live-tracker/customer/${customerId}`, 'GET');
+        if (!response.ok) {
+            throw new Error(response.data?.error || 'Failed to fetch tracker projects');
+        }
+        return response.data?.data || [];
+    },
+
+    // ─── Document Vault ─────────────────────────────────────
+
+    /**
+     * Get all documents for a customer
+     */
+    async getDocuments(customerId, { type, search, page = 1, limit = 50 } = {}) {
+        const params = new URLSearchParams();
+        if (type && type !== 'all') params.append('type', type);
+        if (search) params.append('search', search);
+        params.append('page', String(page));
+        params.append('limit', String(limit));
+
+        const response = await api(`/api/customer-documents/customer/${customerId}?${params}`, 'GET');
+        if (!response.ok) {
+            throw new Error(response.data?.error || 'Failed to fetch documents');
+        }
+        return response.data;
+    },
+
+    /**
+     * Track a document download
+     */
+    async trackDocumentDownload(documentId) {
+        const response = await api(`/api/customer-documents/download/${documentId}`, 'PUT');
+        if (!response.ok) {
+            throw new Error(response.data?.error || 'Failed to track download');
+        }
+        return response.data;
+    },
+
+    // ─── Appointments ───────────────────────────────────────
+
+    /**
+     * Get all appointments for a customer
+     */
+    async getAppointments(customerId, { status, page = 1, limit = 20 } = {}) {
+        const params = new URLSearchParams();
+        if (status && status !== 'all') params.append('status', status);
+        params.append('page', String(page));
+        params.append('limit', String(limit));
+
+        const response = await api(`/api/appointments/customer/${customerId}?${params}`, 'GET');
+        if (!response.ok) {
+            throw new Error(response.data?.error || 'Failed to fetch appointments');
+        }
+        return response.data;
+    },
+
+    /**
+     * Get available time slots for a date
+     */
+    async getAvailableSlots(date) {
+        const response = await api(`/api/appointments/available-slots?date=${date}`, 'GET');
+        if (!response.ok) {
+            throw new Error(response.data?.error || 'Failed to fetch available slots');
+        }
+        return response.data?.data || [];
+    },
+
+    /**
+     * Create a new appointment
+     */
+    async createAppointment(data) {
+        const response = await api('/api/appointments/create', 'POST', data);
+        if (!response.ok) {
+            throw new Error(response.data?.message || 'Failed to create appointment');
+        }
+        return response.data?.data;
+    },
+
+    /**
+     * Update an appointment
+     */
+    async updateAppointment(id, data) {
+        const response = await api(`/api/appointments/update/${id}`, 'PUT', data);
+        if (!response.ok) {
+            throw new Error(response.data?.message || 'Failed to update appointment');
+        }
+        return response.data?.data;
+    },
+
+    /**
+     * Delete an appointment
+     */
+    async deleteAppointment(id) {
+        const response = await api(`/api/appointments/delete/${id}`, 'DELETE');
+        if (!response.ok) {
+            throw new Error(response.data?.message || 'Failed to delete appointment');
+        }
+        return response.data;
+    },
+
+    // ─── Report Annotations ─────────────────────────────────
+
+    /**
+     * Get annotations for a report
+     */
+    async getReportAnnotations(reportId) {
+        const response = await api(`/api/report-annotations/report/${reportId}`, 'GET');
+        if (!response.ok) {
+            throw new Error(response.data?.error || 'Failed to fetch annotations');
+        }
+        return response.data?.data || [];
+    },
+
+    /**
+     * Get all annotations for a customer
+     */
+    async getCustomerAnnotations(customerId) {
+        const response = await api(`/api/report-annotations/customer/${customerId}`, 'GET');
+        if (!response.ok) {
+            throw new Error(response.data?.error || 'Failed to fetch annotations');
+        }
+        return response.data;
+    },
+
+    /**
+     * Create an annotation
+     */
+    async createAnnotation(data) {
+        const response = await api('/api/report-annotations/create', 'POST', data);
+        if (!response.ok) {
+            throw new Error(response.data?.message || 'Failed to create annotation');
+        }
+        return response.data?.data;
+    },
+
+    // ─── Dashboard Widgets ──────────────────────────────────
+
+    /**
+     * Get widget preferences for a user
+     */
+    async getWidgetPreferences(userId) {
+        const response = await api(`/api/dashboard-widgets/preferences/${userId}`, 'GET');
+        if (!response.ok) {
+            throw new Error(response.data?.error || 'Failed to fetch widget preferences');
+        }
+        return response.data?.data;
+    },
+
+    /**
+     * Update widget preferences
+     */
+    async updateWidgetPreferences(userId, widgets) {
+        const response = await api(`/api/dashboard-widgets/preferences/${userId}`, 'PUT', { widgets });
+        if (!response.ok) {
+            throw new Error(response.data?.message || 'Failed to update widget preferences');
+        }
+        return response.data?.data;
+    },
+
+    /**
+     * Get widget data (live content)
+     */
+    async getWidgetData(userId) {
+        const response = await api(`/api/dashboard-widgets/data/${userId}`, 'GET');
+        if (!response.ok) {
+            throw new Error(response.data?.error || 'Failed to fetch widget data');
+        }
+        return response.data?.data;
+    },
 };
 
 export default customerApi;

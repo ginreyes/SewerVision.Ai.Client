@@ -102,6 +102,16 @@ export const queryKeys = {
     customerNotifications: (userId) => ['customer', 'notifications', userId],
     customerNotificationPreferences: (userId) => ['customer', 'notification-preferences', userId],
 
+    // Customer — New Modules
+    customerTracker: (customerId) => ['customer', 'tracker', customerId],
+    customerDocuments: (customerId, filters) => ['customer', 'documents', customerId, filters ?? {}],
+    customerAppointments: (customerId, filters) => ['customer', 'appointments', customerId, filters ?? {}],
+    customerAvailableSlots: (date) => ['customer', 'available-slots', date],
+    customerAnnotations: (reportId) => ['customer', 'annotations', reportId],
+    customerAllAnnotations: (customerId) => ['customer', 'all-annotations', customerId],
+    customerWidgetPreferences: (userId) => ['customer', 'widget-preferences', userId],
+    customerWidgetData: (userId) => ['customer', 'widget-data', userId],
+
     // Devices (admin)
     devices: (params) => ['devices', params ?? {}],
     device: (deviceId) => ['devices', deviceId],
@@ -1931,6 +1941,180 @@ export function useDownloadCustomerReport() {
     });
 }
 
+// ─── CUSTOMER NEW MODULE HOOKS ──────────────────────────
+
+/**
+ * Hook: Live Tracker projects
+ */
+export function useCustomerTracker(customerId, options = {}) {
+    return useQuery({
+        queryKey: queryKeys.customerTracker(customerId),
+        queryFn: () => customerApi.getTrackerProjects(customerId),
+        enabled: !!customerId,
+        staleTime: 1000 * 60 * 2,
+        ...options,
+    });
+}
+
+/**
+ * Hook: Customer Documents
+ */
+export function useCustomerDocuments(customerId, filters = {}, options = {}) {
+    return useQuery({
+        queryKey: queryKeys.customerDocuments(customerId, filters),
+        queryFn: () => customerApi.getDocuments(customerId, filters),
+        enabled: !!customerId,
+        staleTime: 1000 * 60 * 5,
+        ...options,
+    });
+}
+
+/**
+ * Mutation: Track document download
+ */
+export function useTrackDocumentDownload() {
+    const queryClient = useQueryClient();
+    return useMutation({
+        mutationFn: (documentId) => customerApi.trackDocumentDownload(documentId),
+        onSuccess: () => {
+            queryClient.invalidateQueries({ queryKey: ['customer', 'documents'] });
+        },
+    });
+}
+
+/**
+ * Hook: Customer Appointments
+ */
+export function useCustomerAppointments(customerId, filters = {}, options = {}) {
+    return useQuery({
+        queryKey: queryKeys.customerAppointments(customerId, filters),
+        queryFn: () => customerApi.getAppointments(customerId, filters),
+        enabled: !!customerId,
+        staleTime: 1000 * 60 * 5,
+        ...options,
+    });
+}
+
+/**
+ * Hook: Available time slots
+ */
+export function useAvailableSlots(date, options = {}) {
+    return useQuery({
+        queryKey: queryKeys.customerAvailableSlots(date),
+        queryFn: () => customerApi.getAvailableSlots(date),
+        enabled: !!date,
+        staleTime: 1000 * 60 * 2,
+        ...options,
+    });
+}
+
+/**
+ * Mutation: Create appointment
+ */
+export function useCreateAppointment() {
+    const queryClient = useQueryClient();
+    return useMutation({
+        mutationFn: (data) => customerApi.createAppointment(data),
+        onSuccess: (_data, variables) => {
+            queryClient.invalidateQueries({ queryKey: ['customer', 'appointments'] });
+            if (variables.date) {
+                queryClient.invalidateQueries({ queryKey: ['customer', 'available-slots'] });
+            }
+        },
+    });
+}
+
+/**
+ * Mutation: Update appointment
+ */
+export function useUpdateAppointment() {
+    const queryClient = useQueryClient();
+    return useMutation({
+        mutationFn: ({ id, ...data }) => customerApi.updateAppointment(id, data),
+        onSuccess: () => {
+            queryClient.invalidateQueries({ queryKey: ['customer', 'appointments'] });
+        },
+    });
+}
+
+/**
+ * Mutation: Delete appointment
+ */
+export function useDeleteAppointment() {
+    const queryClient = useQueryClient();
+    return useMutation({
+        mutationFn: (id) => customerApi.deleteAppointment(id),
+        onSuccess: () => {
+            queryClient.invalidateQueries({ queryKey: ['customer', 'appointments'] });
+        },
+    });
+}
+
+/**
+ * Hook: Report Annotations
+ */
+export function useReportAnnotations(reportId, options = {}) {
+    return useQuery({
+        queryKey: queryKeys.customerAnnotations(reportId),
+        queryFn: () => customerApi.getReportAnnotations(reportId),
+        enabled: !!reportId,
+        staleTime: 1000 * 60 * 3,
+        ...options,
+    });
+}
+
+/**
+ * Mutation: Create annotation
+ */
+export function useCreateAnnotation() {
+    const queryClient = useQueryClient();
+    return useMutation({
+        mutationFn: (data) => customerApi.createAnnotation(data),
+        onSuccess: (_data, variables) => {
+            queryClient.invalidateQueries({ queryKey: queryKeys.customerAnnotations(variables.reportId) });
+        },
+    });
+}
+
+/**
+ * Hook: Widget Preferences
+ */
+export function useWidgetPreferences(userId, options = {}) {
+    return useQuery({
+        queryKey: queryKeys.customerWidgetPreferences(userId),
+        queryFn: () => customerApi.getWidgetPreferences(userId),
+        enabled: !!userId,
+        staleTime: 1000 * 60 * 10,
+        ...options,
+    });
+}
+
+/**
+ * Mutation: Update widget preferences
+ */
+export function useUpdateWidgetPreferences() {
+    const queryClient = useQueryClient();
+    return useMutation({
+        mutationFn: ({ userId, widgets }) => customerApi.updateWidgetPreferences(userId, widgets),
+        onSuccess: (_data, { userId }) => {
+            queryClient.invalidateQueries({ queryKey: queryKeys.customerWidgetPreferences(userId) });
+        },
+    });
+}
+
+/**
+ * Hook: Widget live data
+ */
+export function useWidgetData(userId, options = {}) {
+    return useQuery({
+        queryKey: queryKeys.customerWidgetData(userId),
+        queryFn: () => customerApi.getWidgetData(userId),
+        enabled: !!userId,
+        staleTime: 1000 * 60 * 2,
+        ...options,
+    });
+}
+
 export default {
     useDashboardStats,
     useQCDashboardStats,
@@ -2007,6 +2191,20 @@ export default {
     useUpdateCustomerNotificationPreferences,
     useSubmitCustomerSupportTicket,
     useDownloadCustomerReport,
+    // Customer new module hooks
+    useCustomerTracker,
+    useCustomerDocuments,
+    useTrackDocumentDownload,
+    useCustomerAppointments,
+    useAvailableSlots,
+    useCreateAppointment,
+    useUpdateAppointment,
+    useDeleteAppointment,
+    useReportAnnotations,
+    useCreateAnnotation,
+    useWidgetPreferences,
+    useUpdateWidgetPreferences,
+    useWidgetData,
     // User (Team Lead) hooks
     useUserDashboard,
     useUserProjects,

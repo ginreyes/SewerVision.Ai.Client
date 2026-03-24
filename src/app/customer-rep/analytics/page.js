@@ -2,13 +2,12 @@
 
 import React, { useMemo } from "react";
 import {
-  BarChart2, TrendingUp, CheckCircle2, Clock, AlertCircle,
-  Loader2, Timer, Zap, User, MessageSquare, Target,
+  BarChart2, TrendingUp, CheckCircle2, Clock, 
+  Loader2, Zap,  MessageSquare, Target,
   ClipboardList,
   AlertTriangle,
 } from "lucide-react";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
-import { Badge } from "@/components/ui/badge";
 import { useUser } from "@/components/providers/UserContext";
 import {
   useSupportAllTickets,

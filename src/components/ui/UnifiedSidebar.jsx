@@ -36,6 +36,29 @@ import {
   Activity,
   MessageSquareWarning,
   Headphones,
+  // New module icons
+  BookMarked,
+  UserCircle,
+  AlertTriangle,
+  Workflow,
+  Star,
+  Shield,
+  CreditCard,
+  Server,
+  Megaphone,
+  Navigation,
+  WifiOff,
+  AlertCircle,
+  Clock,
+  GraduationCap,
+  Layers,
+  Archive,
+  CalendarDays,
+  MessageCircle,
+  TrendingUp,
+  DollarSign,
+  MapPin,
+  Zap,
 } from 'lucide-react';
 import ModuleLoading from './SewerVisionLoadingAnimation';
 import { useLoadingModuleSetting } from '@/hooks/useLoadingModuleSettings';
@@ -71,6 +94,29 @@ const ICON_MAP = {
   Activity,
   MessageSquareWarning,
   Headphones,
+  // New module icons
+  BookMarked,
+  UserCircle,
+  AlertTriangle,
+  Workflow,
+  Star,
+  Shield,
+  CreditCard,
+  Server,
+  Megaphone,
+  Navigation,
+  WifiOff,
+  AlertCircle,
+  Clock,
+  GraduationCap,
+  Layers,
+  Archive,
+  CalendarDays,
+  MessageCircle,
+  TrendingUp,
+  DollarSign,
+  MapPin,
+  Zap,
 };
 
 // ── Hardcoded admin sidebar (never filtered by permissions) ──
@@ -90,6 +136,8 @@ const ADMIN_MENU_GROUPS = [
       { label: 'Uploads', icon: 'CloudUpload', path: '/admin/uploads', module: 'uploads' },
       { label: 'Devices', icon: 'Monitor', path: '/admin/devices', module: 'devices' },
       { label: 'Tasks', icon: 'ClipboardList', path: '/admin/task', module: 'tasks' },
+      { label: 'Billing', icon: 'CreditCard', path: '/admin/billing', module: 'billing' },
+      { label: 'Announcements', icon: 'Megaphone', path: '/admin/announcements', module: 'announcements' },
     ],
   },
   {
@@ -98,11 +146,13 @@ const ADMIN_MENU_GROUPS = [
       { label: 'Reports', icon: 'BarChart2', path: '/admin/report', module: 'reports' },
       { label: 'Notes', icon: 'StickyNote', path: '/admin/notes', module: 'notes' },
       { label: 'Support', icon: 'Inbox', path: '/admin/support', module: 'support' },
+      { label: 'Analytics', icon: 'BarChart2', path: '/admin/analytics', module: 'analytics' },
     ],
   },
   {
     label: 'System',
     items: [
+      { label: 'System Health', icon: 'Server', path: '/admin/system-health', module: 'system-health' },
       { label: 'Notifications', icon: 'Bell', path: '/admin/notifications', module: 'notifications' },
       { label: 'Settings', icon: 'Settings', path: '/admin/settings', module: 'settings' },
     ],
@@ -226,6 +276,8 @@ const FALLBACK_MENUS = {
     ]},
     { label: 'Field Work', items: [
       { label: 'Operations', icon: 'SearchX', path: '/operator/operations', key: 'operations' },
+      { label: 'Checklists', icon: 'ClipboardCheck', path: '/operator/checklists', key: 'checklists' },
+      { label: 'Route Planner', icon: 'Navigation', path: '/operator/route-planner', key: 'route-planner' },
       { label: 'Uploads', icon: 'Upload', path: '/operator/uploads', key: 'uploads' },
       { label: 'Tasks', icon: 'ClipboardList', path: '/operator/task', key: 'tasks' },
     ]},
@@ -233,10 +285,13 @@ const FALLBACK_MENUS = {
       { label: 'Equipment', icon: 'HardDrive', path: '/operator/equipement', key: 'equipment' },
       { label: 'Connect Device', icon: 'Link2', path: '/operator/connect-device', key: 'connect-device' },
       { label: 'Maintenance', icon: 'Wrench', path: '/operator/maintenance', key: 'maintenance' },
+      { label: 'Offline Mode', icon: 'WifiOff', path: '/operator/offline', key: 'offline' },
     ]},
     { label: 'Records', items: [
       { label: 'Logs', icon: 'BookOpen', path: '/operator/logs', key: 'logs' },
       { label: 'Reports', icon: 'BarChart2', path: '/operator/reports', key: 'reports' },
+      { label: 'Incidents', icon: 'AlertTriangle', path: '/operator/incidents', key: 'incidents' },
+      { label: 'Time Tracking', icon: 'Clock', path: '/operator/time-tracking', key: 'time-tracking' },
     ]},
     { label: 'Account', items: [
       { label: 'Notifications', icon: 'Bell', path: '/operator/notifications', key: 'notifications', locked: true },
@@ -252,7 +307,14 @@ const FALLBACK_MENUS = {
     { label: 'Work', items: [
       { label: 'Tasks', icon: 'ClipboardList', path: '/qc-technician/task', key: 'tasks' },
       { label: 'Quality Control', icon: 'ClipboardCheck', path: '/qc-technician/quality-control', key: 'quality-control' },
+      { label: 'Comparison Viewer', icon: 'Layers', path: '/qc-technician/comparison', key: 'comparison' },
+      { label: 'Review Templates', icon: 'FileText', path: '/qc-technician/review-templates', key: 'review-templates' },
       { label: 'Devices', icon: 'Monitor', path: '/qc-technician/devices', key: 'devices' },
+    ]},
+    { label: 'Knowledge', items: [
+      { label: 'Defect Library', icon: 'BookMarked', path: '/qc-technician/defect-library', key: 'defect-library' },
+      { label: 'Training', icon: 'GraduationCap', path: '/qc-technician/training', key: 'training' },
+      { label: 'Review Analytics', icon: 'BarChart2', path: '/qc-technician/review-analytics', key: 'review-analytics' },
     ]},
     { label: 'Records', items: [
       { label: 'Reports', icon: 'FileText', path: '/qc-technician/reports', key: 'reports' },
@@ -274,6 +336,13 @@ const FALLBACK_MENUS = {
     { label: 'Team & Assets', items: [
       { label: 'Team Management', icon: 'Users', path: '/user/team', key: 'team' },
       { label: 'Device Assignments', icon: 'Monitor', path: '/user/device-assignments', key: 'device-assignments' },
+      { label: 'Resource Scheduler', icon: 'CalendarDays', path: '/user/resource-scheduler', key: 'resource-scheduler' },
+      { label: 'Performance Reviews', icon: 'TrendingUp', path: '/user/performance-reviews', key: 'performance-reviews' },
+    ]},
+    { label: 'Management', items: [
+      { label: 'Budget Tracker', icon: 'DollarSign', path: '/user/budget-tracker', key: 'budget-tracker' },
+      { label: 'Project Templates', icon: 'Layers', path: '/user/project-templates', key: 'project-templates' },
+      { label: 'Client Hub', icon: 'MessageCircle', path: '/user/client-hub', key: 'client-hub' },
     ]},
     { label: 'Tools & Settings', items: [
       { label: 'Reports', icon: 'BarChart2', path: '/user/reports', key: 'reports' },
@@ -285,7 +354,18 @@ const FALLBACK_MENUS = {
     { label: 'Main', items: [
       { label: 'Dashboard', icon: 'LayoutDashboard', path: '/customer/dashboard', key: 'dashboard', locked: true },
       { label: 'Projects', icon: 'FolderOpen', path: '/customer/projects', key: 'projects', locked: true },
+      { label: 'Live Tracker', icon: 'MapPin', path: '/customer/live-tracker', key: 'live-tracker', locked: true },
       { label: 'Help Center', icon: 'Headphones', path: '/customer/support', key: 'customer-support', locked: true },
+    ]},
+    { label: 'Documents & Reports', items: [
+      { label: 'Document Vault', icon: 'Archive', path: '/customer/document-vault', key: 'document-vault', locked: true },
+      { label: 'Report Annotations', icon: 'MessageSquareWarning', path: '/customer/report-annotations', key: 'report-annotations', locked: true },
+    ]},
+    { label: 'Schedule', items: [
+      { label: 'Appointments', icon: 'CalendarDays', path: '/customer/appointments', key: 'appointments', locked: true },
+    ]},
+    { label: 'Account', items: [
+      { label: 'Dashboard Widgets', icon: 'LayoutDashboard', path: '/customer/dashboard-widgets', key: 'dashboard-widgets', locked: true },
       { label: 'Notifications', icon: 'Bell', path: '/customer/notifications', key: 'notifications', locked: true },
       { label: 'Settings', icon: 'Settings', path: '/customer/settings', key: 'settings', locked: true },
     ]},
@@ -300,6 +380,13 @@ const FALLBACK_MENUS = {
       { label: 'My Queue', icon: 'ClipboardCheck', path: '/customer-rep/tasks', key: 'tasks' },
       { label: 'Complaints', icon: 'MessageSquareWarning', path: '/customer-rep/complaints', key: 'rep-complaints' },
       { label: 'Templates', icon: 'FileText', path: '/customer-rep/templates', key: 'templates' },
+      { label: 'Knowledge Base', icon: 'BookMarked', path: '/customer-rep/knowledge-base', key: 'knowledge-base' },
+    ]},
+    { label: 'Customers', items: [
+      { label: 'Customer Profiles', icon: 'UserCircle', path: '/customer-rep/customer-profiles', key: 'customer-profiles' },
+      { label: 'Escalations', icon: 'AlertTriangle', path: '/customer-rep/escalation', key: 'escalation' },
+      { label: 'Workflows', icon: 'Workflow', path: '/customer-rep/workflows', key: 'workflows' },
+      { label: 'Surveys', icon: 'Star', path: '/customer-rep/surveys', key: 'surveys' },
     ]},
     { label: 'Insights', items: [
       { label: 'Analytics', icon: 'BarChart2', path: '/customer-rep/analytics', key: 'analytics' },
