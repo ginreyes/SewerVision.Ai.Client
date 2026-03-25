@@ -3,24 +3,20 @@
 import React, { useState, useMemo } from "react";
 import {
   Star, Send, ThumbsUp, ThumbsDown, TrendingUp, BarChart2,
-  CheckCircle2, Clock, Users, MessageSquare, Plus, Filter,
+  CheckCircle2, Clock, Users, MessageSquare, Plus, Filter, Loader2,
 } from "lucide-react";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { useAlert } from "@/components/providers/AlertProvider";
-import { useSupportAllTickets } from "@/hooks/useQueryHooks";
-
-const SEED_RESPONSES = [
-  { id: "1", customer: "James M.", rating: 5, comment: "Very quick response, issue resolved perfectly!", date: "2026-03-24", agent: "Support Team" },
-  { id: "2", customer: "Sarah K.", rating: 4, comment: "Good service but a bit slow at first.", date: "2026-03-23", agent: "Support Team" },
-  { id: "3", customer: "David L.", rating: 5, comment: "Excellent! Agent was very helpful and professional.", date: "2026-03-22", agent: "Support Team" },
-  { id: "4", customer: "Emily R.", rating: 2, comment: "Took too long, had to follow up multiple times.", date: "2026-03-21", agent: "Support Team" },
-  { id: "5", customer: "Marcus T.", rating: 5, comment: "Outstanding support, couldn't be happier.", date: "2026-03-20", agent: "Support Team" },
-  { id: "6", customer: "Priya S.", rating: 3, comment: "Average experience. Nothing special.", date: "2026-03-19", agent: "Support Team" },
-  { id: "7", customer: "Chris N.", rating: 4, comment: "Good follow up after the initial delay.", date: "2026-03-18", agent: "Support Team" },
-  { id: "8", customer: "Anna V.", rating: 5, comment: "Solved in one interaction. Impressive!", date: "2026-03-17", agent: "Support Team" },
-];
+import { useUser } from "@/components/providers/UserContext";
+import {
+  useSurveyResponses,
+  useSurveyStats,
+  useSendSurveys,
+  useSurveyInvites,
+  useSupportAllTickets,
+} from "@/hooks/useQueryHooks";
 
 function StarRating({ rating, size = "w-4 h-4" }) {
   return (
@@ -48,30 +44,77 @@ function DonutRing({ pct, color, size = 60 }) {
 
 export default function SatisfactionSurveys() {
   const { showAlert } = useAlert();
-  const [responses] = useState(SEED_RESPONSES);
+  const { userId } = useUser();
   const [ratingFilter, setRatingFilter] = useState("all");
-  const [sending, setSending] = useState(false);
 
+  const { data: statsData } = useSurveyStats();
+  const { data: responsesData, isLoading } = useSurveyResponses({
+    rating: ratingFilter !== "all" ? ratingFilter : undefined,
+  });
+  const sendSurveysMutation = useSendSurveys();
   const { data: ticketsRaw } = useSupportAllTickets();
+  const { data: invitesData } = useSurveyInvites();
+
   const resolvedTickets = useMemo(() => {
-    const t = Array.isArray(ticketsRaw) ? ticketsRaw : [];
+    const raw = ticketsRaw;
+    const t = Array.isArray(raw) ? raw : (raw?.data && Array.isArray(raw.data)) ? raw.data : [];
     return t.filter(t => t.status === "resolved" || t.status === "closed");
   }, [ticketsRaw]);
 
-  const stats = useMemo(() => {
-    const avg = responses.reduce((s, r) => s + r.rating, 0) / responses.length;
-    const dist = [5,4,3,2,1].map(s => ({ star: s, count: responses.filter(r => r.rating === s).length }));
-    const positive = responses.filter(r => r.rating >= 4).length;
-    return { avg: avg.toFixed(1), dist, positive, pct: Math.round((positive / responses.length) * 100), total: responses.length };
-  }, [responses]);
+  const invites = invitesData?.data || [];
 
-  const filtered = ratingFilter === "all" ? responses : responses.filter(r => r.rating === Number(ratingFilter));
+  const responses = responsesData?.data || responsesData || [];
+  const allResponses = Array.isArray(responses) ? responses : [];
+
+  const stats = useMemo(() => {
+    if (statsData) {
+      // distribution from API can be an object {1:count, 2:count...} or array [{star,count}]
+      let dist;
+      if (Array.isArray(statsData.distribution)) {
+        dist = statsData.distribution;
+      } else if (statsData.distribution && typeof statsData.distribution === 'object') {
+        dist = [5,4,3,2,1].map(s => ({ star: s, count: statsData.distribution[s] || 0 }));
+      } else {
+        dist = [5,4,3,2,1].map(s => ({ star: s, count: 0 }));
+      }
+      const total = statsData.totalResponses ?? 0;
+      const positive = statsData.positiveCount ?? dist.filter(d => d.star >= 4).reduce((s, d) => s + d.count, 0);
+      const pct = statsData.satisfactionPercent ?? (total > 0 ? Math.round((positive / total) * 100) : 0);
+      return {
+        avg: statsData.avgRating?.toFixed(1) ?? statsData.averageRating?.toFixed(1) ?? statsData.avg ?? "0.0",
+        dist,
+        positive,
+        pct,
+        total,
+      };
+    }
+    // Fallback: compute from responses
+    if (allResponses.length === 0) return { avg: "0.0", dist: [5,4,3,2,1].map(s => ({ star: s, count: 0 })), positive: 0, pct: 0, total: 0 };
+    const avg = allResponses.reduce((s, r) => s + (r.rating || 0), 0) / allResponses.length;
+    const dist = [5,4,3,2,1].map(s => ({ star: s, count: allResponses.filter(r => r.rating === s).length }));
+    const positive = allResponses.filter(r => r.rating >= 4).length;
+    return { avg: avg.toFixed(1), dist, positive, pct: Math.round((positive / allResponses.length) * 100), total: allResponses.length };
+  }, [statsData, allResponses]);
+
+  const filtered = allResponses;
 
   async function handleSendSurveys() {
-    setSending(true);
-    await new Promise(r => setTimeout(r, 1200));
-    setSending(false);
-    showAlert(`Surveys sent to ${resolvedTickets.length} resolved customers`, "success");
+    if (resolvedTickets.length === 0) { showAlert("No resolved tickets to send surveys for", "error"); return; }
+    sendSurveysMutation.mutate(
+      { ticketIds: resolvedTickets.map(t => t._id || t.id), sentBy: userId },
+      {
+        onSuccess: (data) => showAlert(`Sent ${data?.sent || 0} survey(s), skipped ${data?.skipped || 0}`, "success"),
+        onError: (err) => showAlert(err.message || "Failed to send surveys", "error"),
+      }
+    );
+  }
+
+  if (isLoading) {
+    return (
+      <div className="flex items-center justify-center min-h-[60vh]">
+        <Loader2 className="w-8 h-8 animate-spin text-amber-500" />
+      </div>
+    );
   }
 
   return (
@@ -87,8 +130,8 @@ export default function SatisfactionSurveys() {
             <p className="text-sm text-gray-500">CSAT ratings, feedback trends, and post-resolution surveys</p>
           </div>
         </div>
-        <Button onClick={handleSendSurveys} disabled={sending} className="bg-teal-600 hover:bg-teal-700 text-white">
-          {sending ? <><span className="w-4 h-4 mr-1.5 border-2 border-white border-t-transparent rounded-full animate-spin inline-block" />Sending…</> : <><Send className="w-4 h-4 mr-1.5" />Send Surveys</>}
+        <Button onClick={handleSendSurveys} disabled={sendSurveysMutation.isPending || resolvedTickets.length === 0} className="bg-teal-600 hover:bg-teal-700 text-white">
+          {sendSurveysMutation.isPending ? <><Loader2 className="w-4 h-4 mr-1.5 animate-spin" />Sending…</> : <><Send className="w-4 h-4 mr-1.5" />Send Surveys ({resolvedTickets.length})</>}
         </Button>
       </div>
 
@@ -169,21 +212,25 @@ export default function SatisfactionSurveys() {
           </div>
         </CardHeader>
         <CardContent className="pt-0 space-y-3">
-          {filtered.map(r => (
-            <div key={r.id} className="flex items-start gap-3 p-3 rounded-lg border border-gray-100 hover:border-amber-100 hover:bg-amber-50/30 transition-colors">
-              <div className="w-8 h-8 rounded-full bg-amber-100 flex items-center justify-center text-xs font-bold text-amber-700 shrink-0">
-                {r.customer.charAt(0)}
-              </div>
-              <div className="flex-1 min-w-0">
-                <div className="flex items-center gap-2 mb-1">
-                  <span className="text-sm font-semibold text-gray-900">{r.customer}</span>
-                  <StarRating rating={r.rating} size="w-3 h-3" />
+          {filtered.map(r => {
+            const rId = r.id || r._id;
+            const customerName = r.customer || r.customerName || "Customer";
+            return (
+              <div key={rId} className="flex items-start gap-3 p-3 rounded-lg border border-gray-100 hover:border-amber-100 hover:bg-amber-50/30 transition-colors">
+                <div className="w-8 h-8 rounded-full bg-amber-100 flex items-center justify-center text-xs font-bold text-amber-700 shrink-0">
+                  {customerName.charAt(0)}
                 </div>
-                {r.comment && <p className="text-xs text-gray-600">{r.comment}</p>}
+                <div className="flex-1 min-w-0">
+                  <div className="flex items-center gap-2 mb-1">
+                    <span className="text-sm font-semibold text-gray-900">{customerName}</span>
+                    <StarRating rating={r.rating} size="w-3 h-3" />
+                  </div>
+                  {r.comment && <p className="text-xs text-gray-600">{r.comment}</p>}
+                </div>
+                <span className="text-[10px] text-gray-400 shrink-0">{r.date || r.createdAt || ""}</span>
               </div>
-              <span className="text-[10px] text-gray-400 shrink-0">{r.date}</span>
-            </div>
-          ))}
+            );
+          })}
           {filtered.length === 0 && (
             <p className="text-center text-sm text-gray-400 py-6">No responses for this rating</p>
           )}

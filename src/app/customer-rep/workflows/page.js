@@ -4,7 +4,7 @@ import React, { useState } from "react";
 import {
   Workflow, Plus, Play, Pause, Trash2, Edit, ChevronRight, ChevronDown,
   GripVertical, CheckCircle2, Mail, MessageSquare, Tag, Clock, User,
-  ArrowRight, Circle, Zap, Copy,
+  ArrowRight, Circle, Zap, Copy, Loader2,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -13,12 +13,18 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
 import {
-  Select, SelectContent, SelectItem, SelectTrigger, SelectValue,
-} from "@/components/ui/select";
-import {
   Dialog, DialogContent, DialogHeader, DialogTitle,
 } from "@/components/ui/dialog";
 import { useAlert } from "@/components/providers/AlertProvider";
+import { useUser } from "@/components/providers/UserContext";
+import {
+  useCannedWorkflows,
+  useCreateCannedWorkflow,
+  useUpdateCannedWorkflow,
+  useDeleteCannedWorkflow,
+  useToggleCannedWorkflow,
+  useDuplicateCannedWorkflow,
+} from "@/hooks/useQueryHooks";
 
 const STEP_TYPES = [
   { value: "send_email", label: "Send Email", icon: Mail, color: "bg-blue-100 text-blue-700" },
@@ -27,35 +33,6 @@ const STEP_TYPES = [
   { value: "add_tag", label: "Add Tag", icon: Tag, color: "bg-amber-100 text-amber-700" },
   { value: "wait", label: "Wait", icon: Clock, color: "bg-gray-100 text-gray-700" },
   { value: "close_ticket", label: "Close Ticket", icon: CheckCircle2, color: "bg-emerald-100 text-emerald-700" },
-];
-
-const SEED_WORKFLOWS = [
-  {
-    id: "1", name: "New Customer Onboarding", description: "Welcome sequence for new customers", active: true, runs: 47,
-    steps: [
-      { id: "s1", type: "send_email", label: "Welcome email", detail: "Subject: Welcome to Concertina!" },
-      { id: "s2", type: "wait", label: "Wait 1 day", detail: "24 hours" },
-      { id: "s3", type: "send_message", label: "Check-in message", detail: "How are you settling in?" },
-      { id: "s4", type: "add_tag", label: "Tag: onboarded", detail: "onboarded" },
-    ],
-  },
-  {
-    id: "2", name: "Billing Dispute Handling", description: "Standard flow for billing complaints", active: true, runs: 23,
-    steps: [
-      { id: "s1", type: "assign_agent", label: "Assign billing agent", detail: "Billing Team" },
-      { id: "s2", type: "send_email", label: "Acknowledgment email", detail: "We've received your dispute" },
-      { id: "s3", type: "wait", label: "Wait 2 days", detail: "48 hours" },
-      { id: "s4", type: "close_ticket", label: "Close ticket", detail: "If resolved" },
-    ],
-  },
-  {
-    id: "3", name: "Post-Resolution Follow Up", description: "Survey and close after resolution", active: false, runs: 89,
-    steps: [
-      { id: "s1", type: "wait", label: "Wait 1 hour", detail: "1 hour after resolution" },
-      { id: "s2", type: "send_email", label: "Satisfaction survey", detail: "How did we do?" },
-      { id: "s3", type: "add_tag", label: "Tag: surveyed", detail: "surveyed" },
-    ],
-  },
 ];
 
 const EMPTY_WORKFLOW = { name: "", description: "", active: true };
@@ -71,45 +48,67 @@ function StepBadge({ type }) {
 
 export default function CannedWorkflows() {
   const { showAlert } = useAlert();
-  const [workflows, setWorkflows] = useState(SEED_WORKFLOWS);
+  const { userId } = useUser();
+  const { data: workflows = [], isLoading } = useCannedWorkflows();
+  const createMutation = useCreateCannedWorkflow();
+  const updateMutation = useUpdateCannedWorkflow();
+  const deleteMutation = useDeleteCannedWorkflow();
+  const toggleMutation = useToggleCannedWorkflow();
+  const dupMutation = useDuplicateCannedWorkflow();
+
   const [selected, setSelected] = useState(null);
   const [showForm, setShowForm] = useState(false);
   const [form, setForm] = useState(EMPTY_WORKFLOW);
   const [editing, setEditing] = useState(null);
 
-  const selectedWf = selected ? workflows.find(w => w.id === selected) : null;
+  const selectedWf = selected ? workflows.find(w => w._id === selected) : null;
 
   function toggleActive(id) {
-    setWorkflows(prev => prev.map(w => w.id === id ? { ...w, active: !w.active } : w));
-    showAlert("Workflow status updated", "success");
+    toggleMutation.mutate(id, {
+      onSuccess: () => showAlert("Workflow status updated", "success"),
+      onError: (e) => showAlert(e.message, "error"),
+    });
   }
 
   function handleDuplicate(wf) {
-    setWorkflows(prev => [...prev, { ...wf, id: String(Date.now()), name: wf.name + " (copy)", runs: 0 }]);
-    showAlert("Workflow duplicated", "success");
+    dupMutation.mutate(wf._id, {
+      onSuccess: (data) => { showAlert("Workflow duplicated", "success"); if (data?._id) setSelected(data._id); },
+      onError: (e) => showAlert(e.message, "error"),
+    });
   }
 
   function handleDelete(id) {
-    setWorkflows(prev => prev.filter(w => w.id !== id));
-    if (selected === id) setSelected(null);
-    showAlert("Workflow deleted", "success");
+    deleteMutation.mutate(id, {
+      onSuccess: () => { if (selected === id) setSelected(null); showAlert("Workflow deleted", "success"); },
+      onError: (e) => showAlert(e.message, "error"),
+    });
   }
 
   function openCreate() { setEditing(null); setForm(EMPTY_WORKFLOW); setShowForm(true); }
-  function openEdit(wf) { setEditing(wf.id); setForm({ name: wf.name, description: wf.description, active: wf.active }); setShowForm(true); }
+  function openEdit(wf) { setEditing(wf._id); setForm({ name: wf.name, description: wf.description, active: wf.active }); setShowForm(true); }
 
   function handleSave() {
     if (!form.name.trim()) { showAlert("Workflow name required", "error"); return; }
     if (editing) {
-      setWorkflows(prev => prev.map(w => w.id === editing ? { ...w, ...form } : w));
-      showAlert("Workflow updated", "success");
+      updateMutation.mutate({ id: editing, ...form }, {
+        onSuccess: () => { showAlert("Workflow updated", "success"); setShowForm(false); },
+        onError: (e) => showAlert(e.message, "error"),
+      });
     } else {
-      const id = String(Date.now());
-      setWorkflows(prev => [...prev, { id, ...form, runs: 0, steps: [] }]);
-      setSelected(id);
-      showAlert("Workflow created", "success");
+      createMutation.mutate({ ...form, createdBy: userId }, {
+        onSuccess: (data) => { showAlert("Workflow created", "success"); setShowForm(false); if (data?._id) setSelected(data._id); },
+        onError: (e) => showAlert(e.message, "error"),
+      });
     }
-    setShowForm(false);
+  }
+
+  if (isLoading) {
+    return (
+      <div className="max-w-7xl mx-auto px-6 py-6 flex flex-col items-center justify-center min-h-[400px]">
+        <Loader2 className="w-8 h-8 animate-spin text-teal-500 mb-3" />
+        <p className="text-sm text-gray-500">Loading workflows…</p>
+      </div>
+    );
   }
 
   return (
@@ -135,7 +134,7 @@ export default function CannedWorkflows() {
         {[
           { label: "Total Workflows", value: workflows.length, color: "text-purple-600", bg: "bg-purple-50" },
           { label: "Active", value: workflows.filter(w => w.active).length, color: "text-emerald-600", bg: "bg-emerald-50" },
-          { label: "Total Runs", value: workflows.reduce((s, w) => s + w.runs, 0), color: "text-teal-600", bg: "bg-teal-50" },
+          { label: "Total Runs", value: workflows.reduce((s, w) => s + (w.runs || 0), 0), color: "text-teal-600", bg: "bg-teal-50" },
         ].map(s => (
           <Card key={s.label} className="border-gray-200">
             <CardContent className="p-4 flex items-center gap-3">
@@ -154,9 +153,15 @@ export default function CannedWorkflows() {
       <div className="flex gap-4">
         {/* Workflow list */}
         <div className="w-72 shrink-0 space-y-2">
+          {workflows.length === 0 && (
+            <div className="text-center py-10 text-gray-400 border-2 border-dashed border-gray-200 rounded-xl">
+              <Workflow className="w-8 h-8 mx-auto mb-2 opacity-30" />
+              <p className="text-sm">No workflows yet</p>
+            </div>
+          )}
           {workflows.map(wf => (
-            <button key={wf.id} onClick={() => setSelected(wf.id === selected ? null : wf.id)}
-              className={`w-full text-left p-3 rounded-xl border transition-all ${selected === wf.id ? "border-teal-300 bg-teal-50" : "border-gray-200 bg-white hover:border-teal-200"}`}>
+            <button key={wf._id} onClick={() => setSelected(wf._id === selected ? null : wf._id)}
+              className={`w-full text-left p-3 rounded-xl border transition-all ${selected === wf._id ? "border-teal-300 bg-teal-50" : "border-gray-200 bg-white hover:border-teal-200"}`}>
               <div className="flex items-start justify-between gap-2 mb-1">
                 <p className="text-sm font-semibold text-gray-900 leading-snug">{wf.name}</p>
                 <Badge variant="outline" className={`text-[10px] shrink-0 ${wf.active ? "bg-emerald-50 text-emerald-700 border-emerald-200" : "bg-gray-50 text-gray-500 border-gray-200"}`}>
@@ -165,8 +170,8 @@ export default function CannedWorkflows() {
               </div>
               <p className="text-xs text-gray-400 line-clamp-1">{wf.description}</p>
               <div className="flex items-center gap-3 mt-2 text-[10px] text-gray-400">
-                <span>{wf.steps.length} steps</span>
-                <span>{wf.runs} runs</span>
+                <span>{(wf.steps || []).length} steps</span>
+                <span>{wf.runs || 0} runs</span>
               </div>
             </button>
           ))}
@@ -183,16 +188,18 @@ export default function CannedWorkflows() {
                     <p className="text-sm text-gray-500 mt-0.5">{selectedWf.description}</p>
                   </div>
                   <div className="flex items-center gap-2">
-                    <button onClick={() => handleDuplicate(selectedWf)} className="p-1.5 rounded-lg hover:bg-gray-100 text-gray-400 hover:text-teal-600 transition-colors">
+                    <button onClick={() => handleDuplicate(selectedWf)} disabled={dupMutation.isPending}
+                      className="p-1.5 rounded-lg hover:bg-gray-100 text-gray-400 hover:text-teal-600 transition-colors">
                       <Copy className="w-4 h-4" />
                     </button>
                     <button onClick={() => openEdit(selectedWf)} className="p-1.5 rounded-lg hover:bg-gray-100 text-gray-400 hover:text-teal-600 transition-colors">
                       <Edit className="w-4 h-4" />
                     </button>
-                    <button onClick={() => handleDelete(selectedWf.id)} className="p-1.5 rounded-lg hover:bg-gray-100 text-gray-400 hover:text-red-500 transition-colors">
+                    <button onClick={() => handleDelete(selectedWf._id)} disabled={deleteMutation.isPending}
+                      className="p-1.5 rounded-lg hover:bg-gray-100 text-gray-400 hover:text-red-500 transition-colors">
                       <Trash2 className="w-4 h-4" />
                     </button>
-                    <Button size="sm" variant="outline" onClick={() => toggleActive(selectedWf.id)}
+                    <Button size="sm" variant="outline" onClick={() => toggleActive(selectedWf._id)} disabled={toggleMutation.isPending}
                       className={selectedWf.active ? "border-amber-300 text-amber-700 hover:bg-amber-50" : "border-emerald-300 text-emerald-700 hover:bg-emerald-50"}>
                       {selectedWf.active ? <><Pause className="w-3.5 h-3.5 mr-1" />Pause</> : <><Play className="w-3.5 h-3.5 mr-1" />Activate</>}
                     </Button>
@@ -201,7 +208,7 @@ export default function CannedWorkflows() {
               </CardHeader>
               <CardContent className="pt-0">
                 <h3 className="text-xs font-semibold text-gray-500 uppercase tracking-wide mb-3">Workflow Steps</h3>
-                {selectedWf.steps.length === 0 ? (
+                {(selectedWf.steps || []).length === 0 ? (
                   <div className="flex flex-col items-center justify-center py-10 text-gray-300 border-2 border-dashed border-gray-200 rounded-xl">
                     <Workflow className="w-8 h-8 mb-2" />
                     <p className="text-xs">No steps yet — add steps to build your workflow</p>
@@ -209,7 +216,7 @@ export default function CannedWorkflows() {
                 ) : (
                   <div className="space-y-2">
                     {selectedWf.steps.map((step, i) => (
-                      <div key={step.id} className="flex items-start gap-3">
+                      <div key={step._id || i} className="flex items-start gap-3">
                         <div className="flex flex-col items-center shrink-0">
                           <div className="w-7 h-7 rounded-full bg-gray-100 flex items-center justify-center text-xs font-bold text-gray-600">{i + 1}</div>
                           {i < selectedWf.steps.length - 1 && <div className="w-px h-6 bg-gray-200 mt-1" />}
@@ -266,7 +273,10 @@ export default function CannedWorkflows() {
             </div>
             <div className="flex justify-end gap-2 pt-2">
               <Button variant="outline" onClick={() => setShowForm(false)}>Cancel</Button>
-              <Button onClick={handleSave} className="bg-teal-600 hover:bg-teal-700 text-white">{editing ? "Save" : "Create"}</Button>
+              <Button onClick={handleSave} disabled={createMutation.isPending || updateMutation.isPending}
+                className="bg-teal-600 hover:bg-teal-700 text-white">
+                {(createMutation.isPending || updateMutation.isPending) ? "Saving…" : editing ? "Save" : "Create"}
+              </Button>
             </div>
           </div>
         </DialogContent>

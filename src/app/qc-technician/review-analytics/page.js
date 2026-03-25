@@ -3,19 +3,11 @@
 import React from "react";
 import {
   BarChart2, CheckCircle2, XCircle, Clock, Target,
-  TrendingUp, Award, Zap, AlertTriangle,
+  TrendingUp, Award, Zap, AlertTriangle, Loader2,
 } from "lucide-react";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
-
-const WEEKLY_DATA = [
-  { day: "Mon", approved: 18, rejected: 3 },
-  { day: "Tue", approved: 22, rejected: 5 },
-  { day: "Wed", approved: 15, rejected: 2 },
-  { day: "Thu", approved: 28, rejected: 4 },
-  { day: "Fri", approved: 20, rejected: 6 },
-  { day: "Sat", approved: 8, rejected: 1 },
-  { day: "Sun", approved: 0, rejected: 0 },
-];
+import { useUser } from "@/components/providers/UserContext";
+import { useQCReviewStats } from "@/hooks/useQueryHooks";
 
 function StackedBar({ approved, rejected, maxTotal }) {
   const total = approved + rejected;
@@ -29,16 +21,6 @@ function StackedBar({ approved, rejected, maxTotal }) {
     </div>
   );
 }
-
-const maxTotal = Math.max(...WEEKLY_DATA.map(d => d.approved + d.rejected), 1);
-
-const DEFECT_DIST = [
-  { label: "Cracks", pct: 38, color: "bg-blue-500" },
-  { label: "Roots", pct: 24, color: "bg-emerald-500" },
-  { label: "Joints", pct: 20, color: "bg-amber-500" },
-  { label: "Structural", pct: 12, color: "bg-red-500" },
-  { label: "Other", pct: 6, color: "bg-gray-400" },
-];
 
 function DonutRing({ pct, color, size = 70 }) {
   const r = 26, circ = 2 * Math.PI * r;
@@ -54,9 +36,27 @@ function DonutRing({ pct, color, size = 70 }) {
 }
 
 export default function ReviewAnalytics() {
-  const totalReviewed = WEEKLY_DATA.reduce((s, d) => s + d.approved + d.rejected, 0);
-  const totalApproved = WEEKLY_DATA.reduce((s, d) => s + d.approved, 0);
-  const approvalRate = Math.round((totalApproved / totalReviewed) * 100);
+  const { user } = useUser();
+  const userId = user?._id || user?.id;
+  const { data: stats, isLoading } = useQCReviewStats(userId);
+
+  if (isLoading) {
+    return (
+      <div className="flex items-center justify-center min-h-[60vh]">
+        <Loader2 className="w-8 h-8 animate-spin text-rose-500" />
+      </div>
+    );
+  }
+
+  const weeklyData = stats?.weeklyData || [];
+  const maxTotal = Math.max(...weeklyData.map(d => (d.approved || 0) + (d.rejected || 0)), 1);
+
+  const totalReviewed = weeklyData.reduce((s, d) => s + (d.approved || 0) + (d.rejected || 0), 0);
+  const totalApproved = weeklyData.reduce((s, d) => s + (d.approved || 0), 0);
+  const approvalRate = stats?.approvalRate ?? (totalReviewed > 0 ? Math.round((totalApproved / totalReviewed) * 100) : 0);
+  const consistencyScore = stats?.consistencyScore ?? 0;
+  const avgReviewsPerDay = stats?.avgReviewsPerDay ?? 0;
+  const defectDistribution = stats?.defectDistribution || [];
 
   return (
     <div className="max-w-6xl mx-auto px-6 py-6">
@@ -99,9 +99,9 @@ export default function ReviewAnalytics() {
           <CardHeader className="pb-2"><CardTitle className="text-sm">Weekly Review Activity</CardTitle></CardHeader>
           <CardContent className="pt-0">
             <div className="flex items-end gap-3 mb-2">
-              {WEEKLY_DATA.map(d => (
+              {weeklyData.map(d => (
                 <div key={d.day} className="flex-1 flex flex-col items-center">
-                  <StackedBar approved={d.approved} rejected={d.rejected} maxTotal={maxTotal} />
+                  <StackedBar approved={d.approved || 0} rejected={d.rejected || 0} maxTotal={maxTotal} />
                   <span className="text-[10px] text-gray-400 mt-1">{d.day}</span>
                 </div>
               ))}
@@ -125,14 +125,14 @@ export default function ReviewAnalytics() {
               </div>
             </div>
             <div className="flex items-center justify-between">
-              <DonutRing pct={94} color="#3b82f6" />
+              <DonutRing pct={consistencyScore} color="#3b82f6" />
               <div className="flex-1 ml-3">
                 <p className="text-xs font-semibold text-gray-700">Consistency Score</p>
                 <p className="text-[10px] text-gray-400">vs team baseline</p>
               </div>
             </div>
             <div className="flex items-center justify-between">
-              <DonutRing pct={88} color="#f59e0b" />
+              <DonutRing pct={avgReviewsPerDay} color="#f59e0b" />
               <div className="flex-1 ml-3">
                 <p className="text-xs font-semibold text-gray-700">Speed Score</p>
                 <p className="text-[10px] text-gray-400">vs avg review time</p>
@@ -146,13 +146,13 @@ export default function ReviewAnalytics() {
       <Card className="border-gray-200">
         <CardHeader className="pb-2"><CardTitle className="text-sm">Defect Distribution Reviewed</CardTitle></CardHeader>
         <CardContent className="pt-0 space-y-2.5">
-          {DEFECT_DIST.map(d => (
+          {defectDistribution.map(d => (
             <div key={d.label} className="flex items-center gap-3">
               <span className="text-xs text-gray-700 w-20 shrink-0">{d.label}</span>
               <div className="flex-1 h-2.5 bg-gray-100 rounded-full overflow-hidden">
-                <div className={`h-full rounded-full ${d.color}`} style={{ width: `${d.pct}%` }} />
+                <div className={`h-full rounded-full ${d.color || "bg-blue-500"}`} style={{ width: `${d.pct || 0}%` }} />
               </div>
-              <span className="text-xs font-bold text-gray-700 w-8 text-right">{d.pct}%</span>
+              <span className="text-xs font-bold text-gray-700 w-8 text-right">{d.pct || 0}%</span>
             </div>
           ))}
         </CardContent>

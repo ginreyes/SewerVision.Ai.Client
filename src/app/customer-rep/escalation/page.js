@@ -3,7 +3,7 @@
 import React, { useState, useMemo } from "react";
 import {
   AlertTriangle, Plus, ChevronRight, Clock, Flame, Bell, CheckCircle2,
-  Shield, Timer, Users, ArrowUpCircle, Search, Settings, Trash2, Edit,
+  Shield, Timer, Users, ArrowUpCircle, Search, Settings, Trash2, Edit, Loader2,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -17,30 +17,41 @@ import {
   Dialog, DialogContent, DialogHeader, DialogTitle,
 } from "@/components/ui/dialog";
 import { useAlert } from "@/components/providers/AlertProvider";
-import { useSupportAllTickets } from "@/hooks/useQueryHooks";
+import { useUser } from "@/components/providers/UserContext";
+import {
+  useSupportAllTickets,
+  useEscalationRules,
+  useCreateEscalationRule,
+  useUpdateEscalationRule,
+  useDeleteEscalationRule,
+  useToggleEscalationRule,
+} from "@/hooks/useQueryHooks";
 
 const TRIGGER_TYPES = ["SLA Breach", "Priority High", "No Response 2h", "No Response 8h", "Customer VIP", "Repeat Contact"];
 const ACTIONS = ["Notify Supervisor", "Reassign Agent", "Escalate to Manager", "Send Alert Email", "Flag for Review"];
-const SEED_RULES = [
-  { id: "1", name: "SLA Critical Breach", trigger: "SLA Breach", condition: "After 24h open", action: "Escalate to Manager", priority: "high", active: true, triggeredCount: 12 },
-  { id: "2", name: "High Priority Auto-Escalate", trigger: "Priority High", condition: "No response after 4h", action: "Notify Supervisor", priority: "high", active: true, triggeredCount: 8 },
-  { id: "3", name: "VIP Customer Fast Track", trigger: "Customer VIP", condition: "Any new ticket", action: "Reassign Agent", priority: "medium", active: true, triggeredCount: 3 },
-  { id: "4", name: "Repeat Contact Alert", trigger: "Repeat Contact", condition: "3+ tickets this week", action: "Flag for Review", priority: "medium", active: false, triggeredCount: 5 },
-];
-
 const PRIORITY_COLORS = { high: "bg-red-100 text-red-700 border-red-200", medium: "bg-amber-100 text-amber-700 border-amber-200", low: "bg-blue-100 text-blue-700 border-blue-200" };
 const EMPTY_RULE = { name: "", trigger: "SLA Breach", condition: "", action: "Notify Supervisor", priority: "medium", active: true };
 
 export default function EscalationManager() {
   const { showAlert } = useAlert();
-  const [rules, setRules] = useState(SEED_RULES);
+  const { userId } = useUser();
+  const { data: rules = [], isLoading } = useEscalationRules();
+  const createMutation = useCreateEscalationRule();
+  const updateMutation = useUpdateEscalationRule();
+  const deleteMutation = useDeleteEscalationRule();
+  const toggleMutation = useToggleEscalationRule();
+
   const [search, setSearch] = useState("");
   const [showForm, setShowForm] = useState(false);
   const [editing, setEditing] = useState(null);
   const [form, setForm] = useState(EMPTY_RULE);
 
   const { data: ticketsRaw } = useSupportAllTickets();
-  const tickets = useMemo(() => Array.isArray(ticketsRaw) ? ticketsRaw : [], [ticketsRaw]);
+  const tickets = useMemo(() => {
+    if (Array.isArray(ticketsRaw)) return ticketsRaw;
+    if (ticketsRaw?.data && Array.isArray(ticketsRaw.data)) return ticketsRaw.data;
+    return [];
+  }, [ticketsRaw]);
 
   const escalated = useMemo(() => {
     const now = Date.now();
@@ -53,22 +64,44 @@ export default function EscalationManager() {
   const filtered = rules.filter(r => !search || r.name.toLowerCase().includes(search.toLowerCase()));
 
   function openCreate() { setEditing(null); setForm(EMPTY_RULE); setShowForm(true); }
-  function openEdit(r) { setEditing(r.id); setForm({ name: r.name, trigger: r.trigger, condition: r.condition, action: r.action, priority: r.priority, active: r.active }); setShowForm(true); }
+  function openEdit(r) { setEditing(r._id); setForm({ name: r.name, trigger: r.trigger, condition: r.condition, action: r.action, priority: r.priority, active: r.active }); setShowForm(true); }
 
   function handleSave() {
     if (!form.name.trim()) { showAlert("Rule name required", "error"); return; }
     if (editing) {
-      setRules(prev => prev.map(r => r.id === editing ? { ...r, ...form } : r));
-      showAlert("Rule updated", "success");
+      updateMutation.mutate({ id: editing, ...form }, {
+        onSuccess: () => { showAlert("Rule updated", "success"); setShowForm(false); },
+        onError: (e) => showAlert(e.message, "error"),
+      });
     } else {
-      setRules(prev => [{ id: String(Date.now()), ...form, triggeredCount: 0 }, ...prev]);
-      showAlert("Rule created", "success");
+      createMutation.mutate({ ...form, createdBy: userId }, {
+        onSuccess: () => { showAlert("Rule created", "success"); setShowForm(false); },
+        onError: (e) => showAlert(e.message, "error"),
+      });
     }
-    setShowForm(false);
   }
 
-  function toggleActive(id) {
-    setRules(prev => prev.map(r => r.id === id ? { ...r, active: !r.active } : r));
+  function handleToggle(id) {
+    toggleMutation.mutate(id, {
+      onSuccess: (data) => showAlert(`Rule ${data?.active ? 'activated' : 'paused'}`, "success"),
+      onError: (e) => showAlert(e.message, "error"),
+    });
+  }
+
+  function handleDelete(id) {
+    deleteMutation.mutate(id, {
+      onSuccess: () => showAlert("Rule deleted", "success"),
+      onError: (e) => showAlert(e.message, "error"),
+    });
+  }
+
+  if (isLoading) {
+    return (
+      <div className="max-w-6xl mx-auto px-6 py-6 flex flex-col items-center justify-center min-h-[400px]">
+        <Loader2 className="w-8 h-8 animate-spin text-teal-500 mb-3" />
+        <p className="text-sm text-gray-500">Loading escalation rules…</p>
+      </div>
+    );
   }
 
   return (
@@ -94,7 +127,7 @@ export default function EscalationManager() {
         {[
           { label: "Total Rules", value: rules.length, color: "text-teal-600", bg: "bg-teal-50", icon: Shield },
           { label: "Active Rules", value: rules.filter(r => r.active).length, color: "text-emerald-600", bg: "bg-emerald-50", icon: CheckCircle2 },
-          { label: "Triggered Today", value: rules.reduce((s, r) => s + r.triggeredCount, 0), color: "text-amber-600", bg: "bg-amber-50", icon: Bell },
+          { label: "Total Triggered", value: rules.reduce((s, r) => s + (r.triggeredCount || 0), 0), color: "text-amber-600", bg: "bg-amber-50", icon: Bell },
           { label: "Escalated Tickets", value: escalated.length, color: "text-red-600", bg: "bg-red-50", icon: ArrowUpCircle },
         ].map(s => (
           <Card key={s.label} className="border-gray-200">
@@ -118,14 +151,20 @@ export default function EscalationManager() {
             <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-gray-400" />
             <Input placeholder="Search rules…" value={search} onChange={e => setSearch(e.target.value)} className="pl-9 h-9 text-sm" />
           </div>
+          {filtered.length === 0 && (
+            <div className="flex flex-col items-center justify-center py-16 text-gray-400 border-2 border-dashed border-gray-200 rounded-xl">
+              <Shield className="w-10 h-10 mb-2 opacity-30" />
+              <p className="text-sm">No escalation rules yet</p>
+            </div>
+          )}
           {filtered.map(r => (
-            <Card key={r.id} className={`border-gray-200 ${!r.active ? "opacity-60" : ""}`}>
+            <Card key={r._id} className={`border-gray-200 ${!r.active ? "opacity-60" : ""}`}>
               <CardContent className="p-4">
                 <div className="flex items-start justify-between gap-3">
                   <div className="flex-1 min-w-0">
                     <div className="flex items-center gap-2 mb-1.5">
                       <h3 className="text-sm font-semibold text-gray-900">{r.name}</h3>
-                      <Badge variant="outline" className={`text-[10px] ${PRIORITY_COLORS[r.priority]}`}>{r.priority}</Badge>
+                      <Badge variant="outline" className={`text-[10px] ${PRIORITY_COLORS[r.priority] || ""}`}>{r.priority}</Badge>
                       <Badge variant="outline" className={`text-[10px] ${r.active ? "bg-emerald-50 text-emerald-700 border-emerald-200" : "bg-gray-50 text-gray-500 border-gray-200"}`}>
                         {r.active ? "Active" : "Paused"}
                       </Badge>
@@ -138,14 +177,15 @@ export default function EscalationManager() {
                     {r.condition && <p className="text-[11px] text-gray-400 mt-1">Condition: {r.condition}</p>}
                   </div>
                   <div className="flex items-center gap-1 shrink-0">
-                    <span className="text-xs font-bold text-gray-500 mr-2">{r.triggeredCount}×</span>
-                    <button onClick={() => toggleActive(r.id)} className="p-1 rounded hover:bg-gray-100 text-gray-400 hover:text-teal-600 transition-colors">
+                    <span className="text-xs font-bold text-gray-500 mr-2">{r.triggeredCount || 0}×</span>
+                    <button onClick={() => handleToggle(r._id)} disabled={toggleMutation.isPending}
+                      className="p-1 rounded hover:bg-gray-100 text-gray-400 hover:text-teal-600 transition-colors">
                       {r.active ? <CheckCircle2 className="w-4 h-4 text-emerald-500" /> : <CheckCircle2 className="w-4 h-4" />}
                     </button>
                     <button onClick={() => openEdit(r)} className="p-1 rounded hover:bg-gray-100 text-gray-400 hover:text-teal-600 transition-colors">
                       <Edit className="w-3.5 h-3.5" />
                     </button>
-                    <button onClick={() => { setRules(prev => prev.filter(x => x.id !== r.id)); showAlert("Rule deleted","success"); }}
+                    <button onClick={() => handleDelete(r._id)} disabled={deleteMutation.isPending}
                       className="p-1 rounded hover:bg-gray-100 text-gray-400 hover:text-red-500 transition-colors">
                       <Trash2 className="w-3.5 h-3.5" />
                     </button>
@@ -234,7 +274,10 @@ export default function EscalationManager() {
             </div>
             <div className="flex justify-end gap-2 pt-2">
               <Button variant="outline" onClick={() => setShowForm(false)}>Cancel</Button>
-              <Button onClick={handleSave} className="bg-teal-600 hover:bg-teal-700 text-white">{editing ? "Save" : "Create"}</Button>
+              <Button onClick={handleSave} disabled={createMutation.isPending || updateMutation.isPending}
+                className="bg-teal-600 hover:bg-teal-700 text-white">
+                {(createMutation.isPending || updateMutation.isPending) ? "Saving…" : editing ? "Save" : "Create"}
+              </Button>
             </div>
           </div>
         </DialogContent>

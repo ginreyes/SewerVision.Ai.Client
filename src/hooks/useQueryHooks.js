@@ -17,6 +17,8 @@ import supportApi from '@/data/supportApi';
 import messageApi from '@/data/messageApi';
 import cannedResponseApi from '@/data/cannedResponseApi';
 import complaintApi from '@/data/complaintApi';
+import { knowledgeBaseApi } from '@/data/knowledgeBaseApi';
+import { surveyApi } from '@/data/surveyApi';
 
 /**
  * Query Keys - Centralized key management for cache invalidation
@@ -149,6 +151,45 @@ export const queryKeys = {
     messagesThread: (threadId) => ['messages', 'thread', threadId],
     messagesUnreadCount: (userId) => ['messages', 'unread', userId],
     messagesContacts: (userId) => ['messages', 'contacts', userId],
+
+    // PACP Defects
+    pacpDefects: (filters) => ['pacp-defects', filters ?? {}],
+    pacpCategories: ['pacp-defect-categories'],
+
+    // Training
+    trainingModules: (filters) => ['training', 'modules', filters ?? {}],
+    trainingModule: (id) => ['training', 'module', id],
+    trainingAttempts: (userId, moduleId) => ['training', 'attempts', userId, moduleId ?? 'all'],
+    trainingStats: (userId) => ['training', 'stats', userId],
+
+    // Review Templates
+    reviewTemplates: (createdBy) => ['review-templates', createdBy ?? 'all'],
+
+    // QC Analytics
+    qcReviewStats: (userId) => ['qc', 'review-stats', userId],
+
+    // Knowledge Base
+    kbArticles: (filters) => ['knowledge-base', 'articles', filters ?? {}],
+    kbArticle: (id) => ['knowledge-base', 'article', id],
+    kbCategories: ['knowledge-base', 'categories'],
+
+    // Surveys
+    surveyResponses: (filters) => ['surveys', 'responses', filters ?? {}],
+    surveyStats: ['surveys', 'stats'],
+
+    // Admin Analytics
+    adminAnalytics: ['admin', 'analytics-overview'],
+
+    // Canned Workflows
+    cannedWorkflows: (createdBy) => ['canned-workflows', createdBy ?? 'all'],
+
+    // Escalation Rules
+    escalationRules: (createdBy) => ['escalation-rules', createdBy ?? 'all'],
+
+    // Survey Invites
+    surveyInvite: (token) => ['survey', 'invite', token],
+    pendingSurveys: (customerId) => ['survey', 'pending', customerId],
+    surveyInvites: (filters) => ['survey', 'invites', filters ?? {}],
 };
 
 /**
@@ -2105,6 +2146,363 @@ export function useUpdateWidgetPreferences() {
 /**
  * Hook: Widget live data
  */
+// ─── PACP DEFECT LIBRARY HOOKS ──────────────────────────
+
+export function usePacpDefects(filters = {}, options = {}) {
+    return useQuery({
+        queryKey: queryKeys.pacpDefects(filters),
+        queryFn: () => qcApi.getAllDefects(filters),
+        staleTime: 1000 * 60 * 30,
+        ...options,
+    });
+}
+
+export function usePacpCategories(options = {}) {
+    return useQuery({
+        queryKey: queryKeys.pacpCategories,
+        queryFn: () => qcApi.getDefectCategories(),
+        staleTime: 1000 * 60 * 60,
+        ...options,
+    });
+}
+
+// ─── TRAINING HOOKS ─────────────────────────────────────
+
+export function useTrainingModules(filters = {}, options = {}) {
+    return useQuery({
+        queryKey: queryKeys.trainingModules(filters),
+        queryFn: () => qcApi.getTrainingModules(filters),
+        staleTime: 1000 * 60 * 10,
+        ...options,
+    });
+}
+
+export function useTrainingModule(id, options = {}) {
+    return useQuery({
+        queryKey: queryKeys.trainingModule(id),
+        queryFn: () => qcApi.getTrainingModule(id),
+        enabled: !!id,
+        ...options,
+    });
+}
+
+export function useSubmitTrainingAttempt() {
+    const queryClient = useQueryClient();
+    return useMutation({
+        mutationFn: (data) => qcApi.submitTrainingAttempt(data),
+        onSuccess: (_data, variables) => {
+            queryClient.invalidateQueries({ queryKey: ['training', 'attempts'] });
+            queryClient.invalidateQueries({ queryKey: ['training', 'stats'] });
+        },
+    });
+}
+
+export function useTrainingAttempts(userId, moduleId, options = {}) {
+    return useQuery({
+        queryKey: queryKeys.trainingAttempts(userId, moduleId),
+        queryFn: () => qcApi.getTrainingAttempts(userId, moduleId),
+        enabled: !!userId,
+        ...options,
+    });
+}
+
+export function useTrainingStats(userId, options = {}) {
+    return useQuery({
+        queryKey: queryKeys.trainingStats(userId),
+        queryFn: () => qcApi.getTrainingStats(userId),
+        enabled: !!userId,
+        staleTime: 1000 * 60 * 5,
+        ...options,
+    });
+}
+
+// ─── REVIEW TEMPLATE HOOKS ──────────────────────────────
+
+export function useReviewTemplates(createdBy, options = {}) {
+    return useQuery({
+        queryKey: queryKeys.reviewTemplates(createdBy),
+        queryFn: () => qcApi.getReviewTemplates(createdBy),
+        staleTime: 1000 * 60 * 10,
+        ...options,
+    });
+}
+
+export function useCreateReviewTemplate() {
+    const queryClient = useQueryClient();
+    return useMutation({
+        mutationFn: (data) => qcApi.createReviewTemplate(data),
+        onSuccess: () => { queryClient.invalidateQueries({ queryKey: ['review-templates'] }); },
+    });
+}
+
+export function useUpdateReviewTemplate() {
+    const queryClient = useQueryClient();
+    return useMutation({
+        mutationFn: ({ id, ...data }) => qcApi.updateReviewTemplate(id, data),
+        onSuccess: () => { queryClient.invalidateQueries({ queryKey: ['review-templates'] }); },
+    });
+}
+
+export function useDeleteReviewTemplate() {
+    const queryClient = useQueryClient();
+    return useMutation({
+        mutationFn: (id) => qcApi.deleteReviewTemplate(id),
+        onSuccess: () => { queryClient.invalidateQueries({ queryKey: ['review-templates'] }); },
+    });
+}
+
+export function useToggleTemplateFavorite() {
+    const queryClient = useQueryClient();
+    return useMutation({
+        mutationFn: (id) => qcApi.toggleTemplateFavorite(id),
+        onSuccess: () => { queryClient.invalidateQueries({ queryKey: ['review-templates'] }); },
+    });
+}
+
+// ─── QC REVIEW ANALYTICS HOOKS ──────────────────────────
+
+export function useQCReviewStats(userId, options = {}) {
+    return useQuery({
+        queryKey: queryKeys.qcReviewStats(userId),
+        queryFn: () => qcApi.getQCReviewStats(userId),
+        enabled: !!userId,
+        staleTime: 1000 * 60 * 5,
+        ...options,
+    });
+}
+
+// ─── KNOWLEDGE BASE HOOKS ───────────────────────────────
+
+export function useKBArticles(filters = {}, options = {}) {
+    return useQuery({
+        queryKey: queryKeys.kbArticles(filters),
+        queryFn: () => knowledgeBaseApi.getAllArticles(filters),
+        staleTime: 1000 * 60 * 5,
+        ...options,
+    });
+}
+
+export function useKBCategories(options = {}) {
+    return useQuery({
+        queryKey: queryKeys.kbCategories,
+        queryFn: () => knowledgeBaseApi.getCategories(),
+        staleTime: 1000 * 60 * 30,
+        ...options,
+    });
+}
+
+export function useCreateKBArticle() {
+    const queryClient = useQueryClient();
+    return useMutation({
+        mutationFn: (data) => knowledgeBaseApi.createArticle(data),
+        onSuccess: () => { queryClient.invalidateQueries({ queryKey: ['knowledge-base'] }); },
+    });
+}
+
+export function useUpdateKBArticle() {
+    const queryClient = useQueryClient();
+    return useMutation({
+        mutationFn: ({ id, ...data }) => knowledgeBaseApi.updateArticle(id, data),
+        onSuccess: () => { queryClient.invalidateQueries({ queryKey: ['knowledge-base'] }); },
+    });
+}
+
+export function useDeleteKBArticle() {
+    const queryClient = useQueryClient();
+    return useMutation({
+        mutationFn: (id) => knowledgeBaseApi.deleteArticle(id),
+        onSuccess: () => { queryClient.invalidateQueries({ queryKey: ['knowledge-base'] }); },
+    });
+}
+
+// ─── SURVEY HOOKS ───────────────────────────────────────
+
+export function useSurveyResponses(filters = {}, options = {}) {
+    return useQuery({
+        queryKey: queryKeys.surveyResponses(filters),
+        queryFn: () => surveyApi.getAllResponses(filters),
+        staleTime: 1000 * 60 * 5,
+        ...options,
+    });
+}
+
+export function useSurveyStats(options = {}) {
+    return useQuery({
+        queryKey: queryKeys.surveyStats,
+        queryFn: () => surveyApi.getStats(),
+        staleTime: 1000 * 60 * 5,
+        ...options,
+    });
+}
+
+export function useSubmitSurvey() {
+    const queryClient = useQueryClient();
+    return useMutation({
+        mutationFn: (data) => surveyApi.submitResponse(data),
+        onSuccess: () => {
+            queryClient.invalidateQueries({ queryKey: ['surveys'] });
+        },
+    });
+}
+
+// ─── ADMIN ANALYTICS HOOKS ──────────────────────────────
+
+// ─── CANNED WORKFLOW HOOKS ───────────────────────────────
+
+export function useCannedWorkflows(createdBy, options = {}) {
+    return useQuery({
+        queryKey: queryKeys.cannedWorkflows(createdBy),
+        queryFn: () => supportApi.getAllWorkflows(createdBy),
+        staleTime: 1000 * 60 * 5,
+        ...options,
+    });
+}
+
+export function useCreateCannedWorkflow() {
+    const queryClient = useQueryClient();
+    return useMutation({
+        mutationFn: (data) => supportApi.createWorkflow(data),
+        onSuccess: () => { queryClient.invalidateQueries({ queryKey: ['canned-workflows'] }); },
+    });
+}
+
+export function useUpdateCannedWorkflow() {
+    const queryClient = useQueryClient();
+    return useMutation({
+        mutationFn: ({ id, ...data }) => supportApi.updateWorkflow(id, data),
+        onSuccess: () => { queryClient.invalidateQueries({ queryKey: ['canned-workflows'] }); },
+    });
+}
+
+export function useDeleteCannedWorkflow() {
+    const queryClient = useQueryClient();
+    return useMutation({
+        mutationFn: (id) => supportApi.deleteWorkflow(id),
+        onSuccess: () => { queryClient.invalidateQueries({ queryKey: ['canned-workflows'] }); },
+    });
+}
+
+export function useToggleCannedWorkflow() {
+    const queryClient = useQueryClient();
+    return useMutation({
+        mutationFn: (id) => supportApi.toggleWorkflowActive(id),
+        onSuccess: () => { queryClient.invalidateQueries({ queryKey: ['canned-workflows'] }); },
+    });
+}
+
+export function useDuplicateCannedWorkflow() {
+    const queryClient = useQueryClient();
+    return useMutation({
+        mutationFn: (id) => supportApi.duplicateWorkflow(id),
+        onSuccess: () => { queryClient.invalidateQueries({ queryKey: ['canned-workflows'] }); },
+    });
+}
+
+// ─── SURVEY INVITE HOOKS ─────────────────────────────────
+
+export function useSurveyInvite(token, options = {}) {
+    return useQuery({
+        queryKey: queryKeys.surveyInvite(token),
+        queryFn: () => surveyApi.getInviteByToken(token),
+        enabled: !!token,
+        retry: false,
+        ...options,
+    });
+}
+
+export function usePendingSurveys(customerId, options = {}) {
+    return useQuery({
+        queryKey: queryKeys.pendingSurveys(customerId),
+        queryFn: () => surveyApi.getPendingSurveys(customerId),
+        enabled: !!customerId,
+        staleTime: 1000 * 60 * 2,
+        ...options,
+    });
+}
+
+export function useSurveyInvites(filters = {}, options = {}) {
+    return useQuery({
+        queryKey: queryKeys.surveyInvites(filters),
+        queryFn: () => surveyApi.getAllInvites(filters),
+        staleTime: 1000 * 60 * 5,
+        ...options,
+    });
+}
+
+export function useSendSurveys() {
+    const queryClient = useQueryClient();
+    return useMutation({
+        mutationFn: (data) => surveyApi.sendSurveys(data),
+        onSuccess: () => {
+            queryClient.invalidateQueries({ queryKey: ['survey'] });
+            queryClient.invalidateQueries({ queryKey: ['surveys'] });
+        },
+    });
+}
+
+export function useRespondToSurvey() {
+    const queryClient = useQueryClient();
+    return useMutation({
+        mutationFn: ({ token, rating, comment }) => surveyApi.respondToSurvey(token, { rating, comment }),
+        onSuccess: () => {
+            queryClient.invalidateQueries({ queryKey: ['survey'] });
+            queryClient.invalidateQueries({ queryKey: ['surveys'] });
+        },
+    });
+}
+
+// ─── ESCALATION RULE HOOKS ───────────────────────────────
+
+export function useEscalationRules(createdBy, options = {}) {
+    return useQuery({
+        queryKey: queryKeys.escalationRules(createdBy),
+        queryFn: () => supportApi.getAllEscalationRules(createdBy),
+        staleTime: 1000 * 60 * 5,
+        ...options,
+    });
+}
+
+export function useCreateEscalationRule() {
+    const queryClient = useQueryClient();
+    return useMutation({
+        mutationFn: (data) => supportApi.createEscalationRule(data),
+        onSuccess: () => { queryClient.invalidateQueries({ queryKey: ['escalation-rules'] }); },
+    });
+}
+
+export function useUpdateEscalationRule() {
+    const queryClient = useQueryClient();
+    return useMutation({
+        mutationFn: ({ id, ...data }) => supportApi.updateEscalationRule(id, data),
+        onSuccess: () => { queryClient.invalidateQueries({ queryKey: ['escalation-rules'] }); },
+    });
+}
+
+export function useDeleteEscalationRule() {
+    const queryClient = useQueryClient();
+    return useMutation({
+        mutationFn: (id) => supportApi.deleteEscalationRule(id),
+        onSuccess: () => { queryClient.invalidateQueries({ queryKey: ['escalation-rules'] }); },
+    });
+}
+
+export function useToggleEscalationRule() {
+    const queryClient = useQueryClient();
+    return useMutation({
+        mutationFn: (id) => supportApi.toggleEscalationRule(id),
+        onSuccess: () => { queryClient.invalidateQueries({ queryKey: ['escalation-rules'] }); },
+    });
+}
+
+export function useAdminAnalytics(options = {}) {
+    return useQuery({
+        queryKey: queryKeys.adminAnalytics,
+        queryFn: () => dashboardApi.getAnalyticsOverview(),
+        staleTime: 1000 * 60 * 5,
+        ...options,
+    });
+}
+
 export function useWidgetData(userId, options = {}) {
     return useQuery({
         queryKey: queryKeys.customerWidgetData(userId),
@@ -2205,6 +2603,29 @@ export default {
     useWidgetPreferences,
     useUpdateWidgetPreferences,
     useWidgetData,
+    // New module hooks
+    usePacpDefects,
+    usePacpCategories,
+    useTrainingModules,
+    useTrainingModule,
+    useSubmitTrainingAttempt,
+    useTrainingAttempts,
+    useTrainingStats,
+    useReviewTemplates,
+    useCreateReviewTemplate,
+    useUpdateReviewTemplate,
+    useDeleteReviewTemplate,
+    useToggleTemplateFavorite,
+    useQCReviewStats,
+    useKBArticles,
+    useKBCategories,
+    useCreateKBArticle,
+    useUpdateKBArticle,
+    useDeleteKBArticle,
+    useSurveyResponses,
+    useSurveyStats,
+    useSubmitSurvey,
+    useAdminAnalytics,
     // User (Team Lead) hooks
     useUserDashboard,
     useUserProjects,

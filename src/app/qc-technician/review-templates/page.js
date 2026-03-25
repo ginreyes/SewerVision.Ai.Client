@@ -3,7 +3,7 @@
 import React, { useState } from "react";
 import {
   ClipboardCheck, Plus, Edit, Trash2, Copy, Search, CheckSquare,
-  ChevronDown, ChevronRight, Star, BookOpen,
+  ChevronDown, ChevronRight, Star, BookOpen, Loader2,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -14,70 +14,79 @@ import {
   Dialog, DialogContent, DialogHeader, DialogTitle,
 } from "@/components/ui/dialog";
 import { useAlert } from "@/components/providers/AlertProvider";
-
-const SEED_TEMPLATES = [
-  {
-    id: "1", name: "Standard Crack Review", defectType: "Cracks", starred: true,
-    criteria: [
-      { id: "c1", label: "Measure crack width and length", required: true },
-      { id: "c2", label: "Identify crack direction (longitudinal/circumferential/spiral)", required: true },
-      { id: "c3", label: "Assign PACP grade (1-5)", required: true },
-      { id: "c4", label: "Capture before/after comparison screenshot", required: false },
-    ],
-  },
-  {
-    id: "2", name: "Root Intrusion Assessment", defectType: "Roots", starred: false,
-    criteria: [
-      { id: "c1", label: "Estimate % pipe blockage", required: true },
-      { id: "c2", label: "Identify root entry point (joint/crack)", required: true },
-      { id: "c3", label: "Recommend root cutting urgency", required: true },
-      { id: "c4", label: "Note joint condition at entry point", required: false },
-    ],
-  },
-  {
-    id: "3", name: "Structural Deformation Check", defectType: "Structural", starred: true,
-    criteria: [
-      { id: "c1", label: "Measure % deformation from circular profile", required: true },
-      { id: "c2", label: "Check for external loading signs (road/building above)", required: false },
-      { id: "c3", label: "Assign rehabilitation urgency level", required: true },
-    ],
-  },
-];
+import { useUser } from "@/components/providers/UserContext";
+import {
+  useReviewTemplates,
+  useCreateReviewTemplate,
+  useUpdateReviewTemplate,
+  useDeleteReviewTemplate,
+  useToggleTemplateFavorite,
+} from "@/hooks/useQueryHooks";
 
 export default function QCReviewTemplates() {
   const { showAlert } = useAlert();
-  const [templates, setTemplates] = useState(SEED_TEMPLATES);
-  const [selected, setSelected] = useState("1");
+  const { user } = useUser();
+  const userId = user?._id || user?.id;
+
+  const { data: templatesRaw = [], isLoading } = useReviewTemplates(userId);
+  const createMutation = useCreateReviewTemplate();
+  const updateMutation = useUpdateReviewTemplate();
+  const deleteMutation = useDeleteReviewTemplate();
+  const favMutation = useToggleTemplateFavorite();
+
+  const templates = Array.isArray(templatesRaw) ? templatesRaw : [];
+
+  const [selected, setSelected] = useState(null);
   const [showForm, setShowForm] = useState(false);
   const [newName, setNewName] = useState("");
   const [newDefect, setNewDefect] = useState("Cracks");
   const [search, setSearch] = useState("");
 
-  const selectedTemplate = templates.find(t => t.id === selected);
-  const filtered = templates.filter(t => !search || t.name.toLowerCase().includes(search.toLowerCase()) || t.defectType.toLowerCase().includes(search.toLowerCase()));
+  const selectedTemplate = templates.find(t => (t.id || t._id) === selected);
+  const filtered = templates.filter(t => !search || t.name?.toLowerCase().includes(search.toLowerCase()) || t.defectType?.toLowerCase().includes(search.toLowerCase()));
 
   function handleDuplicate(t) {
-    setTemplates(prev => [...prev, { ...t, id: String(Date.now()), name: t.name + " (copy)", starred: false }]);
-    showAlert("Template duplicated", "success");
+    createMutation.mutate(
+      { name: t.name + " (copy)", defectType: t.defectType, criteria: t.criteria || [], createdBy: userId },
+      { onSuccess: () => showAlert("Template duplicated", "success") }
+    );
   }
 
   function handleDelete(id) {
-    setTemplates(prev => prev.filter(t => t.id !== id));
-    if (selected === id) setSelected(null);
-    showAlert("Template deleted", "success");
+    deleteMutation.mutate(id, {
+      onSuccess: () => {
+        if (selected === id) setSelected(null);
+        showAlert("Template deleted", "success");
+      },
+    });
   }
 
   function toggleStar(id) {
-    setTemplates(prev => prev.map(t => t.id === id ? { ...t, starred: !t.starred } : t));
+    favMutation.mutate(id);
   }
 
   function handleCreate() {
     if (!newName.trim()) { showAlert("Name required", "error"); return; }
-    const id = String(Date.now());
-    setTemplates(prev => [...prev, { id, name: newName, defectType: newDefect, starred: false, criteria: [] }]);
-    setSelected(id);
-    setShowForm(false);
-    showAlert("Template created", "success");
+    createMutation.mutate(
+      { name: newName, defectType: newDefect, criteria: [], createdBy: userId },
+      {
+        onSuccess: (data) => {
+          const newId = data?.id || data?._id || data?.data?.id || data?.data?._id;
+          if (newId) setSelected(newId);
+          setShowForm(false);
+          setNewName("");
+          showAlert("Template created", "success");
+        },
+      }
+    );
+  }
+
+  if (isLoading) {
+    return (
+      <div className="flex items-center justify-center min-h-[60vh]">
+        <Loader2 className="w-8 h-8 animate-spin text-rose-500" />
+      </div>
+    );
   }
 
   return (
@@ -105,19 +114,22 @@ export default function QCReviewTemplates() {
             <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-gray-400" />
             <Input placeholder="Search templates…" value={search} onChange={e => setSearch(e.target.value)} className="pl-9 h-9 text-sm" />
           </div>
-          {filtered.map(t => (
-            <button key={t.id} onClick={() => setSelected(t.id)}
-              className={`w-full text-left p-3 rounded-xl border transition-all ${selected === t.id ? "border-rose-300 bg-rose-50" : "border-gray-200 bg-white hover:border-rose-200"}`}>
-              <div className="flex items-start justify-between gap-1 mb-1">
-                <p className="text-sm font-semibold text-gray-900 leading-snug">{t.name}</p>
-                <button onClick={e => { e.stopPropagation(); toggleStar(t.id); }} className="shrink-0">
-                  <Star className={`w-3.5 h-3.5 ${t.starred ? "text-amber-400 fill-amber-400" : "text-gray-300"}`} />
-                </button>
-              </div>
-              <Badge variant="outline" className="text-[10px] bg-rose-50 text-rose-700 border-rose-200">{t.defectType}</Badge>
-              <p className="text-[10px] text-gray-400 mt-1">{t.criteria.length} criteria</p>
-            </button>
-          ))}
+          {filtered.map(t => {
+            const tId = t.id || t._id;
+            return (
+              <button key={tId} onClick={() => setSelected(tId)}
+                className={`w-full text-left p-3 rounded-xl border transition-all ${selected === tId ? "border-rose-300 bg-rose-50" : "border-gray-200 bg-white hover:border-rose-200"}`}>
+                <div className="flex items-start justify-between gap-1 mb-1">
+                  <p className="text-sm font-semibold text-gray-900 leading-snug">{t.name}</p>
+                  <button onClick={e => { e.stopPropagation(); toggleStar(tId); }} className="shrink-0">
+                    <Star className={`w-3.5 h-3.5 ${t.starred || t.favorite ? "text-amber-400 fill-amber-400" : "text-gray-300"}`} />
+                  </button>
+                </div>
+                <Badge variant="outline" className="text-[10px] bg-rose-50 text-rose-700 border-rose-200">{t.defectType}</Badge>
+                <p className="text-[10px] text-gray-400 mt-1">{(t.criteria || []).length} criteria</p>
+              </button>
+            );
+          })}
         </div>
 
         {/* Detail */}
@@ -134,7 +146,7 @@ export default function QCReviewTemplates() {
                     <button onClick={() => handleDuplicate(selectedTemplate)} className="p-1.5 rounded-lg hover:bg-gray-100 text-gray-400 hover:text-rose-600 transition-colors">
                       <Copy className="w-4 h-4" />
                     </button>
-                    <button onClick={() => handleDelete(selectedTemplate.id)} className="p-1.5 rounded-lg hover:bg-gray-100 text-gray-400 hover:text-red-500 transition-colors">
+                    <button onClick={() => handleDelete(selectedTemplate.id || selectedTemplate._id)} className="p-1.5 rounded-lg hover:bg-gray-100 text-gray-400 hover:text-red-500 transition-colors">
                       <Trash2 className="w-4 h-4" />
                     </button>
                   </div>
@@ -142,14 +154,14 @@ export default function QCReviewTemplates() {
               </CardHeader>
               <CardContent className="pt-0 space-y-2">
                 <p className="text-xs font-semibold text-gray-400 uppercase tracking-wide mb-3">Review Criteria</p>
-                {selectedTemplate.criteria.map((c, i) => (
-                  <div key={c.id} className="flex items-center gap-3 p-3 rounded-lg border border-gray-100 bg-gray-50">
+                {(selectedTemplate.criteria || []).map((c, i) => (
+                  <div key={c.id || c._id || i} className="flex items-center gap-3 p-3 rounded-lg border border-gray-100 bg-gray-50">
                     <span className="w-5 h-5 rounded-full bg-rose-100 text-rose-700 text-[10px] font-bold flex items-center justify-center shrink-0">{i + 1}</span>
                     <p className="text-sm text-gray-800 flex-1">{c.label}</p>
                     {c.required && <Badge variant="outline" className="text-[10px] bg-red-50 text-red-600 border-red-200 shrink-0">Required</Badge>}
                   </div>
                 ))}
-                {selectedTemplate.criteria.length === 0 && (
+                {(selectedTemplate.criteria || []).length === 0 && (
                   <div className="flex flex-col items-center justify-center py-8 text-gray-300 border-2 border-dashed border-gray-200 rounded-xl">
                     <ClipboardCheck className="w-8 h-8 mb-2" />
                     <p className="text-xs">No criteria defined</p>
@@ -182,7 +194,7 @@ export default function QCReviewTemplates() {
             </div>
             <div className="flex justify-end gap-2 pt-2">
               <Button variant="outline" onClick={() => setShowForm(false)}>Cancel</Button>
-              <Button onClick={handleCreate} className="bg-rose-600 hover:bg-rose-700 text-white">Create</Button>
+              <Button onClick={handleCreate} disabled={createMutation.isPending} className="bg-rose-600 hover:bg-rose-700 text-white">Create</Button>
             </div>
           </div>
         </DialogContent>

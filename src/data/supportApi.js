@@ -137,6 +137,65 @@ const supportApi = {
     if (!res?.ok) throw new Error(res?.message || "Failed to fetch deletion requests");
     return res.data?.data ?? res.data;
   },
+  // ─── Canned Workflows ────────────────────────────────
+  async getAllWorkflows(createdBy) {
+    const params = createdBy ? `?createdBy=${createdBy}` : '';
+    const res = await api(`/api/canned-workflows/all${params}`, 'GET');
+    if (!res?.ok) throw new Error(res?.data?.error || 'Failed to fetch workflows');
+    return res.data?.data || [];
+  },
+  async createWorkflow(data) {
+    const res = await api('/api/canned-workflows/create', 'POST', data);
+    if (!res?.ok) throw new Error(res?.data?.message || 'Failed to create workflow');
+    return res.data?.data;
+  },
+  async updateWorkflow(id, data) {
+    const res = await api(`/api/canned-workflows/${id}`, 'PUT', data);
+    if (!res?.ok) throw new Error(res?.data?.message || 'Failed to update workflow');
+    return res.data?.data;
+  },
+  async deleteWorkflow(id) {
+    const res = await api(`/api/canned-workflows/${id}`, 'DELETE');
+    if (!res?.ok) throw new Error(res?.data?.message || 'Failed to delete workflow');
+    return res.data;
+  },
+  async toggleWorkflowActive(id) {
+    const res = await api(`/api/canned-workflows/${id}/toggle`, 'PUT');
+    if (!res?.ok) throw new Error(res?.data?.message || 'Failed to toggle workflow');
+    return res.data?.data;
+  },
+  async duplicateWorkflow(id) {
+    const res = await api(`/api/canned-workflows/${id}/duplicate`, 'POST');
+    if (!res?.ok) throw new Error(res?.data?.message || 'Failed to duplicate workflow');
+    return res.data?.data;
+  },
+  // ─── Escalation Rules ────────────────────────────────
+  async getAllEscalationRules(createdBy) {
+    const params = createdBy ? `?createdBy=${createdBy}` : '';
+    const res = await api(`/api/escalation-rules/all${params}`, 'GET');
+    if (!res?.ok) throw new Error(res?.data?.error || 'Failed to fetch escalation rules');
+    return res.data?.data || [];
+  },
+  async createEscalationRule(data) {
+    const res = await api('/api/escalation-rules/create', 'POST', data);
+    if (!res?.ok) throw new Error(res?.data?.message || 'Failed to create rule');
+    return res.data?.data;
+  },
+  async updateEscalationRule(id, data) {
+    const res = await api(`/api/escalation-rules/${id}`, 'PUT', data);
+    if (!res?.ok) throw new Error(res?.data?.message || 'Failed to update rule');
+    return res.data?.data;
+  },
+  async deleteEscalationRule(id) {
+    const res = await api(`/api/escalation-rules/${id}`, 'DELETE');
+    if (!res?.ok) throw new Error(res?.data?.message || 'Failed to delete rule');
+    return res.data;
+  },
+  async toggleEscalationRule(id) {
+    const res = await api(`/api/escalation-rules/${id}/toggle`, 'PUT');
+    if (!res?.ok) throw new Error(res?.data?.message || 'Failed to toggle rule');
+    return res.data?.data;
+  },
 };
 
 export default supportApi;

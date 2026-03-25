@@ -25,7 +25,18 @@ function avatarColor(id) { return COLORS[id?.charCodeAt(0) % COLORS.length] || C
 function getCustomerName(c) {
   if (!c) return "Unknown";
   if (typeof c === "string") return c;
-  return c.name || c.email?.split("@")[0] || "Unknown";
+  if (c.first_name && c.last_name) return `${c.first_name} ${c.last_name}`;
+  if (c.first_name) return c.first_name;
+  if (c.name) return c.name;
+  if (c.username) return c.username;
+  if (c.email) return c.email.split("@")[0];
+  return "Unknown";
+}
+
+function getCustomerEmail(c) {
+  if (!c) return "";
+  if (typeof c === "string") return "";
+  return c.email || "";
 }
 
 function buildProfiles(tickets) {
@@ -39,7 +50,7 @@ function buildProfiles(tickets) {
       map[id] = {
         id,
         name: getCustomerName(cust),
-        email: cust.email || "",
+        email: getCustomerEmail(cust),
         tickets: [],
         totalTickets: 0,
         openTickets: 0,
@@ -69,7 +80,12 @@ export default function CustomerProfiles() {
   const [statusFilter, setStatusFilter] = useState("all");
 
   const { data: ticketsRaw, isLoading } = useSupportAllTickets();
-  const tickets = useMemo(() => Array.isArray(ticketsRaw) ? ticketsRaw : [], [ticketsRaw]);
+  const tickets = useMemo(() => {
+    if (Array.isArray(ticketsRaw)) return ticketsRaw;
+    if (ticketsRaw?.data && Array.isArray(ticketsRaw.data)) return ticketsRaw.data;
+    if (ticketsRaw?.tickets && Array.isArray(ticketsRaw.tickets)) return ticketsRaw.tickets;
+    return [];
+  }, [ticketsRaw]);
   const profiles = useMemo(() => buildProfiles(tickets), [tickets]);
 
   const filtered = useMemo(() => profiles.filter(p => {

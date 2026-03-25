@@ -336,7 +336,95 @@ export const qcApi = {
     }
     
     return response.data.data;
-  }
+  },
+  // ─── PACP Defect Library ────────────────────────────────
+  async getAllDefects({ category, severity, search, page = 1, limit = 100 } = {}) {
+    const params = new URLSearchParams();
+    if (category) params.append('category', category);
+    if (severity) params.append('severity', severity);
+    if (search) params.append('search', search);
+    params.append('page', String(page));
+    params.append('limit', String(limit));
+    const response = await api(`/api/pacp-defects/all?${params}`, 'GET');
+    if (!response.ok) throw new Error(response.data?.error || 'Failed to fetch defects');
+    return response.data;
+  },
+  async getDefectCategories() {
+    const response = await api('/api/pacp-defects/categories', 'GET');
+    if (!response.ok) throw new Error(response.data?.error || 'Failed to fetch categories');
+    return response.data?.data || [];
+  },
+
+  // ─── Training Modules ─────────────────────────────────
+  async getTrainingModules({ category, difficulty } = {}) {
+    const params = new URLSearchParams();
+    if (category) params.append('category', category);
+    if (difficulty) params.append('difficulty', difficulty);
+    const response = await api(`/api/training/modules?${params}`, 'GET');
+    if (!response.ok) throw new Error(response.data?.error || 'Failed to fetch training modules');
+    return response.data?.data || [];
+  },
+  async getTrainingModule(id) {
+    const response = await api(`/api/training/modules/${id}`, 'GET');
+    if (!response.ok) throw new Error(response.data?.error || 'Failed to fetch module');
+    return response.data?.data;
+  },
+  async createTrainingModule(data) {
+    const response = await api('/api/training/modules', 'POST', data);
+    if (!response.ok) throw new Error(response.data?.message || 'Failed to create module');
+    return response.data?.data;
+  },
+  async submitTrainingAttempt(data) {
+    const response = await api('/api/training/attempt', 'POST', data);
+    if (!response.ok) throw new Error(response.data?.message || 'Failed to submit attempt');
+    return response.data?.data;
+  },
+  async getTrainingAttempts(userId, moduleId) {
+    const params = moduleId ? `?moduleId=${moduleId}` : '';
+    const response = await api(`/api/training/attempts/${userId}${params}`, 'GET');
+    if (!response.ok) throw new Error(response.data?.error || 'Failed to fetch attempts');
+    return response.data?.data || [];
+  },
+  async getTrainingStats(userId) {
+    const response = await api(`/api/training/stats/${userId}`, 'GET');
+    if (!response.ok) throw new Error(response.data?.error || 'Failed to fetch stats');
+    return response.data?.data;
+  },
+
+  // ─── Review Templates ──────────────────────────────────
+  async getReviewTemplates(createdBy) {
+    const params = createdBy ? `?createdBy=${createdBy}` : '';
+    const response = await api(`/api/review-templates/all${params}`, 'GET');
+    if (!response.ok) throw new Error(response.data?.error || 'Failed to fetch templates');
+    return response.data?.data || [];
+  },
+  async createReviewTemplate(data) {
+    const response = await api('/api/review-templates/create', 'POST', data);
+    if (!response.ok) throw new Error(response.data?.message || 'Failed to create template');
+    return response.data?.data;
+  },
+  async updateReviewTemplate(id, data) {
+    const response = await api(`/api/review-templates/${id}`, 'PUT', data);
+    if (!response.ok) throw new Error(response.data?.message || 'Failed to update template');
+    return response.data?.data;
+  },
+  async deleteReviewTemplate(id) {
+    const response = await api(`/api/review-templates/${id}`, 'DELETE');
+    if (!response.ok) throw new Error(response.data?.message || 'Failed to delete template');
+    return response.data;
+  },
+  async toggleTemplateFavorite(id) {
+    const response = await api(`/api/review-templates/${id}/favorite`, 'PUT');
+    if (!response.ok) throw new Error(response.data?.message || 'Failed to toggle favorite');
+    return response.data?.data;
+  },
+
+  // ─── QC Review Analytics ───────────────────────────────
+  async getQCReviewStats(userId) {
+    const response = await api(`/api/qc-analytics/review-stats/${userId}`, 'GET');
+    if (!response.ok) throw new Error(response.data?.error || 'Failed to fetch review stats');
+    return response.data?.data;
+  },
 };
 
 export default qcApi;
