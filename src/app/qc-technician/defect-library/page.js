@@ -1,39 +1,189 @@
 "use client";
 
-import React, { useState, useMemo } from "react";
+import React, { useState, useMemo, useCallback } from "react";
 import {
-  BookOpen, Search, AlertTriangle, Filter, ChevronRight, Eye,
-  Tag, Shield, AlertCircle, Info, Loader2,
+  BookOpen, Search, Filter, Plus, Loader2, Trash2,
 } from "lucide-react";
 import { Input } from "@/components/ui/input";
 import { Badge } from "@/components/ui/badge";
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
-import { usePacpDefects, usePacpCategories } from "@/hooks/useQueryHooks";
+import { Button } from "@/components/ui/button";
+import {
+  usePacpDefects,
+  usePacpCategories,
+  useCreatePacpDefect,
+  useUpdatePacpDefect,
+  useDeletePacpDefect,
+} from "@/hooks/useQueryHooks";
+import {
+  DefectCard,
+  DefectDetail,
+  DefectFormModal,
+  getCategoryIcon,
+} from "@/components/qc/defect-library";
 
-const SEVERITY_COLORS = {
-  "Grade 1": "bg-gray-100 text-gray-600 border-gray-200",
-  "Grade 2": "bg-blue-100 text-blue-700 border-blue-200",
-  "Grade 3": "bg-amber-100 text-amber-700 border-amber-200",
-  "Grade 4": "bg-orange-100 text-orange-700 border-orange-200",
-  "Grade 5": "bg-red-100 text-red-700 border-red-200",
-};
+// ── helpers ────────────────────────────────────────────────
+
+function useFavoritesStore() {
+  const [favorites, setFavorites] = useState(() => {
+    if (typeof window === "undefined") return new Set();
+    try {
+      const raw = localStorage.getItem("defect-favorites");
+      return new Set(raw ? JSON.parse(raw) : []);
+    } catch {
+      return new Set();
+    }
+  });
+
+  const toggle = useCallback((id) => {
+    setFavorites((prev) => {
+      const next = new Set(prev);
+      if (next.has(id)) next.delete(id);
+      else next.add(id);
+      try {
+        localStorage.setItem("defect-favorites", JSON.stringify([...next]));
+      } catch { /* noop */ }
+      return next;
+    });
+  }, []);
+
+  return { favorites, toggle };
+}
+
+function useNotesStore() {
+  const [notes, setNotes] = useState(() => {
+    if (typeof window === "undefined") return {};
+    try {
+      const raw = localStorage.getItem("defect-notes");
+      return raw ? JSON.parse(raw) : {};
+    } catch {
+      return {};
+    }
+  });
+
+  const save = useCallback((id, text) => {
+    setNotes((prev) => {
+      const next = { ...prev, [id]: text };
+      try {
+        localStorage.setItem("defect-notes", JSON.stringify(next));
+      } catch { /* noop */ }
+      return next;
+    });
+  }, []);
+
+  return { notes, save };
+}
+
+// ── page ───────────────────────────────────────────────────
 
 export default function DefectLibrary() {
   const [search, setSearch] = useState("");
   const [category, setCategory] = useState("All");
   const [selected, setSelected] = useState(null);
+  const [formOpen, setFormOpen] = useState(false);
+  const [editingDefect, setEditingDefect] = useState(null);
 
+  // Data queries
   const { data: defectsData, isLoading } = usePacpDefects({
     category: category !== "All" ? category : undefined,
     search: search || undefined,
   });
   const { data: categoriesData = [] } = usePacpCategories();
 
-  const defects = defectsData?.data || defectsData || [];
-  const categories = ["All", ...(Array.isArray(categoriesData) ? categoriesData : [])];
+  // Mutations
+  const createMutation = useCreatePacpDefect();
+  const updateMutation = useUpdatePacpDefect();
+  const deleteMutation = useDeletePacpDefect();
 
-  const selectedDefect = selected ? defects.find(d => d.id === selected || d._id === selected) : null;
+  // Local stores
+  const { favorites, toggle: toggleFavorite } = useFavoritesStore();
+  const { notes, save: saveNote } = useNotesStore();
 
+  // Derived data
+  const defects = useMemo(
+    () => defectsData?.data || defectsData || [],
+    [defectsData]
+  );
+
+  const categories = useMemo(
+    () => ["All", ...(Array.isArray(categoriesData) ? categoriesData : [])],
+    [categoriesData]
+  );
+
+  const categoryCounts = useMemo(() => {
+    const counts = {};
+    const allDefects = defectsData?.data || defectsData || [];
+    for (const d of allDefects) {
+      counts[d.category] = (counts[d.category] || 0) + 1;
+    }
+    return counts;
+  }, [defectsData]);
+
+  const selectedDefect = useMemo(
+    () => (selected ? defects.find((d) => (d.id || d._id) === selected) : null),
+    [selected, defects]
+  );
+
+  const relatedDefects = useMemo(() => {
+    if (!selectedDefect) return [];
+    return defects
+      .filter(
+        (d) =>
+          (d.id || d._id) !== (selectedDefect.id || selectedDefect._id) &&
+          d.category === selectedDefect.category
+      )
+      .slice(0, 5);
+  }, [selectedDefect, defects]);
+
+  // Handlers
+  const handleSelect = useCallback(
+    (id) => setSelected((prev) => (prev === id ? null : id)),
+    []
+  );
+
+  const handleOpenCreate = useCallback(() => {
+    setEditingDefect(null);
+    setFormOpen(true);
+  }, []);
+
+  const handleOpenEdit = useCallback((defect) => {
+    setEditingDefect(defect);
+    setFormOpen(true);
+  }, []);
+
+  const handleFormSubmit = useCallback(
+    (data) => {
+      if (editingDefect) {
+        const id = editingDefect.id || editingDefect._id;
+        updateMutation.mutate(
+          { id, data },
+          { onSuccess: () => setFormOpen(false) }
+        );
+      } else {
+        createMutation.mutate(data, {
+          onSuccess: () => setFormOpen(false),
+        });
+      }
+    },
+    [editingDefect, updateMutation, createMutation]
+  );
+
+  const handleDelete = useCallback(
+    (id) => {
+      if (!confirm("Delete this defect? This action cannot be undone.")) return;
+      deleteMutation.mutate(id, {
+        onSuccess: () => {
+          if (selected === id) setSelected(null);
+        },
+      });
+    },
+    [deleteMutation, selected]
+  );
+
+  const handleSelectRelated = useCallback((id) => {
+    setSelected(id);
+  }, []);
+
+  // Loading state
   if (isLoading) {
     return (
       <div className="flex items-center justify-center min-h-[60vh]">
@@ -45,54 +195,88 @@ export default function DefectLibrary() {
   return (
     <div className="max-w-7xl mx-auto px-6 py-6">
       {/* Header */}
-      <div className="flex items-center gap-3 mb-5">
-        <div className="w-10 h-10 rounded-xl bg-gradient-to-br from-pink-500 to-rose-600 flex items-center justify-center text-white shadow-md">
-          <BookOpen className="w-5 h-5" />
+      <div className="flex items-center justify-between mb-5">
+        <div className="flex items-center gap-3">
+          <div className="w-10 h-10 rounded-xl bg-gradient-to-br from-pink-500 to-rose-600 flex items-center justify-center text-white shadow-md">
+            <BookOpen className="w-5 h-5" />
+          </div>
+          <div>
+            <h1 className="text-xl font-bold text-gray-900">Defect Library</h1>
+            <p className="text-sm text-gray-500">
+              Reference catalog of all defect types with PACP codes, severity, and recommended actions
+            </p>
+          </div>
         </div>
-        <div>
-          <h1 className="text-xl font-bold text-gray-900">Defect Library</h1>
-          <p className="text-sm text-gray-500">Reference catalog of all defect types with PACP codes, severity, and recommended actions</p>
-        </div>
+        <Button
+          size="sm"
+          className="bg-rose-600 hover:bg-rose-700 text-white text-xs gap-1.5"
+          onClick={handleOpenCreate}
+        >
+          <Plus className="w-3.5 h-3.5" />
+          Add Defect
+        </Button>
       </div>
 
       {/* Filters */}
       <div className="flex items-center gap-3 mb-4">
         <div className="relative max-w-sm flex-1">
           <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-gray-400" />
-          <Input placeholder="Search by name, code, PACP…" value={search} onChange={e => setSearch(e.target.value)} className="pl-9 h-9 text-sm" />
+          <Input
+            placeholder="Search by name, code, PACP..."
+            value={search}
+            onChange={(e) => setSearch(e.target.value)}
+            className="pl-9 h-9 text-sm"
+          />
         </div>
-        <div className="flex items-center gap-1.5">
-          {categories.map(c => (
-            <button key={c} onClick={() => setCategory(c)}
-              className={`px-3 py-1.5 text-xs font-medium rounded-full border transition-colors ${category === c ? "bg-rose-600 text-white border-rose-600" : "bg-white text-gray-600 border-gray-200 hover:border-rose-300"}`}>
-              {c}
-            </button>
-          ))}
+        <div className="flex items-center gap-1.5 flex-wrap">
+          {categories.map((c) => {
+            const Icon = c !== "All" ? getCategoryIcon(c) : Filter;
+            const count = c !== "All" ? categoryCounts[c] : null;
+            return (
+              <button
+                key={c}
+                onClick={() => setCategory(c)}
+                className={`flex items-center gap-1 px-3 py-1.5 text-xs font-medium rounded-full border transition-colors ${
+                  category === c
+                    ? "bg-rose-600 text-white border-rose-600"
+                    : "bg-white text-gray-600 border-gray-200 hover:border-rose-300"
+                }`}
+              >
+                <Icon className="w-3 h-3" />
+                {c}
+                {count != null && (
+                  <Badge
+                    variant="secondary"
+                    className={`ml-0.5 h-4 min-w-4 px-1 text-[9px] rounded-full ${
+                      category === c
+                        ? "bg-white/20 text-white border-0"
+                        : "bg-gray-100 text-gray-500 border-0"
+                    }`}
+                  >
+                    {count}
+                  </Badge>
+                )}
+              </button>
+            );
+          })}
         </div>
       </div>
 
+      {/* Main layout */}
       <div className="flex gap-4">
         {/* List */}
         <div className="flex-1 space-y-2">
-          {defects.map(d => {
+          {defects.map((d) => {
             const id = d.id || d._id;
             return (
-              <button key={id} onClick={() => setSelected(id === selected ? null : id)}
-                className={`w-full text-left flex items-center gap-4 p-3.5 rounded-xl border transition-all ${selected === id ? "border-rose-300 bg-rose-50" : "border-gray-200 bg-white hover:border-rose-200 hover:shadow-sm"}`}>
-                <div className="w-12 h-12 rounded-xl bg-gray-100 flex items-center justify-center shrink-0">
-                  <span className="text-xs font-bold text-gray-600">{d.code}</span>
-                </div>
-                <div className="flex-1 min-w-0">
-                  <div className="flex items-center gap-2 mb-1">
-                    <span className="text-sm font-semibold text-gray-900">{d.name}</span>
-                    <Badge variant="outline" className="text-[10px] bg-gray-50">{d.pacp}</Badge>
-                    <Badge variant="outline" className={`text-[10px] ${SEVERITY_COLORS[d.grade] || ""}`}>{d.grade}</Badge>
-                  </div>
-                  <p className="text-xs text-gray-500 line-clamp-1">{d.description}</p>
-                </div>
-                <span className="text-[10px] bg-gray-100 text-gray-500 rounded px-1.5 py-0.5 shrink-0">{d.category}</span>
-                <ChevronRight className={`w-4 h-4 text-gray-300 shrink-0 transition-transform ${selected === id ? "rotate-90" : ""}`} />
-              </button>
+              <DefectCard
+                key={id}
+                defect={d}
+                isSelected={selected === id}
+                onSelect={() => handleSelect(id)}
+                onToggleFavorite={toggleFavorite}
+                isFavorite={favorites.has(id)}
+              />
             );
           })}
           {defects.length === 0 && (
@@ -106,39 +290,44 @@ export default function DefectLibrary() {
         {/* Detail panel */}
         {selectedDefect && (
           <div className="w-80 shrink-0">
-            <Card className="border-gray-200 sticky top-4">
-              <CardContent className="p-4">
-                <div className="flex items-center gap-3 mb-4 pb-3 border-b border-gray-100">
-                  <div className="w-12 h-12 rounded-xl bg-rose-100 flex items-center justify-center">
-                    <span className="text-sm font-bold text-rose-700">{selectedDefect.code}</span>
-                  </div>
-                  <div>
-                    <h3 className="text-sm font-bold text-gray-900">{selectedDefect.name}</h3>
-                    <div className="flex items-center gap-1.5 mt-0.5">
-                      <Badge variant="outline" className="text-[10px]">{selectedDefect.pacp}</Badge>
-                      <Badge variant="outline" className={`text-[10px] ${SEVERITY_COLORS[selectedDefect.grade] || ""}`}>{selectedDefect.grade}</Badge>
-                    </div>
-                  </div>
-                </div>
-                <div className="space-y-3">
-                  <div>
-                    <p className="text-[10px] font-semibold text-gray-400 uppercase tracking-wide mb-1 flex items-center gap-1"><Info className="w-3 h-3" />Description</p>
-                    <p className="text-xs text-gray-700">{selectedDefect.description}</p>
-                  </div>
-                  <div>
-                    <p className="text-[10px] font-semibold text-gray-400 uppercase tracking-wide mb-1 flex items-center gap-1"><Eye className="w-3 h-3" />Example</p>
-                    <p className="text-xs text-gray-600 italic">{selectedDefect.example}</p>
-                  </div>
-                  <div className="bg-amber-50 border border-amber-200 rounded-lg p-2.5">
-                    <p className="text-[10px] font-semibold text-amber-700 uppercase tracking-wide mb-1 flex items-center gap-1"><Shield className="w-3 h-3" />Recommended Action</p>
-                    <p className="text-xs text-amber-800">{selectedDefect.action}</p>
-                  </div>
-                </div>
-              </CardContent>
-            </Card>
+            <DefectDetail
+              defect={selectedDefect}
+              relatedDefects={relatedDefects}
+              onEdit={handleOpenEdit}
+              onSelectRelated={handleSelectRelated}
+              personalNote={notes[selected] || ""}
+              onSaveNote={saveNote}
+            />
+            {/* Delete button */}
+            <div className="mt-2 flex justify-end">
+              <Button
+                variant="ghost"
+                size="sm"
+                className="text-xs text-red-500 hover:text-red-700 hover:bg-red-50 gap-1"
+                onClick={() => handleDelete(selected)}
+                disabled={deleteMutation.isPending}
+              >
+                {deleteMutation.isPending ? (
+                  <Loader2 className="w-3 h-3 animate-spin" />
+                ) : (
+                  <Trash2 className="w-3 h-3" />
+                )}
+                Delete Defect
+              </Button>
+            </div>
           </div>
         )}
       </div>
+
+      {/* Create/Edit modal */}
+      <DefectFormModal
+        open={formOpen}
+        onOpenChange={setFormOpen}
+        defect={editingDefect}
+        categories={categories.filter((c) => c !== "All")}
+        onSubmit={handleFormSubmit}
+        isSubmitting={createMutation.isPending || updateMutation.isPending}
+      />
     </div>
   );
 }

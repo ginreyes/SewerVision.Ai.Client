@@ -354,6 +354,21 @@ export const qcApi = {
     if (!response.ok) throw new Error(response.data?.error || 'Failed to fetch categories');
     return response.data?.data || [];
   },
+  async createDefect(data) {
+    const response = await api('/api/pacp-defects/create', 'POST', data);
+    if (!response.ok) throw new Error(response.data?.error || 'Failed to create defect');
+    return response.data?.data || response.data;
+  },
+  async updateDefect(id, data) {
+    const response = await api(`/api/pacp-defects/${id}`, 'PUT', data);
+    if (!response.ok) throw new Error(response.data?.error || 'Failed to update defect');
+    return response.data?.data || response.data;
+  },
+  async deleteDefect(id) {
+    const response = await api(`/api/pacp-defects/${id}`, 'DELETE');
+    if (!response.ok) throw new Error(response.data?.error || 'Failed to delete defect');
+    return response.data;
+  },
 
   // ─── Training Modules ─────────────────────────────────
   async getTrainingModules({ category, difficulty } = {}) {

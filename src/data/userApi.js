@@ -261,6 +261,135 @@ export const userApi = {
         }
         return response.data;
     },
+
+    // ─── Resource Scheduler ─────────────────────
+    async getWeekSchedule(weekStart) {
+        const response = await api(`/api/resource-schedule?weekStart=${weekStart}`, 'GET');
+        if (!response.ok) throw new Error(response.data?.message || 'Failed to fetch schedule');
+        return response.data?.data || [];
+    },
+    async createAssignment(data) {
+        const response = await api('/api/resource-schedule', 'POST', data);
+        if (!response.ok) throw new Error(response.data?.message || 'Failed to create assignment');
+        return response.data?.data;
+    },
+    async deleteAssignment(id) {
+        const response = await api(`/api/resource-schedule/${id}`, 'DELETE');
+        if (!response.ok) throw new Error(response.data?.message || 'Failed to delete assignment');
+        return response.data;
+    },
+    async getTeamAvailability(weekStart) {
+        const response = await api(`/api/resource-schedule/availability?weekStart=${weekStart}`, 'GET');
+        if (!response.ok) throw new Error(response.data?.message || 'Failed to fetch availability');
+        return response.data?.data || [];
+    },
+
+    // ─── Budget Tracker ─────────────────────────
+    async getProjectBudgets(userId, { status } = {}) {
+        const params = new URLSearchParams({ createdBy: userId });
+        if (status && status !== 'all') params.append('status', status);
+        const response = await api(`/api/budgets?${params}`, 'GET');
+        if (!response.ok) throw new Error(response.data?.message || 'Failed to fetch budgets');
+        return response.data?.data || [];
+    },
+    async getProjectBudget(budgetId) {
+        const response = await api(`/api/budgets/${budgetId}`, 'GET');
+        if (!response.ok) throw new Error(response.data?.message || 'Failed to fetch budget');
+        return response.data?.data;
+    },
+    async createProjectBudget(data) {
+        const response = await api('/api/budgets', 'POST', data);
+        if (!response.ok) throw new Error(response.data?.message || 'Failed to create budget');
+        return response.data?.data;
+    },
+    async addExpense(budgetId, data) {
+        const response = await api(`/api/budgets/${budgetId}/expenses`, 'POST', data);
+        if (!response.ok) throw new Error(response.data?.message || 'Failed to add expense');
+        return response.data?.data;
+    },
+
+    // ─── Client Hub ─────────────────────────────
+    async getConversations(userId, { search } = {}) {
+        const params = new URLSearchParams({ createdBy: userId });
+        if (search) params.append('search', search);
+        const response = await api(`/api/client-conversations?${params}`, 'GET');
+        if (!response.ok) throw new Error(response.data?.message || 'Failed to fetch conversations');
+        return response.data?.data || [];
+    },
+    async getMessages(conversationId, { page = 1, limit = 50 } = {}) {
+        const response = await api(`/api/client-conversations/${conversationId}/messages?page=${page}&limit=${limit}`, 'GET');
+        if (!response.ok) throw new Error(response.data?.message || 'Failed to fetch messages');
+        return response.data?.data || [];
+    },
+    async sendMessage(conversationId, data) {
+        const response = await api(`/api/client-conversations/${conversationId}/messages`, 'POST', data);
+        if (!response.ok) throw new Error(response.data?.message || 'Failed to send message');
+        return response.data?.data;
+    },
+    async markAsRead(conversationId) {
+        const response = await api(`/api/client-conversations/${conversationId}/read`, 'PATCH');
+        if (!response.ok) throw new Error(response.data?.message || 'Failed to mark as read');
+        return response.data;
+    },
+
+    // ─── Project Templates ──────────────────────
+    async getTemplates(userId) {
+        const response = await api(`/api/project-templates?createdBy=${userId}`, 'GET');
+        if (!response.ok) throw new Error(response.data?.message || 'Failed to fetch templates');
+        return response.data?.data || [];
+    },
+    async createTemplate(data) {
+        const response = await api('/api/project-templates', 'POST', data);
+        if (!response.ok) throw new Error(response.data?.message || 'Failed to create template');
+        return response.data?.data;
+    },
+    async updateTemplate(id, data) {
+        const response = await api(`/api/project-templates/${id}`, 'PUT', data);
+        if (!response.ok) throw new Error(response.data?.message || 'Failed to update template');
+        return response.data?.data;
+    },
+    async toggleTemplateStar(id) {
+        const response = await api(`/api/project-templates/${id}/star`, 'PATCH');
+        if (!response.ok) throw new Error(response.data?.message || 'Failed to toggle star');
+        return response.data?.data;
+    },
+    async duplicateTemplate(id) {
+        const response = await api(`/api/project-templates/${id}/duplicate`, 'POST');
+        if (!response.ok) throw new Error(response.data?.message || 'Failed to duplicate template');
+        return response.data?.data;
+    },
+    async deleteTemplate(id) {
+        const response = await api(`/api/project-templates/${id}`, 'DELETE');
+        if (!response.ok) throw new Error(response.data?.message || 'Failed to delete template');
+        return response.data;
+    },
+    async useTemplate(id) {
+        const response = await api(`/api/project-templates/${id}/use`, 'POST');
+        if (!response.ok) throw new Error(response.data?.message || 'Failed to use template');
+        return response.data?.data;
+    },
+
+    // ─── Performance Reviews ────────────────────
+    async getTeamMetrics(userId) {
+        const response = await api(`/api/performance-reviews?reviewedBy=${userId}`, 'GET');
+        if (!response.ok) throw new Error(response.data?.message || 'Failed to fetch metrics');
+        return response.data?.data || [];
+    },
+    async getMemberMetrics(memberId) {
+        const response = await api(`/api/performance-reviews/member/${memberId}`, 'GET');
+        if (!response.ok) throw new Error(response.data?.message || 'Failed to fetch member metrics');
+        return response.data?.data || [];
+    },
+    async createMetrics(data) {
+        const response = await api('/api/performance-reviews', 'POST', data);
+        if (!response.ok) throw new Error(response.data?.message || 'Failed to create metrics');
+        return response.data?.data;
+    },
+    async getTeamSummary(userId) {
+        const response = await api(`/api/performance-reviews/summary?reviewedBy=${userId}`, 'GET');
+        if (!response.ok) throw new Error(response.data?.message || 'Failed to fetch summary');
+        return response.data?.data;
+    },
 };
 
 export default userApi;

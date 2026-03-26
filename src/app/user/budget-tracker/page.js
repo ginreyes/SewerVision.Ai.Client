@@ -1,37 +1,53 @@
 "use client";
 
-import React, { useState } from "react";
+import React, { useState, useMemo, useCallback } from "react";
 import {
-  DollarSign, TrendingUp, TrendingDown, AlertTriangle, Plus,
-  Filter, PieChart, CheckCircle2, FolderOpen,
+  DollarSign, TrendingUp, AlertTriangle, Plus,
+  PieChart, Loader2, FolderOpen,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
-
-const PROJECTS = [
-  { id: "1", name: "Main St Sewer — Segment A", budget: 48000, spent: 31200, status: "active", categories: { Labour: 18000, Equipment: 8000, Materials: 3500, Travel: 1700 } },
-  { id: "2", name: "Oak Avenue Junction", budget: 32000, spent: 32800, status: "over-budget", categories: { Labour: 19000, Equipment: 7500, Materials: 4000, Travel: 2300 } },
-  { id: "3", name: "River Rd Culvert", budget: 55000, spent: 12000, status: "active", categories: { Labour: 7000, Equipment: 3000, Materials: 1500, Travel: 500 } },
-  { id: "4", name: "Industrial Park Catchment", budget: 27000, spent: 26100, status: "active", categories: { Labour: 15000, Equipment: 6500, Materials: 3200, Travel: 1400 } },
-  { id: "5", name: "Westfield Residential", budget: 19000, spent: 19000, status: "completed", categories: { Labour: 11000, Equipment: 4000, Materials: 2800, Travel: 1200 } },
-];
-
-const CAT_COLORS = { Labour: "bg-blue-500", Equipment: "bg-purple-500", Materials: "bg-amber-500", Travel: "bg-teal-500" };
-const STATUS_COLORS = {
-  active: "bg-blue-100 text-blue-700 border-blue-200",
-  "over-budget": "bg-red-100 text-red-700 border-red-200",
-  completed: "bg-emerald-100 text-emerald-700 border-emerald-200",
-};
+import { Card, CardContent } from "@/components/ui/card";
+import { useUser } from "@/components/providers/UserContext";
+import { useUserBudgets, useAddExpense } from "@/hooks/useQueryHooks";
+import { BudgetCard, CategoryBar, CAT_COLORS, STATUS_COLORS } from "@/components/user/budget-tracker";
 
 export default function BudgetTracker() {
-  const [selected, setSelected] = useState("1");
-  const selectedProject = PROJECTS.find(p => p.id === selected);
+  const { userId } = useUser();
+  const { data, isLoading } = useUserBudgets(userId);
+  const addExpense = useAddExpense();
 
-  const totalBudget = PROJECTS.reduce((s, p) => s + p.budget, 0);
-  const totalSpent = PROJECTS.reduce((s, p) => s + p.spent, 0);
-  const overBudget = PROJECTS.filter(p => p.spent > p.budget).length;
-  const pctUsed = Math.round((totalSpent / totalBudget) * 100);
+  const projects = useMemo(() => Array.isArray(data) ? data : (data?.data || []), [data]);
+
+  const [selected, setSelected] = useState(null);
+
+  const selectedProject = useMemo(
+    () => projects.find(p => (p._id || p.id) === selected) ?? projects[0] ?? null,
+    [projects, selected]
+  );
+
+  // Auto-select first project when data arrives
+  const effectiveSelected = selectedProject?.id ?? null;
+
+  const stats = useMemo(() => {
+    const totalBudget = projects.reduce((s, p) => s + p.budget, 0);
+    const totalSpent = projects.reduce((s, p) => s + p.spent, 0);
+    const overBudget = projects.filter(p => p.spent > p.budget).length;
+    const pctUsed = totalBudget > 0 ? Math.round((totalSpent / totalBudget) * 100) : 0;
+    return { totalBudget, totalSpent, overBudget, pctUsed };
+  }, [projects]);
+
+  const handleSelect = useCallback((id) => {
+    setSelected(id);
+  }, []);
+
+  if (isLoading) {
+    return (
+      <div className="flex items-center justify-center h-96">
+        <Loader2 className="w-8 h-8 animate-spin text-indigo-600" />
+      </div>
+    );
+  }
 
   return (
     <div className="max-w-6xl mx-auto px-6 py-6">
@@ -54,10 +70,10 @@ export default function BudgetTracker() {
       {/* Stats */}
       <div className="grid grid-cols-4 gap-3 mb-5">
         {[
-          { label: "Total Budget", value: `$${(totalBudget/1000).toFixed(0)}k`, icon: DollarSign, bg: "bg-indigo-50", color: "text-indigo-600" },
-          { label: "Total Spent", value: `$${(totalSpent/1000).toFixed(0)}k`, icon: TrendingUp, bg: "bg-blue-50", color: "text-blue-600" },
-          { label: "Budget Used", value: `${pctUsed}%`, icon: PieChart, bg: pctUsed > 90 ? "bg-red-50" : "bg-emerald-50", color: pctUsed > 90 ? "text-red-600" : "text-emerald-600" },
-          { label: "Over Budget", value: overBudget, icon: AlertTriangle, bg: overBudget > 0 ? "bg-red-50" : "bg-gray-50", color: overBudget > 0 ? "text-red-600" : "text-gray-400" },
+          { label: "Total Budget", value: `$${(stats.totalBudget / 1000).toFixed(0)}k`, icon: DollarSign, bg: "bg-indigo-50", color: "text-indigo-600" },
+          { label: "Total Spent", value: `$${(stats.totalSpent / 1000).toFixed(0)}k`, icon: TrendingUp, bg: "bg-blue-50", color: "text-blue-600" },
+          { label: "Budget Used", value: `${stats.pctUsed}%`, icon: PieChart, bg: stats.pctUsed > 90 ? "bg-red-50" : "bg-emerald-50", color: stats.pctUsed > 90 ? "text-red-600" : "text-emerald-600" },
+          { label: "Over Budget", value: stats.overBudget, icon: AlertTriangle, bg: stats.overBudget > 0 ? "bg-red-50" : "bg-gray-50", color: stats.overBudget > 0 ? "text-red-600" : "text-gray-400" },
         ].map(s => (
           <Card key={s.label} className="border-gray-200">
             <CardContent className="p-4 flex items-center gap-3">
@@ -73,86 +89,91 @@ export default function BudgetTracker() {
         ))}
       </div>
 
-      <div className="flex gap-4">
-        {/* Project list */}
-        <div className="w-72 shrink-0 space-y-2">
-          {PROJECTS.map(p => {
-            const pct = Math.round((p.spent / p.budget) * 100);
-            const over = p.spent > p.budget;
-            return (
-              <button key={p.id} onClick={() => setSelected(p.id)}
-                className={`w-full text-left p-3 rounded-xl border transition-all ${selected === p.id ? "border-indigo-300 bg-indigo-50" : "border-gray-200 bg-white hover:border-indigo-200"}`}>
-                <div className="flex items-center justify-between mb-1">
-                  <p className="text-xs font-semibold text-gray-900 truncate max-w-[150px]">{p.name}</p>
-                  <Badge variant="outline" className={`text-[10px] shrink-0 ${STATUS_COLORS[p.status]}`}>{p.status}</Badge>
-                </div>
-                <div className="h-1.5 bg-gray-100 rounded-full overflow-hidden mb-1">
-                  <div className={`h-full rounded-full ${over ? "bg-red-500" : pct > 80 ? "bg-amber-500" : "bg-indigo-500"}`} style={{ width: `${Math.min(pct, 100)}%` }} />
-                </div>
-                <div className="flex justify-between text-[10px] text-gray-400">
-                  <span>${p.spent.toLocaleString()}</span>
-                  <span className={over ? "text-red-600 font-medium" : ""}>{pct}% of ${p.budget.toLocaleString()}</span>
-                </div>
-              </button>
-            );
-          })}
-        </div>
-
-        {/* Project detail */}
-        {selectedProject && (
-          <div className="flex-1 min-w-0 space-y-3">
-            <Card className="border-gray-200">
-              <CardContent className="p-5">
-                <div className="flex items-start justify-between mb-4">
-                  <div>
-                    <h2 className="text-base font-bold text-gray-900">{selectedProject.name}</h2>
-                    <Badge variant="outline" className={`mt-1 ${STATUS_COLORS[selectedProject.status]}`}>{selectedProject.status}</Badge>
-                  </div>
-                  {selectedProject.spent > selectedProject.budget && (
-                    <div className="flex items-center gap-1.5 text-xs text-red-600 bg-red-50 border border-red-200 rounded-lg px-2.5 py-1.5">
-                      <AlertTriangle className="w-3.5 h-3.5" />Over budget by ${(selectedProject.spent - selectedProject.budget).toLocaleString()}
-                    </div>
-                  )}
-                </div>
-
-                {/* Budget bar */}
-                <div className="mb-5">
-                  <div className="flex justify-between text-sm mb-2">
-                    <span className="font-medium text-gray-700">Spent: <strong>${selectedProject.spent.toLocaleString()}</strong></span>
-                    <span className="text-gray-500">Budget: ${selectedProject.budget.toLocaleString()}</span>
-                  </div>
-                  <div className="h-3 bg-gray-100 rounded-full overflow-hidden">
-                    <div className={`h-full rounded-full transition-all ${selectedProject.spent > selectedProject.budget ? "bg-red-500" : "bg-indigo-500"}`}
-                      style={{ width: `${Math.min((selectedProject.spent / selectedProject.budget) * 100, 100)}%` }} />
-                  </div>
-                  <p className="text-xs text-gray-500 mt-1">Remaining: ${Math.max(0, selectedProject.budget - selectedProject.spent).toLocaleString()}</p>
-                </div>
-
-                {/* Category breakdown */}
-                <h3 className="text-xs font-semibold text-gray-500 uppercase tracking-wide mb-3">Expense Categories</h3>
-                <div className="space-y-2.5">
-                  {Object.entries(selectedProject.categories).map(([cat, amt]) => {
-                    const pct = Math.round((amt / selectedProject.spent) * 100);
-                    return (
-                      <div key={cat}>
-                        <div className="flex justify-between text-xs mb-1">
-                          <span className="font-medium text-gray-700 flex items-center gap-1.5">
-                            <span className={`w-2 h-2 rounded-full ${CAT_COLORS[cat]}`} />{cat}
-                          </span>
-                          <span className="text-gray-600">${amt.toLocaleString()} <span className="text-gray-400">({pct}%)</span></span>
-                        </div>
-                        <div className="h-2 bg-gray-100 rounded-full overflow-hidden">
-                          <div className={`h-full rounded-full ${CAT_COLORS[cat]}`} style={{ width: `${pct}%` }} />
-                        </div>
-                      </div>
-                    );
-                  })}
-                </div>
-              </CardContent>
-            </Card>
+      {projects.length === 0 ? (
+        <Card className="border-gray-200">
+          <CardContent className="p-12 text-center text-gray-400">
+            <FolderOpen className="w-10 h-10 mx-auto mb-3 opacity-30" />
+            <p className="text-sm">No projects with budgets found.</p>
+          </CardContent>
+        </Card>
+      ) : (
+        <div className="flex gap-4">
+          {/* Project list */}
+          <div className="w-72 shrink-0 space-y-2">
+            {projects.map(p => (
+              <BudgetCard
+                key={p.id}
+                project={p}
+                isSelected={effectiveSelected === p.id}
+                onSelect={handleSelect}
+              />
+            ))}
           </div>
-        )}
-      </div>
+
+          {/* Project detail */}
+          {selectedProject && (
+            <div className="flex-1 min-w-0 space-y-3">
+              <Card className="border-gray-200">
+                <CardContent className="p-5">
+                  <div className="flex items-start justify-between mb-4">
+                    <div>
+                      <h2 className="text-base font-bold text-gray-900">{selectedProject.name}</h2>
+                      <Badge variant="outline" className={`mt-1 ${STATUS_COLORS[selectedProject.status]}`}>
+                        {selectedProject.status}
+                      </Badge>
+                    </div>
+                    {selectedProject.spent > selectedProject.budget && (
+                      <div className="flex items-center gap-1.5 text-xs text-red-600 bg-red-50 border border-red-200 rounded-lg px-2.5 py-1.5">
+                        <AlertTriangle className="w-3.5 h-3.5" />
+                        Over budget by ${(selectedProject.spent - selectedProject.budget).toLocaleString()}
+                      </div>
+                    )}
+                  </div>
+
+                  {/* Budget bar */}
+                  <div className="mb-5">
+                    <div className="flex justify-between text-sm mb-2">
+                      <span className="font-medium text-gray-700">
+                        Spent: <strong>${selectedProject.spent.toLocaleString()}</strong>
+                      </span>
+                      <span className="text-gray-500">Budget: ${selectedProject.budget.toLocaleString()}</span>
+                    </div>
+                    <div className="h-3 bg-gray-100 rounded-full overflow-hidden">
+                      <div
+                        className={`h-full rounded-full transition-all ${
+                          selectedProject.spent > selectedProject.budget ? "bg-red-500" : "bg-indigo-500"
+                        }`}
+                        style={{
+                          width: `${Math.min((selectedProject.spent / selectedProject.budget) * 100, 100)}%`,
+                        }}
+                      />
+                    </div>
+                    <p className="text-xs text-gray-500 mt-1">
+                      Remaining: ${Math.max(0, selectedProject.budget - selectedProject.spent).toLocaleString()}
+                    </p>
+                  </div>
+
+                  {/* Category breakdown */}
+                  <h3 className="text-xs font-semibold text-gray-500 uppercase tracking-wide mb-3">
+                    Expense Categories
+                  </h3>
+                  <div className="space-y-2.5">
+                    {Object.entries(selectedProject.categories || {}).map(([cat, amt]) => (
+                      <CategoryBar
+                        key={cat}
+                        category={cat}
+                        amount={amt}
+                        total={selectedProject.spent}
+                        color={CAT_COLORS[cat] || "bg-gray-500"}
+                      />
+                    ))}
+                  </div>
+                </CardContent>
+              </Card>
+            </div>
+          )}
+        </div>
+      )}
     </div>
   );
 }

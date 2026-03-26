@@ -350,6 +350,132 @@ export const operatorApi = {
         if (!response.ok) throw new Error(response.data?.error || 'Failed to update preferences');
         return response.data;
     },
+
+    // ─── Checklists ─────────────────────────────
+    async getChecklists(operatorId, { status, search, page = 1, limit = 20 } = {}) {
+        const params = new URLSearchParams({ assignedTo: operatorId, page: String(page), limit: String(limit) });
+        if (status && status !== 'all') params.append('status', status);
+        if (search) params.append('search', search);
+        const response = await api(`/api/checklists?${params}`, 'GET');
+        if (!response.ok) throw new Error(response.data?.message || 'Failed to fetch checklists');
+        return response.data?.data || [];
+    },
+    async createChecklist(data) {
+        const response = await api('/api/checklists', 'POST', data);
+        if (!response.ok) throw new Error(response.data?.message || 'Failed to create checklist');
+        return response.data?.data;
+    },
+    async updateChecklist(id, data) {
+        const response = await api(`/api/checklists/${id}`, 'PUT', data);
+        if (!response.ok) throw new Error(response.data?.message || 'Failed to update checklist');
+        return response.data?.data;
+    },
+    async toggleChecklistItem(checklistId, itemIndex) {
+        const response = await api(`/api/checklists/${checklistId}/items/${itemIndex}`, 'PATCH');
+        if (!response.ok) throw new Error(response.data?.message || 'Failed to toggle item');
+        return response.data?.data;
+    },
+    async deleteChecklist(id) {
+        const response = await api(`/api/checklists/${id}`, 'DELETE');
+        if (!response.ok) throw new Error(response.data?.message || 'Failed to delete checklist');
+        return response.data;
+    },
+
+    // ─── Route Sites ────────────────────────────
+    async getRouteSites(operatorId, { scheduledDate, status } = {}) {
+        const params = new URLSearchParams({ assignedTo: operatorId });
+        if (scheduledDate) params.append('scheduledDate', scheduledDate);
+        if (status && status !== 'all') params.append('status', status);
+        const response = await api(`/api/route-sites?${params}`, 'GET');
+        if (!response.ok) throw new Error(response.data?.message || 'Failed to fetch route sites');
+        return response.data?.data || [];
+    },
+    async updateRouteSite(id, data) {
+        const response = await api(`/api/route-sites/${id}`, 'PUT', data);
+        if (!response.ok) throw new Error(response.data?.message || 'Failed to update site');
+        return response.data?.data;
+    },
+    async completeRouteSite(id) {
+        const response = await api(`/api/route-sites/${id}/complete`, 'PATCH');
+        if (!response.ok) throw new Error(response.data?.message || 'Failed to complete site');
+        return response.data?.data;
+    },
+
+    // ─── Incidents ──────────────────────────────
+    async getIncidents(operatorId, { status, severity, search, page = 1, limit = 20 } = {}) {
+        const params = new URLSearchParams({ reportedBy: operatorId, page: String(page), limit: String(limit) });
+        if (status && status !== 'all') params.append('status', status);
+        if (severity) params.append('severity', severity);
+        if (search) params.append('search', search);
+        const response = await api(`/api/incidents?${params}`, 'GET');
+        if (!response.ok) throw new Error(response.data?.message || 'Failed to fetch incidents');
+        return response.data?.data || [];
+    },
+    async createIncident(data) {
+        const response = await api('/api/incidents', 'POST', data);
+        if (!response.ok) throw new Error(response.data?.message || 'Failed to create incident');
+        return response.data?.data;
+    },
+    async updateIncident(id, data) {
+        const response = await api(`/api/incidents/${id}`, 'PUT', data);
+        if (!response.ok) throw new Error(response.data?.message || 'Failed to update incident');
+        return response.data?.data;
+    },
+
+    // ─── Time Entries ───────────────────────────
+    async getTimeEntries(operatorId, { dateFrom, dateTo, type } = {}) {
+        const params = new URLSearchParams({ operator: operatorId });
+        if (dateFrom) params.append('dateFrom', dateFrom);
+        if (dateTo) params.append('dateTo', dateTo);
+        if (type && type !== 'all') params.append('type', type);
+        const response = await api(`/api/time-entries?${params}`, 'GET');
+        if (!response.ok) throw new Error(response.data?.message || 'Failed to fetch time entries');
+        return response.data?.data || [];
+    },
+    async createTimeEntry(data) {
+        const response = await api('/api/time-entries', 'POST', data);
+        if (!response.ok) throw new Error(response.data?.message || 'Failed to create time entry');
+        return response.data?.data;
+    },
+    async deleteTimeEntry(id) {
+        const response = await api(`/api/time-entries/${id}`, 'DELETE');
+        if (!response.ok) throw new Error(response.data?.message || 'Failed to delete entry');
+        return response.data;
+    },
+    async getTimeSummary(operatorId, weekOf) {
+        const params = new URLSearchParams({ operator: operatorId });
+        if (weekOf) params.append('weekOf', weekOf);
+        const response = await api(`/api/time-entries/summary?${params}`, 'GET');
+        if (!response.ok) throw new Error(response.data?.message || 'Failed to fetch summary');
+        return response.data?.data;
+    },
+
+    // ─── Offline Cache ──────────────────────────
+    async getCachedItems(operatorId) {
+        const response = await api(`/api/offline-cache?operator=${operatorId}`, 'GET');
+        if (!response.ok) throw new Error(response.data?.message || 'Failed to fetch cached items');
+        return response.data?.data || [];
+    },
+    async toggleCache(cacheId) {
+        const response = await api(`/api/offline-cache/${cacheId}/toggle`, 'PATCH');
+        if (!response.ok) throw new Error(response.data?.message || 'Failed to toggle cache');
+        return response.data?.data;
+    },
+    async getPendingSyncs(operatorId) {
+        const response = await api(`/api/offline-cache/pending?operator=${operatorId}`, 'GET');
+        if (!response.ok) throw new Error(response.data?.message || 'Failed to fetch pending syncs');
+        return response.data?.data || [];
+    },
+    async syncAll(operatorId) {
+        const response = await api('/api/offline-cache/sync', 'POST', { operator: operatorId });
+        if (!response.ok) throw new Error(response.data?.message || 'Failed to sync');
+        return response.data;
+    },
+    async getOfflineStats(operatorId) {
+        const response = await api(`/api/offline-cache/stats?operator=${operatorId}`, 'GET');
+        if (!response.ok) throw new Error(response.data?.message || 'Failed to fetch stats');
+        return response.data?.data;
+    },
 };
 
 export default operatorApi;
