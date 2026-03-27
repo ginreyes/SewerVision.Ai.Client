@@ -95,7 +95,6 @@ const WhatsNewContent = () => {
 
             <div className="space-y-4 max-h-[300px] overflow-y-auto pr-2">
                 {whatsNewData.map((release, idx) => {
-                    // Flatten all updates from different roles into one array for the summary
                     const allChanges = Object.values(release.updates).flat();
 
                     return (

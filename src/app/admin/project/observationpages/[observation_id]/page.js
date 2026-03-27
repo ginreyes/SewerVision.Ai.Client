@@ -229,7 +229,7 @@ const ObservationDetailsPageContent = () => {
     return (
       <div className="min-h-screen bg-gray-50 flex items-center justify-center">
         <div className="text-center">
-          <div className="animate-spin rounded-full h-32 w-32 border-b-2 border-blue-600"></div>
+          <div className="animate-spin rounded-full h-32 w-32 border-b-2 border-rose-600"></div>
           <p className="mt-4 text-gray-600">Loading observation details...</p>
         </div>
       </div>
@@ -337,7 +337,7 @@ const ObservationDetailsPageContent = () => {
                       </SelectContent>
                     </Select>
                   ) : (
-                    <span className="inline-flex items-center px-3 py-1 rounded-full text-sm font-medium bg-blue-100 text-blue-800">
+                    <span className="inline-flex items-center px-3 py-1 rounded-full text-sm font-medium bg-rose-100 text-rose-800">
                       {observation.pacpCode}
                     </span>
                   )}
@@ -683,7 +683,7 @@ const ObservationDetailsPageContent = () => {
                   ) : (
                     <div className="flex items-center justify-between border rounded-lg p-4">
                       <div className="flex items-center space-x-3">
-                        <PlayCircle className="h-5 w-5 text-blue-600" />
+                        <PlayCircle className="h-5 w-5 text-rose-600" />
                         <span className="text-sm font-medium">Observation Snapshot</span>
                       </div>
                       <span className="text-xs text-gray-400">Snapshot image not available</span>
@@ -830,7 +830,7 @@ const ObservationDetailsPageContent = () => {
 const ObservationPageLoading = () => (
   <div className="min-h-screen bg-gray-50 flex items-center justify-center">
     <div className="text-center">
-      <div className="animate-spin rounded-full h-32 w-32 border-b-2 border-blue-600"></div>
+      <div className="animate-spin rounded-full h-32 w-32 border-b-2 border-rose-600"></div>
       <p className="mt-4 text-gray-600">Loading observation details...</p>
     </div>
   </div>

@@ -13,7 +13,7 @@ import {
     FaTimes,
     FaChevronLeft,
     FaChevronRight,
-    FaUserTie 
+    FaUserTie
 } from "react-icons/fa";
 import Link from "next/link";
 import { Dialog, DialogContent, DialogTitle } from "@/components/ui/dialog";
@@ -214,7 +214,7 @@ const WhatsNew = () => {
 
                 <div className="mt-12 text-center border-t border-gray-200 pt-8">
                     <p className="text-gray-400 text-sm flex items-center justify-center gap-2">
-                        <span>© {new Date().getFullYear()} SewerVision AI</span>
+                        <span>&copy; {new Date().getFullYear()} SewerVision AI</span>
                         <span className="w-1 h-1 rounded-full bg-gray-300"></span>
                         <span>All rights reserved</span>
                     </p>
@@ -257,7 +257,7 @@ const WhatsNew = () => {
                                                 {selectedItem.details.map((detail, idx) => (
                                                     <li key={idx} className="flex items-start gap-3 text-sm text-gray-700">
                                                         <div className="mt-1 w-4 h-4 rounded-full bg-green-100 flex items-center justify-center flex-shrink-0">
-                                                            <span className="text-green-600 text-[10px] font-bold">✓</span>
+                                                            <span className="text-green-600 text-[10px] font-bold">&#10003;</span>
                                                         </div>
                                                         <span className="leading-snug">{detail}</span>
                                                     </li>
@@ -271,7 +271,7 @@ const WhatsNew = () => {
                                             Included in <span className="text-rose-500">Release {currentVersion.id}</span>
                                         </p>
                                         <p className="text-xs text-gray-400">
-                                            Learn how SewerVision.ai processes inspection data step‑by‑step on the right.
+                                            Learn how SewerVision.ai processes inspection data step-by-step on the right.
                                         </p>
                                     </div>
                                 </div>

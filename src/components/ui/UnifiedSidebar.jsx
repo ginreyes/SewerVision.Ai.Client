@@ -137,6 +137,7 @@ const ADMIN_MENU_GROUPS = [
       { label: 'Devices', icon: 'Monitor', path: '/admin/devices', module: 'devices' },
       { label: 'Tasks', icon: 'ClipboardList', path: '/admin/task', module: 'tasks' },
       { label: 'Billing', icon: 'CreditCard', path: '/admin/billing', module: 'billing' },
+      { label: 'Training Center', icon: 'GraduationCap', path: '/admin/training', module: 'admin-training' },
       { label: 'Announcements', icon: 'Megaphone', path: '/admin/announcements', module: 'announcements' },
     ],
   },
@@ -307,7 +308,6 @@ const FALLBACK_MENUS = {
     { label: 'Work', items: [
       { label: 'Tasks', icon: 'ClipboardList', path: '/qc-technician/task', key: 'tasks' },
       { label: 'Quality Control', icon: 'ClipboardCheck', path: '/qc-technician/quality-control', key: 'quality-control' },
-      { label: 'Comparison Viewer', icon: 'Layers', path: '/qc-technician/comparison', key: 'comparison' },
       { label: 'Review Templates', icon: 'FileText', path: '/qc-technician/review-templates', key: 'review-templates' },
       { label: 'Devices', icon: 'Monitor', path: '/qc-technician/devices', key: 'devices' },
     ]},

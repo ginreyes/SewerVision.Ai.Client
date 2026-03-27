@@ -87,7 +87,7 @@ const SewerVisionInspectionModuleContent = () => {
 
   const getStatusColor = (status) => {
     const colors = {
-      "field-capture": "bg-blue-100 text-blue-800",
+      "field-capture": "bg-rose-100 text-rose-800",
       uploading: "bg-indigo-100 text-indigo-800",
       "ai-processing": "bg-yellow-100 text-yellow-800",
       "qc-review": "bg-purple-100 text-purple-800",
@@ -195,7 +195,7 @@ const SewerVisionInspectionModuleContent = () => {
                       onClick={() => setViewMode("grid")}
                       className={`flex items-center gap-1 px-3 py-1.5 text-xs font-medium ${
                         viewMode === "grid"
-                          ? "bg-indigo-50 text-indigo-600"
+                          ? "bg-rose-50 text-rose-600"
                           : "text-gray-600 hover:bg-gray-50"
                       }`}
                     >
@@ -207,7 +207,7 @@ const SewerVisionInspectionModuleContent = () => {
                       onClick={() => setViewMode("table")}
                       className={`flex items-center gap-1 px-3 py-1.5 text-xs font-medium border-l border-gray-200 ${
                         viewMode === "table"
-                          ? "bg-indigo-50 text-indigo-600"
+                          ? "bg-rose-50 text-rose-600"
                           : "text-gray-600 hover:bg-gray-50"
                       }`}
                     >
@@ -219,7 +219,7 @@ const SewerVisionInspectionModuleContent = () => {
                   {!isOperatorRoute && (
                     <Button
                       onClick={AddProject}
-                      className="bg-gradient-to-r from-purple-500 to-purple-700 text-white hover:from-blue-700 hover:to-purple-700 transition-all duration-300 flex items-center gap-2 font-medium"
+                      className="bg-gradient-to-r from-rose-500 to-rose-700 text-white hover:from-rose-600 hover:to-rose-800 transition-all duration-300 flex items-center gap-2 font-medium"
                     >
                       <Plus size={20} />
                       New Project
@@ -237,14 +237,14 @@ const SewerVisionInspectionModuleContent = () => {
                   placeholder="Search projects, clients, locations..."
                   value={searchTerm}
                   onChange={handleSearchChange}
-                  className="px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent bg-white text-gray-900 w-64"
+                  className="px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-rose-500 focus:border-transparent bg-white text-gray-900 w-64"
                 />
               </div>
 
               <select
                 value={statusFilter}
                 onChange={handleStatusChange}
-                className="px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent bg-white text-gray-900"
+                className="px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-rose-500 focus:border-transparent bg-white text-gray-900"
               >
                 <option value="all">All Status</option>
                 <option value="field-capture">Field Capture</option>

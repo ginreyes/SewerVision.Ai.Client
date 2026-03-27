@@ -183,6 +183,11 @@ export const queryKeys = {
     trainingModule: (id) => ['training', 'module', id],
     trainingAttempts: (userId, moduleId) => ['training', 'attempts', userId, moduleId ?? 'all'],
     trainingStats: (userId) => ['training', 'stats', userId],
+    trainingTeamProgress: ['training', 'team-progress'],
+    trainingAssignments: (userId) => ['training', 'assignments', userId],
+    trainingAllAssignments: (status) => ['training', 'all-assignments', status ?? 'all'],
+    onboarding: (userId) => ['onboarding', userId],
+    onboardingAll: (role) => ['onboarding', 'all', role ?? 'all'],
 
     // Review Templates
     reviewTemplates: (createdBy) => ['review-templates', createdBy ?? 'all'],
@@ -2273,6 +2278,104 @@ export function useTrainingStats(userId, options = {}) {
     });
 }
 
+// ─── TRAINING MANAGEMENT HOOKS ─────────────────────────
+
+export function useCreateTrainingModule() {
+    const queryClient = useQueryClient();
+    return useMutation({
+        mutationFn: (data) => qcApi.createTrainingModule(data),
+        onSuccess: () => { queryClient.invalidateQueries({ queryKey: ['training', 'modules'] }); },
+    });
+}
+
+export function useUpdateTrainingModule() {
+    const queryClient = useQueryClient();
+    return useMutation({
+        mutationFn: ({ id, ...data }) => qcApi.updateTrainingModule(id, data),
+        onSuccess: () => { queryClient.invalidateQueries({ queryKey: ['training', 'modules'] }); },
+    });
+}
+
+export function useDeleteTrainingModule() {
+    const queryClient = useQueryClient();
+    return useMutation({
+        mutationFn: (id) => qcApi.deleteTrainingModule(id),
+        onSuccess: () => { queryClient.invalidateQueries({ queryKey: ['training', 'modules'] }); },
+    });
+}
+
+export function useTeamTrainingProgress(options = {}) {
+    return useQuery({
+        queryKey: queryKeys.trainingTeamProgress,
+        queryFn: () => qcApi.getTeamTrainingProgress(),
+        staleTime: 1000 * 60 * 5,
+        ...options,
+    });
+}
+
+export function useTrainingAssignments(userId, options = {}) {
+    return useQuery({
+        queryKey: queryKeys.trainingAssignments(userId),
+        queryFn: () => qcApi.getTrainingAssignments(userId),
+        enabled: !!userId,
+        staleTime: 1000 * 60 * 5,
+        ...options,
+    });
+}
+
+export function useAllTrainingAssignments(status, options = {}) {
+    return useQuery({
+        queryKey: queryKeys.trainingAllAssignments(status),
+        queryFn: () => qcApi.getAllTrainingAssignments(status),
+        staleTime: 1000 * 60 * 5,
+        ...options,
+    });
+}
+
+export function useAssignTrainingModules() {
+    const queryClient = useQueryClient();
+    return useMutation({
+        mutationFn: (data) => qcApi.assignTrainingModules(data),
+        onSuccess: () => {
+            queryClient.invalidateQueries({ queryKey: ['training', 'assignments'] });
+            queryClient.invalidateQueries({ queryKey: ['training', 'all-assignments'] });
+            queryClient.invalidateQueries({ queryKey: ['training', 'team-progress'] });
+        },
+    });
+}
+
+// ─── ONBOARDING HOOKS ──────────────────────────────────
+
+export function useOnboarding(userId, options = {}) {
+    return useQuery({
+        queryKey: queryKeys.onboarding(userId),
+        queryFn: () => qcApi.getOnboarding(userId),
+        enabled: !!userId,
+        staleTime: 1000 * 60 * 10,
+        ...options,
+    });
+}
+
+export function useAllOnboarding(role, options = {}) {
+    return useQuery({
+        queryKey: queryKeys.onboardingAll(role),
+        queryFn: () => qcApi.getAllOnboarding(role),
+        staleTime: 1000 * 60 * 5,
+        ...options,
+    });
+}
+
+export function useCompleteOnboardingStep() {
+    const queryClient = useQueryClient();
+    return useMutation({
+        mutationFn: ({ userId, stepKey }) => qcApi.completeOnboardingStep(userId, stepKey),
+        onSuccess: (_data, { userId }) => {
+            queryClient.invalidateQueries({ queryKey: queryKeys.onboarding(userId) });
+            queryClient.invalidateQueries({ queryKey: ['onboarding', 'all'] });
+        },
+    });
+}
+
 // ─── REVIEW TEMPLATE HOOKS ──────────────────────────────
 
 export function useReviewTemplates(createdBy, options = {}) {
@@ -2938,6 +3041,16 @@ export default {
     useSubmitTrainingAttempt,
     useTrainingAttempts,
     useTrainingStats,
+    useCreateTrainingModule,
+    useUpdateTrainingModule,
+    useDeleteTrainingModule,
+    useTeamTrainingProgress,
+    useTrainingAssignments,
+    useAllTrainingAssignments,
+    useAssignTrainingModules,
+    useOnboarding,
+    useAllOnboarding,
+    useCompleteOnboardingStep,
     useReviewTemplates,
     useCreateReviewTemplate,
     useUpdateReviewTemplate,

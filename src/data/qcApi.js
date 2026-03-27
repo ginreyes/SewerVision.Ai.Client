@@ -405,6 +405,60 @@ export const qcApi = {
     if (!response.ok) throw new Error(response.data?.error || 'Failed to fetch stats');
     return response.data?.data;
   },
+  async updateTrainingModule(id, data) {
+    const response = await api(`/api/training/modules/${id}`, 'PUT', data);
+    if (!response.ok) throw new Error(response.data?.message || 'Failed to update module');
+    return response.data?.data;
+  },
+  async deleteTrainingModule(id) {
+    const response = await api(`/api/training/modules/${id}`, 'DELETE');
+    if (!response.ok) throw new Error(response.data?.message || 'Failed to delete module');
+    return response.data;
+  },
+  async getTeamTrainingProgress() {
+    const response = await api('/api/training/team-progress', 'GET');
+    if (!response.ok) throw new Error(response.data?.error || 'Failed to fetch team progress');
+    return response.data?.data || [];
+  },
+  async assignTrainingModules(data) {
+    const response = await api('/api/training/assign', 'POST', data);
+    if (!response.ok) throw new Error(response.data?.message || 'Failed to assign modules');
+    return response.data?.data;
+  },
+  async getTrainingAssignments(userId) {
+    const response = await api(`/api/training/assignments/${userId}`, 'GET');
+    if (!response.ok) throw new Error(response.data?.error || 'Failed to fetch assignments');
+    return response.data?.data || [];
+  },
+  async getAllTrainingAssignments(status) {
+    const params = status && status !== 'all' ? `?status=${status}` : '';
+    const response = await api(`/api/training/all-assignments${params}`, 'GET');
+    if (!response.ok) throw new Error(response.data?.error || 'Failed to fetch assignments');
+    return response.data?.data || [];
+  },
+
+  // ─── Onboarding ─────────────────────────────────────────
+  async getOnboarding(userId) {
+    const response = await api(`/api/onboarding/${userId}`, 'GET');
+    if (!response.ok) throw new Error(response.data?.error || 'Failed to fetch onboarding');
+    return response.data?.data;
+  },
+  async getAllOnboarding(role) {
+    const params = role && role !== 'all' ? `?role=${role}` : '';
+    const response = await api(`/api/onboarding/all${params}`, 'GET');
+    if (!response.ok) throw new Error(response.data?.error || 'Failed to fetch onboarding data');
+    return response.data;
+  },
+  async completeOnboardingStep(userId, stepKey) {
+    const response = await api(`/api/onboarding/${userId}/step`, 'PUT', { stepKey });
+    if (!response.ok) throw new Error(response.data?.message || 'Failed to complete step');
+    return response.data?.data;
+  },
+  async initOnboarding(userId) {
+    const response = await api(`/api/onboarding/init/${userId}`, 'POST');
+    if (!response.ok) throw new Error(response.data?.message || 'Failed to init onboarding');
+    return response.data?.data;
+  },
 
   // ─── Review Templates ──────────────────────────────────
   async getReviewTemplates(createdBy) {
