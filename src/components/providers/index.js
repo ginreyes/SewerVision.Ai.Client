@@ -7,6 +7,7 @@ import { UserProvider } from "./UserContext";
 import { useRouter, usePathname } from "next/navigation";
 import NotificationProvider from "./NotificationProvider";
 import { QueryProvider } from "./QueryProvider";
+import { SocketProvider } from "./SocketProvider";
 import { getCookie } from "@/lib/helper";
 
 
@@ -29,6 +30,7 @@ export function AppProviders({ children }) {
   return (
     <QueryProvider>
       <UserProvider>
+        <SocketProvider>
         <NotificationProvider>
           <AlertProvider>
             <DialogProvider>
@@ -38,6 +40,7 @@ export function AppProviders({ children }) {
             </DialogProvider>
           </AlertProvider>
         </NotificationProvider>
+        </SocketProvider>
       </UserProvider>
     </QueryProvider>
   );

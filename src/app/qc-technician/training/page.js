@@ -15,7 +15,7 @@ import { useUser } from "@/components/providers/UserContext";
 import {
   useTrainingModules, useSubmitTrainingAttempt, useTrainingStats,
   useCreateTrainingModule, useUpdateTrainingModule, useDeleteTrainingModule,
-  useTeamTrainingProgress,
+  useTeamTrainingProgress, useTrainingAssignments,
 } from "@/hooks/useQueryHooks";
 import { ModuleFormModal, TeamProgressView, DIFFICULTY_CONFIG, CATEGORIES, EMPTY_QUESTION } from "@/components/qc/training";
 
@@ -29,6 +29,7 @@ export default function TrainingCalibration() {
   const { data: modulesRaw = [], isLoading } = useTrainingModules();
   const { data: stats } = useTrainingStats(userId);
   const { data: teamProgress, isLoading: teamLoading } = useTeamTrainingProgress();
+  const { data: myAssignmentsRaw = [] } = useTrainingAssignments(userId);
   const submitAttempt = useSubmitTrainingAttempt();
   const createModule = useCreateTrainingModule();
   const updateModule = useUpdateTrainingModule();
@@ -101,6 +102,16 @@ export default function TrainingCalibration() {
     } catch { showAlert("Failed to delete", "error"); }
   }
 
+  const myAssignments = useMemo(() => {
+    const raw = Array.isArray(myAssignmentsRaw) ? myAssignmentsRaw : (myAssignmentsRaw?.data || []);
+    return raw.map(a => {
+      const mod = modules.find(m => (m._id || m.id) === (a.moduleId?._id || a.moduleId));
+      return { ...a, module: a.moduleId?.title ? a.moduleId : mod || a.moduleId };
+    });
+  }, [myAssignmentsRaw, modules]);
+
+  const pendingAssignments = useMemo(() => myAssignments.filter(a => a.status !== 'completed'), [myAssignments]);
+
   const completedCount = stats?.modulesCompleted ?? 0;
   const avgScore = stats?.avgScore ?? NaN;
 
@@ -121,18 +132,116 @@ export default function TrainingCalibration() {
         </div>
       </div>
 
-      <Tabs defaultValue="learn" className="w-full">
+      <Tabs defaultValue={pendingAssignments.length > 0 ? "assignments" : "learn"} className="w-full">
         <TabsList className="mb-5 bg-gray-100/80 p-1 rounded-xl h-auto">
-          <TabsTrigger value="learn" className="flex items-center gap-1.5 data-[state=active]:bg-white data-[state=active]:shadow-sm rounded-lg px-5 py-2.5">
+          <TabsTrigger value="assignments" className="flex items-center gap-1.5 text-gray-600 data-[state=active]:bg-white data-[state=active]:text-rose-700 data-[state=active]:shadow-sm rounded-lg px-5 py-2.5">
+            <Target className="w-4 h-4 shrink-0" />
+            <span className="text-sm font-medium">My Assignments</span>
+            {pendingAssignments.length > 0 && (
+              <span className="ml-1 w-5 h-5 rounded-full bg-rose-500 text-white text-[10px] font-bold flex items-center justify-center">{pendingAssignments.length}</span>
+            )}
+          </TabsTrigger>
+          <TabsTrigger value="learn" className="flex items-center gap-1.5 text-gray-600 data-[state=active]:bg-white data-[state=active]:text-rose-700 data-[state=active]:shadow-sm rounded-lg px-5 py-2.5">
             <Play className="w-4 h-4 shrink-0" /><span className="text-sm font-medium">Learn</span>
           </TabsTrigger>
-          <TabsTrigger value="create" className="flex items-center gap-1.5 data-[state=active]:bg-white data-[state=active]:shadow-sm rounded-lg px-5 py-2.5">
+          <TabsTrigger value="create" className="flex items-center gap-1.5 text-gray-600 data-[state=active]:bg-white data-[state=active]:text-rose-700 data-[state=active]:shadow-sm rounded-lg px-5 py-2.5">
             <BookOpen className="w-4 h-4 shrink-0" /><span className="text-sm font-medium">Manage Modules</span>
           </TabsTrigger>
-          <TabsTrigger value="progress" className="flex items-center gap-1.5 data-[state=active]:bg-white data-[state=active]:shadow-sm rounded-lg px-5 py-2.5">
+          <TabsTrigger value="progress" className="flex items-center gap-1.5 text-gray-600 data-[state=active]:bg-white data-[state=active]:text-rose-700 data-[state=active]:shadow-sm rounded-lg px-5 py-2.5">
             <Users className="w-4 h-4 shrink-0" /><span className="text-sm font-medium">Team Progress</span>
           </TabsTrigger>
         </TabsList>
+
+        {/* ── My Assignments Tab ── */}
+        <TabsContent value="assignments" className="mt-0">
+          {pendingAssignments.length === 0 && myAssignments.filter(a => a.status === 'completed').length === 0 ? (
+            <div className="flex flex-col items-center justify-center py-16 text-gray-400">
+              <Target className="w-10 h-10 mb-2 opacity-30" />
+              <p className="text-sm">No training assignments yet</p>
+              <p className="text-xs mt-1">Your admin will assign modules when ready</p>
+            </div>
+          ) : (
+            <div className="space-y-4">
+              {/* Pending assignments */}
+              {pendingAssignments.length > 0 && (
+                <div>
+                  <h3 className="text-sm font-semibold text-gray-700 mb-3 flex items-center gap-2">
+                    <AlertTriangle className="w-4 h-4 text-amber-500" />
+                    Pending ({pendingAssignments.length})
+                  </h3>
+                  <div className="space-y-2">
+                    {pendingAssignments.map(a => {
+                      const modTitle = a.module?.title || 'Training Module';
+                      const modDifficulty = a.module?.difficulty || 'beginner';
+                      const isOverdue = a.dueDate && new Date(a.dueDate) < new Date();
+                      const linkedModule = modules.find(m => (m._id || m.id) === (a.moduleId?._id || a.moduleId));
+                      return (
+                        <Card key={a._id} className={`border-gray-200 ${isOverdue ? 'border-l-4 border-l-red-400' : ''}`}>
+                          <CardContent className="p-4 flex items-center gap-4">
+                            <div className={`w-10 h-10 rounded-xl flex items-center justify-center shrink-0 ${isOverdue ? 'bg-red-50' : 'bg-rose-50'}`}>
+                              <GraduationCap className={`w-5 h-5 ${isOverdue ? 'text-red-500' : 'text-rose-500'}`} />
+                            </div>
+                            <div className="flex-1 min-w-0">
+                              <p className="text-sm font-semibold text-gray-900">{modTitle}</p>
+                              <div className="flex items-center gap-2 mt-0.5">
+                                <Badge variant="outline" className={`text-[10px] ${DIFF_COLORS[modDifficulty] || ''}`}>{modDifficulty}</Badge>
+                                <Badge variant="outline" className={`text-[10px] capitalize ${a.status === 'overdue' || isOverdue ? 'bg-red-50 text-red-700 border-red-200' : 'bg-amber-50 text-amber-700 border-amber-200'}`}>
+                                  {isOverdue ? 'Overdue' : a.status}
+                                </Badge>
+                                {a.dueDate && (
+                                  <span className={`text-[10px] flex items-center gap-0.5 ${isOverdue ? 'text-red-500 font-medium' : 'text-gray-400'}`}>
+                                    <Clock className="w-3 h-3" />Due {new Date(a.dueDate).toLocaleDateString()}
+                                  </span>
+                                )}
+                              </div>
+                            </div>
+                            {linkedModule && (
+                              <Button size="sm" onClick={() => startModule(linkedModule)}
+                                className="bg-rose-500 hover:bg-rose-600 text-white gap-1">
+                                <Play className="w-3.5 h-3.5" /> Start
+                              </Button>
+                            )}
+                          </CardContent>
+                        </Card>
+                      );
+                    })}
+                  </div>
+                </div>
+              )}
+
+              {/* Completed assignments */}
+              {myAssignments.filter(a => a.status === 'completed').length > 0 && (
+                <div>
+                  <h3 className="text-sm font-semibold text-gray-700 mb-3 flex items-center gap-2">
+                    <CheckCircle2 className="w-4 h-4 text-emerald-500" />
+                    Completed ({myAssignments.filter(a => a.status === 'completed').length})
+                  </h3>
+                  <div className="space-y-2">
+                    {myAssignments.filter(a => a.status === 'completed').map(a => {
+                      const modTitle = a.module?.title || 'Training Module';
+                      return (
+                        <Card key={a._id} className="border-gray-200 opacity-70">
+                          <CardContent className="p-4 flex items-center gap-4">
+                            <div className="w-10 h-10 rounded-xl flex items-center justify-center shrink-0 bg-emerald-50">
+                              <CheckCircle2 className="w-5 h-5 text-emerald-500" />
+                            </div>
+                            <div className="flex-1 min-w-0">
+                              <p className="text-sm font-medium text-gray-700">{modTitle}</p>
+                              <span className="text-[10px] text-gray-400">
+                                Completed {a.completedAt ? new Date(a.completedAt).toLocaleDateString() : ''}
+                              </span>
+                            </div>
+                            <Badge variant="outline" className="text-[10px] bg-emerald-50 text-emerald-700 border-emerald-200">Done</Badge>
+                          </CardContent>
+                        </Card>
+                      );
+                    })}
+                  </div>
+                </div>
+              )}
+            </div>
+          )}
+        </TabsContent>
 
         {/* ── Learn Tab ── */}
         <TabsContent value="learn" className="mt-0">

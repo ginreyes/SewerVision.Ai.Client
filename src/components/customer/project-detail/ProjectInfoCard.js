@@ -13,7 +13,7 @@ const priorityColors = {
 
 const ProjectInfoCard = ({ project, operatorName }) => {
   const progress = project.progress || 0;
-  const confidence = project.confidence ? Math.round(project.confidence * 100) : null;
+  const confidence = project.confidence ? (project.confidence <= 1 ? Math.round(project.confidence * 100) : Math.round(project.confidence)) : null;
   const totalDefects = project.aiDetections?.total || 0;
 
   return (

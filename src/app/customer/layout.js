@@ -9,6 +9,7 @@ import UnifiedSidebar from "@/components/ui/UnifiedSidebar";
 import { TourGuide, useTourGuide } from "@/components/TourGuide";
 import RoleThemeProvider from "@/components/providers/RoleThemeProvider";
 import CustomerReactTour, { useCustomerReactTour } from "@/components/customer/CustomerReactTour";
+import ChatBubble from "@/components/customer/ChatBubble";
 
 export default function CustomerLayout({ children }) {
   const [openSidebar, setOpenSidebar] = useState(true);
@@ -100,6 +101,9 @@ export default function CustomerLayout({ children }) {
             <Navbar openSideBar={handleToggleSidebar} role="customer" />
             <main className="p-4  min-h-screen"><AnnouncementBanner role="customer" />{children}</main>
           </div>
+
+          {/* Floating Chat Bubble */}
+          <ChatBubble />
 
           {/* Tour Guide Modal (existing) */}
           <TourGuide

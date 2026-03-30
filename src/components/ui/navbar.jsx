@@ -252,6 +252,28 @@ const Navbar = (props) => {
     return () => document.removeEventListener('mousedown', handleClickOutside);
   }, []);
 
+  // Group search results by their type/category
+  const groupedResults = searchResults.reduce((groups, result) => {
+    const type = result.type || 'other';
+    if (!groups[type]) groups[type] = [];
+    groups[type].push(result);
+    return groups;
+  }, {});
+
+  // Highlight matching text in a string
+  const highlightMatch = (text, query) => {
+    if (!query || query.trim().length < 2) return text;
+    const escaped = query.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+    const parts = text.split(new RegExp(`(${escaped})`, 'gi'));
+    return parts.map((part, i) =>
+      part.toLowerCase() === query.toLowerCase() ? (
+        <mark key={i} className="bg-yellow-200 text-gray-900 rounded-sm px-0.5">{part}</mark>
+      ) : (
+        part
+      )
+    );
+  };
+
   // Keyboard support
   const handleKeyDown = (e) => {
     if (e.key === 'Enter') {
@@ -311,7 +333,7 @@ const Navbar = (props) => {
             {/* Search Dropdown */}
             {searchOpen && (
               <div className="absolute top-full left-0 right-0 mt-1 bg-white border border-gray-200 rounded-lg shadow-lg z-50 max-h-96 overflow-y-auto">
-                {/* Results */}
+                {/* Autocomplete Results - grouped by category */}
                 {searchQuery.length > 1 && (
                   <div className="p-2">
                     <div className="flex items-center justify-between mb-2">
@@ -320,39 +342,71 @@ const Navbar = (props) => {
                         <div className="w-4 h-4 border-2 border-t-transparent rounded-full animate-spin" style={{ borderColor: 'var(--role-accent, #3b82f6)', borderTopColor: 'transparent' }}></div>
                       )}
                     </div>
-                    {searchResults.length > 0 ? (
-                      searchResults.map((result) => {
-                        const CategoryIcon = searchCategories[result.type]?.icon || FiFile;
-                        const categoryColor = searchCategories[result.type]?.color || 'text-gray-600';
+                    {Object.keys(groupedResults).length > 0 ? (
+                      Object.entries(groupedResults).map(([type, results]) => {
+                        const catConfig = searchCategories[type];
+                        const GroupIcon = catConfig?.icon || FiFile;
+                        const groupColor = catConfig?.color || 'text-gray-600';
+                        const groupLabel = catConfig?.label || type.charAt(0).toUpperCase() + type.slice(1);
 
                         return (
-                          <div
-                            key={result.id}
-                            className="flex items-start space-x-3 p-2 hover:bg-gray-50 rounded cursor-pointer"
-                            onClick={() => handleResultClick(result)}
-                          >
-                            {result.imageUrl ? (
-                              <Avatar className="w-8 h-8 flex-shrink-0">
-                                <AvatarImage src={result.imageUrl} alt={result.title} />
-                                <AvatarFallback>{result.title.charAt(0).toUpperCase()}</AvatarFallback>
-                              </Avatar>
-                            ) : (
-                              <CategoryIcon className={`w-4 h-4 mt-0.5 ${categoryColor}`} />
-                            )}
-                            <div className="flex-1 min-w-0">
-                              <p className="text-sm font-medium text-gray-900 truncate">{result.title}</p>
-                              {result.description && (
-                                <p className="text-xs text-gray-500 truncate">{result.description}</p>
-                              )}
+                          <div key={type} className="mb-2 last:mb-0">
+                            <div className="flex items-center space-x-1.5 px-2 py-1">
+                              <GroupIcon className={`w-3.5 h-3.5 ${groupColor}`} />
+                              <span className={`text-xs font-semibold uppercase tracking-wide ${groupColor}`}>
+                                {groupLabel}
+                              </span>
+                              <span className="text-xs text-gray-400">({results.length})</span>
                             </div>
+                            {results.map((result) => {
+                              const CategoryIcon = searchCategories[result.type]?.icon || FiFile;
+                              const categoryColor = searchCategories[result.type]?.color || 'text-gray-600';
+
+                              return (
+                                <div
+                                  key={result.id}
+                                  className="flex items-start space-x-3 p-2 hover:bg-gray-50 rounded cursor-pointer ml-2"
+                                  onClick={() => handleResultClick(result)}
+                                >
+                                  {result.imageUrl ? (
+                                    <Avatar className="w-8 h-8 flex-shrink-0">
+                                      <AvatarImage src={result.imageUrl} alt={result.title} />
+                                      <AvatarFallback>{result.title.charAt(0).toUpperCase()}</AvatarFallback>
+                                    </Avatar>
+                                  ) : (
+                                    <CategoryIcon className={`w-4 h-4 mt-0.5 ${categoryColor}`} />
+                                  )}
+                                  <div className="flex-1 min-w-0">
+                                    <p className="text-sm font-medium text-gray-900 truncate">
+                                      {highlightMatch(result.title, searchQuery)}
+                                    </p>
+                                    {result.description && (
+                                      <p className="text-xs text-gray-500 truncate">
+                                        {highlightMatch(result.description, searchQuery)}
+                                      </p>
+                                    )}
+                                  </div>
+                                </div>
+                              );
+                            })}
                           </div>
                         );
                       })
                     ) : !loading ? (
                       <div className="p-2 text-sm text-gray-500 text-center">
-                        No results found for "{searchQuery}"
+                        No results found for &ldquo;{searchQuery}&rdquo;
                       </div>
                     ) : null}
+
+                    {/* Full search hint */}
+                    {searchResults.length > 0 && (
+                      <div
+                        className="mt-1 p-2 text-xs text-center text-gray-400 border-t border-gray-100 cursor-pointer hover:text-gray-600"
+                        onClick={() => handleSearchSubmit()}
+                      >
+                        Press <kbd className="px-1 py-0.5 bg-gray-100 rounded text-gray-500 text-[10px]">Enter</kbd> to see all results
+                      </div>
+                    )}
                   </div>
                 )}
 

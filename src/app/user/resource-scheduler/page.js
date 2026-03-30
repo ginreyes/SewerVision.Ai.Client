@@ -50,14 +50,19 @@ export default function ResourceScheduler() {
 
   const assignments = useMemo(() => Array.isArray(data) ? data : [], [data]);
 
-  // Get team members from the team management API
+  // Get team members — only show operator, qc-technician, user, and customer roles
+  const ALLOWED_ROLES = ['operator', 'qc-technician', 'user', 'customer'];
   const team = useMemo(() => {
     const raw = Array.isArray(teamData) ? teamData : (teamData?.data || teamData?.members || []);
-    return raw.map(m => ({
-      _id: m._id || m.id,
-      name: m.first_name ? `${m.first_name} ${m.last_name || ''}`.trim() : (m.name || m.username || 'Unknown'),
-      role: m.role || 'operator',
-    }));
+    return raw
+      .filter(m => ALLOWED_ROLES.includes(m.role))
+      .map(m => ({
+        _id: m._id || m.id,
+        name: m.first_name ? `${m.first_name} ${m.last_name || ''}`.trim() : (m.name || m.username || 'Unknown'),
+        role: m.role || 'operator',
+        avatar: m.first_name ? `${m.first_name[0]}${(m.last_name || '')[0] || ''}`.toUpperCase() : '?',
+        color: m.role === 'operator' ? 'bg-blue-500' : m.role === 'qc-technician' ? 'bg-rose-500' : m.role === 'customer' ? 'bg-emerald-500' : 'bg-indigo-500',
+      }));
   }, [teamData]);
 
   // Build schedule map: { "memberId-dayOfWeek": assignment }
@@ -172,7 +177,7 @@ export default function ResourceScheduler() {
                 </thead>
                 <tbody>
                   {team.map(member => (
-                    <tr key={member.id} className="border-b border-gray-100 hover:bg-gray-50/50">
+                    <tr key={member._id} className="border-b border-gray-100 hover:bg-gray-50/50">
                       <td className="px-4 py-3">
                         <div className="flex items-center gap-2.5">
                           <div className={`w-7 h-7 rounded-full flex items-center justify-center text-white text-[10px] font-bold shrink-0 ${member.color}`}>
@@ -185,7 +190,7 @@ export default function ResourceScheduler() {
                         </div>
                       </td>
                       {DAYS.map((_, dayIdx) => {
-                        const key = `${member.id}-${dayIdx}`;
+                        const key = `${member._id}-${dayIdx}`;
                         const slot = schedule[key];
                         return (
                           <td key={dayIdx} className={`px-1.5 py-2 text-center ${dayIdx >= 5 ? "bg-gray-50/50" : ""}`}>

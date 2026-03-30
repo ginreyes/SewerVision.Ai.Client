@@ -78,7 +78,7 @@ export default function UserReportsPage() {
       {/* Header */}
       <div className="flex items-center justify-between">
         <div className="flex items-center gap-3">
-          <div className="w-12 h-12 bg-gradient-to-br from-rose-500 to-pink-600 rounded-xl flex items-center justify-center shadow-lg">
+          <div className="w-12 h-12 bg-gradient-to-br from-indigo-500 to-purple-600 rounded-xl flex items-center justify-center shadow-lg">
             <FileText className="w-6 h-6 text-white" />
           </div>
           <div>
@@ -173,7 +173,7 @@ export default function UserReportsPage() {
                 <CardContent className="py-4 px-5 flex flex-col md:flex-row md:items-center gap-4">
                   <div className="flex-1 min-w-0">
                     <div className="flex items-center gap-3">
-                      <FileText className="w-4 h-4 text-rose-500" />
+                      <FileText className="w-4 h-4 text-indigo-500" />
                       <p className="font-semibold text-gray-900 truncate">{r.inspectionId}</p>
                     </div>
                     <p className="text-sm text-gray-600 mt-1 truncate">{r.projectName}</p>

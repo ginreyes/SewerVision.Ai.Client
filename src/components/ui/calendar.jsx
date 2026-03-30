@@ -19,8 +19,13 @@ function Calendar({
   buttonVariant = "ghost",
   formatters,
   components,
+  startMonth,
+  endMonth,
   ...props
 }) {
+  // Default year range: 5 years back to 5 years forward
+  const defaultStart = startMonth || new Date(new Date().getFullYear() - 5, 0);
+  const defaultEnd = endMonth || new Date(new Date().getFullYear() + 5, 11);
   const defaultClassNames = getDefaultClassNames()
 
   return (
@@ -33,6 +38,8 @@ function Calendar({
         className
       )}
       captionLayout={captionLayout}
+      startMonth={defaultStart}
+      endMonth={defaultEnd}
       formatters={{
         formatMonthDropdown: (date) =>
           date.toLocaleString("default", { month: "short" }),

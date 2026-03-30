@@ -41,10 +41,10 @@ export default function AdminTrainingCenter() {
 
       <Tabs defaultValue="overview" className="w-full">
         <TabsList className="mb-5 bg-gray-100/80 p-1 rounded-xl h-auto">
-          <TabsTrigger value="overview" className="flex items-center gap-1.5 data-[state=active]:bg-white data-[state=active]:shadow-sm rounded-lg px-5 py-2.5">
+          <TabsTrigger value="overview" className="flex items-center gap-1.5 text-gray-600 data-[state=active]:bg-white data-[state=active]:text-rose-700 data-[state=active]:shadow-sm rounded-lg px-5 py-2.5">
             <GraduationCap className="w-4 h-4 shrink-0" /><span className="text-sm font-medium">Overview</span>
           </TabsTrigger>
-          <TabsTrigger value="assignments" className="flex items-center gap-1.5 data-[state=active]:bg-white data-[state=active]:shadow-sm rounded-lg px-5 py-2.5">
+          <TabsTrigger value="assignments" className="flex items-center gap-1.5 text-gray-600 data-[state=active]:bg-white data-[state=active]:text-rose-700 data-[state=active]:shadow-sm rounded-lg px-5 py-2.5">
             <GraduationCap className="w-4 h-4 shrink-0" /><span className="text-sm font-medium">Assignments</span>
           </TabsTrigger>
         </TabsList>

@@ -153,7 +153,7 @@ const ADMIN_MENU_GROUPS = [
   {
     label: 'System',
     items: [
-      { label: 'System Health', icon: 'Server', path: '/admin/system-health', module: 'system-health' },
+      { label: 'System Management', icon: 'Settings2', path: '/admin/system-management', module: 'system-management' },
       { label: 'Notifications', icon: 'Bell', path: '/admin/notifications', module: 'notifications' },
       { label: 'Settings', icon: 'Settings', path: '/admin/settings', module: 'settings' },
     ],
@@ -331,7 +331,7 @@ const FALLBACK_MENUS = {
       { label: 'Dashboard', icon: 'LayoutDashboard', path: '/user/dashboard', key: 'dashboard', locked: true },
       { label: 'My Projects', icon: 'FolderOpen', path: '/user/project', key: 'projects' },
       { label: 'Task Management', icon: 'ClipboardList', path: '/user/tasks', key: 'tasks' },
-      { label: 'Inbox', icon: 'Inbox', path: '/user/inbox', key: 'inbox' },
+      { label: 'Notifications', icon: 'Bell', path: '/user/notifications', key: 'notifications' },
     ]},
     { label: 'Team & Assets', items: [
       { label: 'Team Management', icon: 'Users', path: '/user/team', key: 'team' },

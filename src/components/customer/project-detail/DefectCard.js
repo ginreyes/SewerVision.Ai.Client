@@ -100,7 +100,7 @@ const DefectCard = ({ observation, snapshot }) => {
             </div>
             {observation.confidence != null && (
               <span className="text-blue-600 font-medium">
-                {(observation.confidence * 100).toFixed(0)}%
+                {observation.confidence <= 1 ? (observation.confidence * 100).toFixed(0) : Math.round(observation.confidence)}%
               </span>
             )}
           </div>

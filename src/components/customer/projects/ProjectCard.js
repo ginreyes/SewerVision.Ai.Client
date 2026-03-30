@@ -15,7 +15,7 @@ const priorityBorder = {
 const ProjectCard = ({ project, onView }) => {
   const config = statusConfig[project.status] || { label: 'In Progress', bgColor: 'bg-gray-100 text-gray-800' };
   const progress = project.progress || 0;
-  const confidence = project.confidence ? Math.round(project.confidence * 100) : null;
+  const confidence = project.confidence ? (project.confidence <= 1 ? Math.round(project.confidence * 100) : Math.round(project.confidence)) : null;
   const borderClass = priorityBorder[project.priority] || 'border-l-gray-300';
 
   const getOperatorName = () => {

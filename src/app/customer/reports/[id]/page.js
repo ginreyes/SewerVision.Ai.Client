@@ -138,7 +138,7 @@ export default function ReportDetailPage() {
           <InfoRow label="Pipeline Length" value={report.totalLength} />
           <InfoRow label="Material" value={report.pipelineMaterial} />
           <InfoRow label="Shape" value={report.pipelineShape} />
-          <InfoRow label="Confidence Score" value={`${(report.confidence * 100).toFixed(1)}%`} />
+          <InfoRow label="Confidence Score" value={`${report.confidence <= 1 ? (report.confidence * 100).toFixed(1) : report.confidence.toFixed(1)}%`} />
           <InfoRow label="Status" value="Final Report Delivered" />
         </CardContent>
       </Card>

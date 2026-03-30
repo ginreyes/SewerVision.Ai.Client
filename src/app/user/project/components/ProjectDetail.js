@@ -46,8 +46,10 @@ import { useAlert } from '@/components/providers/AlertProvider';
 import { api } from '@/lib/helper';
 import { useRouter } from 'next/navigation';
 import { getVideoUrl } from '@/lib/getVideoUrl';
+import { AiProcessingModal } from '@/components/project/AiProcessingModal';
 
 const ProjectDetail = ({ project, setSelectedProject }) => {
+  const [showAiModal, setShowAiModal] = useState(false);
   const [isRecordingInfoExpanded, setIsRecordingInfoExpanded] = useState(true);
   const [isSnapshotsExpanded, setIsSnapshotsExpanded] = useState(true);
   const [isVideosExpanded, setIsVideosExpanded] = useState(true);
@@ -736,6 +738,7 @@ const ProjectDetail = ({ project, setSelectedProject }) => {
 
       if (response.ok && response.data?.success !== false) {
         showAlert(response.data?.message || 'Video reprocessing started successfully', 'success');
+        setShowAiModal(true); // Open the AI processing modal with real-time SSE logs
         // Refresh project data after a short delay
         setTimeout(async () => {
           if (setSelectedProject) {
@@ -1678,6 +1681,13 @@ const ProjectDetail = ({ project, setSelectedProject }) => {
           </Dialog>
         </div>
       </div>
+      {/* AI Processing Modal with SSE */}
+      <AiProcessingModal
+        open={showAiModal}
+        onOpenChange={setShowAiModal}
+        project={project}
+        selectedVideo={project?.videos?.[0] || null}
+      />
     </div>
   );
 };

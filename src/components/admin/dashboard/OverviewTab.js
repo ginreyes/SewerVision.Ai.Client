@@ -1,6 +1,7 @@
 'use client'
 import { useRouter } from 'next/navigation'
-import { Database, Brain, Eye, Zap, Activity, BarChart3, AlertTriangle, CheckCircle, Clock, Upload, Edit3, Share2 } from 'lucide-react'
+import Link from 'next/link'
+import { Database, Brain, Eye, Zap, Activity, BarChart3, AlertTriangle, CheckCircle, Clock, Upload, Edit3, Share2, Plus, BarChart2, Headphones, Building, HardDrive, ClipboardCheck, Users } from 'lucide-react'
 import StatsCard from './StatsCard'
 
 const getStatusColor = (status) => {
@@ -23,7 +24,7 @@ const getStatusIcon = (status) => {
   }
 }
 
-const OverviewTab = ({ projectStats, recentProjects, getCanvasRef }) => {
+const OverviewTab = ({ projectStats, recentProjects, getCanvasRef, data }) => {
   const router = useRouter()
 
   return (
@@ -140,6 +141,34 @@ const OverviewTab = ({ projectStats, recentProjects, getCanvasRef }) => {
           </table>
         </div>
       </div>
+
+      {/* Quick Actions */}
+      <div className="mt-6">
+        <h3 className="text-sm font-semibold text-gray-700 mb-3">Quick Actions</h3>
+        <div className="flex items-center gap-3">
+          <Link href="/admin/project/createProject">
+            <button className="flex items-center gap-2 px-4 py-2.5 bg-rose-50 text-rose-700 rounded-xl border border-rose-200 hover:bg-rose-100 text-sm font-medium transition-colors">
+              <Plus className="w-4 h-4" /> Create Project
+            </button>
+          </Link>
+          <Link href="/admin/users">
+            <button className="flex items-center gap-2 px-4 py-2.5 bg-blue-50 text-blue-700 rounded-xl border border-blue-200 hover:bg-blue-100 text-sm font-medium transition-colors">
+              <Users className="w-4 h-4" /> Manage Users
+            </button>
+          </Link>
+          <Link href="/admin/report">
+            <button className="flex items-center gap-2 px-4 py-2.5 bg-emerald-50 text-emerald-700 rounded-xl border border-emerald-200 hover:bg-emerald-100 text-sm font-medium transition-colors">
+              <BarChart2 className="w-4 h-4" /> View Reports
+            </button>
+          </Link>
+          <Link href="/admin/support">
+            <button className="flex items-center gap-2 px-4 py-2.5 bg-amber-50 text-amber-700 rounded-xl border border-amber-200 hover:bg-amber-100 text-sm font-medium transition-colors">
+              <Headphones className="w-4 h-4" /> Support Center
+            </button>
+          </Link>
+        </div>
+      </div>
+
     </div>
   )
 }
