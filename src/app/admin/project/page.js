@@ -1,6 +1,9 @@
 "use client";
 import React, { useState, useEffect, useRef, Suspense } from "react";
-import { Search, Plus, Loader2, LayoutGrid, Rows, MoreVertical, Eye, Pencil } from "lucide-react";
+import { Search, Plus, Loader2, LayoutGrid, Rows, MoreVertical, Eye, Pencil, MapPin } from "lucide-react";
+import dynamic from "next/dynamic";
+
+const ProjectLiveTrackerView = dynamic(() => import("@/components/shared/ProjectLiveTrackerView"), { ssr: false });
 import { Button } from "@/components/ui/button";
 
 import {
@@ -214,6 +217,18 @@ const SewerVisionInspectionModuleContent = () => {
                       <Rows className="w-4 h-4" />
                       <span>Table</span>
                     </button>
+                    <button
+                      type="button"
+                      onClick={() => setViewMode("tracker")}
+                      className={`flex items-center gap-1 px-3 py-1.5 text-xs font-medium border-l border-gray-200 ${
+                        viewMode === "tracker"
+                          ? "bg-rose-50 text-rose-600"
+                          : "text-gray-600 hover:bg-gray-50"
+                      }`}
+                    >
+                      <MapPin className="w-4 h-4" />
+                      <span>Live Tracker</span>
+                    </button>
                   </div>
 
                   {!isOperatorRoute && (
@@ -257,7 +272,9 @@ const SewerVisionInspectionModuleContent = () => {
               </select>
             </div>
 
-            {viewMode === "grid" ? (
+            {viewMode === "tracker" ? (
+              <ProjectLiveTrackerView projects={projects} theme="rose" />
+            ) : viewMode === "grid" ? (
               <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
                 {projects.map((project) => (
                   <ProjectCard

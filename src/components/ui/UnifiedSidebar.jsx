@@ -8,6 +8,7 @@ import { cn } from '@/lib/utils';
 import { Separator } from '@/components/ui/separator';
 import {
   Loader2,
+  Mail,
   LayoutDashboard,
   FolderOpen,
   Calendar,
@@ -68,6 +69,7 @@ import { api } from '@/lib/helper';
 // ── Icon string → Lucide component map ──
 const ICON_MAP = {
   LayoutDashboard,
+  Mail,
   FolderOpen,
   Calendar,
   CloudUpload,
@@ -154,6 +156,7 @@ const ADMIN_MENU_GROUPS = [
     label: 'System',
     items: [
       { label: 'System Management', icon: 'Settings2', path: '/admin/system-management', module: 'system-management' },
+      { label: 'Email Templates', icon: 'Mail', path: '/admin/email-templates', module: 'email-templates' },
       { label: 'Notifications', icon: 'Bell', path: '/admin/notifications', module: 'notifications' },
       { label: 'Settings', icon: 'Settings', path: '/admin/settings', module: 'settings' },
     ],

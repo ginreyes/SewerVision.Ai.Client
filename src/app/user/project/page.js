@@ -2,11 +2,12 @@
 
 import React, { useState, useEffect, Suspense, useCallback, useMemo } from "react";
 import { Search, Plus, Loader2, FolderOpen, LayoutGrid, Rows, MapPin, Video } from "lucide-react";
+import dynamic from "next/dynamic";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Select, SelectTrigger, SelectValue, SelectContent, SelectItem } from "@/components/ui/select";
-import ProjectDetail from "./components/ProjectDetail";
-import ProjectCard from "./components/ProjectCard";
+import ProjectDetail from "../../../components/user/project/ProjectDetail";
+import ProjectCard from "../../../components/user/project/ProjectCard";
 import { useUser } from "@/components/providers/UserContext";
 import debounce from "lodash/debounce";
 import { useRouter, useSearchParams } from "next/navigation";
@@ -14,6 +15,8 @@ import { useUserProjects, useUserProject } from "@/hooks/useQueryHooks";
 import { getProjectStatusColor, getProjectPriorityColor } from "@/components/user/constants";
 import SewerTable from "@/components/ui/SewerTable";
 import { Badge } from "@/components/ui/badge";
+
+const ProjectLiveTrackerView = dynamic(() => import("@/components/shared/ProjectLiveTrackerView"), { ssr: false });
 
 const UserProjectModuleContent = () => {
   const { userId } = useUser();
@@ -88,21 +91,31 @@ const UserProjectModuleContent = () => {
     { key: "client", name: "Client" },
     { key: "location", name: "Location" },
     { key: "status", name: "Status" },
+    { key: "progress", name: "Progress" },
+    { key: "team", name: "Team" },
     { key: "priority", name: "Priority" },
     { key: "videos", name: "Videos" },
   ];
 
   const projectTableData = useMemo(() => {
-    return projects.map((p) => ({
-      _id: p._id,
-      project: { name: p.name, workOrder: p.workOrder, deleteStatus: p.deleteStatus },
-      client: p.client || "—",
-      location: p.location || "—",
-      status: p.status,
-      priority: p.priority,
-      videos: p.videoCount ?? (p.videoUrl ? 1 : 0),
-      _raw: p,
-    }));
+    return projects.map((p) => {
+      const opUser = p.assignedOperator?.userId;
+      const qcUser = p.qcTechnician?.userId;
+      const operatorName = opUser && typeof opUser === 'object' ? `${opUser.first_name || ''} ${opUser.last_name || ''}`.trim() : null;
+      const qcName = qcUser && typeof qcUser === 'object' ? `${qcUser.first_name || ''} ${qcUser.last_name || ''}`.trim() : null;
+      return {
+        _id: p._id,
+        project: { name: p.name, workOrder: p.workOrder, deleteStatus: p.deleteStatus },
+        client: p.client || "—",
+        location: p.location || "—",
+        status: p.status,
+        progress: p.progress || 0,
+        team: { operatorName, qcName, operatorId: opUser?._id, qcId: qcUser?._id },
+        priority: p.priority,
+        videos: p.videoCount ?? (p.videoUrl ? 1 : 0),
+        _raw: p,
+      };
+    });
   }, [projects]);
 
   const renderProjectCell = (item, col) => {
@@ -149,6 +162,35 @@ const UserProjectModuleContent = () => {
         <span className={`text-xs font-semibold ${getProjectPriorityColor(item.priority)}`}>
           {item.priority?.toUpperCase?.() || item.priority}
         </span>
+      );
+    }
+    if (col.key === "progress") {
+      const pct = item.progress || 0;
+      return (
+        <div className="flex items-center gap-2 min-w-[100px]">
+          <div className="flex-1 h-1.5 bg-gray-100 rounded-full overflow-hidden">
+            <div className="h-full bg-indigo-500 rounded-full transition-all" style={{ width: `${pct}%` }} />
+          </div>
+          <span className="text-[11px] font-bold text-gray-600 w-8 text-right">{pct}%</span>
+        </div>
+      );
+    }
+    if (col.key === "team") {
+      const { operatorName, qcName } = item.team || {};
+      return (
+        <div className="flex flex-col gap-0.5">
+          {operatorName && (
+            <span className="text-[10px] text-gray-600 flex items-center gap-1">
+              <span className="w-1.5 h-1.5 rounded-full bg-blue-400 shrink-0" />{operatorName}
+            </span>
+          )}
+          {qcName && (
+            <span className="text-[10px] text-gray-600 flex items-center gap-1">
+              <span className="w-1.5 h-1.5 rounded-full bg-rose-400 shrink-0" />{qcName}
+            </span>
+          )}
+          {!operatorName && !qcName && <span className="text-[10px] text-gray-400">—</span>}
+        </div>
       );
     }
     if (col.key === "videos") {
@@ -234,6 +276,18 @@ const UserProjectModuleContent = () => {
                       <Rows className="w-4 h-4" />
                       <span>Table</span>
                     </button>
+                    <button
+                      type="button"
+                      onClick={() => setViewMode("tracker")}
+                      className={`flex items-center gap-1 px-3 py-1.5 text-xs font-medium border-l border-gray-200 ${
+                        viewMode === "tracker"
+                          ? "bg-indigo-50 text-indigo-600"
+                          : "text-gray-600 hover:bg-gray-50"
+                      }`}
+                    >
+                      <MapPin className="w-4 h-4" />
+                      <span>Live Tracker</span>
+                    </button>
                   </div>
 
                   <Button
@@ -286,7 +340,9 @@ const UserProjectModuleContent = () => {
               </div>
             ) : (
               <>
-                {viewMode === "grid" ? (
+                {viewMode === "tracker" ? (
+                  <ProjectLiveTrackerView projects={projects} isLoading={loading} theme="indigo" />
+                ) : viewMode === "grid" ? (
                   <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
                     {projects.map((project) => (
                       <ProjectCard
@@ -304,18 +360,22 @@ const UserProjectModuleContent = () => {
                     loading={loading}
                     renderCell={renderProjectCell}
                     showCheckbox={false}
-                    showActions={false}
+                    showActions={true}
+                    showSearch={false}
                     showCsvActions={false}
                     onView={handleProjectRowView}
+                    onEdit={(row) => router.push(`/user/project/editProject/${row._id}`)}
                     emptyMessage="No projects found"
                     emptySubtext="Try adjusting your filters or create a new project"
                     columnDefaults={{
-                      project: 220,
-                      client: 140,
-                      location: 160,
-                      status: 160,
-                      priority: 100,
-                      videos: 80,
+                      project: 200,
+                      client: 120,
+                      location: 130,
+                      status: 130,
+                      progress: 120,
+                      team: 130,
+                      priority: 80,
+                      videos: 70,
                     }}
                     rowsPerPageOptions={[6, 12, 24]}
                   />

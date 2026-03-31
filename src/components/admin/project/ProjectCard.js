@@ -27,10 +27,10 @@ const ProjectCard = memo((props) => {
     const status = project.status?.toLowerCase() || '';
 
     const gradients = {
-      // Planning - Blue theme
+      // Planning - Slate theme
       'planning': {
-        header: 'from-blue-500 via-blue-600 to-indigo-600',
-        progress: 'from-blue-500 via-blue-600 to-indigo-600',
+        header: 'from-slate-500 to-slate-600',
+        progress: 'bg-slate-500',
         accent: 'blue',
         videoBg: 'bg-blue-50',
         videoText: 'text-blue-600',
@@ -39,10 +39,10 @@ const ProjectCard = memo((props) => {
         aiDetectionText: 'text-indigo-600',
         aiDetectionTextDark: 'text-indigo-900',
       },
-      // In Progress - Green theme
+      // In Progress - Blue theme
       'in-progress': {
-        header: 'from-emerald-500 via-green-500 to-teal-600',
-        progress: 'from-emerald-500 via-green-500 to-teal-600',
+        header: 'from-blue-500 to-blue-600',
+        progress: 'bg-blue-500',
         accent: 'green',
         videoBg: 'bg-emerald-50',
         videoText: 'text-emerald-600',
@@ -51,10 +51,10 @@ const ProjectCard = memo((props) => {
         aiDetectionText: 'text-teal-600',
         aiDetectionTextDark: 'text-teal-900',
       },
-      // AI Processing - Purple/Violet theme
+      // AI Processing - Violet theme
       'ai-processing': {
-        header: 'from-violet-500 via-purple-500 to-fuchsia-600',
-        progress: 'from-violet-500 via-purple-500 to-fuchsia-600',
+        header: 'from-violet-500 to-violet-600',
+        progress: 'bg-violet-500',
         accent: 'purple',
         videoBg: 'bg-violet-50',
         videoText: 'text-violet-600',
@@ -63,10 +63,10 @@ const ProjectCard = memo((props) => {
         aiDetectionText: 'text-fuchsia-600',
         aiDetectionTextDark: 'text-fuchsia-900',
       },
-      // Completed - Amber/Gold theme
+      // Completed - Emerald theme
       'completed': {
-        header: 'from-amber-500 via-yellow-500 to-orange-500',
-        progress: 'from-amber-500 via-yellow-500 to-orange-500',
+        header: 'from-emerald-500 to-emerald-600',
+        progress: 'bg-emerald-500',
         accent: 'amber',
         videoBg: 'bg-amber-50',
         videoText: 'text-amber-600',
@@ -75,10 +75,10 @@ const ProjectCard = memo((props) => {
         aiDetectionText: 'text-orange-600',
         aiDetectionTextDark: 'text-orange-900',
       },
-      // On Hold - Slate/Gray theme
+      // On Hold - Red theme
       'on-hold': {
-        header: 'from-slate-500 via-gray-500 to-zinc-600',
-        progress: 'from-slate-500 via-gray-500 to-zinc-600',
+        header: 'from-red-400 to-red-500',
+        progress: 'bg-red-400',
         accent: 'gray',
         videoBg: 'bg-slate-50',
         videoText: 'text-slate-600',
@@ -87,10 +87,10 @@ const ProjectCard = memo((props) => {
         aiDetectionText: 'text-zinc-600',
         aiDetectionTextDark: 'text-zinc-900',
       },
-      // Review - Cyan/Teal theme
+      // Review - Amber theme
       'review': {
-        header: 'from-cyan-500 via-sky-500 to-blue-500',
-        progress: 'from-cyan-500 via-sky-500 to-blue-500',
+        header: 'from-amber-500 to-amber-600',
+        progress: 'bg-amber-500',
         accent: 'cyan',
         videoBg: 'bg-cyan-50',
         videoText: 'text-cyan-600',
@@ -99,10 +99,10 @@ const ProjectCard = memo((props) => {
         aiDetectionText: 'text-sky-600',
         aiDetectionTextDark: 'text-sky-900',
       },
-      // Default (fallback) - Rose/Pink theme
+      // Default (fallback) - Indigo theme
       'default': {
-        header: 'from-rose-500 via-pink-500 to-red-500',
-        progress: 'from-rose-500 via-pink-500 to-red-500',
+        header: 'from-indigo-500 to-indigo-600',
+        progress: 'bg-indigo-500',
         accent: 'rose',
         videoBg: 'bg-rose-50',
         videoText: 'text-rose-600',

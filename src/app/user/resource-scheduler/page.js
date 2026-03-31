@@ -14,8 +14,9 @@ import {
   useCreateAssignment,
   useDeleteAssignment,
   useUserTeamMembers,
+  useUserProjects,
 } from "@/hooks/useQueryHooks";
-import { ScheduleCell, DAYS } from "@/components/user/resource-scheduler";
+import { ScheduleCell, AssignmentDialog, DAYS } from "@/components/user/resource-scheduler";
 
 function getWeekStart(offsetWeeks = 0) {
   const now = new Date();
@@ -82,16 +83,45 @@ export default function ResourceScheduler() {
     return { teamCount: team.length, assignedCount, freeSlots };
   }, [team, schedule]);
 
+  // Dialog state
+  const [dialogOpen, setDialogOpen] = useState(false);
+  const [dialogAssignment, setDialogAssignment] = useState(null);
+  const [dialogMember, setDialogMember] = useState(null);
+  const [dialogDayIdx, setDialogDayIdx] = useState(0);
+
+  // Projects for assignment dropdown
+  const { data: projectsData } = useUserProjects(userId);
+  const projectsList = useMemo(() => Array.isArray(projectsData) ? projectsData : (projectsData?.data || []), [projectsData]);
+
   const handleCellClick = useCallback(
     (member, dayIdx, assignment) => {
-      if (assignment) {
-        showAlert(`Assignment: ${assignment.project} — ${assignment.type}`, "success");
-      } else {
-        showAlert("Click to assign (coming soon)", "success");
-      }
+      setDialogMember(member);
+      setDialogDayIdx(dayIdx);
+      setDialogAssignment(assignment || null);
+      setDialogOpen(true);
     },
-    [showAlert]
+    []
   );
+
+  const handleCreateAssignment = useCallback((data) => {
+    createAssignment.mutate(data, {
+      onSuccess: () => {
+        showAlert("Assignment created", "success");
+        setDialogOpen(false);
+      },
+      onError: (err) => showAlert(err.message || "Failed to create", "error"),
+    });
+  }, [createAssignment, showAlert]);
+
+  const handleDeleteAssignment = useCallback((id) => {
+    deleteAssignment.mutate(id, {
+      onSuccess: () => {
+        showAlert("Assignment removed", "success");
+        setDialogOpen(false);
+      },
+      onError: (err) => showAlert(err.message || "Failed to remove", "error"),
+    });
+  }, [deleteAssignment, showAlert]);
 
   if (isLoading || teamLoading) {
     return (
@@ -216,6 +246,22 @@ export default function ResourceScheduler() {
           </CardContent>
         </Card>
       )}
+
+      {/* Assignment Dialog */}
+      <AssignmentDialog
+        open={dialogOpen}
+        onClose={() => setDialogOpen(false)}
+        assignment={dialogAssignment}
+        member={dialogMember}
+        dayLabel={dialogMember ? `${DAYS[dialogDayIdx]}, ${weekDates[dialogDayIdx]}` : ""}
+        dayOfWeek={dialogDayIdx}
+        weekStart={weekStart}
+        projects={projectsList}
+        creating={createAssignment.isPending}
+        deleting={deleteAssignment.isPending}
+        onCreate={handleCreateAssignment}
+        onDelete={handleDeleteAssignment}
+      />
     </div>
   );
 }

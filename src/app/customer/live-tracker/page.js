@@ -1,6 +1,7 @@
 "use client";
 
 import React, { useState } from "react";
+import dynamic from "next/dynamic";
 import {
   MapPin, Activity, Clock, CheckCircle2, Circle, ChevronRight,
   Navigation, Users, Camera, AlertCircle, RefreshCw, Loader2,
@@ -10,6 +11,16 @@ import { Badge } from "@/components/ui/badge";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { useUser } from "@/components/providers/UserContext";
 import { useCustomerTracker } from "@/hooks/useQueryHooks";
+
+// Dynamic import — Leaflet doesn't work with SSR
+const ProjectMap = dynamic(() => import("@/components/customer/ProjectMap"), {
+  ssr: false,
+  loading: () => (
+    <div className="rounded-2xl border border-gray-200 bg-gradient-to-br from-emerald-50 to-teal-50 flex items-center justify-center" style={{ height: 220 }}>
+      <Loader2 className="w-6 h-6 animate-spin text-emerald-400" />
+    </div>
+  ),
+});
 
 const STATUS_CONFIG = {
   "in-progress": { color: "bg-blue-100 text-blue-700 border-blue-200", dot: "bg-blue-500 animate-pulse", label: "In Progress" },
@@ -85,25 +96,13 @@ export default function LiveProjectTracker() {
           {/* Detail */}
           {selectedProject && (
             <div className="flex-1 min-w-0 space-y-3">
-              {/* Map placeholder */}
-              <div className="relative rounded-2xl overflow-hidden border border-gray-200 bg-gradient-to-br from-emerald-50 to-teal-50 flex items-center justify-center" style={{ height: 200 }}>
-                <div className="text-center text-emerald-300 opacity-50">
-                  <MapPin className="w-10 h-10 mx-auto mb-1" />
-                  <p className="text-sm">Live Map</p>
-                </div>
-                {selectedProject.status === "in-progress" && (
-                  <div className="absolute" style={{ left: "45%", top: "40%" }}>
-                    <div className="w-4 h-4 bg-blue-600 rounded-full border-2 border-white shadow-lg">
-                      <div className="absolute -inset-2 bg-blue-400 rounded-full animate-ping opacity-30" />
-                    </div>
-                  </div>
-                )}
-                {selectedProject.status === "in-progress" && (
-                  <div className="absolute bottom-3 left-3 flex items-center gap-1.5 bg-white/90 text-xs text-emerald-700 px-2.5 py-1 rounded-lg shadow">
-                    <Navigation className="w-3 h-3" />Team is on-site
-                  </div>
-                )}
-              </div>
+              {/* Real Map with Leaflet + OpenStreetMap */}
+              <ProjectMap
+                projects={projects}
+                selected={selectedProject?._id}
+                onSelectProject={(id) => setSelected(id)}
+                height={220}
+              />
 
               {/* Project info */}
               <Card className="border-gray-200">

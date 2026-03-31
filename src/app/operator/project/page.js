@@ -1,6 +1,8 @@
 "use client";
 import React, { useState, useEffect, useRef, useMemo, Suspense } from "react";
 import { Search, Plus, Loader2, LayoutGrid, Rows, MapPin, Video } from "lucide-react";
+import dynamic from "next/dynamic";
+const ProjectLiveTrackerView = dynamic(() => import("@/components/shared/ProjectLiveTrackerView"), { ssr: false });
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Select, SelectTrigger, SelectValue, SelectContent, SelectItem } from "@/components/ui/select";
@@ -263,6 +265,16 @@ const OperatorModulePage = () => {
                       <Rows className="w-4 h-4" />
                       <span>Table</span>
                     </Button>
+                    <Button
+                      type="button"
+                      variant={viewMode === "tracker" ? "secondary" : "ghost"}
+                      size="sm"
+                      onClick={() => setViewMode("tracker")}
+                      className="rounded-none border-l border-gray-200 gap-1"
+                    >
+                      <MapPin className="w-4 h-4" />
+                      <span>Live Tracker</span>
+                    </Button>
                   </div>
 
                   {!isOperatorRoute && (
@@ -311,7 +323,9 @@ const OperatorModulePage = () => {
               </Select>
             </div>
 
-            {viewMode === "grid" ? (
+            {viewMode === "tracker" ? (
+              <ProjectLiveTrackerView projects={projects} isLoading={loading} theme="blue" />
+            ) : viewMode === "grid" ? (
               <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
                 {projects.map((project) => (
                   <ProjectCard

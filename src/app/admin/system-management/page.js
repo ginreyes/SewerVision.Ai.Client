@@ -137,12 +137,12 @@ export default function SystemManagement() {
 
         {/* Database Tab */}
         <TabsContent value="database" className="mt-0">
-          <DatabaseTab data={dbData} />
+          <DatabaseTab />
         </TabsContent>
 
         {/* Storage Tab */}
         <TabsContent value="storage" className="mt-0">
-          <StorageTab data={storageData} />
+          <StorageTab />
         </TabsContent>
 
         {/* AI Models Tab */}
