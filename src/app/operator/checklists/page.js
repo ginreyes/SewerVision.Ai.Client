@@ -9,9 +9,11 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Badge } from "@/components/ui/badge";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { Label } from "@/components/ui/label";
+import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { useAlert } from "@/components/providers/AlertProvider";
 import { useUser } from "@/components/providers/UserContext";
-import { useOperatorChecklists, useToggleChecklistItem } from "@/hooks/useQueryHooks";
+import { useOperatorChecklists, useToggleChecklistItem, useCreateChecklist } from "@/hooks/useQueryHooks";
 import { ChecklistItem, STATUS_CONFIG } from "@/components/operator/checklists";
 
 export default function FieldChecklist() {
@@ -20,9 +22,14 @@ export default function FieldChecklist() {
 
   const { data: checklists = [], isLoading } = useOperatorChecklists(userId);
   const toggleMutation = useToggleChecklistItem();
+  const createMutation = useCreateChecklist();
 
   const [selected, setSelected] = useState(null);
   const [search, setSearch] = useState("");
+  const [showCreate, setShowCreate] = useState(false);
+  const [newName, setNewName] = useState("");
+  const [newProject, setNewProject] = useState("");
+  const [newItems, setNewItems] = useState([""]);
 
   const filtered = useMemo(
     () =>
@@ -80,7 +87,8 @@ export default function FieldChecklist() {
             <p className="text-sm text-gray-500">Pre-inspection safety and equipment verification checklists</p>
           </div>
         </div>
-        <Button className="bg-blue-600 hover:bg-blue-700 text-white gap-1.5">
+        <Button className="bg-blue-600 hover:bg-blue-700 text-white gap-1.5"
+          onClick={() => { setNewName(""); setNewProject(""); setNewItems([""]); setShowCreate(true); }}>
           <Plus className="w-4 h-4" /> New Checklist
         </Button>
       </div>
@@ -165,6 +173,74 @@ export default function FieldChecklist() {
           )}
         </div>
       )}
+
+      {/* Create Checklist Dialog */}
+      <Dialog open={showCreate} onOpenChange={setShowCreate}>
+        <DialogContent className="max-w-md">
+          <DialogHeader>
+            <DialogTitle>New Checklist</DialogTitle>
+          </DialogHeader>
+          <div className="space-y-4 mt-2">
+            <div>
+              <Label>Checklist Name</Label>
+              <Input value={newName} onChange={e => setNewName(e.target.value)}
+                placeholder="e.g. Pre-Inspection Safety Check" className="mt-1" />
+            </div>
+            <div>
+              <Label>Project / Site</Label>
+              <Input value={newProject} onChange={e => setNewProject(e.target.value)}
+                placeholder="e.g. Main St Segment A" className="mt-1" />
+            </div>
+            <div>
+              <Label>Checklist Items</Label>
+              <div className="space-y-2 mt-1">
+                {newItems.map((item, i) => (
+                  <div key={i} className="flex items-center gap-2">
+                    <span className="text-xs text-gray-400 w-5 shrink-0">{i + 1}.</span>
+                    <Input
+                      value={item}
+                      onChange={e => setNewItems(prev => prev.map((v, j) => j === i ? e.target.value : v))}
+                      placeholder="Enter checklist item..."
+                      className="h-8 text-sm"
+                    />
+                    {newItems.length > 1 && (
+                      <button onClick={() => setNewItems(prev => prev.filter((_, j) => j !== i))}
+                        className="text-gray-400 hover:text-red-500 text-xs">✕</button>
+                    )}
+                  </div>
+                ))}
+                <Button variant="outline" size="sm" className="text-xs gap-1"
+                  onClick={() => setNewItems(prev => [...prev, ""])}>
+                  <Plus className="w-3 h-3" /> Add Item
+                </Button>
+              </div>
+            </div>
+            <div className="flex justify-end gap-2 pt-2">
+              <Button variant="outline" onClick={() => setShowCreate(false)}>Cancel</Button>
+              <Button
+                className="bg-blue-600 hover:bg-blue-700 text-white"
+                disabled={!newName.trim() || newItems.filter(i => i.trim()).length === 0 || createMutation.isPending}
+                onClick={() => {
+                  createMutation.mutate({
+                    name: newName.trim(),
+                    project: newProject.trim() || undefined,
+                    operatorId: userId,
+                    items: newItems.filter(i => i.trim()).map(label => ({ label: label.trim(), done: false })),
+                  }, {
+                    onSuccess: () => {
+                      showAlert("Checklist created", "success");
+                      setShowCreate(false);
+                    },
+                    onError: () => showAlert("Failed to create checklist", "error"),
+                  });
+                }}
+              >
+                {createMutation.isPending ? "Creating..." : "Create Checklist"}
+              </Button>
+            </div>
+          </div>
+        </DialogContent>
+      </Dialog>
     </div>
   );
 }

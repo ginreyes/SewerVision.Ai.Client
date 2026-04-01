@@ -7,6 +7,9 @@ import { Label } from "@/components/ui/label";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { useAlert } from "@/components/providers/AlertProvider";
 import { api } from "@/lib/helper";
+import dynamic from "next/dynamic";
+
+const LocationPicker = dynamic(() => import("@/components/shared/LocationPicker"), { ssr: false });
 import {
   FolderPlus,
   Calendar,
@@ -94,6 +97,8 @@ export default function CreateProjectPage({ backUrl = "/admin/project", returnTo
   // Project Details - Step 1
   const [name, setName] = useState("");
   const [location, setLocation] = useState("");
+  const [latitude, setLatitude] = useState(null);
+  const [longitude, setLongitude] = useState(null);
   const [workOrder, setWorkOrder] = useState("");
   const [priority, setPriority] = useState("medium");
 
@@ -284,6 +289,8 @@ export default function CreateProjectPage({ backUrl = "/admin/project", returnTo
       userId,
       name,
       location,
+      latitude: latitude || undefined,
+      longitude: longitude || undefined,
       client: clientFromCustomer,
       customerId,
       totalLength,
@@ -480,15 +487,26 @@ export default function CreateProjectPage({ backUrl = "/admin/project", returnTo
                 )}
               </div>
 
-              <InputField
-                label="Location"
-                name="location"
-                value={fieldValues.location}
-                onChange={handleFieldChange}
-                required
-                error={errors.location}
-                placeholder="Enter project location"
-              />
+              <div>
+                <Label className="text-sm font-medium text-gray-700 mb-1.5 block">
+                  Location <span className="text-red-500">*</span>
+                </Label>
+                <LocationPicker
+                  location={location}
+                  latitude={latitude}
+                  longitude={longitude}
+                  onLocationChange={(loc, lat, lng) => {
+                    setLocation(loc);
+                    if (lat) setLatitude(lat);
+                    if (lng) setLongitude(lng);
+                    handleFieldChange({ target: { name: "location", value: loc } });
+                  }}
+                  height={180}
+                />
+                {errors.location && (
+                  <span className="text-xs text-red-500 mt-1 block">{errors.location}</span>
+                )}
+              </div>
 
               <InputField
                 label="Work Order"

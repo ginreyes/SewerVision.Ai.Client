@@ -27,6 +27,7 @@ import {
   Upload,
   MapPin,
   Building2,
+  Send,
   Ruler,
   Calendar,
   CheckCircle2,
@@ -70,6 +71,7 @@ const ProjectDetail = ({ project, setSelectedProject }) => {
   const [newMetadataValue, setNewMetadataValue] = useState('');
   const [editingMetadata, setEditingMetadata] = useState({});
   const [isReprocessing, setIsReprocessing] = useState(false);
+  const [isNotifying, setIsNotifying] = useState(false);
 
   // Video list state
   const [projectVideos, setProjectVideos] = useState([]);
@@ -602,8 +604,6 @@ const ProjectDetail = ({ project, setSelectedProject }) => {
         { metadata: updatedMetadata }
       );
 
-      console.log('Metadata update response:', response);
-
       if (response.ok) {
         showAlert('Custom metadata added successfully', 'success');
         setProjectMetadata(updatedMetadata);
@@ -622,10 +622,8 @@ const ProjectDetail = ({ project, setSelectedProject }) => {
       } else {
         const errorMessage = response.data?.message || response.data?.error || 'Failed to add metadata';
         showAlert(errorMessage, 'error');
-        console.error('Metadata update failed:', response);
       }
     } catch (error) {
-      console.error('Error adding metadata:', error);
       showAlert('Failed to add metadata: ' + (error.message || 'Unknown error'), 'error');
     }
   };
@@ -643,8 +641,6 @@ const ProjectDetail = ({ project, setSelectedProject }) => {
         { metadata: editingMetadata }
       );
 
-      console.log('Metadata edit response:', response);
-
       if (response.ok) {
         showAlert('Metadata updated successfully', 'success');
         setProjectMetadata(editingMetadata);
@@ -661,10 +657,8 @@ const ProjectDetail = ({ project, setSelectedProject }) => {
       } else {
         const errorMessage = response.data?.message || response.data?.error || 'Failed to update metadata';
         showAlert(errorMessage, 'error');
-        console.error('Metadata update failed:', response);
       }
     } catch (error) {
-      console.error('Error updating metadata:', error);
       showAlert('Failed to update metadata: ' + (error.message || 'Unknown error'), 'error');
     }
   };
@@ -691,8 +685,6 @@ const ProjectDetail = ({ project, setSelectedProject }) => {
 
     setIsReprocessing(true);
     try {
-      console.log('🔄 Starting reprocess for project:', project._id);
-
       let response;
       try {
         response = await api(
@@ -709,33 +701,6 @@ const ProjectDetail = ({ project, setSelectedProject }) => {
         throw new Error('No response received from reprocess API');
       }
 
-      // Safely log response
-      try {
-        console.log('📥 Reprocess response status:', response?.status, 'ok:', response?.ok);
-        if (response?.data) {
-          // Use a replacer function to handle circular references
-          const seen = new WeakSet();
-          const safeStringify = (obj) => {
-            try {
-              return JSON.stringify(obj, (key, value) => {
-                if (typeof value === 'object' && value !== null) {
-                  if (seen.has(value)) {
-                    return '[Circular]';
-                  }
-                  seen.add(value);
-                }
-                return value;
-              }, 2);
-            } catch (e) {
-              return String(obj);
-            }
-          };
-          console.log('📥 Reprocess response data:', safeStringify(response.data));
-        }
-      } catch (logError) {
-        console.log('📥 Reprocess response received (could not log details)');
-      }
-
       if (response.ok && response.data?.success !== false) {
         showAlert(response.data?.message || 'Video reprocessing started successfully', 'success');
         setShowAiModal(true); // Open the AI processing modal with real-time SSE logs
@@ -749,9 +714,7 @@ const ProjectDetail = ({ project, setSelectedProject }) => {
               }
             } catch (refreshError) {
               try {
-                const refreshErrorMsg = refreshError?.message || refreshError?.toString() || 'Unknown error';
-                // Use console.log instead of console.error to avoid Next.js error handler interception
-                console.log('Failed to refresh project data:', refreshErrorMsg);
+                // Silently handle refresh errors
               } catch (e) {
                 // Silently fail if we can't log the error
               }
@@ -760,12 +723,6 @@ const ProjectDetail = ({ project, setSelectedProject }) => {
         }, 2000);
       } else {
         const errorMessage = response?.data?.error || response?.data?.message || response?.data?.details || `Failed to start reprocessing (Status: ${response?.status || 'unknown'})`;
-        // Use console.log instead of console.error to avoid Next.js error handler interception
-        try {
-          console.log('❌ Reprocess error:', errorMessage);
-        } catch (e) {
-          // Silently fail if we can't log
-        }
         showAlert(errorMessage, 'error');
       }
     } catch (error) {
@@ -783,15 +740,34 @@ const ProjectDetail = ({ project, setSelectedProject }) => {
         errorMessage = 'Failed to reprocess video';
       }
 
-      // Use console.log instead of console.error to avoid Next.js error handler interception
-      try {
-        console.log('❌ Error reprocessing video:', errorMessage);
-      } catch (logError) {
-        // Silently fail if we can't log
-      }
       showAlert('Failed to reprocess video: ' + errorMessage, 'error');
     } finally {
       setIsReprocessing(false);
+    }
+  };
+
+  // Notify customer — send deliverable ready email and update status
+  const handleNotifyCustomer = async () => {
+    if (isNotifying) return;
+    setIsNotifying(true);
+    try {
+      const res = await api(`/api/projects/notify-customer/${project._id}`, 'POST');
+      if (res.ok) {
+        showAlert('Customer notified — report delivered', 'success');
+        // Refresh project data
+        if (setSelectedProject) {
+          try {
+            const { data } = await api(`/api/projects/get-project/${project._id}`, 'GET');
+            if (data?.data) setSelectedProject(data.data);
+          } catch {}
+        }
+      } else {
+        showAlert(res.data?.message || 'Failed to notify customer', 'error');
+      }
+    } catch {
+      showAlert('Failed to notify customer', 'error');
+    } finally {
+      setIsNotifying(false);
     }
   };
 
@@ -972,6 +948,27 @@ const ProjectDetail = ({ project, setSelectedProject }) => {
                     <>
                       <Zap className="h-4 w-4" />
                       <span>Reprocess AI</span>
+                    </>
+                  )}
+                </Button>
+              )}
+
+              {/* Notify Customer Button - Show when project is completed or qc-review done */}
+              {(project?.status === 'completed' || project?.status === 'qc-review') && project?.status !== 'customer-notified' && (
+                <Button
+                  onClick={handleNotifyCustomer}
+                  disabled={isNotifying}
+                  className="flex items-center gap-2 bg-emerald-600 hover:bg-emerald-700 text-white"
+                >
+                  {isNotifying ? (
+                    <>
+                      <Loader2 className="h-4 w-4 animate-spin" />
+                      <span>Sending...</span>
+                    </>
+                  ) : (
+                    <>
+                      <Send className="h-4 w-4" />
+                      <span>Notify Customer</span>
                     </>
                   )}
                 </Button>
@@ -1368,7 +1365,7 @@ const ProjectDetail = ({ project, setSelectedProject }) => {
                       <div className="text-sm">No snapshots available</div>
                     </div>
                   ) : (
-                    <div className="relative">
+                    <div className="relative max-h-[500px] overflow-y-auto pr-1 custom-scrollbar">
                       {/* Vertical timeline line */}
                       <div className="absolute left-4 top-0 bottom-0 w-0.5 bg-gray-200"></div>
                       {displaySnapshots.map((snapshot, index) => (
@@ -1377,20 +1374,35 @@ const ProjectDetail = ({ project, setSelectedProject }) => {
                           <div className={`w-3 h-3 rounded-full ${snapshot.color} relative z-10 border-2 border-white shadow-sm`}></div>
 
                           {/* Snapshot content */}
-                          <div className="flex-1 min-w-0 bg-gray-50 rounded-lg p-3 hover:bg-gray-100 transition-colors">
-                            <div className="flex items-center justify-between">
-                              <div>
-                                <div className="text-sm font-medium text-gray-900">{snapshot.distance || 'N/A'}</div>
-                                <div className="text-xs text-gray-500">{snapshot.label}</div>
-                                {snapshot.timestamp && (
-                                  <div className="text-xs text-gray-400 mt-1">
-                                    {new Date(snapshot.timestamp).toLocaleString()}
-                                  </div>
-                                )}
+                          <div className="flex-1 min-w-0 bg-gray-50 rounded-lg overflow-hidden hover:bg-gray-100 transition-colors">
+                            {/* Snapshot image */}
+                            {snapshot.imageUrl && (
+                              <img
+                                src={snapshot.imageUrl}
+                                alt={snapshot.label}
+                                className="w-full h-32 object-cover cursor-pointer"
+                                onClick={() => window.open(snapshot.imageUrl, '_blank')}
+                                loading="lazy"
+                              />
+                            )}
+                            <div className="p-3">
+                              <div className="flex items-center justify-between">
+                                <div>
+                                  <div className="text-sm font-medium text-gray-900">{snapshot.distance || 'N/A'}</div>
+                                  <div className="text-xs text-gray-500">{snapshot.label}</div>
+                                  {snapshot.confidence && (
+                                    <div className="text-xs text-gray-500 mt-0.5">{snapshot.confidence <= 1 ? Math.round(snapshot.confidence * 100) : Math.round(snapshot.confidence)}% confidence</div>
+                                  )}
+                                  {snapshot.timestamp && (
+                                    <div className="text-xs text-gray-400 mt-1">
+                                      {new Date(snapshot.timestamp).toLocaleString()}
+                                    </div>
+                                  )}
+                                </div>
+                                <button className="p-1 hover:bg-white rounded-full transition-colors">
+                                  <PlayCircle className="h-4 w-4 text-blue-600" />
+                                </button>
                               </div>
-                              <button className="p-1 hover:bg-white rounded-full transition-colors">
-                                <PlayCircle className="h-4 w-4 text-blue-600" />
-                              </button>
                             </div>
                           </div>
 

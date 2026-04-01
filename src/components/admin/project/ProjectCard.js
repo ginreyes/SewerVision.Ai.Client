@@ -8,6 +8,7 @@ import { useRouter } from "next/navigation";
 import { useAlert } from "@/components/providers/AlertProvider";
 import { useDialog } from "@/components/providers/DialogProvider";
 import { api } from "@/lib/helper";
+import { avatarSrc } from "@/components/admin/constants";
 
 const ProjectCard = memo((props) => {
   const {
@@ -424,18 +425,6 @@ const ProjectCard = memo((props) => {
 
           {/* Project Details */}
           <div className="space-y-2 text-sm bg-gray-50 rounded-xl p-3">
-            {project.managerId && (
-              <div className="flex justify-between items-center">
-                <span className="text-gray-500 flex items-center gap-1">
-                  <UserCog className="w-3.5 h-3.5" /> Project Lead:
-                </span>
-                <span className="font-semibold text-gray-800">
-                  {project.managerId.first_name && project.managerId.last_name
-                    ? `${project.managerId.first_name} ${project.managerId.last_name}`
-                    : project.managerId.username || "—"}
-                </span>
-              </div>
-            )}
             <div className="flex justify-between">
               <span className="text-gray-500">Length:</span>
               <span className="font-semibold text-gray-800">{project.totalLength}</span>
@@ -451,27 +440,38 @@ const ProjectCard = memo((props) => {
           </div>
         </div>
 
-        {/* Footer section - Team Lead */}
+        {/* Footer section - Team Lead with real avatar */}
         <div className="pt-4 border-t border-gray-100 text-sm flex items-center mt-auto">
           <div className="flex items-center gap-3 text-gray-600">
-            <div
-              className={`w-9 h-9 rounded-full flex items-center justify-center text-white text-sm font-medium shadow-sm ${getAvatarColor(
-                (project.managerId?.first_name && project.managerId?.last_name)
-                  ? `${project.managerId.first_name} ${project.managerId.last_name}`
-                  : project.managerId?.username || "Unknown"
-              )}`}
-            >
-              {getInitials(
-                (project.managerId?.first_name && project.managerId?.last_name)
-                  ? `${project.managerId.first_name} ${project.managerId.last_name}`
-                  : project.managerId?.username || "UN"
+            <div className="relative w-9 h-9 shrink-0">
+              {project.managerId?._id && (
+                <img
+                  src={avatarSrc({ _id: project.managerId._id })}
+                  alt=""
+                  className="w-9 h-9 rounded-full object-cover shadow-sm"
+                  onError={(e) => { e.target.style.display = 'none'; e.target.nextSibling.style.display = 'flex'; }}
+                />
               )}
+              <div
+                className={`w-9 h-9 rounded-full items-center justify-center text-white text-sm font-medium shadow-sm ${getAvatarColor(
+                  project.managerId?.first_name
+                    ? `${project.managerId.first_name} ${project.managerId.last_name || ''}`
+                    : project.managerId?.username || "Unknown"
+                )}`}
+                style={{ display: project.managerId?._id ? 'none' : 'flex' }}
+              >
+                {getInitials(
+                  project.managerId?.first_name
+                    ? `${project.managerId.first_name} ${project.managerId.last_name || ''}`
+                    : project.managerId?.username || "UN"
+                )}
+              </div>
             </div>
             <div>
               <p className="text-xs text-gray-400">Team Lead</p>
               <span className="font-semibold text-gray-700">
-                {(project.managerId?.first_name && project.managerId?.last_name)
-                  ? `${project.managerId.first_name} ${project.managerId.last_name}`
+                {project.managerId?.first_name
+                  ? `${project.managerId.first_name} ${project.managerId.last_name || ''}`
                   : project.managerId?.username || "Unassigned"}
               </span>
             </div>

@@ -17,6 +17,7 @@ import SewerTable from "@/components/ui/SewerTable";
 import { Badge } from "@/components/ui/badge";
 
 const ProjectLiveTrackerView = dynamic(() => import("@/components/shared/ProjectLiveTrackerView"), { ssr: false });
+import StatusLegend from "@/components/shared/StatusLegend";
 
 const UserProjectModuleContent = () => {
   const { userId } = useUser();
@@ -29,7 +30,8 @@ const UserProjectModuleContent = () => {
   const selectedProjectId = searchParams.get("selectedProject");
 
   const [page, setPage] = useState(1);
-  const limit = 6;
+  const ITEMS_PER_PAGE = 6;
+  const limit = ITEMS_PER_PAGE;
 
   const router = useRouter();
 
@@ -289,6 +291,8 @@ const UserProjectModuleContent = () => {
                       <span>Live Tracker</span>
                     </button>
                   </div>
+
+                  <StatusLegend />
 
                   <Button
                     onClick={handleNewProject}

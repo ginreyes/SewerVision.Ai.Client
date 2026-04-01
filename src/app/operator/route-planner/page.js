@@ -64,7 +64,16 @@ export default function RoutePlanner() {
             <p className="text-sm text-gray-500">Map view of assigned inspection sites with optimized routes</p>
           </div>
         </div>
-        <Button variant="outline" size="sm" className="gap-1.5">
+        <Button variant="outline" size="sm" className="gap-1.5"
+          onClick={() => {
+            const addresses = sites.filter(s => s.address).map(s => encodeURIComponent(s.address));
+            if (addresses.length === 0) return;
+            const origin = addresses[0];
+            const destination = addresses[addresses.length - 1];
+            const waypoints = addresses.slice(1, -1).join('|');
+            const url = `https://www.google.com/maps/dir/?api=1&origin=${origin}&destination=${destination}${waypoints ? `&waypoints=${waypoints}` : ''}`;
+            window.open(url, '_blank');
+          }}>
           <Navigation className="w-4 h-4" /> Open in Maps
         </Button>
       </div>
@@ -169,7 +178,11 @@ export default function RoutePlanner() {
                       <p className="text-[10px] text-gray-500">Priority</p>
                     </div>
                   </div>
-                  <Button className="w-full mt-3 bg-blue-600 hover:bg-blue-700 text-white gap-2 text-sm">
+                  <Button className="w-full mt-3 bg-blue-600 hover:bg-blue-700 text-white gap-2 text-sm"
+                    onClick={() => {
+                      const address = selectedSite.address || selectedSite.name;
+                      if (address) window.open(`https://www.google.com/maps/dir/?api=1&destination=${encodeURIComponent(address)}`, '_blank');
+                    }}>
                     <Navigation className="w-4 h-4" /> Navigate to Site
                   </Button>
                 </CardContent>

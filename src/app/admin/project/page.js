@@ -2,6 +2,7 @@
 import React, { useState, useEffect, useRef, Suspense } from "react";
 import { Search, Plus, Loader2, LayoutGrid, Rows, MoreVertical, Eye, Pencil, MapPin } from "lucide-react";
 import dynamic from "next/dynamic";
+import StatusLegend from "@/components/shared/StatusLegend";
 
 const ProjectLiveTrackerView = dynamic(() => import("@/components/shared/ProjectLiveTrackerView"), { ssr: false });
 import { Button } from "@/components/ui/button";
@@ -231,6 +232,8 @@ const SewerVisionInspectionModuleContent = () => {
                     </button>
                   </div>
 
+                  <StatusLegend />
+
                   {!isOperatorRoute && (
                     <Button
                       onClick={AddProject}
@@ -268,7 +271,7 @@ const SewerVisionInspectionModuleContent = () => {
                 <option value="qc-review">QC Review</option>
                 <option value="completed">Completed</option>
                 <option value="customer-notified">Customer Notified</option>
-                <option value="customer-notified">Planning</option>
+                <option value="planning">Planning</option>
               </select>
             </div>
 
