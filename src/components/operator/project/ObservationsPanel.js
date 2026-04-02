@@ -208,9 +208,9 @@ const ObservationsPanel = (props) => {
               {showActions && (
                 <ObservationAction
                   onClose={() => setShowActions(false)}
-                  onExport={() => console.log('Export')}
+                  onExport={() => {}}
                   onCopy={handleCopyAll}
-                  onShare={() => console.log('Share')}
+                  onShare={() => {}}
                   onSettings={handleTableSettings}
                 />
               )}

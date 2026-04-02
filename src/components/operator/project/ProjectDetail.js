@@ -652,8 +652,6 @@ const ProjectDetail = ({ project, setSelectedProject, onBack }) => {
         { metadata: updatedMetadata }
       );
 
-      console.log('Metadata update response:', response);
-
       if (response.ok) {
         showAlert('Custom metadata added successfully', 'success');
         setProjectMetadata(updatedMetadata);
@@ -692,8 +690,6 @@ const ProjectDetail = ({ project, setSelectedProject, onBack }) => {
         'PUT',
         { metadata: editingMetadata }
       );
-
-      console.log('Metadata edit response:', response);
 
       if (response.ok) {
         showAlert('Metadata updated successfully', 'success');
@@ -741,8 +737,6 @@ const ProjectDetail = ({ project, setSelectedProject, onBack }) => {
 
     setIsReprocessing(true);
     try {
-      console.log('🔄 Starting reprocess for project:', project._id);
-
       let response;
       try {
         response = await api(
@@ -759,33 +753,6 @@ const ProjectDetail = ({ project, setSelectedProject, onBack }) => {
         throw new Error('No response received from reprocess API');
       }
 
-      // Safely log response
-      try {
-        console.log('📥 Reprocess response status:', response?.status, 'ok:', response?.ok);
-        if (response?.data) {
-          // Use a replacer function to handle circular references
-          const seen = new WeakSet();
-          const safeStringify = (obj) => {
-            try {
-              return JSON.stringify(obj, (key, value) => {
-                if (typeof value === 'object' && value !== null) {
-                  if (seen.has(value)) {
-                    return '[Circular]';
-                  }
-                  seen.add(value);
-                }
-                return value;
-              }, 2);
-            } catch (e) {
-              return String(obj);
-            }
-          };
-          console.log('📥 Reprocess response data:', safeStringify(response.data));
-        }
-      } catch (logError) {
-        console.log('📥 Reprocess response received (could not log details)');
-      }
-
       if (response.ok && response.data?.success !== false) {
         showAlert(response.data?.message || 'Video reprocessing started successfully', 'success');
         // Refresh project data after a short delay
@@ -797,24 +764,12 @@ const ProjectDetail = ({ project, setSelectedProject, onBack }) => {
                 setSelectedProject(data.data);
               }
             } catch (refreshError) {
-              try {
-                const refreshErrorMsg = refreshError?.message || refreshError?.toString() || 'Unknown error';
-                // Use console.log instead of console.error to avoid Next.js error handler interception
-                console.log('Failed to refresh project data:', refreshErrorMsg);
-              } catch (e) {
-                // Silently fail if we can't log the error
-              }
+              // Silently fail on refresh error
             }
           }
         }, 2000);
       } else {
         const errorMessage = response?.data?.error || response?.data?.message || response?.data?.details || `Failed to start reprocessing (Status: ${response?.status || 'unknown'})`;
-        // Use console.log instead of console.error to avoid Next.js error handler interception
-        try {
-          console.log('❌ Reprocess error:', errorMessage);
-        } catch (e) {
-          // Silently fail if we can't log
-        }
         showAlert(errorMessage, 'error');
       }
     } catch (error) {
@@ -832,12 +787,6 @@ const ProjectDetail = ({ project, setSelectedProject, onBack }) => {
         errorMessage = 'Failed to reprocess video';
       }
 
-      // Use console.log instead of console.error to avoid Next.js error handler interception
-      try {
-        console.log('❌ Error reprocessing video:', errorMessage);
-      } catch (logError) {
-        // Silently fail if we can't log
-      }
       showAlert('Failed to reprocess video: ' + errorMessage, 'error');
     } finally {
       setIsReprocessing(false);

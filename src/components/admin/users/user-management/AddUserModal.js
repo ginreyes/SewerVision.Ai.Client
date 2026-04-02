@@ -283,8 +283,6 @@ const AddUserModal = ({ fetchUser }) => {
         payload.permissionLevelId = selectedPermissionLevel
       }
 
-      console.log('Creating user with payload:', payload)
-
       const { ok, data } = await api("/api/users/create-user", "POST", payload)
 
       if (!ok) {

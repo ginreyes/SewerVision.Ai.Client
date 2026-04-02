@@ -63,6 +63,7 @@ import { FileCard } from "@/components/admin/uploads/FileCard";
 import { getFileTypeIcon, getStatusColor } from "@/lib/utils";
 import BulkUploadModal from "@/components/admin/uploads/BulkUploadModal";
 import { useAlert } from "@/components/providers/AlertProvider";
+import { api } from "@/lib/helper";
 import { useAdminUploads, useAdminUploadStats } from "@/hooks/useQueryHooks";
 
 const AdminUploads = () => {
@@ -182,20 +183,19 @@ const AdminUploads = () => {
     }
   }, [statsData]);
 
-  // Persist upload settings locally as a lightweight workaround until a backend endpoint exists
+  // Save upload settings to the backend via Settings API
   const handleSaveSettings = async () => {
     try {
       setLoading(true);
-      if (typeof window !== 'undefined') {
-        window.localStorage.setItem(
-          'adminUploadSettings',
-          JSON.stringify(uploadSettings)
-        );
+      const res = await api('/api/settings/system-admin', 'PATCH', {
+        uploadConfig: uploadSettings,
+      });
+      if (res.ok) {
+        showAlert('Upload settings saved successfully', 'success');
+      } else {
+        showAlert(res.data?.message || 'Failed to save settings', 'error');
       }
-      // In a real app: await uploadsApi.updateSettings(uploadSettings);
-      showAlert('Upload settings saved on this browser', 'success');
     } catch (error) {
-      console.error('Failed to save upload settings:', error);
       showAlert('Failed to save settings', 'error');
     } finally {
       setLoading(false);
@@ -232,20 +232,19 @@ const AdminUploads = () => {
 
   // Initial load: monitoring (when needed) and persisted upload settings
   useEffect(() => {
-    // Restore upload settings from localStorage if present
-    if (typeof window !== 'undefined') {
+    // Restore upload settings from backend Settings API
+    const fetchUploadConfig = async () => {
       try {
-        const stored = window.localStorage.getItem('adminUploadSettings');
-        if (stored) {
-          const parsed = JSON.parse(stored);
-          if (parsed && typeof parsed === 'object') {
-            setUploadSettings((prev) => ({ ...prev, ...parsed }));
+        const res = await api('/api/settings', 'GET');
+        if (res.ok) {
+          const config = res.data?.data?.systemAdmin?.uploadConfig;
+          if (config && typeof config === 'object') {
+            setUploadSettings((prev) => ({ ...prev, ...config }));
           }
         }
-      } catch (e) {
-        console.warn('Failed to parse stored upload settings:', e);
-      }
-    }
+      } catch { /* silent — will use defaults */ }
+    };
+    fetchUploadConfig();
 
     if (activeTab === 'monitoring') {
       fetchMonitoringData(true);

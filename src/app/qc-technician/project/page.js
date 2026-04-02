@@ -130,7 +130,6 @@ const QCProjectsPage = () => {
   };
 
   const handleFlagIssue = (projectId) => {
-    console.log("Flagging issue for:", projectId);
   };
 
   // Filtering

@@ -362,7 +362,6 @@ const NotificationPanel = ({ onClose }) => {
       for (const [fromPath, toPath] of Object.entries(roleMapping)) {
         if (url.startsWith(fromPath)) {
           targetUrl = url.replace(fromPath, toPath);
-          console.log(`[Security] Rewriting notification URL: ${url} -> ${targetUrl}`);
           break;
         }
       }

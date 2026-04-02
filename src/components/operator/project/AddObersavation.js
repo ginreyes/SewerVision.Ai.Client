@@ -309,8 +309,6 @@ const AddObservation = (props) => {
   
       if (!ok) {
         console.error('Failed to save observation:', data);
-      } else {
-        console.log('Observation saved:', data);
       }
 
       onClose();

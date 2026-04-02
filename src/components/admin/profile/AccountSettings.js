@@ -148,7 +148,6 @@ const AccountSettings = () => {
         deleteAccount(event);
       },
       onCancel: () => {
-        console.log("Account deletion cancelled");
       }
     });
   };

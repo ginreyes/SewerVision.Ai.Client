@@ -28,14 +28,12 @@ export function SocketProvider({ children }) {
     socketRef.current = socket;
 
     socket.on('connect', () => {
-      console.log('[Socket.IO] Connected:', socket.id);
       setConnected(true);
       // Join user room for notifications
       socket.emit('join', userId);
     });
 
     socket.on('disconnect', () => {
-      console.log('[Socket.IO] Disconnected');
       setConnected(false);
     });
 

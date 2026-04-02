@@ -118,10 +118,7 @@ function RoboflowProjectsPanel() {
     setLoading(true)
     setError(null)
     try {
-      console.log('[RoboflowProjectsPanel] Fetching projects...')
       const result = await settingsApi.getRoboflowProjects()
-      console.log('[RoboflowProjectsPanel] Response:', result)
-      console.log('[RoboflowProjectsPanel] Projects count:', result?.projects?.length || 0)
       setData(result)
     } catch (err) {
       console.error('[RoboflowProjectsPanel] Error:', err)

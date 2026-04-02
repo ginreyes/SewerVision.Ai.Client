@@ -274,8 +274,6 @@ export default function EditProjectPage() {
         value = Number(value);
       }
   
-      console.log(`[Field Change] ${fieldName}:`, value);
-  
       setFormData((prev) => {
         if (fieldName.includes(".")) {
           const [parent, child] = fieldName.split(".");
@@ -484,8 +482,6 @@ export default function EditProjectPage() {
         progress: Number(formData.progress),
         confidence: Number(formData.confidence),
       };
-      console.log("[handleSave] progress before submit:", correctedFormData.progress);
-
       const form = new FormData();
       form.append("userId", user_id);
       form.append("projectData", JSON.stringify(correctedFormData));

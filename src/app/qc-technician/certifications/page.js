@@ -51,7 +51,6 @@ const CertificationsPage = () => {
     try {
       setLoading(true)
       const data = await qcApi.getCertifications(userId)
-      console.log('Fetched certifications:', data)
       setCertifications(data || [])
     } catch (err) {
       console.error('Error fetching certifications:', err.message)

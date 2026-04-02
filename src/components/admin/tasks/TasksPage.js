@@ -264,7 +264,6 @@ const TasksPage = ({ role = 'admin' }) => {
                     setTasks(tasksList);
                     calculateStats(tasksList);
                 } catch (error) {
-                    console.log('No operator tasks found');
                     setTasks([]);
                     setStats({ active: 0, urgent: 0, completedToday: 0, efficiency: 94 });
                 }
