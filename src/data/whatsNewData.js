@@ -2,8 +2,8 @@
 export const whatsNewData = [
     {
         id: "v2.0.0",
-        date: "March 23 – March 28, 2026",
-        label: "Module Expansion",
+        date: "March 23 – April 3, 2026",
+        label: "Major Platform Update",
         isNew: true,
         updates: {
             admin: [
@@ -64,6 +64,61 @@ export const whatsNewData = [
                         'Shared constants in admin/constants.js (ALL_ROLES, ROLE_LABELS, type configs)',
                         'Barrel exports via index.js for clean imports'
                     ]
+                },
+                {
+                    type: 'feature',
+                    title: 'Real-Time Chat System',
+                    description: 'Messenger-style chat with Socket.IO real-time messaging, photo galleries, emoji reactions, and file attachments.',
+                    details: [
+                        'Socket.IO real-time messaging between customers and team leads',
+                        'Multi-file photo upload with grid collage and full-screen lightbox carousel',
+                        'Message reactions, inline edit, soft delete, and read receipts',
+                        'Shared ChatMessage component across ChatBubble, Client Hub, and Notifications'
+                    ]
+                },
+                {
+                    type: 'feature',
+                    title: 'System Management Module',
+                    description: 'Unified system administration with Database stats, B2 Storage usage, System Health monitoring, and AI Model management.',
+                    details: [
+                        'Real MongoDB collection stats with document counts, sizes, and indexes',
+                        'Backblaze B2 storage usage with folder breakdown and capacity bar',
+                        'System Health monitor with auto-refresh (moved from standalone page)',
+                        'AI Models tab with Roboflow project viewer'
+                    ]
+                },
+                {
+                    type: 'feature',
+                    title: 'Email Templates Manager',
+                    description: 'Create and manage dynamic email templates with HTML editor, live preview, and variable insertion.',
+                    details: [
+                        'Full CRUD for email templates with category management',
+                        'Split-view HTML editor with live preview and variable substitution',
+                        'Auto-extracts {{variables}} from template body',
+                        'Template rendering API for sending customized emails'
+                    ]
+                },
+                {
+                    type: 'feature',
+                    title: 'Live Tracker Map View',
+                    description: 'Interactive Leaflet + OpenStreetMap view as a third option on project listing pages alongside Grid and Table.',
+                    details: [
+                        'Status-colored map markers with project popups',
+                        'Project sidebar with progress bars and team member chips',
+                        'Click-to-select interaction between map and sidebar',
+                        'Available on Admin, Operator, and User project pages'
+                    ]
+                },
+                {
+                    type: 'improvement',
+                    title: 'Upload Configuration & Clean Code',
+                    description: 'Configurable upload limits from admin settings, 1GB video default, and comprehensive debug log cleanup.',
+                    details: [
+                        'Upload Settings tab connected to backend API (was localStorage only)',
+                        'Video upload limit increased to 1GB, all file limits configurable',
+                        'Removed 50+ debug console.log statements across all roles',
+                        'Clean project card headers — replaced rainbow gradients with clean status colors'
+                    ]
                 }
             ],
             operator: [
@@ -84,6 +139,18 @@ export const whatsNewData = [
                     title: 'Incidents, Time Tracking & Offline Mode',
                     description: 'Three new operator modules: field incident reporting, clock in/out time tracking, and offline data caching.',
                     details: ['Incident reports with type, severity, location, and admin notifications', 'Live clock timer with project selection and activity type', 'Cache toggle per project with pending sync queue display']
+                },
+                {
+                    type: 'improvement',
+                    title: 'Route Planner Maps Integration',
+                    description: 'Open in Maps and Navigate to Site buttons now open Google Maps with real addresses and optimized waypoints.',
+                    details: ['Open in Maps creates multi-stop route with all assigned sites', 'Navigate to Site opens directions to specific site', 'New Checklist creation dialog with dynamic item builder']
+                },
+                {
+                    type: 'improvement',
+                    title: 'AI Detection Snapshots & Live Tracker',
+                    description: 'Snapshot panel now renders AI detection images alongside manual captures. Live Tracker map view added to project listing.',
+                    details: ['AI detection images with confidence percentages and scrollable container', 'Live Tracker as third view mode on project page (Grid | Table | Map)', 'Status Legend guide button explaining project status colors']
                 }
             ],
             qc: [
@@ -124,6 +191,18 @@ export const whatsNewData = [
                     title: 'Budget Tracker, Project Templates & Client Hub',
                     description: 'Per-project budget tracking, reusable project templates, and chat-style client messaging.',
                     details: ['Budget vs spent with category breakdown and over-budget highlighting', 'Template CRUD with milestones/tasks and use count tracking', 'Conversation list with real-time message sending on Enter key']
+                },
+                {
+                    type: 'feature',
+                    title: 'Notify Customer & Location Picker',
+                    description: 'Team leads can now notify customers when reports are ready, and project creation includes an interactive map for precise location entry.',
+                    details: ['Notify Customer button on completed projects sends email + in-app notification', 'Location picker with Nominatim geocoding and interactive Leaflet map', 'Resource Scheduler now fully functional with create/delete assignment dialog', 'Client Hub with real-time Socket.IO messaging and Messenger-style UI']
+                },
+                {
+                    type: 'improvement',
+                    title: 'Project Card & Table Enhancements',
+                    description: 'Redesigned project cards with clean status colors and enhanced table view with progress bars and team columns.',
+                    details: ['Clean two-tone status header colors replacing rainbow gradients', 'Operator + QC Tech avatars at card footer (Team Lead removed as user IS the lead)', 'Table view: Progress bar column, Team column with operator/QC names, row actions', 'Live Tracker map view with status-colored markers and team member chips']
                 }
             ],
             customer: [
@@ -158,6 +237,18 @@ export const whatsNewData = [
                         'Role-based theming with teal/cyan accent colors in sidebar and highlights',
                         'Enhanced active state indicators for better navigation feedback',
                         'Improved spacing and typography for a more polished look'
+                    ]
+                },
+                {
+                    type: 'feature',
+                    title: 'Messenger-Style Chat Bubble',
+                    description: 'Floating chat widget for direct messaging with team leaders, with photo sharing and emoji reactions.',
+                    details: [
+                        'Contact list showing team leaders from assigned projects',
+                        'Real-time messaging via Socket.IO with read receipts',
+                        'Multi-photo upload with grid collage and lightbox carousel',
+                        'Emoji picker, message reactions, edit, and delete',
+                        'Messages tab in Notifications page with full Messenger-style inbox'
                     ]
                 }
             ],
@@ -231,6 +322,29 @@ export const whatsNewData = [
                         'authenticateToken middleware on all protected routes',
                         'Security modules seeded on both local and production databases (61 total)',
                         'Roboflow API integration fix: correct data path and metric percentage formatting'
+                    ]
+                },
+                {
+                    type: 'feature',
+                    title: 'Socket.IO + SSE Real-Time Infrastructure',
+                    description: 'Added Socket.IO for real-time chat messaging and Server-Sent Events for AI processing log streaming.',
+                    details: [
+                        'Socket.IO server with room-based messaging (user, conversation, project rooms)',
+                        'SSE endpoint for AI processing logs — live frame-by-frame progress streaming',
+                        'SocketProvider context wrapping the entire app for global real-time access',
+                        'useRealtimeChat hook for automatic room joining and event handling'
+                    ]
+                },
+                {
+                    type: 'improvement',
+                    title: 'Clean Code & Deployment Ready',
+                    description: 'Comprehensive clean code pass with 50+ debug log removals, React.memo additions, upload limits, and deployment optimization.',
+                    details: [
+                        'Removed 50+ console.log debug statements across all roles and controllers',
+                        'Added React.memo to all list-item components for re-render prevention',
+                        'Configurable upload limits in Admin Settings (1GB video, 100MB files)',
+                        'Status Legend guide on all project listing pages',
+                        'Location picker with Nominatim geocoding for accurate Live Tracker map pins'
                     ]
                 }
             ]
