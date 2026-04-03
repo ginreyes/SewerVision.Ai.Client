@@ -41,7 +41,7 @@ const DefectSummary = ({ project, observations }) => {
           </div>
           <div className="text-center p-3 rounded-lg bg-muted/50">
             <p className="text-3xl font-bold text-blue-600">
-              {stats.avgConfidence > 0 ? `${(stats.avgConfidence * 100).toFixed(0)}%` : '—'}
+              {stats.avgConfidence > 0 ? `${stats.avgConfidence <= 1 ? (stats.avgConfidence * 100).toFixed(0) : Math.round(stats.avgConfidence)}%` : '—'}
             </p>
             <p className="text-xs text-muted-foreground mt-1">Avg Confidence</p>
           </div>

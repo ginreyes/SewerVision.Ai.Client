@@ -37,13 +37,11 @@ export function UserAvatar({
   const avatarUrl = getAvatarUrl(src);
 
   const handleError = () => {
-    console.log('[UserAvatar] Failed to load:', src);
     setImageError(true);
     setIsLoading(false);
   };
 
   const handleLoad = () => {
-    console.log('[UserAvatar] Successfully loaded:', src);
     setImageError(false);
     setIsLoading(false);
   };

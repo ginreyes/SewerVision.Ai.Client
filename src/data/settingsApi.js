@@ -168,6 +168,16 @@ export const settingsApi = {
     }
     return response.data;
   },
+  // ─── Roboflow Projects Viewer ───
+
+  /**
+   * Fetch Roboflow projects and model versions (proxied through backend)
+   */
+  async getRoboflowProjects() {
+    const response = await api('/api/settings/roboflow-projects', 'GET');
+    if (!response.ok) throw new Error(response.data?.message || 'Failed to fetch Roboflow projects');
+    return response.data?.data ?? response.data;
+  },
 };
 
 export default settingsApi;

@@ -2,6 +2,7 @@
 
 import { useEffect, useState } from "react";
 import Navbar from "@/components/ui/navbar";
+import AnnouncementBanner from "@/components/ui/AnnouncementBanner";
 import UnifiedSidebar from "@/components/ui/UnifiedSidebar";
 import { api } from "@/lib/helper";
 import { useUser } from "@/components/providers/UserContext";
@@ -85,7 +86,7 @@ export default function UserLayout({ children }) {
             }`}
           >
             <Navbar openSideBar={handleToggleSidebar} role="user" />
-            <main className="p-4">{children}</main>
+            <main className="p-4"><AnnouncementBanner role="user" />{children}</main>
           </div>
         </div>
 

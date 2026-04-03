@@ -274,8 +274,6 @@ export default function EditProjectPage() {
         value = Number(value);
       }
   
-      console.log(`[Field Change] ${fieldName}:`, value);
-  
       setFormData((prev) => {
         if (fieldName.includes(".")) {
           const [parent, child] = fieldName.split(".");
@@ -484,8 +482,6 @@ export default function EditProjectPage() {
         progress: Number(formData.progress),
         confidence: Number(formData.confidence),
       };
-      console.log("[handleSave] progress before submit:", correctedFormData.progress);
-
       const form = new FormData();
       form.append("userId", user_id);
       form.append("projectData", JSON.stringify(correctedFormData));
@@ -533,7 +529,7 @@ export default function EditProjectPage() {
   const getStatusColor = (status) => {
     const colors = {
       planning: "bg-gray-100 text-gray-800",
-      "field-capture": "bg-blue-100 text-blue-800",
+      "field-capture": "bg-rose-100 text-rose-800",
       uploading: "bg-yellow-100 text-yellow-800",
       "ai-processing": "bg-purple-100 text-purple-800",
       "qc-review": "bg-orange-100 text-orange-800",
@@ -548,7 +544,7 @@ export default function EditProjectPage() {
     return (
       <div className="min-h-screen flex items-center justify-center bg-gray-50">
         <div className="text-center">
-          <Loader2 className="h-12 w-12 animate-spin mx-auto mb-4 text-blue-500" />
+          <Loader2 className="h-12 w-12 animate-spin mx-auto mb-4 text-rose-500" />
           <h2 className="text-xl font-semibold text-gray-900 mb-2">
             Loading Project
           </h2>
@@ -576,8 +572,8 @@ export default function EditProjectPage() {
                 Back to Projects
               </Button>
               <div className="flex items-center gap-3">
-                <div className="p-2 bg-blue-100 rounded-lg">
-                  <Edit3 className="h-6 w-6 text-blue-600" />
+                <div className="p-2 bg-rose-100 rounded-lg">
+                  <Edit3 className="h-6 w-6 text-rose-600" />
                 </div>
                 <div>
                   <h1 className="text-2xl font-bold text-gray-900">
@@ -609,7 +605,7 @@ export default function EditProjectPage() {
               <Button
                 onClick={handleSave}
                 disabled={saving}
-                className="flex items-center gap-2 h-10 bg-blue-600 hover:bg-blue-700"
+                className="flex items-center gap-2 h-10 bg-rose-600 hover:bg-rose-700"
               >
                 {saving ? (
                   <>
@@ -636,8 +632,8 @@ export default function EditProjectPage() {
             {/* Project Details */}
             <div className="bg-white rounded-lg shadow-sm p-6">
               <div className="flex items-center gap-3 mb-6">
-                <div className="p-2 bg-blue-100 rounded-lg">
-                  <Building2 className="h-5 w-5 text-blue-600" />
+                <div className="p-2 bg-rose-100 rounded-lg">
+                  <Building2 className="h-5 w-5 text-rose-600" />
                 </div>
                 <h2 className="text-xl font-bold text-gray-900">
                   Project Details
@@ -915,7 +911,7 @@ export default function EditProjectPage() {
                 ) : (
                   <>
                     {/* User role: Operator */}
-                    <div className="border border-blue-200 rounded-lg p-4 bg-blue-50">
+                    <div className="border border-rose-200 rounded-lg p-4 bg-rose-50">
                       <h4 className="font-semibold text-gray-900 mb-4">
                         Assigned Operator
                       </h4>
@@ -944,7 +940,7 @@ export default function EditProjectPage() {
                                   value={operator.user_id}
                                 >
                                   <div className="flex items-center gap-3">
-                                    <UserCheck className="h-4 w-4 text-blue-600" />
+                                    <UserCheck className="h-4 w-4 text-rose-600" />
                                     <div>
                                       <div className="font-medium">
                                         {operator.name}
@@ -995,7 +991,7 @@ export default function EditProjectPage() {
                       </div>
                     </div>
                     {/* User role: QC-technician */}
-                    <div className="border border-blue-200 rounded-lg p-4 bg-blue-50">
+                    <div className="border border-rose-200 rounded-lg p-4 bg-rose-50">
                       <h4 className="font-semibold text-gray-900 mb-4">
                         Assigned Qc-Technician
                       </h4>
@@ -1024,7 +1020,7 @@ export default function EditProjectPage() {
                                   value={qc.user_id}
                                 >
                                   <div className="flex items-center gap-3">
-                                    <UserCheck className="h-4 w-4 text-blue-600" />
+                                    <UserCheck className="h-4 w-4 text-rose-600" />
                                     <div>
                                       <div className="font-medium">{qc.name}</div>
                                       <div className="text-xs text-gray-500">{qc.email}</div>
@@ -1185,14 +1181,14 @@ export default function EditProjectPage() {
 
               <div className="space-y-4">
                 {originalProject?.videoUrl && (
-                  <div className="bg-blue-50 p-4 rounded-lg border border-blue-200">
+                  <div className="bg-rose-50 p-4 rounded-lg border border-rose-200">
                     <div className="flex items-center gap-3">
-                      <Video className="h-6 w-6 text-blue-600" />
+                      <Video className="h-6 w-6 text-rose-600" />
                       <div>
-                        <p className="font-medium text-blue-800">
+                        <p className="font-medium text-rose-800">
                           Current Video File
                         </p>
-                        <p className="text-sm text-blue-600">
+                        <p className="text-sm text-rose-600">
                           A video file is already uploaded for this project
                         </p>
                       </div>
@@ -1200,7 +1196,7 @@ export default function EditProjectPage() {
                   </div>
                 )}
 
-                <div className="border-2 border-dashed border-gray-300 rounded-lg p-6 text-center hover:border-blue-400 transition-colors">
+                <div className="border-2 border-dashed border-gray-300 rounded-lg p-6 text-center hover:border-rose-400 transition-colors">
                   <Video className="h-12 w-12 text-gray-400 mx-auto mb-4" />
                   <Label htmlFor="video" className="cursor-pointer">
                     <Input
@@ -1212,7 +1208,7 @@ export default function EditProjectPage() {
                       }
                       className="hidden"
                     />
-                    <span className="text-lg text-blue-600 hover:text-blue-800 font-medium">
+                    <span className="text-lg text-rose-600 hover:text-rose-800 font-medium">
                       {originalProject?.videoUrl
                         ? "Upload new video file"
                         : "Click to upload video file"}
@@ -1263,14 +1259,14 @@ export default function EditProjectPage() {
                 Project Statistics
               </h3>
               <div className="space-y-4">
-                <div className="flex items-center justify-between p-3 bg-blue-50 rounded-lg">
+                <div className="flex items-center justify-between p-3 bg-rose-50 rounded-lg">
                   <div className="flex items-center gap-3">
-                    <FileVideo className="h-5 w-5 text-blue-600" />
+                    <FileVideo className="h-5 w-5 text-rose-600" />
                     <span className="text-sm font-medium text-gray-700">
                       Videos
                     </span>
                   </div>
-                  <span className="text-lg font-bold text-blue-600">
+                  <span className="text-lg font-bold text-rose-600">
                     {formData.videoCount}
                   </span>
                 </div>
@@ -1294,7 +1290,7 @@ export default function EditProjectPage() {
                   </div>
                   <div className="w-full bg-gray-200 rounded-full h-2">
                     <div
-                      className="bg-blue-600 h-2 rounded-full transition-all duration-300"
+                      className="bg-rose-600 h-2 rounded-full transition-all duration-300"
                       style={{
                         width: `${Math.min(
                           100,

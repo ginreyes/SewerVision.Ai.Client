@@ -30,7 +30,6 @@ import { useAlert } from "@/components/providers/AlertProvider";
 import { api } from "@/lib/helper";
 import Image from "next/image";
 
-// Customer registration only (public signup)
 const customerRegisterSchema = z.object({
     first_name: z.string().min(1, "First name is required."),
     last_name: z.string().min(1, "Last name is required."),
@@ -104,7 +103,7 @@ const RegisterForm = () => {
                         <h1 className="text-5xl font-extrabold text-gray-900 mb-6 leading-tight">
                             Create Your <br />
                             <span className="bg-clip-text text-transparent bg-gradient-to-r from-green-500 to-green-600">
-                                Customer Account
+                                 Account
                             </span>
                         </h1>
                         <p className="text-lg text-gray-600 mb-8 leading-relaxed">
@@ -151,7 +150,7 @@ const RegisterForm = () => {
                             </div>
 
                             <h1 className="text-2xl font-bold text-gray-900 mb-1">
-                                Customer Registration
+                                Registration
                             </h1>
 
                             <CardDescription className="text-sm text-gray-600">
@@ -378,7 +377,7 @@ const RegisterForm = () => {
                                             <span>Creating Account...</span>
                                         </div>
                                     ) : (
-                                        "Create Customer Account"
+                                        "Create Account"
                                     )}
                                 </Button>
 

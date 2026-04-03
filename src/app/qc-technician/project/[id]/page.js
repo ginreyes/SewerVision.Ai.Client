@@ -617,7 +617,7 @@ const ProjectConsolePage = () => {
                                             <span className="text-gray-500">Type</span>
                                             <span className="font-medium text-gray-900 text-right">{selectedDetection.type}</span>
                                             <span className="text-gray-500">Confidence</span>
-                                            <span className="font-medium text-gray-900 text-right">{Math.round((selectedDetection.confidence || 0) * 100)}%</span>
+                                            <span className="font-medium text-gray-900 text-right">{(selectedDetection.confidence || 0) <= 1 ? Math.round((selectedDetection.confidence || 0) * 100) : Math.round(selectedDetection.confidence || 0)}%</span>
                                             <span className="text-gray-500">Distance</span>
                                             <span className="font-medium text-gray-900 text-right">{selectedDetection.location?.distance ?? '—'} m</span>
                                             <span className="text-gray-500">Time</span>

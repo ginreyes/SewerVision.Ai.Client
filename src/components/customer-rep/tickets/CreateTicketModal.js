@@ -84,9 +84,8 @@ export default function CreateTicketModal({ open, onOpenChange, onCreated }) {
   const complaints = useMemo(() => {
     const raw = complaintsData?.data ?? complaintsData;
     const arr = Array.isArray(raw) ? raw : [];
-    // Only show complaints that don't already have a linked ticket
     return arr.filter((c) => !c.linkedTicketId);
-  }, [complaintsData]);
+  },[complaintsData]);
 
   const filteredComplaints = useMemo(() => {
     if (!complaintSearch.trim()) return complaints;
@@ -100,7 +99,9 @@ export default function CreateTicketModal({ open, onOpenChange, onCreated }) {
     );
   }, [complaints, complaintSearch]);
 
-  const team = useMemo(() => (Array.isArray(teamData) ? teamData : []), [teamData]);
+  const team = useMemo(() => {
+    return Array.isArray(teamData) ? teamData : [];
+  }, [teamData]);
 
   const handleSelectComplaint = useCallback((complaint) => {
     setSelectedComplaint(complaint);
@@ -146,8 +147,8 @@ export default function CreateTicketModal({ open, onOpenChange, onCreated }) {
           priority: ticketForm.priority,
           assignedTo: ticketForm.assignedTo || undefined,
         });
-      } else {
-        // Direct ticket creation (no complaint linked)
+      } 
+      else {
         await createTicketDirect.mutateAsync({
           subject: ticketForm.subject.trim(),
           message: ticketForm.message.trim(),

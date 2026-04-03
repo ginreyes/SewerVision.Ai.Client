@@ -46,6 +46,12 @@ export const dashboardApi = {
       throw error;
     }
   },
+  // ─── Admin Analytics (aggregated) ────────────────────────
+  async getAnalyticsOverview() {
+    const response = await api('/api/admin-analytics/overview', 'GET');
+    if (!response.ok) throw new Error(response.data?.error || 'Failed to fetch analytics');
+    return response.data?.data;
+  },
 };
 
 export default dashboardApi;

@@ -8,6 +8,7 @@ import { cn } from '@/lib/utils';
 import { Separator } from '@/components/ui/separator';
 import {
   Loader2,
+  Mail,
   LayoutDashboard,
   FolderOpen,
   Calendar,
@@ -35,6 +36,30 @@ import {
   Ticket,
   Activity,
   MessageSquareWarning,
+  Headphones,
+  // New module icons
+  BookMarked,
+  UserCircle,
+  AlertTriangle,
+  Workflow,
+  Star,
+  Shield,
+  CreditCard,
+  Server,
+  Megaphone,
+  Navigation,
+  WifiOff,
+  AlertCircle,
+  Clock,
+  GraduationCap,
+  Layers,
+  Archive,
+  CalendarDays,
+  MessageCircle,
+  TrendingUp,
+  DollarSign,
+  MapPin,
+  Zap,
 } from 'lucide-react';
 import ModuleLoading from './SewerVisionLoadingAnimation';
 import { useLoadingModuleSetting } from '@/hooks/useLoadingModuleSettings';
@@ -44,6 +69,7 @@ import { api } from '@/lib/helper';
 // ── Icon string → Lucide component map ──
 const ICON_MAP = {
   LayoutDashboard,
+  Mail,
   FolderOpen,
   Calendar,
   CloudUpload,
@@ -69,6 +95,30 @@ const ICON_MAP = {
   Ticket,
   Activity,
   MessageSquareWarning,
+  Headphones,
+  // New module icons
+  BookMarked,
+  UserCircle,
+  AlertTriangle,
+  Workflow,
+  Star,
+  Shield,
+  CreditCard,
+  Server,
+  Megaphone,
+  Navigation,
+  WifiOff,
+  AlertCircle,
+  Clock,
+  GraduationCap,
+  Layers,
+  Archive,
+  CalendarDays,
+  MessageCircle,
+  TrendingUp,
+  DollarSign,
+  MapPin,
+  Zap,
 };
 
 // ── Hardcoded admin sidebar (never filtered by permissions) ──
@@ -88,6 +138,9 @@ const ADMIN_MENU_GROUPS = [
       { label: 'Uploads', icon: 'CloudUpload', path: '/admin/uploads', module: 'uploads' },
       { label: 'Devices', icon: 'Monitor', path: '/admin/devices', module: 'devices' },
       { label: 'Tasks', icon: 'ClipboardList', path: '/admin/task', module: 'tasks' },
+      { label: 'Billing', icon: 'CreditCard', path: '/admin/billing', module: 'billing' },
+      { label: 'Training Center', icon: 'GraduationCap', path: '/admin/training', module: 'admin-training' },
+      { label: 'Announcements', icon: 'Megaphone', path: '/admin/announcements', module: 'announcements' },
     ],
   },
   {
@@ -96,11 +149,14 @@ const ADMIN_MENU_GROUPS = [
       { label: 'Reports', icon: 'BarChart2', path: '/admin/report', module: 'reports' },
       { label: 'Notes', icon: 'StickyNote', path: '/admin/notes', module: 'notes' },
       { label: 'Support', icon: 'Inbox', path: '/admin/support', module: 'support' },
+      { label: 'Analytics', icon: 'BarChart2', path: '/admin/analytics', module: 'analytics' },
     ],
   },
   {
     label: 'System',
     items: [
+      { label: 'System Management', icon: 'Settings2', path: '/admin/system-management', module: 'system-management' },
+      { label: 'Email Templates', icon: 'Mail', path: '/admin/email-templates', module: 'email-templates' },
       { label: 'Notifications', icon: 'Bell', path: '/admin/notifications', module: 'notifications' },
       { label: 'Settings', icon: 'Settings', path: '/admin/settings', module: 'settings' },
     ],
@@ -195,6 +251,23 @@ const ROLE_THEMES = {
     title: 'Team Manager',
     subtitle: 'Active Access',
   },
+  customer: {
+    gradient: 'from-emerald-600 via-green-500 to-emerald-700',
+    activeBg: 'from-emerald-50 to-green-50',
+    activeText: 'text-emerald-700',
+    activeIcon: 'text-emerald-600',
+    activeBar: 'from-emerald-500 to-green-500',
+    hoverOverlay: 'group-hover:from-emerald-500/5 group-hover:to-green-500/5',
+    loaderColor: 'text-emerald-500',
+    chevronColor: 'text-emerald-400',
+    footerBg: 'from-emerald-50 to-green-50',
+    footerBorder: 'border-emerald-200/50',
+    footerText: 'text-emerald-700',
+    footerSub: 'text-emerald-600/70',
+    portal: 'Customer Portal',
+    title: 'Customer',
+    subtitle: 'Active Access',
+  },
 };
 
 // ── Hardcoded fallback menus per role (used when DB has no SecurityModules seeded) ──
@@ -207,6 +280,8 @@ const FALLBACK_MENUS = {
     ]},
     { label: 'Field Work', items: [
       { label: 'Operations', icon: 'SearchX', path: '/operator/operations', key: 'operations' },
+      { label: 'Checklists', icon: 'ClipboardCheck', path: '/operator/checklists', key: 'checklists' },
+      { label: 'Route Planner', icon: 'Navigation', path: '/operator/route-planner', key: 'route-planner' },
       { label: 'Uploads', icon: 'Upload', path: '/operator/uploads', key: 'uploads' },
       { label: 'Tasks', icon: 'ClipboardList', path: '/operator/task', key: 'tasks' },
     ]},
@@ -214,10 +289,13 @@ const FALLBACK_MENUS = {
       { label: 'Equipment', icon: 'HardDrive', path: '/operator/equipement', key: 'equipment' },
       { label: 'Connect Device', icon: 'Link2', path: '/operator/connect-device', key: 'connect-device' },
       { label: 'Maintenance', icon: 'Wrench', path: '/operator/maintenance', key: 'maintenance' },
+      { label: 'Offline Mode', icon: 'WifiOff', path: '/operator/offline', key: 'offline' },
     ]},
     { label: 'Records', items: [
       { label: 'Logs', icon: 'BookOpen', path: '/operator/logs', key: 'logs' },
       { label: 'Reports', icon: 'BarChart2', path: '/operator/reports', key: 'reports' },
+      { label: 'Incidents', icon: 'AlertTriangle', path: '/operator/incidents', key: 'incidents' },
+      { label: 'Time Tracking', icon: 'Clock', path: '/operator/time-tracking', key: 'time-tracking' },
     ]},
     { label: 'Account', items: [
       { label: 'Notifications', icon: 'Bell', path: '/operator/notifications', key: 'notifications', locked: true },
@@ -233,7 +311,13 @@ const FALLBACK_MENUS = {
     { label: 'Work', items: [
       { label: 'Tasks', icon: 'ClipboardList', path: '/qc-technician/task', key: 'tasks' },
       { label: 'Quality Control', icon: 'ClipboardCheck', path: '/qc-technician/quality-control', key: 'quality-control' },
+      { label: 'Review Templates', icon: 'FileText', path: '/qc-technician/review-templates', key: 'review-templates' },
       { label: 'Devices', icon: 'Monitor', path: '/qc-technician/devices', key: 'devices' },
+    ]},
+    { label: 'Knowledge', items: [
+      { label: 'Defect Library', icon: 'BookMarked', path: '/qc-technician/defect-library', key: 'defect-library' },
+      { label: 'Training', icon: 'GraduationCap', path: '/qc-technician/training', key: 'training' },
+      { label: 'Review Analytics', icon: 'BarChart2', path: '/qc-technician/review-analytics', key: 'review-analytics' },
     ]},
     { label: 'Records', items: [
       { label: 'Reports', icon: 'FileText', path: '/qc-technician/reports', key: 'reports' },
@@ -250,11 +334,18 @@ const FALLBACK_MENUS = {
       { label: 'Dashboard', icon: 'LayoutDashboard', path: '/user/dashboard', key: 'dashboard', locked: true },
       { label: 'My Projects', icon: 'FolderOpen', path: '/user/project', key: 'projects' },
       { label: 'Task Management', icon: 'ClipboardList', path: '/user/tasks', key: 'tasks' },
-      { label: 'Inbox', icon: 'Inbox', path: '/user/inbox', key: 'inbox' },
+      { label: 'Notifications', icon: 'Bell', path: '/user/notifications', key: 'notifications' },
     ]},
     { label: 'Team & Assets', items: [
       { label: 'Team Management', icon: 'Users', path: '/user/team', key: 'team' },
       { label: 'Device Assignments', icon: 'Monitor', path: '/user/device-assignments', key: 'device-assignments' },
+      { label: 'Resource Scheduler', icon: 'CalendarDays', path: '/user/resource-scheduler', key: 'resource-scheduler' },
+      { label: 'Performance Reviews', icon: 'TrendingUp', path: '/user/performance-reviews', key: 'performance-reviews' },
+    ]},
+    { label: 'Management', items: [
+      { label: 'Budget Tracker', icon: 'DollarSign', path: '/user/budget-tracker', key: 'budget-tracker' },
+      { label: 'Project Templates', icon: 'Layers', path: '/user/project-templates', key: 'project-templates' },
+      { label: 'Client Hub', icon: 'MessageCircle', path: '/user/client-hub', key: 'client-hub' },
     ]},
     { label: 'Tools & Settings', items: [
       { label: 'Reports', icon: 'BarChart2', path: '/user/reports', key: 'reports' },
@@ -265,9 +356,19 @@ const FALLBACK_MENUS = {
   customer: [
     { label: 'Main', items: [
       { label: 'Dashboard', icon: 'LayoutDashboard', path: '/customer/dashboard', key: 'dashboard', locked: true },
-      { label: 'Projects', icon: 'FolderOpen', path: '/customer/project', key: 'projects' },
-      { label: 'Support', icon: 'Headphones', path: '/customer/support', key: 'customer-support' },
-      { label: 'Complaints', icon: 'MessageSquareWarning', path: '/customer/complaints', key: 'customer-complaints' },
+      { label: 'Projects', icon: 'FolderOpen', path: '/customer/projects', key: 'projects', locked: true },
+      { label: 'Live Tracker', icon: 'MapPin', path: '/customer/live-tracker', key: 'live-tracker', locked: true },
+      { label: 'Help Center', icon: 'Headphones', path: '/customer/support', key: 'customer-support', locked: true },
+    ]},
+    { label: 'Documents & Reports', items: [
+      { label: 'Document Vault', icon: 'Archive', path: '/customer/document-vault', key: 'document-vault', locked: true },
+      { label: 'Report Annotations', icon: 'MessageSquareWarning', path: '/customer/report-annotations', key: 'report-annotations', locked: true },
+    ]},
+    { label: 'Schedule', items: [
+      { label: 'Appointments', icon: 'CalendarDays', path: '/customer/appointments', key: 'appointments', locked: true },
+    ]},
+    { label: 'Account', items: [
+      { label: 'Dashboard Widgets', icon: 'LayoutDashboard', path: '/customer/dashboard-widgets', key: 'dashboard-widgets', locked: true },
       { label: 'Notifications', icon: 'Bell', path: '/customer/notifications', key: 'notifications', locked: true },
       { label: 'Settings', icon: 'Settings', path: '/customer/settings', key: 'settings', locked: true },
     ]},
@@ -279,8 +380,19 @@ const FALLBACK_MENUS = {
     ]},
     { label: 'Support', items: [
       { label: 'Tickets', icon: 'Ticket', path: '/customer-rep/tickets', key: 'tickets' },
+      { label: 'My Queue', icon: 'ClipboardCheck', path: '/customer-rep/tasks', key: 'tasks' },
       { label: 'Complaints', icon: 'MessageSquareWarning', path: '/customer-rep/complaints', key: 'rep-complaints' },
-      { label: 'Tasks', icon: 'ClipboardCheck', path: '/customer-rep/tasks', key: 'tasks' },
+      { label: 'Templates', icon: 'FileText', path: '/customer-rep/templates', key: 'templates' },
+      { label: 'Knowledge Base', icon: 'BookMarked', path: '/customer-rep/knowledge-base', key: 'knowledge-base' },
+    ]},
+    { label: 'Customers', items: [
+      { label: 'Customer Profiles', icon: 'UserCircle', path: '/customer-rep/customer-profiles', key: 'customer-profiles' },
+      { label: 'Escalations', icon: 'AlertTriangle', path: '/customer-rep/escalation', key: 'escalation' },
+      { label: 'Workflows', icon: 'Workflow', path: '/customer-rep/workflows', key: 'workflows' },
+      { label: 'Surveys', icon: 'Star', path: '/customer-rep/surveys', key: 'surveys' },
+    ]},
+    { label: 'Insights', items: [
+      { label: 'Analytics', icon: 'BarChart2', path: '/customer-rep/analytics', key: 'analytics' },
       { label: 'Monitoring', icon: 'Activity', path: '/customer-rep/monitoring', key: 'monitoring' },
     ]},
     { label: 'Team', items: [
@@ -299,6 +411,7 @@ const LOADING_KEYS = {
   operator: 'operator',
   'qc-technician': 'qcTechnician',
   user: 'user',
+  customer: 'customer',
   'customer-rep': 'customerRep',
 };
 
@@ -312,7 +425,7 @@ const UnifiedSidebar = ({ isOpen, role, displayName }) => {
   // Fetch modules from SecurityModule API for non-admin roles
   const [dbModules, setDbModules] = useState(null); // null = not loaded yet
   useEffect(() => {
-    if (role === 'admin') return; // Admin uses hardcoded
+    if (role === 'admin' || role === 'customer') return; // These use hardcoded menus
     const fetchModules = async () => {
       try {
         const response = await api(`/api/security-modules/by-role/${role}`, 'GET');
@@ -344,7 +457,9 @@ const UnifiedSidebar = ({ isOpen, role, displayName }) => {
     // Find which item matches current path
     const allItems = role === 'admin'
       ? ADMIN_MENU_GROUPS.flatMap((g) => g.items)
-      : (dbModules || []).flatMap((g) => g.items || []);
+      : role === 'customer'
+        ? (FALLBACK_MENUS.customer || []).flatMap((g) => g.items || [])
+        : (dbModules || []).flatMap((g) => g.items || []);
 
     for (const item of allItems) {
       const path = item.path;
@@ -357,10 +472,9 @@ const UnifiedSidebar = ({ isOpen, role, displayName }) => {
 
   // Build menu groups
   const menuGroups = useMemo(() => {
-    // Admin: hardcoded, no permission filtering
-    if (role === 'admin') {
-      return ADMIN_MENU_GROUPS;
-    }
+    // Admin & customer: hardcoded, no permission filtering
+    if (role === 'admin') return ADMIN_MENU_GROUPS;
+    if (role === 'customer') return FALLBACK_MENUS.customer || [];
 
     // Other roles: use DB modules, filter by permissions
     if (!dbModules) return []; // Still loading

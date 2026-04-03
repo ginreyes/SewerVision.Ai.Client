@@ -156,7 +156,7 @@ const SnapshotGrid = ({ project, snapshots, detections = [], observations, video
                     <div className="flex items-center gap-2">
                       {snapshot.confidence != null && (
                         <span className="text-xs text-blue-600 font-medium">
-                          {(snapshot.confidence * 100).toFixed(0)}%
+                          {snapshot.confidence <= 1 ? (snapshot.confidence * 100).toFixed(0) : Math.round(snapshot.confidence)}%
                         </span>
                       )}
                       <span className="text-sm font-medium">

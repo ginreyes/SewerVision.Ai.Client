@@ -336,7 +336,164 @@ export const qcApi = {
     }
     
     return response.data.data;
-  }
+  },
+  // ─── PACP Defect Library ────────────────────────────────
+  async getAllDefects({ category, severity, search, page = 1, limit = 100 } = {}) {
+    const params = new URLSearchParams();
+    if (category) params.append('category', category);
+    if (severity) params.append('severity', severity);
+    if (search) params.append('search', search);
+    params.append('page', String(page));
+    params.append('limit', String(limit));
+    const response = await api(`/api/pacp-defects/all?${params}`, 'GET');
+    if (!response.ok) throw new Error(response.data?.error || 'Failed to fetch defects');
+    return response.data;
+  },
+  async getDefectCategories() {
+    const response = await api('/api/pacp-defects/categories', 'GET');
+    if (!response.ok) throw new Error(response.data?.error || 'Failed to fetch categories');
+    return response.data?.data || [];
+  },
+  async createDefect(data) {
+    const response = await api('/api/pacp-defects/create', 'POST', data);
+    if (!response.ok) throw new Error(response.data?.error || 'Failed to create defect');
+    return response.data?.data || response.data;
+  },
+  async updateDefect(id, data) {
+    const response = await api(`/api/pacp-defects/${id}`, 'PUT', data);
+    if (!response.ok) throw new Error(response.data?.error || 'Failed to update defect');
+    return response.data?.data || response.data;
+  },
+  async deleteDefect(id) {
+    const response = await api(`/api/pacp-defects/${id}`, 'DELETE');
+    if (!response.ok) throw new Error(response.data?.error || 'Failed to delete defect');
+    return response.data;
+  },
+
+  // ─── Training Modules ─────────────────────────────────
+  async getTrainingModules({ category, difficulty } = {}) {
+    const params = new URLSearchParams();
+    if (category) params.append('category', category);
+    if (difficulty) params.append('difficulty', difficulty);
+    const response = await api(`/api/training/modules?${params}`, 'GET');
+    if (!response.ok) throw new Error(response.data?.error || 'Failed to fetch training modules');
+    return response.data?.data || [];
+  },
+  async getTrainingModule(id) {
+    const response = await api(`/api/training/modules/${id}`, 'GET');
+    if (!response.ok) throw new Error(response.data?.error || 'Failed to fetch module');
+    return response.data?.data;
+  },
+  async createTrainingModule(data) {
+    const response = await api('/api/training/modules', 'POST', data);
+    if (!response.ok) throw new Error(response.data?.message || 'Failed to create module');
+    return response.data?.data;
+  },
+  async submitTrainingAttempt(data) {
+    const response = await api('/api/training/attempt', 'POST', data);
+    if (!response.ok) throw new Error(response.data?.message || 'Failed to submit attempt');
+    return response.data?.data;
+  },
+  async getTrainingAttempts(userId, moduleId) {
+    const params = moduleId ? `?moduleId=${moduleId}` : '';
+    const response = await api(`/api/training/attempts/${userId}${params}`, 'GET');
+    if (!response.ok) throw new Error(response.data?.error || 'Failed to fetch attempts');
+    return response.data?.data || [];
+  },
+  async getTrainingStats(userId) {
+    const response = await api(`/api/training/stats/${userId}`, 'GET');
+    if (!response.ok) throw new Error(response.data?.error || 'Failed to fetch stats');
+    return response.data?.data;
+  },
+  async updateTrainingModule(id, data) {
+    const response = await api(`/api/training/modules/${id}`, 'PUT', data);
+    if (!response.ok) throw new Error(response.data?.message || 'Failed to update module');
+    return response.data?.data;
+  },
+  async deleteTrainingModule(id) {
+    const response = await api(`/api/training/modules/${id}`, 'DELETE');
+    if (!response.ok) throw new Error(response.data?.message || 'Failed to delete module');
+    return response.data;
+  },
+  async getTeamTrainingProgress() {
+    const response = await api('/api/training/team-progress', 'GET');
+    if (!response.ok) throw new Error(response.data?.error || 'Failed to fetch team progress');
+    return response.data?.data || [];
+  },
+  async assignTrainingModules(data) {
+    const response = await api('/api/training/assign', 'POST', data);
+    if (!response.ok) throw new Error(response.data?.message || 'Failed to assign modules');
+    return response.data?.data;
+  },
+  async getTrainingAssignments(userId) {
+    const response = await api(`/api/training/assignments/${userId}`, 'GET');
+    if (!response.ok) throw new Error(response.data?.error || 'Failed to fetch assignments');
+    return response.data?.data || [];
+  },
+  async getAllTrainingAssignments(status) {
+    const params = status && status !== 'all' ? `?status=${status}` : '';
+    const response = await api(`/api/training/all-assignments${params}`, 'GET');
+    if (!response.ok) throw new Error(response.data?.error || 'Failed to fetch assignments');
+    return response.data?.data || [];
+  },
+
+  // ─── Onboarding ─────────────────────────────────────────
+  async getOnboarding(userId) {
+    const response = await api(`/api/onboarding/${userId}`, 'GET');
+    if (!response.ok) throw new Error(response.data?.error || 'Failed to fetch onboarding');
+    return response.data?.data;
+  },
+  async getAllOnboarding(role) {
+    const params = role && role !== 'all' ? `?role=${role}` : '';
+    const response = await api(`/api/onboarding/all${params}`, 'GET');
+    if (!response.ok) throw new Error(response.data?.error || 'Failed to fetch onboarding data');
+    return response.data;
+  },
+  async completeOnboardingStep(userId, stepKey) {
+    const response = await api(`/api/onboarding/${userId}/step`, 'PUT', { stepKey });
+    if (!response.ok) throw new Error(response.data?.message || 'Failed to complete step');
+    return response.data?.data;
+  },
+  async initOnboarding(userId) {
+    const response = await api(`/api/onboarding/init/${userId}`, 'POST');
+    if (!response.ok) throw new Error(response.data?.message || 'Failed to init onboarding');
+    return response.data?.data;
+  },
+
+  // ─── Review Templates ──────────────────────────────────
+  async getReviewTemplates(createdBy) {
+    const params = createdBy ? `?createdBy=${createdBy}` : '';
+    const response = await api(`/api/review-templates/all${params}`, 'GET');
+    if (!response.ok) throw new Error(response.data?.error || 'Failed to fetch templates');
+    return response.data?.data || [];
+  },
+  async createReviewTemplate(data) {
+    const response = await api('/api/review-templates/create', 'POST', data);
+    if (!response.ok) throw new Error(response.data?.message || 'Failed to create template');
+    return response.data?.data;
+  },
+  async updateReviewTemplate(id, data) {
+    const response = await api(`/api/review-templates/${id}`, 'PUT', data);
+    if (!response.ok) throw new Error(response.data?.message || 'Failed to update template');
+    return response.data?.data;
+  },
+  async deleteReviewTemplate(id) {
+    const response = await api(`/api/review-templates/${id}`, 'DELETE');
+    if (!response.ok) throw new Error(response.data?.message || 'Failed to delete template');
+    return response.data;
+  },
+  async toggleTemplateFavorite(id) {
+    const response = await api(`/api/review-templates/${id}/favorite`, 'PUT');
+    if (!response.ok) throw new Error(response.data?.message || 'Failed to toggle favorite');
+    return response.data?.data;
+  },
+
+  // ─── QC Review Analytics ───────────────────────────────
+  async getQCReviewStats(userId) {
+    const response = await api(`/api/qc-analytics/review-stats/${userId}`, 'GET');
+    if (!response.ok) throw new Error(response.data?.error || 'Failed to fetch review stats');
+    return response.data?.data;
+  },
 };
 
 export default qcApi;

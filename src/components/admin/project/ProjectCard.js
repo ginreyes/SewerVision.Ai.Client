@@ -8,6 +8,7 @@ import { useRouter } from "next/navigation";
 import { useAlert } from "@/components/providers/AlertProvider";
 import { useDialog } from "@/components/providers/DialogProvider";
 import { api } from "@/lib/helper";
+import { avatarSrc } from "@/components/admin/constants";
 
 const ProjectCard = memo((props) => {
   const {
@@ -27,10 +28,10 @@ const ProjectCard = memo((props) => {
     const status = project.status?.toLowerCase() || '';
 
     const gradients = {
-      // Planning - Blue theme
+      // Planning - Slate theme
       'planning': {
-        header: 'from-blue-500 via-blue-600 to-indigo-600',
-        progress: 'from-blue-500 via-blue-600 to-indigo-600',
+        header: 'from-slate-500 to-slate-600',
+        progress: 'bg-slate-500',
         accent: 'blue',
         videoBg: 'bg-blue-50',
         videoText: 'text-blue-600',
@@ -39,10 +40,10 @@ const ProjectCard = memo((props) => {
         aiDetectionText: 'text-indigo-600',
         aiDetectionTextDark: 'text-indigo-900',
       },
-      // In Progress - Green theme
+      // In Progress - Blue theme
       'in-progress': {
-        header: 'from-emerald-500 via-green-500 to-teal-600',
-        progress: 'from-emerald-500 via-green-500 to-teal-600',
+        header: 'from-blue-500 to-blue-600',
+        progress: 'bg-blue-500',
         accent: 'green',
         videoBg: 'bg-emerald-50',
         videoText: 'text-emerald-600',
@@ -51,10 +52,10 @@ const ProjectCard = memo((props) => {
         aiDetectionText: 'text-teal-600',
         aiDetectionTextDark: 'text-teal-900',
       },
-      // AI Processing - Purple/Violet theme
+      // AI Processing - Violet theme
       'ai-processing': {
-        header: 'from-violet-500 via-purple-500 to-fuchsia-600',
-        progress: 'from-violet-500 via-purple-500 to-fuchsia-600',
+        header: 'from-violet-500 to-violet-600',
+        progress: 'bg-violet-500',
         accent: 'purple',
         videoBg: 'bg-violet-50',
         videoText: 'text-violet-600',
@@ -63,10 +64,10 @@ const ProjectCard = memo((props) => {
         aiDetectionText: 'text-fuchsia-600',
         aiDetectionTextDark: 'text-fuchsia-900',
       },
-      // Completed - Amber/Gold theme
+      // Completed - Emerald theme
       'completed': {
-        header: 'from-amber-500 via-yellow-500 to-orange-500',
-        progress: 'from-amber-500 via-yellow-500 to-orange-500',
+        header: 'from-emerald-500 to-emerald-600',
+        progress: 'bg-emerald-500',
         accent: 'amber',
         videoBg: 'bg-amber-50',
         videoText: 'text-amber-600',
@@ -75,10 +76,10 @@ const ProjectCard = memo((props) => {
         aiDetectionText: 'text-orange-600',
         aiDetectionTextDark: 'text-orange-900',
       },
-      // On Hold - Slate/Gray theme
+      // On Hold - Red theme
       'on-hold': {
-        header: 'from-slate-500 via-gray-500 to-zinc-600',
-        progress: 'from-slate-500 via-gray-500 to-zinc-600',
+        header: 'from-red-400 to-red-500',
+        progress: 'bg-red-400',
         accent: 'gray',
         videoBg: 'bg-slate-50',
         videoText: 'text-slate-600',
@@ -87,10 +88,10 @@ const ProjectCard = memo((props) => {
         aiDetectionText: 'text-zinc-600',
         aiDetectionTextDark: 'text-zinc-900',
       },
-      // Review - Cyan/Teal theme
+      // Review - Amber theme
       'review': {
-        header: 'from-cyan-500 via-sky-500 to-blue-500',
-        progress: 'from-cyan-500 via-sky-500 to-blue-500',
+        header: 'from-amber-500 to-amber-600',
+        progress: 'bg-amber-500',
         accent: 'cyan',
         videoBg: 'bg-cyan-50',
         videoText: 'text-cyan-600',
@@ -99,10 +100,10 @@ const ProjectCard = memo((props) => {
         aiDetectionText: 'text-sky-600',
         aiDetectionTextDark: 'text-sky-900',
       },
-      // Default (fallback) - Rose/Pink theme
+      // Default (fallback) - Indigo theme
       'default': {
-        header: 'from-rose-500 via-pink-500 to-red-500',
-        progress: 'from-rose-500 via-pink-500 to-red-500',
+        header: 'from-indigo-500 to-indigo-600',
+        progress: 'bg-indigo-500',
         accent: 'rose',
         videoBg: 'bg-rose-50',
         videoText: 'text-rose-600',
@@ -424,18 +425,6 @@ const ProjectCard = memo((props) => {
 
           {/* Project Details */}
           <div className="space-y-2 text-sm bg-gray-50 rounded-xl p-3">
-            {project.managerId && (
-              <div className="flex justify-between items-center">
-                <span className="text-gray-500 flex items-center gap-1">
-                  <UserCog className="w-3.5 h-3.5" /> Project Lead:
-                </span>
-                <span className="font-semibold text-gray-800">
-                  {project.managerId.first_name && project.managerId.last_name
-                    ? `${project.managerId.first_name} ${project.managerId.last_name}`
-                    : project.managerId.username || "—"}
-                </span>
-              </div>
-            )}
             <div className="flex justify-between">
               <span className="text-gray-500">Length:</span>
               <span className="font-semibold text-gray-800">{project.totalLength}</span>
@@ -451,27 +440,38 @@ const ProjectCard = memo((props) => {
           </div>
         </div>
 
-        {/* Footer section - Team Lead */}
+        {/* Footer section - Team Lead with real avatar */}
         <div className="pt-4 border-t border-gray-100 text-sm flex items-center mt-auto">
           <div className="flex items-center gap-3 text-gray-600">
-            <div
-              className={`w-9 h-9 rounded-full flex items-center justify-center text-white text-sm font-medium shadow-sm ${getAvatarColor(
-                (project.managerId?.first_name && project.managerId?.last_name)
-                  ? `${project.managerId.first_name} ${project.managerId.last_name}`
-                  : project.managerId?.username || "Unknown"
-              )}`}
-            >
-              {getInitials(
-                (project.managerId?.first_name && project.managerId?.last_name)
-                  ? `${project.managerId.first_name} ${project.managerId.last_name}`
-                  : project.managerId?.username || "UN"
+            <div className="relative w-9 h-9 shrink-0">
+              {project.managerId?._id && (
+                <img
+                  src={avatarSrc({ _id: project.managerId._id })}
+                  alt=""
+                  className="w-9 h-9 rounded-full object-cover shadow-sm"
+                  onError={(e) => { e.target.style.display = 'none'; e.target.nextSibling.style.display = 'flex'; }}
+                />
               )}
+              <div
+                className={`w-9 h-9 rounded-full items-center justify-center text-white text-sm font-medium shadow-sm ${getAvatarColor(
+                  project.managerId?.first_name
+                    ? `${project.managerId.first_name} ${project.managerId.last_name || ''}`
+                    : project.managerId?.username || "Unknown"
+                )}`}
+                style={{ display: project.managerId?._id ? 'none' : 'flex' }}
+              >
+                {getInitials(
+                  project.managerId?.first_name
+                    ? `${project.managerId.first_name} ${project.managerId.last_name || ''}`
+                    : project.managerId?.username || "UN"
+                )}
+              </div>
             </div>
             <div>
               <p className="text-xs text-gray-400">Team Lead</p>
               <span className="font-semibold text-gray-700">
-                {(project.managerId?.first_name && project.managerId?.last_name)
-                  ? `${project.managerId.first_name} ${project.managerId.last_name}`
+                {project.managerId?.first_name
+                  ? `${project.managerId.first_name} ${project.managerId.last_name || ''}`
                   : project.managerId?.username || "Unassigned"}
               </span>
             </div>

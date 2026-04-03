@@ -35,6 +35,7 @@ export default function RoleThemeProvider({ role, children }) {
     "--role-primary": `${hsl.h} ${hsl.s}% ${hsl.l}%`,
     "--role-primary-light": `${hsl.h} ${hsl.s}% ${Math.min(hsl.l + 35, 95)}%`,
     "--role-primary-ring": `${hsl.h} ${hsl.s}% ${hsl.l}%`,
+    "--role-accent": `hsl(${hsl.h} ${hsl.s}% ${hsl.l}%)`,
   };
 
   return (

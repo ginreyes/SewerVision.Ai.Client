@@ -59,6 +59,15 @@ const supportApi = {
     return res.data?.data ?? res.data;
   },
 
+  /** Upload a ticket reply attachment, returns { url, filename, originalname, mimetype, size } */
+  uploadTicketAttachment: async (ticketId, file) => {
+    const formData = new FormData();
+    formData.append("file", file);
+    const res = await api(`/api/support/ticket/${ticketId}/upload-attachment`, "POST", formData);
+    if (!res?.ok) throw new Error(res?.message || "Failed to upload file");
+    return res.data?.data ?? res.data;
+  },
+
   /** Delete a ticket */
   deleteTicket: async (ticketId) => {
     const res = await api(`/api/support/ticket/${ticketId}`, "DELETE");
@@ -77,6 +86,13 @@ const supportApi = {
   getTeam: async () => {
     const res = await api("/api/support/team", "GET");
     if (!res?.ok) throw new Error(res?.message || "Failed to fetch team");
+    return res.data?.data ?? res.data;
+  },
+
+  /** Get managed team members for a specific customer-rep */
+  getManagedTeam: async (repId) => {
+    const res = await api(`/api/support/team/managed/${repId}`, "GET");
+    if (!res?.ok) throw new Error(res?.message || "Failed to fetch managed team");
     return res.data?.data ?? res.data;
   },
 
@@ -99,6 +115,86 @@ const supportApi = {
     const res = await api(`/api/support/customer/${customerId}/history`, "GET");
     if (!res?.ok) throw new Error(res?.message || "Failed to fetch history");
     return res.data?.data ?? res.data;
+  },
+
+  /** Request deletion of a ticket */
+  requestDeletion: async (ticketId, data) => {
+    const res = await api(`/api/support/ticket/${ticketId}/delete-request`, "POST", data);
+    if (!res?.ok) throw new Error(res?.message || "Failed to request deletion");
+    return res.data?.data ?? res.data;
+  },
+
+  /** Team leader reviews a deletion request */
+  reviewDeletion: async (ticketId, data) => {
+    const res = await api(`/api/support/ticket/${ticketId}/delete-review`, "POST", data);
+    if (!res?.ok) throw new Error(res?.message || "Failed to review deletion");
+    return res.data?.data ?? res.data;
+  },
+
+  /** Get all pending deletion requests (team leaders) */
+  getPendingDeletionRequests: async () => {
+    const res = await api("/api/support/deletion-requests", "GET");
+    if (!res?.ok) throw new Error(res?.message || "Failed to fetch deletion requests");
+    return res.data?.data ?? res.data;
+  },
+  // ─── Canned Workflows ────────────────────────────────
+  async getAllWorkflows(createdBy) {
+    const params = createdBy ? `?createdBy=${createdBy}` : '';
+    const res = await api(`/api/canned-workflows/all${params}`, 'GET');
+    if (!res?.ok) throw new Error(res?.data?.error || 'Failed to fetch workflows');
+    return res.data?.data || [];
+  },
+  async createWorkflow(data) {
+    const res = await api('/api/canned-workflows/create', 'POST', data);
+    if (!res?.ok) throw new Error(res?.data?.message || 'Failed to create workflow');
+    return res.data?.data;
+  },
+  async updateWorkflow(id, data) {
+    const res = await api(`/api/canned-workflows/${id}`, 'PUT', data);
+    if (!res?.ok) throw new Error(res?.data?.message || 'Failed to update workflow');
+    return res.data?.data;
+  },
+  async deleteWorkflow(id) {
+    const res = await api(`/api/canned-workflows/${id}`, 'DELETE');
+    if (!res?.ok) throw new Error(res?.data?.message || 'Failed to delete workflow');
+    return res.data;
+  },
+  async toggleWorkflowActive(id) {
+    const res = await api(`/api/canned-workflows/${id}/toggle`, 'PUT');
+    if (!res?.ok) throw new Error(res?.data?.message || 'Failed to toggle workflow');
+    return res.data?.data;
+  },
+  async duplicateWorkflow(id) {
+    const res = await api(`/api/canned-workflows/${id}/duplicate`, 'POST');
+    if (!res?.ok) throw new Error(res?.data?.message || 'Failed to duplicate workflow');
+    return res.data?.data;
+  },
+  // ─── Escalation Rules ────────────────────────────────
+  async getAllEscalationRules(createdBy) {
+    const params = createdBy ? `?createdBy=${createdBy}` : '';
+    const res = await api(`/api/escalation-rules/all${params}`, 'GET');
+    if (!res?.ok) throw new Error(res?.data?.error || 'Failed to fetch escalation rules');
+    return res.data?.data || [];
+  },
+  async createEscalationRule(data) {
+    const res = await api('/api/escalation-rules/create', 'POST', data);
+    if (!res?.ok) throw new Error(res?.data?.message || 'Failed to create rule');
+    return res.data?.data;
+  },
+  async updateEscalationRule(id, data) {
+    const res = await api(`/api/escalation-rules/${id}`, 'PUT', data);
+    if (!res?.ok) throw new Error(res?.data?.message || 'Failed to update rule');
+    return res.data?.data;
+  },
+  async deleteEscalationRule(id) {
+    const res = await api(`/api/escalation-rules/${id}`, 'DELETE');
+    if (!res?.ok) throw new Error(res?.data?.message || 'Failed to delete rule');
+    return res.data;
+  },
+  async toggleEscalationRule(id) {
+    const res = await api(`/api/escalation-rules/${id}/toggle`, 'PUT');
+    if (!res?.ok) throw new Error(res?.data?.message || 'Failed to toggle rule');
+    return res.data?.data;
   },
 };
 

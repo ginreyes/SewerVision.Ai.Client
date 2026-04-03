@@ -19,9 +19,12 @@ import {
   SelectItem,
 } from '@/components/ui/select'
 import { Plus } from 'lucide-react'
+import { useUserTeamMembers } from '@/hooks/useQueryHooks'
 
 const AddNewTaskModal = ({ onAddTask }) => {
   const [open, setOpen] = useState(false)
+  const { data: teamData } = useUserTeamMembers()
+  const teamMembers = (Array.isArray(teamData) ? teamData : (teamData?.data || [])).filter(m => m.role === 'operator' || m.role === 'qc-technician')
   const [formData, setFormData] = useState({
     title: '',
     description: '',
@@ -169,15 +172,21 @@ const AddNewTaskModal = ({ onAddTask }) => {
           <div className="grid grid-cols-2 gap-4">
             <div className="space-y-2">
               <Label htmlFor="assignee">Assignee *</Label>
-              <Input
-                id="assignee"
-                name="assignee"
-                type="text"
-                required
-                placeholder="Team member name"
+              <Select
                 value={formData.assignee}
-                onChange={handleInputChange}
-              />
+                onValueChange={(value) => handleSelectChange('assignee', value)}
+              >
+                <SelectTrigger>
+                  <SelectValue placeholder="Select assignee..." />
+                </SelectTrigger>
+                <SelectContent>
+                  {teamMembers.map((m) => (
+                    <SelectItem key={m.id || `${m.first_name}-${m.last_name}`} value={`${m.first_name} ${m.last_name}`}>
+                      {m.first_name} {m.last_name} ({m.role})
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
             </div>
 
             <div className="space-y-2">

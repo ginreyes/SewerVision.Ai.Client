@@ -1,10 +1,360 @@
 
 export const whatsNewData = [
     {
+        id: "v2.0.0",
+        date: "March 23 – April 3, 2026",
+        label: "Major Platform Update",
+        isNew: true,
+        updates: {
+            admin: [
+                {
+                    type: 'feature',
+                    title: 'System Health Monitor',
+                    description: 'Real-time backend service monitoring with latency bars, uptime percentage, and resource usage gauges.',
+                    image: '/updates/admin/admin_system_health.png',
+                    details: [
+                        'Auto-refreshes every 30 seconds for real-time monitoring',
+                        'CPU, memory, and storage resource gauges with danger thresholds',
+                        'Service-level status cards with latency bars and uptime percentages',
+                        'Overall status banner (operational / degraded / incident)'
+                    ]
+                },
+                {
+                    type: 'feature',
+                    title: 'Announcement Center',
+                    description: 'Create and broadcast announcements targeted to specific roles with draft/send workflow and real-time banner display.',
+                    image:[ '/updates/admin/admin_announcements_1.png', '/updates/admin/admin_announcements_2.png', '/updates/admin/admin_announcements_3.png'],
+                    details: [
+                        'Draft → Send lifecycle with role-targeted delivery',
+                        'Beautiful modal form with gradient header and role selector grid',
+                        '5 announcement types: general, maintenance, feature, policy, alert',
+                        'Real-time banner on all role dashboards with 15-second polling',
+                        'View tracking, pin to top, and per-user dismiss with session persistence'
+                    ]
+                },
+                {
+                    type: 'feature',
+                    title: 'Analytics & Insights Dashboard',
+                    description: 'Platform-wide analytics with real data from Project, User, AIDetection, and Report models.',
+                    image: '/updates/admin/admin_analytics.png',
+                    details: [
+                        'KPI cards: Total Projects, Active Users, Completed, Avg Duration — all from real DB aggregation',
+                        'Monthly project completions bar chart (12 months)',
+                        'AI Detection accuracy donut rings (this month, last month, Q1 avg)',
+                        'Team productivity table with completion counts and scores'
+                    ]
+                },
+                {
+                    type: 'feature',
+                    title: 'Billing & Invoicing',
+                    description: 'Invoice management with customer, tier, amount, status tracking and collection rate visualization.',
+                    details: [
+                        'Invoice table with search and status filters (paid, pending, overdue, draft)',
+                        'Collection rate progress bar with color segments',
+                        'Stats cards: Total Billed, Collected, Pending, Overdue'
+                    ]
+                },
+                {
+                    type: 'improvement',
+                    title: 'Admin Component Architecture',
+                    description: 'Refactored all admin modules into organized component folders with barrel exports and extracted constants.',
+                    details: [
+                        'components/admin/announcements/, system-health/, analytics/, billing/ folders',
+                        'DataTypes.js constants per module for seed data and configuration',
+                        'Shared constants in admin/constants.js (ALL_ROLES, ROLE_LABELS, type configs)',
+                        'Barrel exports via index.js for clean imports'
+                    ]
+                },
+                {
+                    type: 'feature',
+                    title: 'Real-Time Chat System',
+                    description: 'Messenger-style chat with Socket.IO real-time messaging, photo galleries, emoji reactions, and file attachments.',
+                    details: [
+                        'Socket.IO real-time messaging between customers and team leads',
+                        'Multi-file photo upload with grid collage and full-screen lightbox carousel',
+                        'Message reactions, inline edit, soft delete, and read receipts',
+                        'Shared ChatMessage component across ChatBubble, Client Hub, and Notifications'
+                    ]
+                },
+                {
+                    type: 'feature',
+                    title: 'System Management Module',
+                    description: 'Unified system administration with Database stats, B2 Storage usage, System Health monitoring, and AI Model management.',
+                    details: [
+                        'Real MongoDB collection stats with document counts, sizes, and indexes',
+                        'Backblaze B2 storage usage with folder breakdown and capacity bar',
+                        'System Health monitor with auto-refresh (moved from standalone page)',
+                        'AI Models tab with Roboflow project viewer'
+                    ]
+                },
+                {
+                    type: 'feature',
+                    title: 'Email Templates Manager',
+                    description: 'Create and manage dynamic email templates with HTML editor, live preview, and variable insertion.',
+                    details: [
+                        'Full CRUD for email templates with category management',
+                        'Split-view HTML editor with live preview and variable substitution',
+                        'Auto-extracts {{variables}} from template body',
+                        'Template rendering API for sending customized emails'
+                    ]
+                },
+                {
+                    type: 'feature',
+                    title: 'Live Tracker Map View',
+                    description: 'Interactive Leaflet + OpenStreetMap view as a third option on project listing pages alongside Grid and Table.',
+                    details: [
+                        'Status-colored map markers with project popups',
+                        'Project sidebar with progress bars and team member chips',
+                        'Click-to-select interaction between map and sidebar',
+                        'Available on Admin, Operator, and User project pages'
+                    ]
+                },
+                {
+                    type: 'improvement',
+                    title: 'Upload Configuration & Clean Code',
+                    description: 'Configurable upload limits from admin settings, 1GB video default, and comprehensive debug log cleanup.',
+                    details: [
+                        'Upload Settings tab connected to backend API (was localStorage only)',
+                        'Video upload limit increased to 1GB, all file limits configurable',
+                        'Removed 50+ debug console.log statements across all roles',
+                        'Clean project card headers — replaced rainbow gradients with clean status colors'
+                    ]
+                }
+            ],
+            operator: [
+                {
+                    type: 'feature',
+                    title: 'Checklists Module',
+                    description: 'Complete pre-inspection and field safety checklists with item toggle, auto-progress bar, and photo-required indicators.',
+                    details: ['Toggle checklist items with real-time progress tracking', 'Photo-required indicators per item', 'Full CRUD with backend API']
+                },
+                {
+                    type: 'feature',
+                    title: 'Route Planner',
+                    description: 'Plan daily site routes with distance, ETA, and priority information.',
+                    details: ['Site list with distance/ETA calculations', 'Map placeholder with numbered site dots', 'Navigate to Site quick action']
+                },
+                {
+                    type: 'feature',
+                    title: 'Incidents, Time Tracking & Offline Mode',
+                    description: 'Three new operator modules: field incident reporting, clock in/out time tracking, and offline data caching.',
+                    details: ['Incident reports with type, severity, location, and admin notifications', 'Live clock timer with project selection and activity type', 'Cache toggle per project with pending sync queue display']
+                },
+                {
+                    type: 'improvement',
+                    title: 'Route Planner Maps Integration',
+                    description: 'Open in Maps and Navigate to Site buttons now open Google Maps with real addresses and optimized waypoints.',
+                    details: ['Open in Maps creates multi-stop route with all assigned sites', 'Navigate to Site opens directions to specific site', 'New Checklist creation dialog with dynamic item builder']
+                },
+                {
+                    type: 'improvement',
+                    title: 'AI Detection Snapshots & Live Tracker',
+                    description: 'Snapshot panel now renders AI detection images alongside manual captures. Live Tracker map view added to project listing.',
+                    details: ['AI detection images with confidence percentages and scrollable container', 'Live Tracker as third view mode on project page (Grid | Table | Map)', 'Status Legend guide button explaining project status colors']
+                }
+            ],
+            qc: [
+                {
+                    type: 'feature',
+                    title: 'PACP Defect Library',
+                    description: '45 NASSCO PACP defect codes seeded with severity grades, descriptions, and recommended actions.',
+                    image: '/updates/qc-tech/qc_defect_library.png',
+                    details: ['Full CRUD for defect codes with create/edit/delete', 'Category filtering with count badges and search', 'Personal favorites and notes system', 'Visual severity grade bar and left color stripe cards']
+                },
+                {
+                    type: 'feature',
+                    title: 'Training & Review Analytics',
+                    description: 'Interactive training modules with practice quizzes and personal QC performance analytics.',
+                    details: ['Multiple-choice quizzes with answer feedback', 'Score summary on completion', 'Weekly stacked bar chart, donut rings for approval/consistency/speed', 'Defect distribution horizontal bars']
+                },
+                {
+                    type: 'improvement',
+                    title:'Quality Control - Added Defect Comparison Tool',
+                    image:'/updates/qc-tech/qc_modules_quality_control_comparison.png',
+                    description:'New defect comparison tool in the QC module to compare AI-detected defects against a reference set for accuracy analysis.',
+                    details: [
+                        'New Tab in QC module for Defect Comparison',
+                        'Side-by-side comparison table showing matches, false positives, and misses',
+                        'Summary statistics with accuracy percentage, precision, recall, and F1 score'
+                    ]
+                }
+            ],
+            user: [
+                {
+                    type: 'feature',
+                    title: 'Resource Scheduler & Performance Reviews',
+                    description: 'Weekly calendar grid for team assignments and team member performance comparison with quality scores.',
+                    details: ['7-day calendar table with team members as rows', 'Click empty slots to assign', 'Team cards ranked by quality score with score bars']
+                },
+                {
+                    type: 'feature',
+                    title: 'Budget Tracker, Project Templates & Client Hub',
+                    description: 'Per-project budget tracking, reusable project templates, and chat-style client messaging.',
+                    details: ['Budget vs spent with category breakdown and over-budget highlighting', 'Template CRUD with milestones/tasks and use count tracking', 'Conversation list with real-time message sending on Enter key']
+                },
+                {
+                    type: 'feature',
+                    title: 'Notify Customer & Location Picker',
+                    description: 'Team leads can now notify customers when reports are ready, and project creation includes an interactive map for precise location entry.',
+                    details: ['Notify Customer button on completed projects sends email + in-app notification', 'Location picker with Nominatim geocoding and interactive Leaflet map', 'Resource Scheduler now fully functional with create/delete assignment dialog', 'Client Hub with real-time Socket.IO messaging and Messenger-style UI']
+                },
+                {
+                    type: 'improvement',
+                    title: 'Project Card & Table Enhancements',
+                    description: 'Redesigned project cards with clean status colors and enhanced table view with progress bars and team columns.',
+                    details: ['Clean two-tone status header colors replacing rainbow gradients', 'Operator + QC Tech avatars at card footer (Team Lead removed as user IS the lead)', 'Table view: Progress bar column, Team column with operator/QC names, row actions', 'Live Tracker map view with status-colored markers and team member chips']
+                }
+            ],
+            customer: [
+                {
+                    type: 'feature',
+                    title: 'Customer Module Suite',
+                    description: '5 new customer-facing modules connected to real MongoDB collections with TanStack Query caching.',
+                    image: [
+                        '/updates/customer/customer_modules_appointment_scheduler.png',
+                        '/updates/customer/customer_modules_document_vault.png',
+                        '/updates/customer/customer_modules_live_tracker.png',
+                        '/updates/customer/customer_modules_report_annotations.png',
+                        '/updates/customer/customer_modules_dashboard_widgets.png',
+                        '/updates/customer/customer_modules_help_center.png'
+                    ],
+                    details: [
+                        'Live Tracker: Real project data with auto-generated timelines and progress percentages',
+                        'Document Vault: File grid with type icons, download tracking, and storage usage',
+                        'Appointments: Booking form with available slot checking and conflict detection',
+                        'Report Annotations: Comments and replies per report section with author population',
+                        'Dashboard Widgets: Toggle widgets on/off with live data from Projects, Reports, and Tickets',
+                        'Help Center: FAQ and contact support modules with real backend integration for ticket submission and admin viewing'
+                    ]
+                }, 
+                {
+                    type:'enhancement',
+                    title:'Sidebar Navigation & UI Improvements',
+                    description:'Redesigned sidebar for customers with improved navigation, role-based theming, and visual polish.',
+                    image: '/updates/customer/customer_modules_new_ui.png',
+                    details: [
+                        'New sidebar design with clearer hierarchy and improved icons',
+                        'Role-based theming with teal/cyan accent colors in sidebar and highlights',
+                        'Enhanced active state indicators for better navigation feedback',
+                        'Improved spacing and typography for a more polished look'
+                    ]
+                },
+                {
+                    type: 'feature',
+                    title: 'Messenger-Style Chat Bubble',
+                    description: 'Floating chat widget for direct messaging with team leaders, with photo sharing and emoji reactions.',
+                    details: [
+                        'Contact list showing team leaders from assigned projects',
+                        'Real-time messaging via Socket.IO with read receipts',
+                        'Multi-photo upload with grid collage and lightbox carousel',
+                        'Emoji picker, message reactions, edit, and delete',
+                        'Messages tab in Notifications page with full Messenger-style inbox'
+                    ]
+                }
+            ],
+            customer_rep: [
+                {
+                    type: 'feature',
+                    title: 'Customer Rep Module Suite',
+                    description: '5 new customer rep modules with full backend APIs and CRUD operations.',
+                    details: [
+                        'Knowledge Base: Create and manage internal help articles with categories and tags',
+                        'Customer Profiles: Derived from real ticket data with mini stats and recent tickets',
+                        'Escalation Manager: Rules CRUD with live escalated ticket detection (>24h open)',
+                        'Workflows: Multi-step workflow builder with 6 step types',
+                        'CSAT Surveys: Send invites, collect ratings, view distribution and averages'
+                    ]
+                }
+            ],
+            other: [
+                {
+                    type: 'feature',
+                    title: '30 New Module Pages Across All Roles',
+                    description: '30 new functional module pages added across all 6 roles, each connected to real backend APIs with full CRUD operations.',
+                    details: [
+                        'Admin: Analytics, Billing, System Health, Announcements',
+                        'Operator: Checklists, Route Planner, Incidents, Time Tracking, Offline Mode',
+                        'QC: Defect Library, Comparison, Templates, Training, Review Analytics',
+                        'Customer-Rep: Knowledge Base, Profiles, Escalation, Workflows, Surveys',
+                        'User: Resource Scheduler, Budget, Client Hub, Templates, Performance Reviews',
+                        'Customer: Live Tracker, Document Vault, Appointments, Annotations, Widgets'
+                    ]
+                },
+                {
+                    type: 'feature',
+                    title: 'Real-Time Announcement Banner System',
+                    description: 'Global announcement banner that polls every 15 seconds with slide-in animations, expand/collapse, and per-user dismiss.',
+                    details: [
+                        '5 announcement types with role-specific color themes',
+                        'New announcement glow animation with 8-second fade',
+                        'Pinned announcements with visual rose stripe indicator',
+                        'Session-based dismiss persistence per role'
+                    ]
+                },
+                {
+                    type: 'improvement',
+                    title: 'TanStack Query Across All New Modules',
+                    description: 'Applied React Query with 30+ new hooks, proper cache keys, stale times, and mutation invalidation patterns.',
+                    details: [
+                        'Query keys centralized in useQueryHooks.js for cache management',
+                        'Mutations with automatic cache invalidation on success',
+                        'refetchOnWindowFocus: false on all CRUD hooks to prevent re-renders',
+                        'Defensive data extraction: Array.isArray(data) ? data : (data?.data || [])'
+                    ]
+                },
+                {
+                    type: 'improvement',
+                    title: 'Component Architecture & Performance',
+                    description: 'All new modules follow organized folder structure with barrel exports, React.memo, useMemo, and useCallback.',
+                    details: [
+                        'components/{role}/{module}/ folder structure with index.js barrel exports',
+                        'DataTypes.js constants per module for seed data',
+                        'React.memo on all card and list-item components',
+                        'useMemo for all filtered/sorted data, useCallback for event handlers'
+                    ]
+                },
+                {
+                    type: 'improvement',
+                    title: 'Backend Infrastructure Expansion',
+                    description: '24 new Mongoose models, 24 controllers, 24 route files with 150+ API endpoints registered in app.ts.',
+                    details: [
+                        'All controllers use lean(), Promise.all, pagination, and standard response format',
+                        'authenticateToken middleware on all protected routes',
+                        'Security modules seeded on both local and production databases (61 total)',
+                        'Roboflow API integration fix: correct data path and metric percentage formatting'
+                    ]
+                },
+                {
+                    type: 'feature',
+                    title: 'Socket.IO + SSE Real-Time Infrastructure',
+                    description: 'Added Socket.IO for real-time chat messaging and Server-Sent Events for AI processing log streaming.',
+                    details: [
+                        'Socket.IO server with room-based messaging (user, conversation, project rooms)',
+                        'SSE endpoint for AI processing logs — live frame-by-frame progress streaming',
+                        'SocketProvider context wrapping the entire app for global real-time access',
+                        'useRealtimeChat hook for automatic room joining and event handling'
+                    ]
+                },
+                {
+                    type: 'improvement',
+                    title: 'Clean Code & Deployment Ready',
+                    description: 'Comprehensive clean code pass with 50+ debug log removals, React.memo additions, upload limits, and deployment optimization.',
+                    details: [
+                        'Removed 50+ console.log debug statements across all roles and controllers',
+                        'Added React.memo to all list-item components for re-render prevention',
+                        'Configurable upload limits in Admin Settings (1GB video, 100MB files)',
+                        'Status Legend guide on all project listing pages',
+                        'Location picker with Nominatim geocoding for accurate Live Tracker map pins'
+                    ]
+                }
+            ]
+        }
+    },
+    {
         id: "v1.9.0",
         date: "March 20, 2026",
         label: "Major Release",
-        isNew: true,
+        isNew: false,
         updates: {
             admin: [
                 {

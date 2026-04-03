@@ -1,6 +1,7 @@
 'use client';
 
 import Navbar from "@/components/ui/navbar";
+import AnnouncementBanner from "@/components/ui/AnnouncementBanner";
 import Sidebar from "@/components/ui/sidebar";
 import RoleThemeProvider from "@/components/providers/RoleThemeProvider";
 import { useEffect, useState } from "react";
@@ -86,7 +87,7 @@ export default function AdminLayout({ children }) {
             }`}
         >
           <Navbar openSideBar={handleToggleSidebar} role="admin" />
-          <main className="p-4">{children}</main>
+          <main className="p-4"><AnnouncementBanner role="admin" />{children}</main>
         </div>
 
         {/* Tour Guide Modal */}

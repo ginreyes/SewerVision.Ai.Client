@@ -1,6 +1,9 @@
 "use client";
 import React, { useState, useEffect, useRef, useMemo, Suspense } from "react";
 import { Search, Plus, Loader2, LayoutGrid, Rows, MapPin, Video } from "lucide-react";
+import dynamic from "next/dynamic";
+const ProjectLiveTrackerView = dynamic(() => import("@/components/shared/ProjectLiveTrackerView"), { ssr: false });
+import StatusLegend from "@/components/shared/StatusLegend";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Select, SelectTrigger, SelectValue, SelectContent, SelectItem } from "@/components/ui/select";
@@ -89,9 +92,6 @@ const OperatorModulePage = () => {
     return colors[priority] || "text-gray-600";
   };
 
-  const AddProject = () => {
-    router.push("/operator/project/createProject");
-  };
 
   /* ─── SewerTable config for table view ─── */
   const projectColumns = [
@@ -263,18 +263,12 @@ const OperatorModulePage = () => {
                       <Rows className="w-4 h-4" />
                       <span>Table</span>
                     </Button>
+                    
                   </div>
 
-                  {!isOperatorRoute && (
-                    <Button
-                      onClick={AddProject}
-                      variant="rose"
-                      className="flex items-center gap-2 font-medium"
-                    >
-                      <Plus size={20} />
-                      New Project
-                    </Button>
-                  )}
+                  <StatusLegend />
+
+                  
                 </div>
               </div>
             </div>
@@ -311,7 +305,9 @@ const OperatorModulePage = () => {
               </Select>
             </div>
 
-            {viewMode === "grid" ? (
+            {viewMode === "tracker" ? (
+              <ProjectLiveTrackerView projects={projects} isLoading={false} theme="blue" />
+            ) : viewMode === "grid" ? (
               <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
                 {projects.map((project) => (
                   <ProjectCard
@@ -355,7 +351,6 @@ const OperatorModulePage = () => {
   );
 };
 
-// Loading fallback for Suspense
 const ProjectPageLoading = () => (
   <div className="min-h-screen flex items-center justify-center">
     <div className="text-center">

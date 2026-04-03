@@ -1,54 +1,85 @@
 "use client";
 
-import React, { useState, useMemo } from "react";
+import React, { useState, useMemo, useCallback, memo } from "react";
 import {
-  Headphones,
-  RefreshCw,
-  AlertCircle,
-  Clock,
-  CheckCircle,
-  XCircle,
-  ShieldCheck,
+  Headphones, RefreshCw, AlertCircle, Clock, CheckCircle,
+  XCircle, ShieldCheck, Eye, MessageSquare,
 } from "lucide-react";
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { Card, CardContent } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
-import { useAlert } from "@/components/providers/AlertProvider";
+import { useRouter } from "next/navigation";
 import SewerTable from "@/components/ui/SewerTable";
 import { useSupportAllTickets, useSupportGlobalStats } from "@/hooks/useQueryHooks";
+import { SupportStats, CategoryBreakdown, STATUS_COLORS, PRIORITY_COLORS, FILTER_OPTIONS, TABLE_COLUMNS } from "@/components/admin/support";
 
-const STATUS_COLORS = {
-  open: "bg-amber-100 text-amber-700 border-amber-200",
-  "in-progress": "bg-blue-100 text-blue-700 border-blue-200",
-  resolved: "bg-emerald-100 text-emerald-700 border-emerald-200",
-  closed: "bg-gray-100 text-gray-600 border-gray-200",
-};
-
-const PRIORITY_COLORS = {
-  low: "text-green-600",
-  medium: "text-amber-600",
-  high: "text-red-600",
-};
-
-const StatCard = ({ title, value, icon: Icon, color, description }) => (
-  <Card className="border border-gray-100 shadow-sm hover:shadow-md transition-shadow">
-    <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-3 pt-4">
-      <CardTitle className="text-xs font-semibold text-gray-600 uppercase tracking-wide">{title}</CardTitle>
-      <div className="p-2 bg-gray-50 rounded-lg">
-        <Icon className={`w-6 h-6 ${color}`} />
+const TicketCellRenderer = memo(({ item, col, onView }) => {
+  if (col.key === "subject") {
+    return (
+      <button onClick={() => onView(item._id)} className="text-left group">
+        <p className="text-sm font-medium text-gray-900 truncate group-hover:text-rose-600 transition-colors">{item.subject}</p>
+        {item.responseCount > 0 && (
+          <span className="text-[10px] text-gray-400 flex items-center gap-0.5 mt-0.5">
+            <MessageSquare className="w-3 h-3" />{item.responseCount} response{item.responseCount !== 1 ? "s" : ""}
+          </span>
+        )}
+      </button>
+    );
+  }
+  if (col.key === "customer") {
+    return <span className="text-sm text-gray-700">{item.customer}</span>;
+  }
+  if (col.key === "assignedTo") {
+    return item.assignedTo ? (
+      <span className="text-sm text-gray-700">{item.assignedTo}</span>
+    ) : (
+      <span className="text-xs text-gray-400 italic">Unassigned</span>
+    );
+  }
+  if (col.key === "category") {
+    return <Badge variant="outline" className="text-xs capitalize">{item.category}</Badge>;
+  }
+  if (col.key === "priority") {
+    return (
+      <span className={`text-xs font-semibold uppercase ${PRIORITY_COLORS[item.priority] || ""}`}>
+        {item.priority}
+      </span>
+    );
+  }
+  if (col.key === "status") {
+    return (
+      <Badge className={`text-xs capitalize ${STATUS_COLORS[item.status] || ""}`}>
+        {item.status === "in-progress" && <Clock className="w-3 h-3 mr-1 inline" />}
+        {item.status === "resolved" && <CheckCircle className="w-3 h-3 mr-1 inline" />}
+        {item.status === "open" && <AlertCircle className="w-3 h-3 mr-1 inline" />}
+        {item.status === "closed" && <XCircle className="w-3 h-3 mr-1 inline" />}
+        {item.status}
+      </Badge>
+    );
+  }
+  if (col.key === "createdAt") {
+    if (!item.createdAt) return <span className="text-sm text-gray-400">-</span>;
+    const d = new Date(item.createdAt);
+    const now = new Date();
+    const diffH = Math.floor((now.getTime() - d.getTime()) / 3600000);
+    return (
+      <div>
+        <p className="text-sm text-gray-900">{d.toLocaleDateString()}</p>
+        <p className="text-[11px] text-gray-400">
+          {diffH < 1 ? "Just now" : diffH < 24 ? `${diffH}h ago` : `${Math.floor(diffH / 24)}d ago`}
+        </p>
       </div>
-    </CardHeader>
-    <CardContent className="pb-4">
-      <div className={`text-3xl font-bold ${color}`}>{value}</div>
-      {description && <p className="text-xs text-gray-500 mt-1.5">{description}</p>}
-    </CardContent>
-  </Card>
-);
+    );
+  }
+  return null;
+});
+TicketCellRenderer.displayName = "TicketCellRenderer";
 
 export default function AdminSupportPage() {
+  const router = useRouter();
   const [search, setSearch] = useState("");
 
-  const { data: ticketsData, isLoading, refetch } = useSupportAllTickets({}, { refetchInterval: 30000 });
+  const { data: ticketsData, isLoading, refetch, isFetching } = useSupportAllTickets({}, { refetchInterval: 30000 });
   const { data: globalStats } = useSupportGlobalStats({ refetchInterval: 30000 });
 
   const tickets = useMemo(() => {
@@ -56,122 +87,57 @@ export default function AdminSupportPage() {
     return Array.isArray(raw) ? raw : [];
   }, [ticketsData]);
 
-  const stats = useMemo(() => ({
-    open: globalStats?.byStatus?.open || 0,
-    inProgress: globalStats?.byStatus?.["in-progress"] || 0,
-    resolved: globalStats?.byStatus?.resolved || 0,
-    closed: globalStats?.byStatus?.closed || 0,
-  }), [globalStats]);
-
-  const columns = [
-    { key: "subject", name: "Subject" },
-    { key: "customer", name: "Customer" },
-    { key: "category", name: "Category" },
-    { key: "priority", name: "Priority" },
-    { key: "status", name: "Status" },
-    { key: "createdAt", name: "Created" },
-  ];
-
   const tableData = useMemo(() => {
     return tickets.map((t) => ({
       _id: t._id,
       subject: t.subject || "No subject",
       customer: t.customerId?.first_name
-        ? `${t.customerId.first_name} ${t.customerId.last_name || ""}`
+        ? `${t.customerId.first_name} ${t.customerId.last_name || ""}`.trim()
         : t.customerId?.email || "Unknown",
+      assignedTo: t.assignedTo?.first_name
+        ? `${t.assignedTo.first_name} ${t.assignedTo.last_name || ""}`.trim()
+        : null,
       category: t.category || "other",
       priority: t.priority || "medium",
       status: t.status || "open",
       createdAt: t.created_at || t.createdAt,
+      responseCount: t.responses?.length || 0,
     }));
   }, [tickets]);
 
-  const renderCell = (item, col) => {
-    if (col.key === "subject") {
-      return <p className="text-sm font-medium text-gray-900 truncate">{item.subject}</p>;
-    }
-    if (col.key === "customer") {
-      return <span className="text-sm text-gray-700">{item.customer}</span>;
-    }
-    if (col.key === "category") {
-      return <Badge variant="outline" className="text-xs capitalize">{item.category}</Badge>;
-    }
-    if (col.key === "priority") {
-      return (
-        <span className={`text-xs font-semibold uppercase ${PRIORITY_COLORS[item.priority] || ""}`}>
-          {item.priority}
-        </span>
-      );
-    }
-    if (col.key === "status") {
-      return (
-        <Badge className={`text-xs capitalize ${STATUS_COLORS[item.status] || ""}`}>
-          {item.status === "in-progress" && <Clock className="w-3 h-3 mr-1 inline" />}
-          {item.status === "resolved" && <CheckCircle className="w-3 h-3 mr-1 inline" />}
-          {item.status === "open" && <AlertCircle className="w-3 h-3 mr-1 inline" />}
-          {item.status}
-        </Badge>
-      );
-    }
-    if (col.key === "createdAt") {
-      if (!item.createdAt) return <span className="text-sm text-gray-400">—</span>;
-      const d = new Date(item.createdAt);
-      return (
-        <div>
-          <p className="text-sm text-gray-900">{d.toLocaleDateString()}</p>
-          <p className="text-[11px] text-gray-400">{d.toLocaleTimeString()}</p>
-        </div>
-      );
-    }
-    return null;
-  };
+  const handleViewTicket = useCallback((ticketId) => {
+    // Navigate to ticket detail or open in customer-rep context
+    router.push(`/admin/support?ticket=${ticketId}`);
+  }, [router]);
 
-  const filterOptions = [
-    {
-      key: "status",
-      label: "Status",
-      options: [
-        { label: "All", value: "all" },
-        { label: "Open", value: "open" },
-        { label: "In Progress", value: "in-progress" },
-        { label: "Resolved", value: "resolved" },
-        { label: "Closed", value: "closed" },
-      ],
-    },
-    {
-      key: "priority",
-      label: "Priority",
-      options: [
-        { label: "All", value: "all" },
-        { label: "High", value: "high" },
-        { label: "Medium", value: "medium" },
-        { label: "Low", value: "low" },
-      ],
-    },
-  ];
+  const renderCell = useCallback((item, col) => {
+    return <TicketCellRenderer item={item} col={col} onView={handleViewTicket} />;
+  }, [handleViewTicket]);
 
   return (
     <div className="max-w-7xl mx-auto bg-gray-100">
       {/* Header */}
       <div className="bg-white border-b border-gray-200">
-        <div className="max-w-7xl mx-auto px-6 py-6">
+        <div className="max-w-7xl mx-auto px-6 py-5">
           <div className="flex items-center justify-between">
             <div className="flex items-center gap-4">
-              <div className="w-12 h-12 rounded-xl bg-rose-100 flex items-center justify-center">
-                <Headphones className="w-6 h-6 text-rose-600" />
+              <div className="w-11 h-11 rounded-xl bg-gradient-to-br from-rose-600 to-red-700 flex items-center justify-center shadow-md">
+                <Headphones className="w-5 h-5 text-white" />
               </div>
               <div>
-                <h1 className="text-2xl font-bold text-gray-900">Customer Support</h1>
-                <p className="text-sm text-gray-500">Manage all customer support tickets and complaints</p>
+                <h1 className="text-xl font-bold text-gray-900">Customer Support Overview</h1>
+                <p className="text-sm text-gray-500">
+                  {globalStats?.total || 0} total tickets · {globalStats?.todayNew || 0} new today
+                </p>
               </div>
             </div>
             <div className="flex items-center gap-3">
-              <Badge variant="outline" className="bg-red-100 text-red-800 border-red-200">
+              <Badge variant="outline" className="bg-rose-50 text-rose-700 border-rose-200">
                 <ShieldCheck className="w-3 h-3 mr-1" />
-                Admin Access
+                Admin View
               </Badge>
-              <Button variant="outline" onClick={() => refetch()} disabled={isLoading}>
-                <RefreshCw className={`w-4 h-4 mr-2 ${isLoading ? "animate-spin" : ""}`} />
+              <Button variant="outline" size="sm" onClick={() => refetch()} disabled={isFetching}>
+                <RefreshCw className={`w-4 h-4 mr-1.5 ${isFetching ? "animate-spin" : ""}`} />
                 Refresh
               </Button>
             </div>
@@ -179,21 +145,22 @@ export default function AdminSupportPage() {
         </div>
       </div>
 
-      {/* Stats Cards */}
-      <div className="max-w-7xl mx-auto px-6 py-6">
-        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4 mb-6">
-          <StatCard title="Open" value={stats.open} icon={AlertCircle} color="text-amber-600" description="Awaiting response" />
-          <StatCard title="In Progress" value={stats.inProgress} icon={Clock} color="text-blue-600" description="Being handled" />
-          <StatCard title="Resolved" value={stats.resolved} icon={CheckCircle} color="text-emerald-600" description="Successfully closed" />
-          <StatCard title="Closed" value={stats.closed} icon={XCircle} color="text-gray-500" description="Archived tickets" />
-        </div>
+      <div className="max-w-7xl mx-auto px-6 py-5">
+        {/* Stats Row */}
+        <SupportStats globalStats={globalStats} tickets={tickets} />
+
+        {/* Category & Priority Breakdown */}
+        <CategoryBreakdown
+          byCategory={globalStats?.byCategory}
+          byPriority={globalStats?.byPriority}
+        />
 
         {/* Ticket Table */}
         <div className="bg-white rounded-xl shadow-sm border border-gray-100">
           <SewerTable
             data={tableData}
-            columns={columns}
-            filters={filterOptions}
+            columns={TABLE_COLUMNS}
+            filters={FILTER_OPTIONS}
             search={search}
             onSearch={setSearch}
             loading={isLoading}
@@ -205,11 +172,12 @@ export default function AdminSupportPage() {
             emptySubtext="Customer tickets will appear here when submitted"
             columnDefaults={{
               subject: 220,
-              customer: 160,
-              category: 110,
-              priority: 100,
+              customer: 140,
+              assignedTo: 130,
+              category: 100,
+              priority: 90,
               status: 120,
-              createdAt: 130,
+              createdAt: 110,
             }}
             rowsPerPageOptions={[10, 20, 50]}
           />

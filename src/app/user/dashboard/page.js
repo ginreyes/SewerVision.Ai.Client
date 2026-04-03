@@ -153,7 +153,7 @@ export default function UserDashboardPage() {
   if (loading && projects.length === 0 && events.length === 0) {
     return (
       <div className="p-6 flex items-center justify-center min-h-[400px]">
-        <Loader2 className="w-10 h-10 animate-spin text-rose-500" />
+        <Loader2 className="w-10 h-10 animate-spin text-indigo-500" />
       </div>
     );
   }
@@ -220,7 +220,7 @@ export default function UserDashboardPage() {
                 </Card>
               ) : loadingUserDashboard ? (
                 <Card className="border-0 shadow-sm min-h-[300px] flex items-center justify-center">
-                  <Loader2 className="w-10 h-10 animate-spin text-rose-500" />
+                  <Loader2 className="w-10 h-10 animate-spin text-indigo-500" />
                 </Card>
               ) : (
                 <UserDashboardDetail
@@ -251,7 +251,7 @@ export default function UserDashboardPage() {
             <Card className="border-0 shadow-sm">
               <CardHeader className="pb-2">
                 <CardTitle className="text-base flex items-center gap-2">
-                  <FolderOpen className="w-4 h-4 text-rose-500" />
+                  <FolderOpen className="w-4 h-4 text-indigo-500" />
                   Projects by status
                 </CardTitle>
               </CardHeader>

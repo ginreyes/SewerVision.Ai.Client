@@ -17,6 +17,8 @@ import supportApi from '@/data/supportApi';
 import messageApi from '@/data/messageApi';
 import cannedResponseApi from '@/data/cannedResponseApi';
 import complaintApi from '@/data/complaintApi';
+import { knowledgeBaseApi } from '@/data/knowledgeBaseApi';
+import { surveyApi } from '@/data/surveyApi';
 
 /**
  * Query Keys - Centralized key management for cache invalidation
@@ -102,6 +104,38 @@ export const queryKeys = {
     customerNotifications: (userId) => ['customer', 'notifications', userId],
     customerNotificationPreferences: (userId) => ['customer', 'notification-preferences', userId],
 
+    // Customer — New Modules
+    customerTracker: (customerId) => ['customer', 'tracker', customerId],
+    customerDocuments: (customerId, filters) => ['customer', 'documents', customerId, filters ?? {}],
+    customerAppointments: (customerId, filters) => ['customer', 'appointments', customerId, filters ?? {}],
+    customerAvailableSlots: (date) => ['customer', 'available-slots', date],
+    customerAnnotations: (reportId) => ['customer', 'annotations', reportId],
+    customerAllAnnotations: (customerId) => ['customer', 'all-annotations', customerId],
+    customerWidgetPreferences: (userId) => ['customer', 'widget-preferences', userId],
+    customerWidgetData: (userId) => ['customer', 'widget-data', userId],
+
+    // Operator — New Modules
+    operatorChecklists: (operatorId, filters) => ['operator', 'checklists', operatorId, filters ?? {}],
+    operatorRouteSites: (operatorId, filters) => ['operator', 'route-sites', operatorId, filters ?? {}],
+    operatorIncidents: (operatorId, filters) => ['operator', 'incidents', operatorId, filters ?? {}],
+    operatorTimeEntries: (operatorId, filters) => ['operator', 'time-entries', operatorId, filters ?? {}],
+    operatorTimeSummary: (operatorId, weekOf) => ['operator', 'time-summary', operatorId, weekOf],
+    operatorCachedItems: (operatorId) => ['operator', 'cached-items', operatorId],
+    operatorPendingSyncs: (operatorId) => ['operator', 'pending-syncs', operatorId],
+    operatorOfflineStats: (operatorId) => ['operator', 'offline-stats', operatorId],
+
+    // User — New Modules
+    userWeekSchedule: (weekStart) => ['user', 'schedule', weekStart],
+    userTeamAvailability: (weekStart) => ['user', 'availability', weekStart],
+    userBudgets: (userId, filters) => ['user', 'budgets', userId, filters ?? {}],
+    userBudget: (budgetId) => ['user', 'budget', budgetId],
+    userConversations: (userId, filters) => ['user', 'conversations', userId, filters ?? {}],
+    userMessages: (conversationId) => ['user', 'messages', conversationId],
+    userTemplates: (userId) => ['user', 'templates', userId],
+    userTeamMetrics: (userId) => ['user', 'team-metrics', userId],
+    userMemberMetrics: (memberId) => ['user', 'member-metrics', memberId],
+    userTeamSummary: (userId) => ['user', 'team-summary', userId],
+
     // Devices (admin)
     devices: (params) => ['devices', params ?? {}],
     device: (deviceId) => ['devices', deviceId],
@@ -139,6 +173,50 @@ export const queryKeys = {
     messagesThread: (threadId) => ['messages', 'thread', threadId],
     messagesUnreadCount: (userId) => ['messages', 'unread', userId],
     messagesContacts: (userId) => ['messages', 'contacts', userId],
+
+    // PACP Defects
+    pacpDefects: (filters) => ['pacp-defects', filters ?? {}],
+    pacpCategories: ['pacp-defect-categories'],
+
+    // Training
+    trainingModules: (filters) => ['training', 'modules', filters ?? {}],
+    trainingModule: (id) => ['training', 'module', id],
+    trainingAttempts: (userId, moduleId) => ['training', 'attempts', userId, moduleId ?? 'all'],
+    trainingStats: (userId) => ['training', 'stats', userId],
+    trainingTeamProgress: ['training', 'team-progress'],
+    trainingAssignments: (userId) => ['training', 'assignments', userId],
+    trainingAllAssignments: (status) => ['training', 'all-assignments', status ?? 'all'],
+    onboarding: (userId) => ['onboarding', userId],
+    onboardingAll: (role) => ['onboarding', 'all', role ?? 'all'],
+
+    // Review Templates
+    reviewTemplates: (createdBy) => ['review-templates', createdBy ?? 'all'],
+
+    // QC Analytics
+    qcReviewStats: (userId) => ['qc', 'review-stats', userId],
+
+    // Knowledge Base
+    kbArticles: (filters) => ['knowledge-base', 'articles', filters ?? {}],
+    kbArticle: (id) => ['knowledge-base', 'article', id],
+    kbCategories: ['knowledge-base', 'categories'],
+
+    // Surveys
+    surveyResponses: (filters) => ['surveys', 'responses', filters ?? {}],
+    surveyStats: ['surveys', 'stats'],
+
+    // Admin Analytics
+    adminAnalytics: ['admin', 'analytics-overview'],
+
+    // Canned Workflows
+    cannedWorkflows: (createdBy) => ['canned-workflows', createdBy ?? 'all'],
+
+    // Escalation Rules
+    escalationRules: (createdBy) => ['escalation-rules', createdBy ?? 'all'],
+
+    // Survey Invites
+    surveyInvite: (token) => ['survey', 'invite', token],
+    pendingSurveys: (customerId) => ['survey', 'pending', customerId],
+    surveyInvites: (filters) => ['survey', 'invites', filters ?? {}],
 };
 
 /**
@@ -1278,6 +1356,16 @@ export function useSupportTeam(options = {}) {
     });
 }
 
+export function useManagedTeam(repId, options = {}) {
+    return useQuery({
+        queryKey: ['managedTeam', repId],
+        queryFn: () => supportApi.getManagedTeam(repId),
+        staleTime: 1000 * 60 * 2,
+        enabled: !!repId,
+        ...options,
+    });
+}
+
 export function useSupportCustomerStats(userId, options = {}) {
     return useQuery({
         queryKey: queryKeys.supportCustomerStats(userId),
@@ -1353,6 +1441,37 @@ export function useSupportCustomerHistory(customerId, options = {}) {
         queryKey: ['support', 'customer-history', customerId],
         queryFn: () => supportApi.getCustomerHistory(customerId),
         enabled: !!customerId,
+        staleTime: 1000 * 30,
+        ...options,
+    });
+}
+
+export function useRequestTicketDeletion() {
+    const queryClient = useQueryClient();
+    return useMutation({
+        mutationFn: ({ ticketId, ...data }) => supportApi.requestDeletion(ticketId, data),
+        onSuccess: (_data, { ticketId }) => {
+            queryClient.invalidateQueries({ queryKey: queryKeys.supportTicket(ticketId) });
+            queryClient.invalidateQueries({ queryKey: ['support', 'deletion-requests'] });
+        },
+    });
+}
+
+export function useReviewTicketDeletion() {
+    const queryClient = useQueryClient();
+    return useMutation({
+        mutationFn: ({ ticketId, ...data }) => supportApi.reviewDeletion(ticketId, data),
+        onSuccess: () => {
+            queryClient.invalidateQueries({ queryKey: ['support'] });
+            queryClient.invalidateQueries({ queryKey: ['support', 'deletion-requests'] });
+        },
+    });
+}
+
+export function usePendingDeletionRequests(options = {}) {
+    return useQuery({
+        queryKey: ['support', 'deletion-requests'],
+        queryFn: () => supportApi.getPendingDeletionRequests(),
         staleTime: 1000 * 30,
         ...options,
     });
@@ -1890,6 +2009,937 @@ export function useDownloadCustomerReport() {
     });
 }
 
+// ─── CUSTOMER NEW MODULE HOOKS ──────────────────────────
+
+/**
+ * Hook: Live Tracker projects
+ */
+export function useCustomerTracker(customerId, options = {}) {
+    return useQuery({
+        queryKey: queryKeys.customerTracker(customerId),
+        queryFn: () => customerApi.getTrackerProjects(customerId),
+        enabled: !!customerId,
+        staleTime: 1000 * 60 * 2,
+        ...options,
+    });
+}
+
+/**
+ * Hook: Customer Documents
+ */
+export function useCustomerDocuments(customerId, filters = {}, options = {}) {
+    return useQuery({
+        queryKey: queryKeys.customerDocuments(customerId, filters),
+        queryFn: () => customerApi.getDocuments(customerId, filters),
+        enabled: !!customerId,
+        staleTime: 1000 * 60 * 5,
+        ...options,
+    });
+}
+
+/**
+ * Mutation: Track document download
+ */
+export function useTrackDocumentDownload() {
+    const queryClient = useQueryClient();
+    return useMutation({
+        mutationFn: (documentId) => customerApi.trackDocumentDownload(documentId),
+        onSuccess: () => {
+            queryClient.invalidateQueries({ queryKey: ['customer', 'documents'] });
+        },
+    });
+}
+
+/**
+ * Hook: Customer Appointments
+ */
+export function useCustomerAppointments(customerId, filters = {}, options = {}) {
+    return useQuery({
+        queryKey: queryKeys.customerAppointments(customerId, filters),
+        queryFn: () => customerApi.getAppointments(customerId, filters),
+        enabled: !!customerId,
+        staleTime: 1000 * 60 * 5,
+        ...options,
+    });
+}
+
+/**
+ * Hook: Available time slots
+ */
+export function useAvailableSlots(date, options = {}) {
+    return useQuery({
+        queryKey: queryKeys.customerAvailableSlots(date),
+        queryFn: () => customerApi.getAvailableSlots(date),
+        enabled: !!date,
+        staleTime: 1000 * 60 * 2,
+        ...options,
+    });
+}
+
+/**
+ * Mutation: Create appointment
+ */
+export function useCreateAppointment() {
+    const queryClient = useQueryClient();
+    return useMutation({
+        mutationFn: (data) => customerApi.createAppointment(data),
+        onSuccess: (_data, variables) => {
+            queryClient.invalidateQueries({ queryKey: ['customer', 'appointments'] });
+            if (variables.date) {
+                queryClient.invalidateQueries({ queryKey: ['customer', 'available-slots'] });
+            }
+        },
+    });
+}
+
+/**
+ * Mutation: Update appointment
+ */
+export function useUpdateAppointment() {
+    const queryClient = useQueryClient();
+    return useMutation({
+        mutationFn: ({ id, ...data }) => customerApi.updateAppointment(id, data),
+        onSuccess: () => {
+            queryClient.invalidateQueries({ queryKey: ['customer', 'appointments'] });
+        },
+    });
+}
+
+/**
+ * Mutation: Delete appointment
+ */
+export function useDeleteAppointment() {
+    const queryClient = useQueryClient();
+    return useMutation({
+        mutationFn: (id) => customerApi.deleteAppointment(id),
+        onSuccess: () => {
+            queryClient.invalidateQueries({ queryKey: ['customer', 'appointments'] });
+        },
+    });
+}
+
+/**
+ * Hook: Report Annotations
+ */
+export function useReportAnnotations(reportId, options = {}) {
+    return useQuery({
+        queryKey: queryKeys.customerAnnotations(reportId),
+        queryFn: () => customerApi.getReportAnnotations(reportId),
+        enabled: !!reportId,
+        staleTime: 1000 * 60 * 3,
+        ...options,
+    });
+}
+
+/**
+ * Mutation: Create annotation
+ */
+export function useCreateAnnotation() {
+    const queryClient = useQueryClient();
+    return useMutation({
+        mutationFn: (data) => customerApi.createAnnotation(data),
+        onSuccess: (_data, variables) => {
+            queryClient.invalidateQueries({ queryKey: queryKeys.customerAnnotations(variables.reportId) });
+        },
+    });
+}
+
+/**
+ * Hook: Widget Preferences
+ */
+export function useWidgetPreferences(userId, options = {}) {
+    return useQuery({
+        queryKey: queryKeys.customerWidgetPreferences(userId),
+        queryFn: () => customerApi.getWidgetPreferences(userId),
+        enabled: !!userId,
+        staleTime: 1000 * 60 * 10,
+        ...options,
+    });
+}
+
+/**
+ * Mutation: Update widget preferences
+ */
+export function useUpdateWidgetPreferences() {
+    const queryClient = useQueryClient();
+    return useMutation({
+        mutationFn: ({ userId, widgets }) => customerApi.updateWidgetPreferences(userId, widgets),
+        onSuccess: (_data, { userId }) => {
+            queryClient.invalidateQueries({ queryKey: queryKeys.customerWidgetPreferences(userId) });
+        },
+    });
+}
+
+/**
+ * Hook: Widget live data
+ */
+// ─── PACP DEFECT LIBRARY HOOKS ──────────────────────────
+
+export function usePacpDefects(filters = {}, options = {}) {
+    return useQuery({
+        queryKey: queryKeys.pacpDefects(filters),
+        queryFn: () => qcApi.getAllDefects(filters),
+        staleTime: 1000 * 60 * 30,
+        ...options,
+    });
+}
+
+export function usePacpCategories(options = {}) {
+    return useQuery({
+        queryKey: queryKeys.pacpCategories,
+        queryFn: () => qcApi.getDefectCategories(),
+        staleTime: 1000 * 60 * 60,
+        ...options,
+    });
+}
+
+export function useCreatePacpDefect(options = {}) {
+    const queryClient = useQueryClient();
+    return useMutation({
+        mutationFn: (data) => qcApi.createDefect(data),
+        onSuccess: () => {
+            queryClient.invalidateQueries({ queryKey: ['pacp-defects'] });
+            queryClient.invalidateQueries({ queryKey: ['pacp-defect-categories'] });
+        },
+        ...options,
+    });
+}
+
+export function useUpdatePacpDefect(options = {}) {
+    const queryClient = useQueryClient();
+    return useMutation({
+        mutationFn: ({ id, data }) => qcApi.updateDefect(id, data),
+        onSuccess: () => {
+            queryClient.invalidateQueries({ queryKey: ['pacp-defects'] });
+        },
+        ...options,
+    });
+}
+
+export function useDeletePacpDefect(options = {}) {
+    const queryClient = useQueryClient();
+    return useMutation({
+        mutationFn: (id) => qcApi.deleteDefect(id),
+        onSuccess: () => {
+            queryClient.invalidateQueries({ queryKey: ['pacp-defects'] });
+            queryClient.invalidateQueries({ queryKey: ['pacp-defect-categories'] });
+        },
+        ...options,
+    });
+}
+
+// ─── TRAINING HOOKS ─────────────────────────────────────
+
+export function useTrainingModules(filters = {}, options = {}) {
+    return useQuery({
+        queryKey: queryKeys.trainingModules(filters),
+        queryFn: () => qcApi.getTrainingModules(filters),
+        staleTime: 1000 * 60 * 10,
+        ...options,
+    });
+}
+
+export function useTrainingModule(id, options = {}) {
+    return useQuery({
+        queryKey: queryKeys.trainingModule(id),
+        queryFn: () => qcApi.getTrainingModule(id),
+        enabled: !!id,
+        ...options,
+    });
+}
+
+export function useSubmitTrainingAttempt() {
+    const queryClient = useQueryClient();
+    return useMutation({
+        mutationFn: (data) => qcApi.submitTrainingAttempt(data),
+        onSuccess: (_data, variables) => {
+            queryClient.invalidateQueries({ queryKey: ['training', 'attempts'] });
+            queryClient.invalidateQueries({ queryKey: ['training', 'stats'] });
+        },
+    });
+}
+
+export function useTrainingAttempts(userId, moduleId, options = {}) {
+    return useQuery({
+        queryKey: queryKeys.trainingAttempts(userId, moduleId),
+        queryFn: () => qcApi.getTrainingAttempts(userId, moduleId),
+        enabled: !!userId,
+        ...options,
+    });
+}
+
+export function useTrainingStats(userId, options = {}) {
+    return useQuery({
+        queryKey: queryKeys.trainingStats(userId),
+        queryFn: () => qcApi.getTrainingStats(userId),
+        enabled: !!userId,
+        staleTime: 1000 * 60 * 5,
+        ...options,
+    });
+}
+
+// ─── TRAINING MANAGEMENT HOOKS ─────────────────────────
+
+export function useCreateTrainingModule() {
+    const queryClient = useQueryClient();
+    return useMutation({
+        mutationFn: (data) => qcApi.createTrainingModule(data),
+        onSuccess: () => { queryClient.invalidateQueries({ queryKey: ['training', 'modules'] }); },
+    });
+}
+
+export function useUpdateTrainingModule() {
+    const queryClient = useQueryClient();
+    return useMutation({
+        mutationFn: ({ id, ...data }) => qcApi.updateTrainingModule(id, data),
+        onSuccess: () => { queryClient.invalidateQueries({ queryKey: ['training', 'modules'] }); },
+    });
+}
+
+export function useDeleteTrainingModule() {
+    const queryClient = useQueryClient();
+    return useMutation({
+        mutationFn: (id) => qcApi.deleteTrainingModule(id),
+        onSuccess: () => { queryClient.invalidateQueries({ queryKey: ['training', 'modules'] }); },
+    });
+}
+
+export function useTeamTrainingProgress(options = {}) {
+    return useQuery({
+        queryKey: queryKeys.trainingTeamProgress,
+        queryFn: () => qcApi.getTeamTrainingProgress(),
+        staleTime: 1000 * 60 * 5,
+        ...options,
+    });
+}
+
+export function useTrainingAssignments(userId, options = {}) {
+    return useQuery({
+        queryKey: queryKeys.trainingAssignments(userId),
+        queryFn: () => qcApi.getTrainingAssignments(userId),
+        enabled: !!userId,
+        staleTime: 1000 * 60 * 5,
+        ...options,
+    });
+}
+
+export function useAllTrainingAssignments(status, options = {}) {
+    return useQuery({
+        queryKey: queryKeys.trainingAllAssignments(status),
+        queryFn: () => qcApi.getAllTrainingAssignments(status),
+        staleTime: 1000 * 60 * 5,
+        ...options,
+    });
+}
+
+export function useAssignTrainingModules() {
+    const queryClient = useQueryClient();
+    return useMutation({
+        mutationFn: (data) => qcApi.assignTrainingModules(data),
+        onSuccess: () => {
+            queryClient.invalidateQueries({ queryKey: ['training', 'assignments'] });
+            queryClient.invalidateQueries({ queryKey: ['training', 'all-assignments'] });
+            queryClient.invalidateQueries({ queryKey: ['training', 'team-progress'] });
+        },
+    });
+}
+
+// ─── ONBOARDING HOOKS ──────────────────────────────────
+
+export function useOnboarding(userId, options = {}) {
+    return useQuery({
+        queryKey: queryKeys.onboarding(userId),
+        queryFn: () => qcApi.getOnboarding(userId),
+        enabled: !!userId,
+        staleTime: 1000 * 60 * 10,
+        ...options,
+    });
+}
+
+export function useAllOnboarding(role, options = {}) {
+    return useQuery({
+        queryKey: queryKeys.onboardingAll(role),
+        queryFn: () => qcApi.getAllOnboarding(role),
+        staleTime: 1000 * 60 * 5,
+        ...options,
+    });
+}
+
+export function useCompleteOnboardingStep() {
+    const queryClient = useQueryClient();
+    return useMutation({
+        mutationFn: ({ userId, stepKey }) => qcApi.completeOnboardingStep(userId, stepKey),
+        onSuccess: (_data, { userId }) => {
+            queryClient.invalidateQueries({ queryKey: queryKeys.onboarding(userId) });
+            queryClient.invalidateQueries({ queryKey: ['onboarding', 'all'] });
+        },
+    });
+}
+
+// ─── REVIEW TEMPLATE HOOKS ──────────────────────────────
+
+export function useReviewTemplates(createdBy, options = {}) {
+    return useQuery({
+        queryKey: queryKeys.reviewTemplates(createdBy),
+        queryFn: () => qcApi.getReviewTemplates(createdBy),
+        staleTime: 1000 * 60 * 10,
+        ...options,
+    });
+}
+
+export function useCreateReviewTemplate() {
+    const queryClient = useQueryClient();
+    return useMutation({
+        mutationFn: (data) => qcApi.createReviewTemplate(data),
+        onSuccess: () => { queryClient.invalidateQueries({ queryKey: ['review-templates'] }); },
+    });
+}
+
+export function useUpdateReviewTemplate() {
+    const queryClient = useQueryClient();
+    return useMutation({
+        mutationFn: ({ id, ...data }) => qcApi.updateReviewTemplate(id, data),
+        onSuccess: () => { queryClient.invalidateQueries({ queryKey: ['review-templates'] }); },
+    });
+}
+
+export function useDeleteReviewTemplate() {
+    const queryClient = useQueryClient();
+    return useMutation({
+        mutationFn: (id) => qcApi.deleteReviewTemplate(id),
+        onSuccess: () => { queryClient.invalidateQueries({ queryKey: ['review-templates'] }); },
+    });
+}
+
+export function useToggleTemplateFavorite() {
+    const queryClient = useQueryClient();
+    return useMutation({
+        mutationFn: (id) => qcApi.toggleTemplateFavorite(id),
+        onSuccess: () => { queryClient.invalidateQueries({ queryKey: ['review-templates'] }); },
+    });
+}
+
+// ─── QC REVIEW ANALYTICS HOOKS ──────────────────────────
+
+export function useQCReviewStats(userId, options = {}) {
+    return useQuery({
+        queryKey: queryKeys.qcReviewStats(userId),
+        queryFn: () => qcApi.getQCReviewStats(userId),
+        enabled: !!userId,
+        staleTime: 1000 * 60 * 5,
+        ...options,
+    });
+}
+
+// ─── KNOWLEDGE BASE HOOKS ───────────────────────────────
+
+export function useKBArticles(filters = {}, options = {}) {
+    return useQuery({
+        queryKey: queryKeys.kbArticles(filters),
+        queryFn: () => knowledgeBaseApi.getAllArticles(filters),
+        staleTime: 1000 * 60 * 5,
+        ...options,
+    });
+}
+
+export function useKBCategories(options = {}) {
+    return useQuery({
+        queryKey: queryKeys.kbCategories,
+        queryFn: () => knowledgeBaseApi.getCategories(),
+        staleTime: 1000 * 60 * 30,
+        ...options,
+    });
+}
+
+export function useCreateKBArticle() {
+    const queryClient = useQueryClient();
+    return useMutation({
+        mutationFn: (data) => knowledgeBaseApi.createArticle(data),
+        onSuccess: () => { queryClient.invalidateQueries({ queryKey: ['knowledge-base'] }); },
+    });
+}
+
+export function useUpdateKBArticle() {
+    const queryClient = useQueryClient();
+    return useMutation({
+        mutationFn: ({ id, ...data }) => knowledgeBaseApi.updateArticle(id, data),
+        onSuccess: () => { queryClient.invalidateQueries({ queryKey: ['knowledge-base'] }); },
+    });
+}
+
+export function useDeleteKBArticle() {
+    const queryClient = useQueryClient();
+    return useMutation({
+        mutationFn: (id) => knowledgeBaseApi.deleteArticle(id),
+        onSuccess: () => { queryClient.invalidateQueries({ queryKey: ['knowledge-base'] }); },
+    });
+}
+
+// ─── SURVEY HOOKS ───────────────────────────────────────
+
+export function useSurveyResponses(filters = {}, options = {}) {
+    return useQuery({
+        queryKey: queryKeys.surveyResponses(filters),
+        queryFn: () => surveyApi.getAllResponses(filters),
+        staleTime: 1000 * 60 * 5,
+        ...options,
+    });
+}
+
+export function useSurveyStats(options = {}) {
+    return useQuery({
+        queryKey: queryKeys.surveyStats,
+        queryFn: () => surveyApi.getStats(),
+        staleTime: 1000 * 60 * 5,
+        ...options,
+    });
+}
+
+export function useSubmitSurvey() {
+    const queryClient = useQueryClient();
+    return useMutation({
+        mutationFn: (data) => surveyApi.submitResponse(data),
+        onSuccess: () => {
+            queryClient.invalidateQueries({ queryKey: ['surveys'] });
+        },
+    });
+}
+
+// ─── ADMIN ANALYTICS HOOKS ──────────────────────────────
+
+// ─── CANNED WORKFLOW HOOKS ───────────────────────────────
+
+export function useCannedWorkflows(createdBy, options = {}) {
+    return useQuery({
+        queryKey: queryKeys.cannedWorkflows(createdBy),
+        queryFn: () => supportApi.getAllWorkflows(createdBy),
+        staleTime: 1000 * 60 * 5,
+        ...options,
+    });
+}
+
+export function useCreateCannedWorkflow() {
+    const queryClient = useQueryClient();
+    return useMutation({
+        mutationFn: (data) => supportApi.createWorkflow(data),
+        onSuccess: () => { queryClient.invalidateQueries({ queryKey: ['canned-workflows'] }); },
+    });
+}
+
+export function useUpdateCannedWorkflow() {
+    const queryClient = useQueryClient();
+    return useMutation({
+        mutationFn: ({ id, ...data }) => supportApi.updateWorkflow(id, data),
+        onSuccess: () => { queryClient.invalidateQueries({ queryKey: ['canned-workflows'] }); },
+    });
+}
+
+export function useDeleteCannedWorkflow() {
+    const queryClient = useQueryClient();
+    return useMutation({
+        mutationFn: (id) => supportApi.deleteWorkflow(id),
+        onSuccess: () => { queryClient.invalidateQueries({ queryKey: ['canned-workflows'] }); },
+    });
+}
+
+export function useToggleCannedWorkflow() {
+    const queryClient = useQueryClient();
+    return useMutation({
+        mutationFn: (id) => supportApi.toggleWorkflowActive(id),
+        onSuccess: () => { queryClient.invalidateQueries({ queryKey: ['canned-workflows'] }); },
+    });
+}
+
+export function useDuplicateCannedWorkflow() {
+    const queryClient = useQueryClient();
+    return useMutation({
+        mutationFn: (id) => supportApi.duplicateWorkflow(id),
+        onSuccess: () => { queryClient.invalidateQueries({ queryKey: ['canned-workflows'] }); },
+    });
+}
+
+// ─── SURVEY INVITE HOOKS ─────────────────────────────────
+
+export function useSurveyInvite(token, options = {}) {
+    return useQuery({
+        queryKey: queryKeys.surveyInvite(token),
+        queryFn: () => surveyApi.getInviteByToken(token),
+        enabled: !!token,
+        retry: false,
+        ...options,
+    });
+}
+
+export function usePendingSurveys(customerId, options = {}) {
+    return useQuery({
+        queryKey: queryKeys.pendingSurveys(customerId),
+        queryFn: () => surveyApi.getPendingSurveys(customerId),
+        enabled: !!customerId,
+        staleTime: 1000 * 60 * 2,
+        ...options,
+    });
+}
+
+export function useSurveyInvites(filters = {}, options = {}) {
+    return useQuery({
+        queryKey: queryKeys.surveyInvites(filters),
+        queryFn: () => surveyApi.getAllInvites(filters),
+        staleTime: 1000 * 60 * 5,
+        ...options,
+    });
+}
+
+export function useSendSurveys() {
+    const queryClient = useQueryClient();
+    return useMutation({
+        mutationFn: (data) => surveyApi.sendSurveys(data),
+        onSuccess: () => {
+            queryClient.invalidateQueries({ queryKey: ['survey'] });
+            queryClient.invalidateQueries({ queryKey: ['surveys'] });
+        },
+    });
+}
+
+export function useRespondToSurvey() {
+    const queryClient = useQueryClient();
+    return useMutation({
+        mutationFn: ({ token, rating, comment }) => surveyApi.respondToSurvey(token, { rating, comment }),
+        onSuccess: () => {
+            queryClient.invalidateQueries({ queryKey: ['survey'] });
+            queryClient.invalidateQueries({ queryKey: ['surveys'] });
+        },
+    });
+}
+
+// ─── ESCALATION RULE HOOKS ───────────────────────────────
+
+export function useEscalationRules(createdBy, options = {}) {
+    return useQuery({
+        queryKey: queryKeys.escalationRules(createdBy),
+        queryFn: () => supportApi.getAllEscalationRules(createdBy),
+        staleTime: 1000 * 60 * 5,
+        ...options,
+    });
+}
+
+export function useCreateEscalationRule() {
+    const queryClient = useQueryClient();
+    return useMutation({
+        mutationFn: (data) => supportApi.createEscalationRule(data),
+        onSuccess: () => { queryClient.invalidateQueries({ queryKey: ['escalation-rules'] }); },
+    });
+}
+
+export function useUpdateEscalationRule() {
+    const queryClient = useQueryClient();
+    return useMutation({
+        mutationFn: ({ id, ...data }) => supportApi.updateEscalationRule(id, data),
+        onSuccess: () => { queryClient.invalidateQueries({ queryKey: ['escalation-rules'] }); },
+    });
+}
+
+export function useDeleteEscalationRule() {
+    const queryClient = useQueryClient();
+    return useMutation({
+        mutationFn: (id) => supportApi.deleteEscalationRule(id),
+        onSuccess: () => { queryClient.invalidateQueries({ queryKey: ['escalation-rules'] }); },
+    });
+}
+
+export function useToggleEscalationRule() {
+    const queryClient = useQueryClient();
+    return useMutation({
+        mutationFn: (id) => supportApi.toggleEscalationRule(id),
+        onSuccess: () => { queryClient.invalidateQueries({ queryKey: ['escalation-rules'] }); },
+    });
+}
+
+export function useAdminAnalytics(options = {}) {
+    return useQuery({
+        queryKey: queryKeys.adminAnalytics,
+        queryFn: () => dashboardApi.getAnalyticsOverview(),
+        staleTime: 1000 * 60 * 5,
+        ...options,
+    });
+}
+
+export function useWidgetData(userId, options = {}) {
+    return useQuery({
+        queryKey: queryKeys.customerWidgetData(userId),
+        queryFn: () => customerApi.getWidgetData(userId),
+        enabled: !!userId,
+        staleTime: 1000 * 60 * 2,
+        ...options,
+    });
+}
+
+// ─── OPERATOR NEW MODULE HOOKS ──────────────────────────
+
+export function useOperatorChecklists(operatorId, filters = {}, options = {}) {
+    return useQuery({
+        queryKey: queryKeys.operatorChecklists(operatorId, filters),
+        queryFn: () => operatorApi.getChecklists(operatorId, filters),
+        enabled: !!operatorId,
+        staleTime: 1000 * 60 * 5,
+        refetchOnWindowFocus: false,
+        ...options,
+    });
+}
+export function useCreateChecklist() {
+    const qc = useQueryClient();
+    return useMutation({ mutationFn: (data) => operatorApi.createChecklist(data), onSuccess: () => qc.invalidateQueries({ queryKey: ['operator', 'checklists'] }) });
+}
+export function useToggleChecklistItem() {
+    const qc = useQueryClient();
+    return useMutation({ mutationFn: ({ checklistId, itemIndex }) => operatorApi.toggleChecklistItem(checklistId, itemIndex), onSuccess: () => qc.invalidateQueries({ queryKey: ['operator', 'checklists'] }) });
+}
+export function useDeleteChecklist() {
+    const qc = useQueryClient();
+    return useMutation({ mutationFn: (id) => operatorApi.deleteChecklist(id), onSuccess: () => qc.invalidateQueries({ queryKey: ['operator', 'checklists'] }) });
+}
+
+export function useOperatorRouteSites(operatorId, filters = {}, options = {}) {
+    return useQuery({
+        queryKey: queryKeys.operatorRouteSites(operatorId, filters),
+        queryFn: () => operatorApi.getRouteSites(operatorId, filters),
+        enabled: !!operatorId,
+        staleTime: 1000 * 60 * 5,
+        refetchOnWindowFocus: false,
+        ...options,
+    });
+}
+export function useCompleteRouteSite() {
+    const qc = useQueryClient();
+    return useMutation({ mutationFn: (id) => operatorApi.completeRouteSite(id), onSuccess: () => qc.invalidateQueries({ queryKey: ['operator', 'route-sites'] }) });
+}
+
+export function useOperatorIncidents(operatorId, filters = {}, options = {}) {
+    return useQuery({
+        queryKey: queryKeys.operatorIncidents(operatorId, filters),
+        queryFn: () => operatorApi.getIncidents(operatorId, filters),
+        enabled: !!operatorId,
+        staleTime: 1000 * 60 * 5,
+        refetchOnWindowFocus: false,
+        ...options,
+    });
+}
+export function useCreateIncident() {
+    const qc = useQueryClient();
+    return useMutation({ mutationFn: (data) => operatorApi.createIncident(data), onSuccess: () => qc.invalidateQueries({ queryKey: ['operator', 'incidents'] }) });
+}
+export function useUpdateIncident() {
+    const qc = useQueryClient();
+    return useMutation({ mutationFn: ({ id, ...data }) => operatorApi.updateIncident(id, data), onSuccess: () => qc.invalidateQueries({ queryKey: ['operator', 'incidents'] }) });
+}
+
+export function useOperatorTimeEntries(operatorId, filters = {}, options = {}) {
+    return useQuery({
+        queryKey: queryKeys.operatorTimeEntries(operatorId, filters),
+        queryFn: () => operatorApi.getTimeEntries(operatorId, filters),
+        enabled: !!operatorId,
+        staleTime: 1000 * 60 * 5,
+        refetchOnWindowFocus: false,
+        ...options,
+    });
+}
+export function useOperatorTimeSummary(operatorId, weekOf, options = {}) {
+    return useQuery({
+        queryKey: queryKeys.operatorTimeSummary(operatorId, weekOf),
+        queryFn: () => operatorApi.getTimeSummary(operatorId, weekOf),
+        enabled: !!operatorId,
+        staleTime: 1000 * 60 * 2,
+        ...options,
+    });
+}
+export function useCreateTimeEntry() {
+    const qc = useQueryClient();
+    return useMutation({ mutationFn: (data) => operatorApi.createTimeEntry(data), onSuccess: () => { qc.invalidateQueries({ queryKey: ['operator', 'time-entries'] }); qc.invalidateQueries({ queryKey: ['operator', 'time-summary'] }); } });
+}
+export function useDeleteTimeEntry() {
+    const qc = useQueryClient();
+    return useMutation({ mutationFn: (id) => operatorApi.deleteTimeEntry(id), onSuccess: () => { qc.invalidateQueries({ queryKey: ['operator', 'time-entries'] }); qc.invalidateQueries({ queryKey: ['operator', 'time-summary'] }); } });
+}
+
+export function useOperatorCachedItems(operatorId, options = {}) {
+    return useQuery({
+        queryKey: queryKeys.operatorCachedItems(operatorId),
+        queryFn: () => operatorApi.getCachedItems(operatorId),
+        enabled: !!operatorId,
+        staleTime: 1000 * 60 * 2,
+        ...options,
+    });
+}
+export function useOperatorPendingSyncs(operatorId, options = {}) {
+    return useQuery({
+        queryKey: queryKeys.operatorPendingSyncs(operatorId),
+        queryFn: () => operatorApi.getPendingSyncs(operatorId),
+        enabled: !!operatorId,
+        staleTime: 1000 * 60 * 2,
+        ...options,
+    });
+}
+export function useOperatorOfflineStats(operatorId, options = {}) {
+    return useQuery({
+        queryKey: queryKeys.operatorOfflineStats(operatorId),
+        queryFn: () => operatorApi.getOfflineStats(operatorId),
+        enabled: !!operatorId,
+        staleTime: 1000 * 60 * 2,
+        ...options,
+    });
+}
+export function useToggleCache() {
+    const qc = useQueryClient();
+    return useMutation({ mutationFn: (cacheId) => operatorApi.toggleCache(cacheId), onSuccess: () => { qc.invalidateQueries({ queryKey: ['operator', 'cached-items'] }); qc.invalidateQueries({ queryKey: ['operator', 'offline-stats'] }); } });
+}
+export function useSyncAll() {
+    const qc = useQueryClient();
+    return useMutation({ mutationFn: (operatorId) => operatorApi.syncAll(operatorId), onSuccess: () => { qc.invalidateQueries({ queryKey: ['operator', 'pending-syncs'] }); qc.invalidateQueries({ queryKey: ['operator', 'offline-stats'] }); } });
+}
+
+// ─── USER NEW MODULE HOOKS ──────────────────────────────
+
+export function useUserWeekSchedule(weekStart, options = {}) {
+    return useQuery({
+        queryKey: queryKeys.userWeekSchedule(weekStart),
+        queryFn: () => userApi.getWeekSchedule(weekStart),
+        enabled: !!weekStart,
+        staleTime: 1000 * 60 * 5,
+        refetchOnWindowFocus: false,
+        ...options,
+    });
+}
+export function useCreateAssignment() {
+    const qc = useQueryClient();
+    return useMutation({ mutationFn: (data) => userApi.createAssignment(data), onSuccess: () => qc.invalidateQueries({ queryKey: ['user', 'schedule'] }) });
+}
+export function useDeleteAssignment() {
+    const qc = useQueryClient();
+    return useMutation({ mutationFn: (id) => userApi.deleteAssignment(id), onSuccess: () => qc.invalidateQueries({ queryKey: ['user', 'schedule'] }) });
+}
+
+export function useUserBudgets(userId, filters = {}, options = {}) {
+    return useQuery({
+        queryKey: queryKeys.userBudgets(userId, filters),
+        queryFn: () => userApi.getProjectBudgets(userId, filters),
+        enabled: !!userId,
+        staleTime: 1000 * 60 * 5,
+        refetchOnWindowFocus: false,
+        ...options,
+    });
+}
+export function useUserBudget(budgetId, options = {}) {
+    return useQuery({
+        queryKey: queryKeys.userBudget(budgetId),
+        queryFn: () => userApi.getProjectBudget(budgetId),
+        enabled: !!budgetId,
+        staleTime: 1000 * 60 * 5,
+        ...options,
+    });
+}
+export function useCreateBudget() {
+    const qc = useQueryClient();
+    return useMutation({ mutationFn: (data) => userApi.createProjectBudget(data), onSuccess: () => qc.invalidateQueries({ queryKey: ['user', 'budgets'] }) });
+}
+export function useAddExpense() {
+    const qc = useQueryClient();
+    return useMutation({ mutationFn: ({ budgetId, ...data }) => userApi.addExpense(budgetId, data), onSuccess: () => { qc.invalidateQueries({ queryKey: ['user', 'budgets'] }); qc.invalidateQueries({ queryKey: ['user', 'budget'] }); } });
+}
+
+export function useUserConversations(userId, filters = {}, options = {}) {
+    return useQuery({
+        queryKey: queryKeys.userConversations(userId, filters),
+        queryFn: () => userApi.getConversations(userId, filters),
+        enabled: !!userId,
+        staleTime: 1000 * 60 * 2,
+        ...options,
+    });
+}
+export function useUserMessages(conversationId, options = {}) {
+    return useQuery({
+        queryKey: queryKeys.userMessages(conversationId),
+        queryFn: () => userApi.getMessages(conversationId),
+        enabled: !!conversationId,
+        staleTime: 1000 * 30,
+        ...options,
+    });
+}
+export function useSendClientMessage() {
+    const qc = useQueryClient();
+    return useMutation({ mutationFn: ({ conversationId, ...data }) => userApi.sendMessage(conversationId, data), onSuccess: (_d, { conversationId }) => { qc.invalidateQueries({ queryKey: queryKeys.userMessages(conversationId) }); qc.invalidateQueries({ queryKey: ['user', 'conversations'] }); } });
+}
+export function useMarkConversationRead() {
+    const qc = useQueryClient();
+    return useMutation({ mutationFn: (conversationId) => userApi.markAsRead(conversationId), onSuccess: () => qc.invalidateQueries({ queryKey: ['user', 'conversations'] }) });
+}
+
+export function useUserTemplates(userId, options = {}) {
+    return useQuery({
+        queryKey: queryKeys.userTemplates(userId),
+        queryFn: () => userApi.getTemplates(userId),
+        enabled: !!userId,
+        staleTime: 1000 * 60 * 5,
+        refetchOnWindowFocus: false,
+        ...options,
+    });
+}
+export function useCreateTemplate() {
+    const qc = useQueryClient();
+    return useMutation({ mutationFn: (data) => userApi.createTemplate(data), onSuccess: () => qc.invalidateQueries({ queryKey: ['user', 'templates'] }) });
+}
+export function useUpdateTemplate() {
+    const qc = useQueryClient();
+    return useMutation({ mutationFn: ({ id, ...data }) => userApi.updateTemplate(id, data), onSuccess: () => qc.invalidateQueries({ queryKey: ['user', 'templates'] }) });
+}
+export function useToggleTemplateStar() {
+    const qc = useQueryClient();
+    return useMutation({ mutationFn: (id) => userApi.toggleTemplateStar(id), onSuccess: () => qc.invalidateQueries({ queryKey: ['user', 'templates'] }) });
+}
+export function useDuplicateTemplate() {
+    const qc = useQueryClient();
+    return useMutation({ mutationFn: (id) => userApi.duplicateTemplate(id), onSuccess: () => qc.invalidateQueries({ queryKey: ['user', 'templates'] }) });
+}
+export function useDeleteTemplate() {
+    const qc = useQueryClient();
+    return useMutation({ mutationFn: (id) => userApi.deleteTemplate(id), onSuccess: () => qc.invalidateQueries({ queryKey: ['user', 'templates'] }) });
+}
+export function useUseTemplate() {
+    const qc = useQueryClient();
+    return useMutation({ mutationFn: (id) => userApi.useTemplate(id), onSuccess: () => qc.invalidateQueries({ queryKey: ['user', 'templates'] }) });
+}
+
+export function useUserTeamMetrics(userId, options = {}) {
+    return useQuery({
+        queryKey: queryKeys.userTeamMetrics(userId),
+        queryFn: () => userApi.getTeamMetrics(userId),
+        enabled: !!userId,
+        staleTime: 1000 * 60 * 5,
+        refetchOnWindowFocus: false,
+        ...options,
+    });
+}
+export function useUserMemberMetrics(memberId, options = {}) {
+    return useQuery({
+        queryKey: queryKeys.userMemberMetrics(memberId),
+        queryFn: () => userApi.getMemberMetrics(memberId),
+        enabled: !!memberId,
+        staleTime: 1000 * 60 * 5,
+        ...options,
+    });
+}
+export function useUserTeamSummary(userId, options = {}) {
+    return useQuery({
+        queryKey: queryKeys.userTeamSummary(userId),
+        queryFn: () => userApi.getTeamSummary(userId),
+        enabled: !!userId,
+        staleTime: 1000 * 60 * 5,
+        ...options,
+    });
+}
+export function useCreatePerformanceMetrics() {
+    const qc = useQueryClient();
+    return useMutation({ mutationFn: (data) => userApi.createMetrics(data), onSuccess: () => { qc.invalidateQueries({ queryKey: ['user', 'team-metrics'] }); qc.invalidateQueries({ queryKey: ['user', 'team-summary'] }); } });
+}
+
 export default {
     useDashboardStats,
     useQCDashboardStats,
@@ -1966,6 +3016,56 @@ export default {
     useUpdateCustomerNotificationPreferences,
     useSubmitCustomerSupportTicket,
     useDownloadCustomerReport,
+    // Customer new module hooks
+    useCustomerTracker,
+    useCustomerDocuments,
+    useTrackDocumentDownload,
+    useCustomerAppointments,
+    useAvailableSlots,
+    useCreateAppointment,
+    useUpdateAppointment,
+    useDeleteAppointment,
+    useReportAnnotations,
+    useCreateAnnotation,
+    useWidgetPreferences,
+    useUpdateWidgetPreferences,
+    useWidgetData,
+    // New module hooks
+    usePacpDefects,
+    usePacpCategories,
+    useCreatePacpDefect,
+    useUpdatePacpDefect,
+    useDeletePacpDefect,
+    useTrainingModules,
+    useTrainingModule,
+    useSubmitTrainingAttempt,
+    useTrainingAttempts,
+    useTrainingStats,
+    useCreateTrainingModule,
+    useUpdateTrainingModule,
+    useDeleteTrainingModule,
+    useTeamTrainingProgress,
+    useTrainingAssignments,
+    useAllTrainingAssignments,
+    useAssignTrainingModules,
+    useOnboarding,
+    useAllOnboarding,
+    useCompleteOnboardingStep,
+    useReviewTemplates,
+    useCreateReviewTemplate,
+    useUpdateReviewTemplate,
+    useDeleteReviewTemplate,
+    useToggleTemplateFavorite,
+    useQCReviewStats,
+    useKBArticles,
+    useKBCategories,
+    useCreateKBArticle,
+    useUpdateKBArticle,
+    useDeleteKBArticle,
+    useSurveyResponses,
+    useSurveyStats,
+    useSubmitSurvey,
+    useAdminAnalytics,
     // User (Team Lead) hooks
     useUserDashboard,
     useUserProjects,
@@ -1998,6 +3098,7 @@ export default {
     useSupportTicket,
     useSupportAssignedTickets,
     useSupportTeam,
+    useManagedTeam,
     useSupportCustomerStats,
     useCreateSupportTicket,
     useUpdateSupportTicket,
@@ -2006,6 +3107,9 @@ export default {
     useAddInternalNote,
     useSupportTags,
     useSupportCustomerHistory,
+    useRequestTicketDeletion,
+    useReviewTicketDeletion,
+    usePendingDeletionRequests,
     // Canned Response hooks
     useCannedResponses,
     useCreateCannedResponse,
@@ -2023,4 +3127,46 @@ export default {
     useArchiveMessage,
     useDeleteMessage,
     useMarkAllMessagesRead,
+    // Operator new module hooks
+    useOperatorChecklists,
+    useCreateChecklist,
+    useToggleChecklistItem,
+    useDeleteChecklist,
+    useOperatorRouteSites,
+    useCompleteRouteSite,
+    useOperatorIncidents,
+    useCreateIncident,
+    useUpdateIncident,
+    useOperatorTimeEntries,
+    useOperatorTimeSummary,
+    useCreateTimeEntry,
+    useDeleteTimeEntry,
+    useOperatorCachedItems,
+    useOperatorPendingSyncs,
+    useOperatorOfflineStats,
+    useToggleCache,
+    useSyncAll,
+    // User new module hooks
+    useUserWeekSchedule,
+    useCreateAssignment,
+    useDeleteAssignment,
+    useUserBudgets,
+    useUserBudget,
+    useCreateBudget,
+    useAddExpense,
+    useUserConversations,
+    useUserMessages,
+    useSendClientMessage,
+    useMarkConversationRead,
+    useUserTemplates,
+    useCreateTemplate,
+    useUpdateTemplate,
+    useToggleTemplateStar,
+    useDuplicateTemplate,
+    useDeleteTemplate,
+    useUseTemplate,
+    useUserTeamMetrics,
+    useUserMemberMetrics,
+    useUserTeamSummary,
+    useCreatePerformanceMetrics,
 };

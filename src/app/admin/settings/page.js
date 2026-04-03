@@ -136,6 +136,12 @@ function SettingsPageContent() {
     debugMode: false,
     logRetentionDays: 30,
   });
+  const [uploadLimits, setUploadLimits] = useState({
+    videoMaxMB: 500,
+    imageMaxMB: 100,
+    documentMaxMB: 100,
+    chatAttachmentMaxMB: 100,
+  });
   const [loadingModule, setLoadingModule] = useState({
     admin: true,
     operator: true,
@@ -207,6 +213,12 @@ function SettingsPageContent() {
       const nextAwsAccessKey = settings?.awsConfig?.accessKeyId || '';
       const nextAwsSecretKey = settings?.awsConfig?.secretAccessKey || '';
       const nextModelVersion = settings?.systemAdmin?.currentModelVersion || 'v2.1.4';
+      setUploadLimits({
+        videoMaxMB: settings?.systemAdmin?.uploadLimits?.videoMaxMB ?? 500,
+        imageMaxMB: settings?.systemAdmin?.uploadLimits?.imageMaxMB ?? 100,
+        documentMaxMB: settings?.systemAdmin?.uploadLimits?.documentMaxMB ?? 100,
+        chatAttachmentMaxMB: settings?.systemAdmin?.uploadLimits?.chatAttachmentMaxMB ?? 100,
+      });
       const nextSystemAdmin = {
         maintenanceMode: settings?.systemAdmin?.maintenanceMode ?? false,
         debugMode: settings?.systemAdmin?.debugMode ?? false,
@@ -247,7 +259,7 @@ function SettingsPageContent() {
         'notifications': JSON.stringify({ notificationsEnabled: nextNotificationsEnabled, notificationChannels: nextNotificationChannels, adminAlerts: nextAdminAlerts }),
         'ai-learning': JSON.stringify({ feedbackLoopEnabled: nextFeedbackLoopEnabled, trainingFrequency: nextTrainingFrequency, minAnnotations: nextMinAnnotations }),
         'aws-config': JSON.stringify({ provider: nextAwsProvider, bucket: nextAwsBucket, region: nextAwsRegion, endpoint: nextAwsEndpoint, accessKey: nextAwsAccessKey, secretKey: nextAwsSecretKey }),
-        'system-admin': JSON.stringify({ systemAdmin: nextSystemAdmin, loadingModule: nextLoadingModule, modelVersion: nextModelVersion }),
+        'system-admin': JSON.stringify({ systemAdmin: nextSystemAdmin, loadingModule: nextLoadingModule, modelVersion: nextModelVersion, uploadLimits }),
       };
     } catch (error) {
       console.error('Error fetching settings:', error);
@@ -280,7 +292,7 @@ function SettingsPageContent() {
         current = { provider: awsConfig.provider, bucket: awsConfig.bucket, region: awsConfig.region, endpoint: awsConfig.endpoint, accessKey: awsConfig.accessKey, secretKey: awsConfig.secretKey };
         break;
       case 'system-admin':
-        current = { systemAdmin, loadingModule, modelVersion };
+        current = { systemAdmin, loadingModule, modelVersion, uploadLimits };
         break;
       default:
         return false;
@@ -472,7 +484,7 @@ function SettingsPageContent() {
           }, userId);
           break;
         case 'system-admin':
-          await settingsApi.updateSystemAdmin({ currentModelVersion: modelVersion, maintenanceMode: systemAdmin.maintenanceMode, debugMode: systemAdmin.debugMode, logRetentionDays: systemAdmin.logRetentionDays, loadingModule }, userId);
+          await settingsApi.updateSystemAdmin({ currentModelVersion: modelVersion, maintenanceMode: systemAdmin.maintenanceMode, debugMode: systemAdmin.debugMode, logRetentionDays: systemAdmin.logRetentionDays, loadingModule, uploadLimits }, userId);
           invalidateLoadingModuleCache();
           break;
       }
@@ -497,7 +509,7 @@ function SettingsPageContent() {
           snapshotRef.current['aws-config'] = JSON.stringify({ provider: awsConfig.provider, bucket: awsConfig.bucket, region: awsConfig.region, endpoint: awsConfig.endpoint, accessKey: awsConfig.accessKey, secretKey: awsConfig.secretKey });
           break;
         case 'system-admin':
-          snapshotRef.current['system-admin'] = JSON.stringify({ systemAdmin, loadingModule, modelVersion });
+          snapshotRef.current['system-admin'] = JSON.stringify({ systemAdmin, loadingModule, modelVersion, uploadLimits });
           break;
       }
       showAlert('Settings saved successfully', 'success');
@@ -943,6 +955,38 @@ function SettingsPageContent() {
                   <ToggleSetting label="Operator" description="Show loading animation for operators" checked={loadingModule.operator} onCheckedChange={(val) => setLoadingModule(prev => ({ ...prev, operator: val }))} />
                   <ToggleSetting label="QC Technician" description="Show loading animation for QC technicians" checked={loadingModule.qcTechnician} onCheckedChange={(val) => setLoadingModule(prev => ({ ...prev, qcTechnician: val }))} />
                   <ToggleSetting label="User (Team Lead)" description="Show loading animation for team leads" checked={loadingModule.user} onCheckedChange={(val) => setLoadingModule(prev => ({ ...prev, user: val }))} />
+                </CardContent>
+              </Card>
+
+              <Card className="border-0 shadow-sm">
+                <CardHeader>
+                  <SectionHeader icon={Upload} title="Upload Limits" description="Maximum file sizes for uploads across the platform" />
+                </CardHeader>
+                <CardContent className="space-y-4">
+                  {[
+                    { key: 'videoMaxMB', label: 'Video Upload', description: 'Max size for inspection video files', unit: 'MB' },
+                    { key: 'imageMaxMB', label: 'Image Upload', description: 'Max size for image files (avatars, snapshots)', unit: 'MB' },
+                    { key: 'documentMaxMB', label: 'Document Upload', description: 'Max size for documents (PDF, DOC, XLS)', unit: 'MB' },
+                    { key: 'chatAttachmentMaxMB', label: 'Chat Attachment', description: 'Max size for chat file attachments', unit: 'MB' },
+                  ].map(item => (
+                    <div key={item.key} className="flex items-center justify-between py-2">
+                      <div>
+                        <p className="text-sm font-medium text-gray-900">{item.label}</p>
+                        <p className="text-xs text-gray-500">{item.description}</p>
+                      </div>
+                      <div className="flex items-center gap-2">
+                        <Input
+                          type="number"
+                          min={1}
+                          max={2000}
+                          value={uploadLimits[item.key]}
+                          onChange={(e) => setUploadLimits(prev => ({ ...prev, [item.key]: parseInt(e.target.value) || 0 }))}
+                          className="w-24 h-8 text-sm text-right"
+                        />
+                        <span className="text-xs text-gray-400 w-6">{item.unit}</span>
+                      </div>
+                    </div>
+                  ))}
                 </CardContent>
               </Card>
 

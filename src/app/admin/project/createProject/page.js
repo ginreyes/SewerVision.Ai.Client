@@ -7,6 +7,9 @@ import { Label } from "@/components/ui/label";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { useAlert } from "@/components/providers/AlertProvider";
 import { api } from "@/lib/helper";
+import dynamic from "next/dynamic";
+
+const LocationPicker = dynamic(() => import("@/components/shared/LocationPicker"), { ssr: false });
 import {
   FolderPlus,
   Calendar,
@@ -38,7 +41,7 @@ const steps = [
     title: "Project Details",
     description: "Basic project information",
     icon: FolderPlus,
-    color: "bg-blue-500"
+    color: "bg-rose-500"
   },
   {
     id: 2,
@@ -94,6 +97,8 @@ export default function CreateProjectPage({ backUrl = "/admin/project", returnTo
   // Project Details - Step 1
   const [name, setName] = useState("");
   const [location, setLocation] = useState("");
+  const [latitude, setLatitude] = useState(null);
+  const [longitude, setLongitude] = useState(null);
   const [workOrder, setWorkOrder] = useState("");
   const [priority, setPriority] = useState("medium");
 
@@ -284,6 +289,8 @@ export default function CreateProjectPage({ backUrl = "/admin/project", returnTo
       userId,
       name,
       location,
+      latitude: latitude || undefined,
+      longitude: longitude || undefined,
       client: clientFromCustomer,
       customerId,
       totalLength,
@@ -416,8 +423,8 @@ export default function CreateProjectPage({ backUrl = "/admin/project", returnTo
         return (
           <div className="space-y-8">
             <div className="text-center pb-4">
-              <div className="inline-flex p-3 bg-blue-100 rounded-xl mb-4">
-                <Building2 className="h-8 w-8 text-blue-500" />
+              <div className="inline-flex p-3 bg-rose-100 rounded-xl mb-4">
+                <Building2 className="h-8 w-8 text-rose-500" />
               </div>
               <h3 className="text-xl font-bold text-gray-900 mb-2">Project Details</h3>
               <p className="text-gray-600">Let's start with the basic project information</p>
@@ -444,7 +451,7 @@ export default function CreateProjectPage({ backUrl = "/admin/project", returnTo
                   value={customerId}
                   onValueChange={(value) => handleFieldChange("customerId", value)}
                 >
-                  <SelectTrigger className={`h-10 ${errors.customerId ? 'border-red-500 focus:border-red-500 focus:ring-red-100' : 'border-gray-200 focus:border-blue-500 focus:ring-blue-100'}`}>
+                  <SelectTrigger className={`h-10 ${errors.customerId ? 'border-red-500 focus:border-red-500 focus:ring-red-100' : 'border-gray-200 focus:border-rose-500 focus:ring-rose-100'}`}>
                     <SelectValue placeholder="Select a customer..." />
                   </SelectTrigger>
                   <SelectContent>
@@ -480,15 +487,26 @@ export default function CreateProjectPage({ backUrl = "/admin/project", returnTo
                 )}
               </div>
 
-              <InputField
-                label="Location"
-                name="location"
-                value={fieldValues.location}
-                onChange={handleFieldChange}
-                required
-                error={errors.location}
-                placeholder="Enter project location"
-              />
+              <div>
+                <Label className="text-sm font-medium text-gray-700 mb-1.5 block">
+                  Location <span className="text-red-500">*</span>
+                </Label>
+                <LocationPicker
+                  location={location}
+                  latitude={latitude}
+                  longitude={longitude}
+                  onLocationChange={(loc, lat, lng) => {
+                    setLocation(loc);
+                    if (lat) setLatitude(lat);
+                    if (lng) setLongitude(lng);
+                    handleFieldChange({ target: { name: "location", value: loc } });
+                  }}
+                  height={180}
+                />
+                {errors.location && (
+                  <span className="text-xs text-red-500 mt-1 block">{errors.location}</span>
+                )}
+              </div>
 
               <InputField
                 label="Work Order"
@@ -600,15 +618,15 @@ export default function CreateProjectPage({ backUrl = "/admin/project", returnTo
             ) : isUserRole ? (
               <div className="grid grid-cols-1 lg:grid-cols-2 gap-8 max-w-5xl mx-auto">
                 {/* Operator Selection Card (user role only) */}
-                <div className="bg-white rounded-2xl border-2 border-blue-100 shadow-sm overflow-hidden">
-                  <div className="bg-gradient-to-r from-blue-500 to-blue-600 px-6 py-4">
+                <div className="bg-white rounded-2xl border-2 border-rose-100 shadow-sm overflow-hidden">
+                  <div className="bg-gradient-to-r from-rose-500 to-rose-600 px-6 py-4">
                     <div className="flex items-center gap-3">
                       <div className="p-2 bg-white/20 rounded-lg">
                         <UserCheck className="h-5 w-5 text-white" />
                       </div>
                       <div>
                         <h4 className="font-semibold text-white">Assigned Operator</h4>
-                        <p className="text-blue-100 text-sm">Select a field operator</p>
+                        <p className="text-rose-100 text-sm">Select a field operator</p>
                       </div>
                     </div>
                   </div>
@@ -635,8 +653,8 @@ export default function CreateProjectPage({ backUrl = "/admin/project", returnTo
                             operators.map((operator) => (
                               <SelectItem key={operator.user_id} value={operator.user_id}>
                                 <div className="flex items-center gap-3 py-1">
-                                  <div className="w-8 h-8 bg-blue-100 rounded-full flex items-center justify-center flex-shrink-0">
-                                    <User className="h-4 w-4 text-blue-600" />
+                                  <div className="w-8 h-8 bg-rose-100 rounded-full flex items-center justify-center flex-shrink-0">
+                                    <User className="h-4 w-4 text-rose-600" />
                                   </div>
                                   <div className="text-left">
                                     <p className="font-medium text-gray-900">{operator.name}</p>
@@ -657,20 +675,20 @@ export default function CreateProjectPage({ backUrl = "/admin/project", returnTo
                     </div>
 
                     {operatorUserId ? (
-                      <div className="bg-blue-50 rounded-xl p-4 space-y-3">
+                      <div className="bg-rose-50 rounded-xl p-4 space-y-3">
                         <div className="flex items-center justify-between">
-                          <span className="text-sm font-medium text-blue-900">Selected Operator</span>
+                          <span className="text-sm font-medium text-rose-900">Selected Operator</span>
                           <Button
                             variant="ghost"
                             size="sm"
                             onClick={clearOperatorSelection}
-                            className="text-blue-600 hover:text-blue-700 hover:bg-blue-100 h-8 px-2"
+                            className="text-rose-600 hover:text-rose-700 hover:bg-rose-100 h-8 px-2"
                           >
                             Change
                           </Button>
                         </div>
                         <div className="flex items-center gap-3">
-                          <div className="w-12 h-12 bg-blue-500 rounded-full flex items-center justify-center">
+                          <div className="w-12 h-12 bg-rose-500 rounded-full flex items-center justify-center">
                             <User className="h-6 w-6 text-white" />
                           </div>
                           <div>
@@ -969,7 +987,7 @@ export default function CreateProjectPage({ backUrl = "/admin/project", returnTo
                     value={remarks}
                     onChange={(e) => handleFieldChange("metadata.remarks", e.target.value)}
                     placeholder="Add any additional notes or observations..."
-                    className="w-full px-3 py-2 border border-gray-200 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent transition-all duration-200 min-h-[100px]"
+                    className="w-full px-3 py-2 border border-gray-200 rounded-md focus:outline-none focus:ring-2 focus:ring-rose-500 focus:border-transparent transition-all duration-200 min-h-[100px]"
                     rows={4}
                   />
                 </div>
@@ -990,7 +1008,7 @@ export default function CreateProjectPage({ backUrl = "/admin/project", returnTo
             </div>
 
             <div className="space-y-6 max-w-3xl mx-auto">
-              <div className="border-2 border-dashed border-gray-300 rounded-xl p-8 text-center hover:border-blue-400 transition-colors bg-gray-50">
+              <div className="border-2 border-dashed border-gray-300 rounded-xl p-8 text-center hover:border-rose-400 transition-colors bg-gray-50">
                 <Upload className="h-12 w-12 text-gray-400 mx-auto mb-4" />
                 <Label htmlFor="video" className="cursor-pointer">
                   <Input
@@ -1000,7 +1018,7 @@ export default function CreateProjectPage({ backUrl = "/admin/project", returnTo
                     onChange={(e) => setVideoFile(e.target.files?.[0] || null)}
                     className="hidden"
                   />
-                  <span className="text-lg text-blue-600 hover:text-blue-800 font-medium">
+                  <span className="text-lg text-rose-600 hover:text-rose-800 font-medium">
                     Click to upload video file
                   </span>
                   <p className="text-gray-500 mt-2">or drag and drop</p>
@@ -1062,8 +1080,8 @@ export default function CreateProjectPage({ backUrl = "/admin/project", returnTo
                 Back
               </Button>
               <div className="flex items-center gap-3">
-                <div className="p-2 bg-blue-100 rounded-lg">
-                  <FolderPlus className="h-6 w-6 text-blue-600" />
+                <div className="p-2 bg-rose-100 rounded-lg">
+                  <FolderPlus className="h-6 w-6 text-rose-600" />
                 </div>
                 <div>
                   <h1 className="text-2xl font-bold text-gray-900">Create New Project</h1>
@@ -1145,7 +1163,7 @@ export default function CreateProjectPage({ backUrl = "/admin/project", returnTo
               {currentStep < steps.length ? (
                 <Button
                   onClick={nextStep}
-                  className="flex items-center gap-2 h-10 px-6 bg-blue-600 hover:bg-blue-700"
+                  className="flex items-center gap-2 h-10 px-6 bg-rose-600 hover:bg-rose-700"
                 >
                   Next Step
                   <ChevronRight className="h-4 w-4" />

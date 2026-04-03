@@ -24,6 +24,8 @@ import {
   Hash,
   Ruler,
   Camera,
+  Layers,
+  SplitSquareHorizontal,
 } from 'lucide-react';
 import { api } from '@/lib/helper';
 import { Input } from '@/components/ui/input';
@@ -40,6 +42,7 @@ import {
   getPriorityColor,
   getStatusColor,
 } from '@/components/qc/constants';
+import { ComparisonView } from '@/components/qc/quality-control';
 
 // ─── Page ───────────────────────────────────────────────────
 const QualityControlPage = () => {
@@ -57,6 +60,7 @@ const QualityControlPage = () => {
   const [reviewingId, setReviewingId] = useState(null);
   const [showCompleteDialog, setShowCompleteDialog] = useState(false);
   const [completingReview, setCompletingReview] = useState(false);
+  const [viewMode, setViewMode] = useState('detail'); // 'detail' | 'comparison'
 
   const { userId, userData } = useUser();
   const { showAlert } = useAlert();
@@ -423,6 +427,17 @@ const QualityControlPage = () => {
                   </div>
                 </div>
                 <div className="flex items-center gap-3">
+                  {/* View mode toggle */}
+                  <div className="flex items-center border border-gray-200 rounded-lg overflow-hidden">
+                    <button onClick={() => setViewMode('detail')}
+                      className={`flex items-center gap-1.5 px-3 py-1.5 text-xs font-medium transition-colors ${viewMode === 'detail' ? 'bg-rose-50 text-rose-600' : 'text-gray-500 hover:bg-gray-50'}`}>
+                      <Eye className="w-3.5 h-3.5" />Detail
+                    </button>
+                    <button onClick={() => setViewMode('comparison')}
+                      className={`flex items-center gap-1.5 px-3 py-1.5 text-xs font-medium border-l border-gray-200 transition-colors ${viewMode === 'comparison' ? 'bg-rose-50 text-rose-600' : 'text-gray-500 hover:bg-gray-50'}`}>
+                      <SplitSquareHorizontal className="w-3.5 h-3.5" />Comparison
+                    </button>
+                  </div>
                   <div className="hidden lg:flex items-center gap-2 px-3 py-1.5 bg-gray-50 rounded-lg border border-gray-200" title="Shortcuts">
                     <Keyboard className="w-3.5 h-3.5 text-gray-400" />
                     <div className="text-[10px] text-gray-500 font-medium space-x-2">
@@ -438,7 +453,17 @@ const QualityControlPage = () => {
                 </div>
               </div>
 
-              {/* Split View */}
+              {/* View Mode: Comparison */}
+              {viewMode === 'comparison' ? (
+                <ComparisonView
+                  detections={filteredDetections}
+                  selectedDetection={selectedDetection}
+                  onSelectDetection={setSelectedDetection}
+                  onReview={handleReviewDetection}
+                  reviewingId={reviewingId}
+                />
+              ) : (
+              /* View Mode: Detail (original split view) */
               <div className="flex-1 flex overflow-hidden">
                 {/* ── Detection Queue ── */}
                 <div className="w-1/3 bg-white border-r border-gray-200 flex flex-col min-h-0">
@@ -666,6 +691,7 @@ const QualityControlPage = () => {
                   )}
                 </div>
               </div>
+              )}
             </>
           ) : (
             <div className="flex-1 flex items-center justify-center">

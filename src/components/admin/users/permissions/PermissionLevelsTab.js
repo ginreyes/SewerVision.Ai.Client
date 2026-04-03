@@ -89,8 +89,6 @@ export default function PermissionLevelsTab() {
   }));
 
 
-  console.log('rendering PermissionLevelsTab with levels:', tableData);
-
   const renderCell = (item, col) => {
     if (col.key === "name") {
       return (

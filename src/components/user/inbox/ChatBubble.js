@@ -1,11 +1,11 @@
 'use client';
 
-import { useState } from 'react';
+import { useState, memo } from 'react';
 import { Check, Trash2, CheckCheck, ExternalLink } from 'lucide-react';
 import { Badge } from '@/components/ui/badge';
 import { typeConfig, getTimeLabel } from './inboxConfig';
 
-export default function ChatBubble({ item, onOpen, onMarkRead, onDelete, isConsecutive }) {
+const ChatBubble = memo(function ChatBubble({ item, onOpen, onMarkRead, onDelete, isConsecutive }) {
     const [showActions, setShowActions] = useState(false);
     const cfg = typeConfig[item.type] || typeConfig.system;
     const Icon = cfg.icon;
@@ -121,4 +121,6 @@ export default function ChatBubble({ item, onOpen, onMarkRead, onDelete, isConse
             </div>
         </div>
     );
-}
+});
+
+export default ChatBubble;

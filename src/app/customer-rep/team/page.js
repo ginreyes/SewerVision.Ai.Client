@@ -2,7 +2,8 @@
 
 import React from "react";
 import { Users, Loader2 } from "lucide-react";
-import { useSupportTeam } from "@/hooks/useQueryHooks";
+import { useManagedTeam, useSupportTeam } from "@/hooks/useQueryHooks";
+import { useUser } from "@/components/providers/UserContext";
 import EmptySewerComponent from "@/components/shared/EmptySewerComponent";
 
 // Extracted components
@@ -10,8 +11,21 @@ import TeamStats from "@/components/customer-rep/team/TeamStats";
 import TeamMemberCard from "@/components/customer-rep/team/TeamMemberCard";
 
 export default function CustomerRepTeam() {
-  const { data: teamRaw, isLoading } = useSupportTeam({ refetchInterval: 60000 });
-  const team = Array.isArray(teamRaw) ? teamRaw : [];
+  const { userData } = useUser();
+  const userId = userData?._id || userData?.id;
+
+  // Fetch managed members for this customer-rep
+  const { data: managedRaw, isLoading: managedLoading } = useManagedTeam(userId, { refetchInterval: 60000 });
+  // Fallback: if no managed members, show all team
+  const { data: allTeamRaw, isLoading: allLoading } = useSupportTeam({ refetchInterval: 60000 });
+
+  const managedTeam = Array.isArray(managedRaw) ? managedRaw : [];
+  const allTeam = Array.isArray(allTeamRaw) ? allTeamRaw : [];
+
+  // Show managed members if this rep has any, otherwise show the full team
+  const hasManaged = managedTeam.length > 0;
+  const team = hasManaged ? managedTeam : allTeam;
+  const isLoading = hasManaged ? managedLoading : (managedLoading || allLoading);
 
   if (isLoading) {
     return (
@@ -30,8 +44,14 @@ export default function CustomerRepTeam() {
             <Users className="w-6 h-6" />
           </div>
           <div>
-            <h1 className="text-2xl font-bold text-gray-900">Support Team</h1>
-            <p className="text-sm text-gray-500">Team workload and availability overview</p>
+            <h1 className="text-2xl font-bold text-gray-900">
+              {hasManaged ? "My Team" : "Support Team"}
+            </h1>
+            <p className="text-sm text-gray-500">
+              {hasManaged
+                ? "Members assigned under your management"
+                : "Team workload and availability overview"}
+            </p>
           </div>
         </div>
 
@@ -46,7 +66,7 @@ export default function CustomerRepTeam() {
             <EmptySewerComponent
               variant="no-data"
               title="No team members"
-              subtitle="Customer-rep users will appear here once accounts are created"
+              subtitle="Customer-rep users will appear here once they are assigned to you"
               size="md"
             />
           </div>

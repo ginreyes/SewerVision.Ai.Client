@@ -1,6 +1,10 @@
 "use client";
 import React, { useState, useEffect, useRef, Suspense } from "react";
-import { Search, Plus, Loader2, LayoutGrid, Rows, MoreVertical, Eye, Pencil } from "lucide-react";
+import { Search, Plus, Loader2, LayoutGrid, Rows, MoreVertical, Eye, Pencil, MapPin } from "lucide-react";
+import dynamic from "next/dynamic";
+import StatusLegend from "@/components/shared/StatusLegend";
+
+const ProjectLiveTrackerView = dynamic(() => import("@/components/shared/ProjectLiveTrackerView"), { ssr: false });
 import { Button } from "@/components/ui/button";
 
 import {
@@ -87,7 +91,7 @@ const SewerVisionInspectionModuleContent = () => {
 
   const getStatusColor = (status) => {
     const colors = {
-      "field-capture": "bg-blue-100 text-blue-800",
+      "field-capture": "bg-rose-100 text-rose-800",
       uploading: "bg-indigo-100 text-indigo-800",
       "ai-processing": "bg-yellow-100 text-yellow-800",
       "qc-review": "bg-purple-100 text-purple-800",
@@ -195,7 +199,7 @@ const SewerVisionInspectionModuleContent = () => {
                       onClick={() => setViewMode("grid")}
                       className={`flex items-center gap-1 px-3 py-1.5 text-xs font-medium ${
                         viewMode === "grid"
-                          ? "bg-indigo-50 text-indigo-600"
+                          ? "bg-rose-50 text-rose-600"
                           : "text-gray-600 hover:bg-gray-50"
                       }`}
                     >
@@ -207,19 +211,33 @@ const SewerVisionInspectionModuleContent = () => {
                       onClick={() => setViewMode("table")}
                       className={`flex items-center gap-1 px-3 py-1.5 text-xs font-medium border-l border-gray-200 ${
                         viewMode === "table"
-                          ? "bg-indigo-50 text-indigo-600"
+                          ? "bg-rose-50 text-rose-600"
                           : "text-gray-600 hover:bg-gray-50"
                       }`}
                     >
                       <Rows className="w-4 h-4" />
                       <span>Table</span>
                     </button>
+                    <button
+                      type="button"
+                      onClick={() => setViewMode("tracker")}
+                      className={`flex items-center gap-1 px-3 py-1.5 text-xs font-medium border-l border-gray-200 ${
+                        viewMode === "tracker"
+                          ? "bg-rose-50 text-rose-600"
+                          : "text-gray-600 hover:bg-gray-50"
+                      }`}
+                    >
+                      <MapPin className="w-4 h-4" />
+                      <span>Live Tracker</span>
+                    </button>
                   </div>
+
+                  <StatusLegend />
 
                   {!isOperatorRoute && (
                     <Button
                       onClick={AddProject}
-                      className="bg-gradient-to-r from-purple-500 to-purple-700 text-white hover:from-blue-700 hover:to-purple-700 transition-all duration-300 flex items-center gap-2 font-medium"
+                      className="bg-gradient-to-r from-rose-500 to-rose-700 text-white hover:from-rose-600 hover:to-rose-800 transition-all duration-300 flex items-center gap-2 font-medium"
                     >
                       <Plus size={20} />
                       New Project
@@ -237,14 +255,14 @@ const SewerVisionInspectionModuleContent = () => {
                   placeholder="Search projects, clients, locations..."
                   value={searchTerm}
                   onChange={handleSearchChange}
-                  className="px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent bg-white text-gray-900 w-64"
+                  className="px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-rose-500 focus:border-transparent bg-white text-gray-900 w-64"
                 />
               </div>
 
               <select
                 value={statusFilter}
                 onChange={handleStatusChange}
-                className="px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent bg-white text-gray-900"
+                className="px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-rose-500 focus:border-transparent bg-white text-gray-900"
               >
                 <option value="all">All Status</option>
                 <option value="field-capture">Field Capture</option>
@@ -253,11 +271,13 @@ const SewerVisionInspectionModuleContent = () => {
                 <option value="qc-review">QC Review</option>
                 <option value="completed">Completed</option>
                 <option value="customer-notified">Customer Notified</option>
-                <option value="customer-notified">Planning</option>
+                <option value="planning">Planning</option>
               </select>
             </div>
 
-            {viewMode === "grid" ? (
+            {viewMode === "tracker" ? (
+              <ProjectLiveTrackerView projects={projects} theme="rose" />
+            ) : viewMode === "grid" ? (
               <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
                 {projects.map((project) => (
                   <ProjectCard

@@ -2,6 +2,7 @@
 
 import UnifiedSidebar from "@/components/ui/UnifiedSidebar";
 import Navbar from "@/components/ui/navbar";
+import AnnouncementBanner from "@/components/ui/AnnouncementBanner";
 import RoleThemeProvider from "@/components/providers/RoleThemeProvider";
 import { api, getCookie, deleteCookie } from "@/lib/helper";
 import { useEffect, useState } from "react";
@@ -79,7 +80,7 @@ export default function CustomerRepLayout({ children }) {
           className={`flex-1 transition-all duration-300 ${openSidebar ? "ml-[270px]" : "ml-[90px]"}`}
         >
           <Navbar openSideBar={handleToggleSidebar} role="customer-rep" />
-          <main className="p-4">{children}</main>
+          <main className="p-4"><AnnouncementBanner role="customer-rep" />{children}</main>
         </div>
 
         {/* Tour Guide Modal */}

@@ -323,10 +323,10 @@ function UserSettingsContent() {
                   key={item.id}
                   onClick={() => handleTabChange(item.id)}
                   className={`flex items-center w-full px-3 py-2 text-sm font-medium rounded-lg transition-colors ${
-                    activeTab === item.id ? 'bg-rose-50 text-rose-700' : 'text-gray-600 hover:bg-gray-50 hover:text-gray-900'
+                    activeTab === item.id ? 'bg-indigo-50 text-indigo-700' : 'text-gray-600 hover:bg-gray-50 hover:text-gray-900'
                   }`}
                 >
-                  <item.icon className={`w-4 h-4 mr-3 ${activeTab === item.id ? 'text-rose-600' : 'text-gray-400'}`} />
+                  <item.icon className={`w-4 h-4 mr-3 ${activeTab === item.id ? 'text-indigo-600' : 'text-gray-400'}`} />
                   {item.label}
                 </button>
               ))}
@@ -391,7 +391,7 @@ function UserSettingsContent() {
                         onClick={handleAvatarClick}
                       >
                         <AvatarImage src={profile.avatar} />
-                        <AvatarFallback className="bg-rose-100 text-rose-600 text-2xl">
+                        <AvatarFallback className="bg-indigo-100 text-indigo-600 text-2xl">
                           {profile.firstName?.[0]}
                           {profile.lastName?.[0]}
                         </AvatarFallback>
@@ -411,7 +411,7 @@ function UserSettingsContent() {
                         Team Lead • {profile.department || 'Management'}
                       </p>
                       <div className="flex items-center justify-center sm:justify-start gap-2 mt-3">
-                        <Badge variant="secondary" className="bg-rose-50 text-rose-700 hover:bg-rose-100">
+                        <Badge variant="secondary" className="bg-indigo-50 text-indigo-700 hover:bg-indigo-100">
                           Management
                         </Badge>
                         {userData?._id && (

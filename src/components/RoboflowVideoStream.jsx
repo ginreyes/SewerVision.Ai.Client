@@ -175,7 +175,7 @@ export default function RoboflowVideoStream({ onComplete, onDetections }) {
                   <span className="font-medium">{det.class || det.class_name || "Unknown"}</span>
                   {" "}
                   <span className="text-gray-600">
-                    ({(det.confidence * 100).toFixed(1)}% confidence)
+                    ({det.confidence <= 1 ? (det.confidence * 100).toFixed(1) : det.confidence.toFixed(1)}% confidence)
                   </span>
                 </div>
               ))}

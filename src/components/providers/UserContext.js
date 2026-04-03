@@ -28,7 +28,6 @@ export const UserProvider = ({ children }) => {
       }
       
       if (data?.user) {
-        console.log('[UserContext] User data loaded:', data.user.username);
         setUserId(data.user._id);
         setUserData(data.user);
       }

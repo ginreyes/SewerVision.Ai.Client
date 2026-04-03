@@ -80,6 +80,15 @@ const complaintApi = {
     if (!res?.ok) throw new Error(res?.message || "Failed to submit complaint");
     return res.data?.data ?? res.data;
   },
+
+  /** Upload a single complaint attachment, returns { url, filename, mimetype, size } */
+  uploadAttachment: async (file) => {
+    const formData = new FormData();
+    formData.append("file", file);
+    const res = await api("/api/complaints/upload-attachment", "POST", formData);
+    if (!res?.ok) throw new Error(res?.message || "Failed to upload file");
+    return res.data?.data ?? res.data;
+  },
 };
 
 export default complaintApi;
