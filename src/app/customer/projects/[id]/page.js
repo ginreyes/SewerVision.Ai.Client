@@ -138,7 +138,7 @@ export default function ProjectPageViewDetails() {
         title: project?.name || 'Project Details',
         text: `Check out this project: ${project?.name}`,
         url: url,
-      }).catch((err) => console.log('Error sharing:', err));
+      }).catch(() => { /* sharing cancelled or failed */ });
     } else {
       navigator.clipboard.writeText(url);
       showAlert('Link copied to clipboard', 'success');

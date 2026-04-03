@@ -39,7 +39,7 @@ export const dashboardApi = {
       // Use console.log instead of console.error to avoid Next.js error handler interception
       try {
         const errorMsg = error?.message || error?.toString() || 'Unknown error';
-        console.log('Dashboard API Error:', errorMsg);
+        // Error already handled by throw below
       } catch (logError) {
         // Silently fail if we can't log
       }

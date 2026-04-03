@@ -48,7 +48,6 @@ const AdminDashboard = () => {
       setAiPerformanceData(data.aiPerformanceData || [])
     } catch (err) {
       const errorMsg = err?.message || 'Failed to load dashboard data'
-      console.log('Error fetching dashboard data:', errorMsg)
       setError(errorMsg)
     } finally {
       setLoading(false)
