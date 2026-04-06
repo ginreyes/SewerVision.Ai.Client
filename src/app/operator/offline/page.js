@@ -1,6 +1,6 @@
 "use client";
 
-import React, { useState, useMemo, useCallback } from "react";
+import React, { useState, useMemo, useCallback, useEffect } from "react";
 import {
   WifiOff, RefreshCw, CheckCircle2, HardDrive, Wifi, Cloud,
 } from "lucide-react";
@@ -26,7 +26,19 @@ export default function OfflineMode() {
   const toggleCacheMutation = useToggleCache();
   const syncAllMutation = useSyncAll();
 
-  const [isOnline] = useState(true);
+  const [isOnline, setIsOnline] = useState(typeof navigator !== 'undefined' ? navigator.onLine : true);
+
+  // Real-time online/offline detection
+  useEffect(() => {
+    const handleOnline = () => setIsOnline(true);
+    const handleOffline = () => setIsOnline(false);
+    window.addEventListener('online', handleOnline);
+    window.addEventListener('offline', handleOffline);
+    return () => {
+      window.removeEventListener('online', handleOnline);
+      window.removeEventListener('offline', handleOffline);
+    };
+  }, []);
 
   const isLoading = loadingItems || loadingSyncs;
 

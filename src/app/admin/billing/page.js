@@ -7,13 +7,20 @@ import {
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
+import { Label } from "@/components/ui/label";
 import { Card, CardContent } from "@/components/ui/card";
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
+import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
+import { useAlert } from "@/components/providers/AlertProvider";
 import { CollectionRateBar, InvoiceTable, SEED_INVOICES } from "@/components/admin/billing";
 
 export default function BillingInvoicing() {
+  const { showAlert } = useAlert();
   const [search, setSearch] = useState("");
   const [statusFilter, setStatusFilter] = useState("all");
-  const [invoices] = useState(SEED_INVOICES);
+  const [showInvoiceForm, setShowInvoiceForm] = useState(false);
+  const [invoiceForm, setInvoiceForm] = useState({ customer: "", amount: "", tier: "Standard", due: "" });
+  const [invoices, setInvoices] = useState(SEED_INVOICES);
 
   const filtered = useMemo(() => invoices.filter(inv => {
     if (statusFilter !== "all" && inv.status !== statusFilter) return false;
@@ -44,7 +51,8 @@ export default function BillingInvoicing() {
             <p className="text-sm text-gray-500">Generate invoices, track payments, and manage subscription tiers</p>
           </div>
         </div>
-        <Button className="bg-rose-600 hover:bg-rose-700 text-white gap-1.5">
+        <Button className="bg-rose-600 hover:bg-rose-700 text-white gap-1.5"
+          onClick={() => { setInvoiceForm({ customer: "", amount: "", tier: "Standard", due: "" }); setShowInvoiceForm(true); }}>
           <Plus className="w-4 h-4" /> New Invoice
         </Button>
       </div>
@@ -90,6 +98,63 @@ export default function BillingInvoicing() {
 
       {/* Table */}
       <InvoiceTable invoices={filtered} />
+
+      {/* New Invoice Dialog */}
+      <Dialog open={showInvoiceForm} onOpenChange={setShowInvoiceForm}>
+        <DialogContent className="max-w-sm">
+          <DialogHeader><DialogTitle>New Invoice</DialogTitle></DialogHeader>
+          <div className="space-y-4 mt-2">
+            <div>
+              <Label>Customer</Label>
+              <Input value={invoiceForm.customer} onChange={e => setInvoiceForm(f => ({ ...f, customer: e.target.value }))}
+                placeholder="e.g. Hydro Corp" className="mt-1" />
+            </div>
+            <div>
+              <Label>Amount ($)</Label>
+              <Input type="number" min="0" step="0.01" value={invoiceForm.amount}
+                onChange={e => setInvoiceForm(f => ({ ...f, amount: e.target.value }))}
+                placeholder="0.00" className="mt-1" />
+            </div>
+            <div>
+              <Label>Tier</Label>
+              <Select value={invoiceForm.tier} onValueChange={v => setInvoiceForm(f => ({ ...f, tier: v }))}>
+                <SelectTrigger className="mt-1"><SelectValue /></SelectTrigger>
+                <SelectContent>
+                  {["Standard", "Professional", "Enterprise"].map(t => (
+                    <SelectItem key={t} value={t}>{t}</SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+            </div>
+            <div>
+              <Label>Due Date</Label>
+              <Input type="date" value={invoiceForm.due}
+                onChange={e => setInvoiceForm(f => ({ ...f, due: e.target.value }))}
+                className="mt-1" />
+            </div>
+            <div className="flex justify-end gap-2 pt-2">
+              <Button variant="outline" onClick={() => setShowInvoiceForm(false)}>Cancel</Button>
+              <Button className="bg-rose-600 hover:bg-rose-700 text-white"
+                disabled={!invoiceForm.customer || !invoiceForm.amount}
+                onClick={() => {
+                  setInvoices(prev => [...prev, {
+                    id: `INV-${String(prev.length + 48).padStart(4, '0')}`,
+                    customer: invoiceForm.customer,
+                    amount: parseFloat(invoiceForm.amount),
+                    status: "draft",
+                    date: new Date().toISOString().slice(0, 10),
+                    due: invoiceForm.due || new Date(Date.now() + 14 * 86400000).toISOString().slice(0, 10),
+                    tier: invoiceForm.tier,
+                  }]);
+                  showAlert("Invoice created as draft", "success");
+                  setShowInvoiceForm(false);
+                }}>
+                Create Draft
+              </Button>
+            </div>
+          </div>
+        </DialogContent>
+      </Dialog>
     </div>
   );
 }

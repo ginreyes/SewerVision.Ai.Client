@@ -8,14 +8,22 @@ import {
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Card, CardContent } from "@/components/ui/card";
+import { Input } from "@/components/ui/input";
+import { Label } from "@/components/ui/label";
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
+import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
+import { useAlert } from "@/components/providers/AlertProvider";
 import { useUser } from "@/components/providers/UserContext";
 import { useUserBudgets, useAddExpense } from "@/hooks/useQueryHooks";
 import { BudgetCard, CategoryBar, CAT_COLORS, STATUS_COLORS } from "@/components/user/budget-tracker";
 
 export default function BudgetTracker() {
   const { userId } = useUser();
+  const { showAlert } = useAlert();
   const { data, isLoading } = useUserBudgets(userId);
   const addExpense = useAddExpense();
+  const [showExpenseForm, setShowExpenseForm] = useState(false);
+  const [expenseForm, setExpenseForm] = useState({ category: "", amount: "", description: "" });
 
   const projects = useMemo(() => Array.isArray(data) ? data : (data?.data || []), [data]);
 
@@ -62,7 +70,8 @@ export default function BudgetTracker() {
             <p className="text-sm text-gray-500">Per-project budget tracking with estimated vs actual costs</p>
           </div>
         </div>
-        <Button className="bg-indigo-600 hover:bg-indigo-700 text-white gap-1.5">
+        <Button className="bg-indigo-600 hover:bg-indigo-700 text-white gap-1.5"
+          onClick={() => { setExpenseForm({ category: "", amount: "", description: "" }); setShowExpenseForm(true); }}>
           <Plus className="w-4 h-4" /> Add Expense
         </Button>
       </div>
@@ -174,6 +183,61 @@ export default function BudgetTracker() {
           )}
         </div>
       )}
+
+      {/* Add Expense Dialog */}
+      <Dialog open={showExpenseForm} onOpenChange={setShowExpenseForm}>
+        <DialogContent className="max-w-sm">
+          <DialogHeader><DialogTitle>Add Expense</DialogTitle></DialogHeader>
+          <div className="space-y-4 mt-2">
+            {selectedProject && (
+              <div className="text-xs text-gray-500 bg-gray-50 rounded-lg p-2">
+                Project: <span className="font-medium text-gray-700">{selectedProject.name}</span>
+              </div>
+            )}
+            <div>
+              <Label>Category</Label>
+              <Select value={expenseForm.category} onValueChange={v => setExpenseForm(f => ({ ...f, category: v }))}>
+                <SelectTrigger className="mt-1"><SelectValue placeholder="Select category..." /></SelectTrigger>
+                <SelectContent>
+                  {["Labor", "Materials", "Equipment", "Travel", "Permits", "Other"].map(c => (
+                    <SelectItem key={c} value={c}>{c}</SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+            </div>
+            <div>
+              <Label>Amount ($)</Label>
+              <Input type="number" min="0" step="0.01" value={expenseForm.amount}
+                onChange={e => setExpenseForm(f => ({ ...f, amount: e.target.value }))}
+                placeholder="0.00" className="mt-1" />
+            </div>
+            <div>
+              <Label>Description (optional)</Label>
+              <Input value={expenseForm.description}
+                onChange={e => setExpenseForm(f => ({ ...f, description: e.target.value }))}
+                placeholder="e.g. Equipment rental for site A" className="mt-1" />
+            </div>
+            <div className="flex justify-end gap-2 pt-2">
+              <Button variant="outline" onClick={() => setShowExpenseForm(false)}>Cancel</Button>
+              <Button className="bg-indigo-600 hover:bg-indigo-700 text-white"
+                disabled={!expenseForm.category || !expenseForm.amount || !selectedProject || addExpense.isPending}
+                onClick={() => {
+                  addExpense.mutate({
+                    budgetId: selectedProject._id || selectedProject.id,
+                    category: expenseForm.category,
+                    amount: parseFloat(expenseForm.amount),
+                    description: expenseForm.description,
+                  }, {
+                    onSuccess: () => { showAlert("Expense added", "success"); setShowExpenseForm(false); },
+                    onError: (e) => showAlert(e.message || "Failed to add expense", "error"),
+                  });
+                }}>
+                {addExpense.isPending ? "Adding..." : "Add Expense"}
+              </Button>
+            </div>
+          </div>
+        </DialogContent>
+      </Dialog>
     </div>
   );
 }

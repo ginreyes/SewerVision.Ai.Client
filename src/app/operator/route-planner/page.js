@@ -2,18 +2,23 @@
 
 import React, { useState, useMemo, useCallback } from "react";
 import {
-  MapPin, Navigation, Clock, Route, CheckCircle2, Circle, Car,
+  MapPin, Navigation, Clock, Route, CheckCircle2, Circle, Car, CloudUpload,
 } from "lucide-react";
 import { Loader2 } from "lucide-react";
+import dynamic from "next/dynamic";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Card, CardContent } from "@/components/ui/card";
 import { useUser } from "@/components/providers/UserContext";
+import { useRouter } from "next/navigation";
 import { useOperatorRouteSites, useCompleteRouteSite } from "@/hooks/useQueryHooks";
 import { SiteCard, STATUS_CONFIG } from "@/components/operator/route-planner";
 
+const ProjectMap = dynamic(() => import("@/components/customer/ProjectMap"), { ssr: false });
+
 export default function RoutePlanner() {
   const { userId } = useUser();
+  const router = useRouter();
   const { data: sites = [], isLoading } = useOperatorRouteSites(userId);
   const completeMutation = useCompleteRouteSite();
 
@@ -118,36 +123,20 @@ export default function RoutePlanner() {
 
           {/* Map placeholder + detail */}
           <div className="flex-1 min-w-0 space-y-3">
-            {/* Map placeholder */}
-            <div className="relative rounded-2xl overflow-hidden border border-gray-200 bg-gradient-to-br from-blue-50 to-indigo-50" style={{ height: 280 }}>
-              <div className="absolute inset-0 flex items-center justify-center">
-                <div className="text-center text-blue-300">
-                  <MapPin className="w-12 h-12 mx-auto mb-2 opacity-40" />
-                  <p className="text-sm font-medium">Interactive Map</p>
-                  <p className="text-xs opacity-70">Connects to GPS / Google Maps API</p>
-                </div>
-              </div>
-              {/* Simulated route dots */}
-              {sites.map((site, i) => (
-                <div
-                  key={site.id}
-                  className={`absolute w-5 h-5 rounded-full border-2 border-white shadow flex items-center justify-center text-[9px] font-bold text-white cursor-pointer transition-transform hover:scale-125 ${
-                    site.status === "completed"
-                      ? "bg-emerald-500"
-                      : (selected || sites[0]?.id) === site.id
-                      ? "bg-blue-600 scale-125"
-                      : "bg-gray-400"
-                  }`}
-                  style={{ left: `${20 + i * 14}%`, top: `${30 + (i % 3) * 20}%` }}
-                  onClick={() => handleSelect(site.id)}
-                >
-                  {i + 1}
-                </div>
-              ))}
-              <div className="absolute bottom-3 right-3 flex items-center gap-2 text-[10px] text-blue-600 bg-white/80 rounded-lg px-2 py-1 shadow">
-                <Navigation className="w-3 h-3" />Optimized route active
-              </div>
-            </div>
+            {/* Real Map with Leaflet */}
+            <ProjectMap
+              projects={sites.map(s => ({
+                _id: s.id || s._id,
+                name: s.name,
+                location: s.address,
+                latitude: s.latitude,
+                longitude: s.longitude,
+                status: s.status === "completed" ? "completed" : "in-progress",
+              }))}
+              selected={selected || sites[0]?.id}
+              onSelectProject={handleSelect}
+              height={280}
+            />
 
             {/* Selected site detail */}
             {selectedSite && (
@@ -178,13 +167,19 @@ export default function RoutePlanner() {
                       <p className="text-[10px] text-gray-500">Priority</p>
                     </div>
                   </div>
-                  <Button className="w-full mt-3 bg-blue-600 hover:bg-blue-700 text-white gap-2 text-sm"
-                    onClick={() => {
-                      const address = selectedSite.address || selectedSite.name;
-                      if (address) window.open(`https://www.google.com/maps/dir/?api=1&destination=${encodeURIComponent(address)}`, '_blank');
-                    }}>
-                    <Navigation className="w-4 h-4" /> Navigate to Site
-                  </Button>
+                  <div className="flex gap-2 mt-3">
+                    <Button className="flex-1 bg-blue-600 hover:bg-blue-700 text-white gap-2 text-sm"
+                      onClick={() => {
+                        const address = selectedSite.address || selectedSite.name;
+                        if (address) window.open(`https://www.google.com/maps/dir/?api=1&destination=${encodeURIComponent(address)}`, '_blank');
+                      }}>
+                      <Navigation className="w-4 h-4" /> Navigate
+                    </Button>
+                    <Button variant="outline" className="flex-1 gap-2 text-sm border-blue-200 text-blue-700 hover:bg-blue-50"
+                      onClick={() => router.push(`/operator/uploads?projectId=${selectedSite.projectId || ''}`)}>
+                      <CloudUpload className="w-4 h-4" /> Upload Video
+                    </Button>
+                  </div>
                 </CardContent>
               </Card>
             )}

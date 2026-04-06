@@ -12,6 +12,7 @@ import { useRouter } from "next/navigation";
 import SewerTable from "@/components/ui/SewerTable";
 import { useSupportAllTickets, useSupportGlobalStats } from "@/hooks/useQueryHooks";
 import { SupportStats, CategoryBreakdown, STATUS_COLORS, PRIORITY_COLORS, FILTER_OPTIONS, TABLE_COLUMNS } from "@/components/admin/support";
+import ExportButton from '@/components/shared/ExportButton';
 
 const TicketCellRenderer = memo(({ item, col, onView }) => {
   if (col.key === "subject") {
@@ -136,6 +137,17 @@ export default function AdminSupportPage() {
                 <ShieldCheck className="w-3 h-3 mr-1" />
                 Admin View
               </Badge>
+              <ExportButton
+                data={tableData}
+                columns={[
+                  { key: "subject", label: "Subject" },
+                  { key: "status", label: "Status" },
+                  { key: "priority", label: "Priority" },
+                  { key: "category", label: "Category" },
+                  { key: "createdAt", label: "Created At" },
+                ]}
+                filename="support-tickets"
+              />
               <Button variant="outline" size="sm" onClick={() => refetch()} disabled={isFetching}>
                 <RefreshCw className={`w-4 h-4 mr-1.5 ${isFetching ? "animate-spin" : ""}`} />
                 Refresh

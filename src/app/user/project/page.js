@@ -10,6 +10,7 @@ import ProjectDetail from "../../../components/user/project/ProjectDetail";
 import ProjectCard from "../../../components/user/project/ProjectCard";
 import { useUser } from "@/components/providers/UserContext";
 import debounce from "lodash/debounce";
+import { useDebouncedValue } from '@/hooks/useDebouncedValue';
 import { useRouter, useSearchParams } from "next/navigation";
 import { useUserProjects, useUserProject } from "@/hooks/useQueryHooks";
 import { getProjectStatusColor, getProjectPriorityColor } from "@/components/user/constants";
@@ -18,11 +19,14 @@ import { Badge } from "@/components/ui/badge";
 
 const ProjectLiveTrackerView = dynamic(() => import("@/components/shared/ProjectLiveTrackerView"), { ssr: false });
 import StatusLegend from "@/components/shared/StatusLegend";
+import ExportButton from '@/components/shared/ExportButton';
+import EmptyState from '@/components/shared/EmptyState';
 
 const UserProjectModuleContent = () => {
   const { userId } = useUser();
   const [selectedProject, setSelectedProject] = useState(null);
   const [searchTerm, setSearchTerm] = useState("");
+  const debouncedSearchValue = useDebouncedValue(searchTerm, 300);
   const [statusFilter, setStatusFilter] = useState("all");
   const [viewMode, setViewMode] = useState("grid");
 
@@ -294,6 +298,12 @@ const UserProjectModuleContent = () => {
 
                   <StatusLegend />
 
+                  <ExportButton
+                    data={projects}
+                    columns={["name", "status", "location", "progress", "workOrder"]}
+                    filename="team-projects"
+                  />
+
                   <Button
                     onClick={handleNewProject}
                     className="bg-gradient-to-r from-indigo-500 to-purple-600 text-white hover:from-indigo-600 hover:to-purple-700 transition-all duration-300 flex items-center gap-2 font-medium"
@@ -347,6 +357,15 @@ const UserProjectModuleContent = () => {
                 {viewMode === "tracker" ? (
                   <ProjectLiveTrackerView projects={projects} isLoading={loading} theme="indigo" />
                 ) : viewMode === "grid" ? (
+                  projects.length === 0 ? (
+                    <EmptyState
+                      image="/background_pictures/no-projects.jpg"
+                      title="No projects found"
+                      description={searchTerm ? `No results for "${searchTerm}". Try a different search.` : "No projects match the current filters."}
+                      actionLabel="Clear Filters"
+                      onAction={() => { setSearchTerm(""); setStatusFilter("all"); }}
+                    />
+                  ) : (
                   <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
                     {projects.map((project) => (
                       <ProjectCard
@@ -357,6 +376,7 @@ const UserProjectModuleContent = () => {
                       />
                     ))}
                   </div>
+                  )
                 ) : (
                   <SewerTable
                     data={projectTableData}

@@ -1,6 +1,6 @@
 "use client";
 
-import React, { useMemo } from "react";
+import React, { useMemo, useState, useCallback } from "react";
 import { useRouter } from "next/navigation";
 import {
   Ticket,
@@ -17,8 +17,10 @@ import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/com
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { useUser } from "@/components/providers/UserContext";
+import RefreshIndicator from "@/components/shared/RefreshIndicator";
 import EmptySewerComponent from "@/components/shared/EmptySewerComponent";
 import { useSupportGlobalStats, useSupportAssignedTickets, useSupportTeam } from "@/hooks/useQueryHooks";
+import { useQueryClient } from "@tanstack/react-query";
 
 // Extracted components
 import StatCard from "@/components/customer-rep/dashboard/StatCard";
@@ -29,6 +31,16 @@ import BreakdownCard from "@/components/customer-rep/dashboard/BreakdownCard";
 export default function CustomerRepDashboard() {
   const router = useRouter();
   const { userId, userData } = useUser();
+  const queryClient = useQueryClient();
+  const [lastUpdated, setLastUpdated] = useState(new Date());
+  const [refreshing, setRefreshing] = useState(false);
+
+  const handleRefresh = useCallback(async () => {
+    setRefreshing(true);
+    await queryClient.invalidateQueries();
+    setLastUpdated(new Date());
+    setRefreshing(false);
+  }, [queryClient]);
 
   const { data: globalStats, isLoading: statsLoading } = useSupportGlobalStats({ refetchInterval: 30000 });
   const { data: assignedRaw } = useSupportAssignedTickets(userId, { refetchInterval: 30000 });
@@ -99,10 +111,13 @@ export default function CustomerRepDashboard() {
                 </p>
               </div>
             </div>
-            <Badge variant="outline" className="bg-teal-50 text-teal-700 border-teal-200">
-              <Users className="w-3 h-3 mr-1" />
-              {team.length} team members
-            </Badge>
+            <div className="flex items-center gap-3">
+              <RefreshIndicator onRefresh={handleRefresh} lastUpdated={lastUpdated} refreshing={refreshing} />
+              <Badge variant="outline" className="bg-teal-50 text-teal-700 border-teal-200">
+                <Users className="w-3 h-3 mr-1" />
+                {team.length} team members
+              </Badge>
+            </div>
           </div>
         </div>
 

@@ -17,6 +17,7 @@ import { useAlert } from '@/components/providers/AlertProvider';
 import reportsApi from '@/data/reportsApi';
 import { useAdminReport } from '@/hooks/useQueryHooks';
 import { getInitials, getAvatarGradient, avatarSrc } from '@/components/admin/constants';
+import Breadcrumb from '@/components/shared/Breadcrumb';
 
 const getDisplayName = (u) => {
   if (!u) return '—';
@@ -310,6 +311,7 @@ export default function AdminReportDetailPage() {
 
   return (
     <div className="p-4 sm:p-6 max-w-5xl mx-auto space-y-5 pb-20">
+      <Breadcrumb />
 
       {/* ─── Header ─── */}
       <div className="flex items-start justify-between gap-4">

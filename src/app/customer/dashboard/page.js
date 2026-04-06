@@ -1,6 +1,6 @@
 'use client';
 
-import { useMemo } from 'react';
+import { useMemo, useState, useCallback } from 'react';
 import { useRouter } from 'next/navigation';
 import {
   AlertCircle,
@@ -16,12 +16,14 @@ import Link from 'next/link';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { useUser } from '@/components/providers/UserContext';
+import RefreshIndicator from '@/components/shared/RefreshIndicator';
 import {
   useCustomerProjects,
   useCustomerReports,
   useCustomerNotifications,
 } from '@/hooks/useQueryHooks';
 import { statusConfig } from '@/components/customer/constants';
+import { useQueryClient } from '@tanstack/react-query';
 
 import StatsCards from '@/components/customer/dashboard/StatsCards';
 import ProjectListCard from '@/components/customer/dashboard/ProjectListCard';
@@ -29,6 +31,16 @@ import ProjectListCard from '@/components/customer/dashboard/ProjectListCard';
 export default function CustomerDashboard() {
   const router = useRouter();
   const { userId, userData } = useUser();
+  const queryClient = useQueryClient();
+  const [lastUpdated, setLastUpdated] = useState(new Date());
+  const [refreshing, setRefreshing] = useState(false);
+
+  const handleRefresh = useCallback(async () => {
+    setRefreshing(true);
+    await queryClient.invalidateQueries();
+    setLastUpdated(new Date());
+    setRefreshing(false);
+  }, [queryClient]);
 
   const {
     data: projects = [],
@@ -178,18 +190,21 @@ export default function CustomerDashboard() {
             Here&apos;s an overview of your inspection projects
           </p>
         </div>
-        {unreadCount > 0 && (
-          <Link
-            href="/customer/notifications"
-            className="flex items-center gap-2 text-sm text-primary hover:underline"
-          >
-            <span className="relative flex h-2.5 w-2.5">
-              <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-primary opacity-75" />
-              <span className="relative inline-flex rounded-full h-2.5 w-2.5 bg-primary" />
-            </span>
-            {unreadCount} unread notification{unreadCount !== 1 ? 's' : ''}
-          </Link>
-        )}
+        <div className="flex items-center gap-3">
+          <RefreshIndicator onRefresh={handleRefresh} lastUpdated={lastUpdated} refreshing={refreshing} />
+          {unreadCount > 0 && (
+            <Link
+              href="/customer/notifications"
+              className="flex items-center gap-2 text-sm text-primary hover:underline"
+            >
+              <span className="relative flex h-2.5 w-2.5">
+                <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-primary opacity-75" />
+                <span className="relative inline-flex rounded-full h-2.5 w-2.5 bg-primary" />
+              </span>
+              {unreadCount} unread notification{unreadCount !== 1 ? 's' : ''}
+            </Link>
+          )}
+        </div>
       </div>
 
       {/* Stats Cards */}

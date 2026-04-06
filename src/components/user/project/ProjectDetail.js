@@ -33,6 +33,8 @@ import {
   CheckCircle2,
   AlertCircle,
   Zap,
+  Square,
+  RotateCcw,
 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from '@/components/ui/dialog';
@@ -42,12 +44,14 @@ import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
 import { Badge } from '@/components/ui/badge';
 import AddObservation from './AddObersavation';
 import ObservationsPanel from './ObservationsPanel';
+import ObservationDetailPanel from '@/components/shared/ObservationDetailPanel';
 import { useUser } from '@/components/providers/UserContext';
 import { useAlert } from '@/components/providers/AlertProvider';
 import { api } from '@/lib/helper';
 import { useRouter } from 'next/navigation';
 import { getVideoUrl } from '@/lib/getVideoUrl';
 import { AiProcessingModal } from '@/components/project/AiProcessingModal';
+import ReprocessModal from '@/components/project/ReprocessModal';
 
 const ProjectDetail = ({ project, setSelectedProject }) => {
   const [showAiModal, setShowAiModal] = useState(false);
@@ -58,6 +62,7 @@ const ProjectDetail = ({ project, setSelectedProject }) => {
   const [currentTime, setCurrentTime] = useState(0);
   const [duration, setDuration] = useState(0);
   const [isObservationOpen, setIsObservationOpen] = useState(false);
+  const [detailObs, setDetailObs] = useState(null);
   const [pacpCodes, setPacpCodes] = useState([]);
   const [snapshots, setSnapshots] = useState([]);
   const [projectMetadata, setProjectMetadata] = useState(null);
@@ -71,6 +76,10 @@ const ProjectDetail = ({ project, setSelectedProject }) => {
   const [newMetadataValue, setNewMetadataValue] = useState('');
   const [editingMetadata, setEditingMetadata] = useState({});
   const [isReprocessing, setIsReprocessing] = useState(false);
+  const [isStopConfirmOpen, setIsStopConfirmOpen] = useState(false);
+  const [isResetConfirmOpen, setIsResetConfirmOpen] = useState(false);
+  const [isStopping, setIsStopping] = useState(false);
+  const [isResetting, setIsResetting] = useState(false);
   const [isNotifying, setIsNotifying] = useState(false);
 
   // Video list state
@@ -746,6 +755,37 @@ const ProjectDetail = ({ project, setSelectedProject }) => {
     }
   };
 
+  const handleStopProcessing = async () => {
+    setIsStopConfirmOpen(false);
+    setIsStopping(true);
+    try {
+      const { ok } = await api(`/api/ai/stop/${project._id}`, 'POST');
+      if (ok) {
+        showAlert('AI processing stopped', 'success');
+        setShowAiModal(false);
+        const { data: refreshed } = await api(`/api/projects/get-project/${project._id}`, 'GET');
+        if (refreshed?.data && setSelectedProject) setSelectedProject(refreshed.data);
+      } else showAlert('Failed to stop processing', 'error');
+    } catch { showAlert('Failed to stop processing', 'error'); }
+    finally { setIsStopping(false); }
+  };
+
+  const handleResetAIData = async () => {
+    setIsResetConfirmOpen(false);
+    setIsResetting(true);
+    try {
+      const { ok, data } = await api(`/api/ai/reset/${project._id}`, 'POST');
+      if (ok) {
+        showAlert(`AI data reset — ${data?.data?.deletedDetections || 0} detections cleared`, 'success');
+        setShowAiModal(false);
+        fetchProjectVideos(); fetchObservations(1); fetchSnapshots();
+        const { data: refreshed } = await api(`/api/projects/get-project/${project._id}`, 'GET');
+        if (refreshed?.data && setSelectedProject) setSelectedProject(refreshed.data);
+      } else showAlert('Failed to reset AI data', 'error');
+    } catch { showAlert('Failed to reset AI data', 'error'); }
+    finally { setIsResetting(false); }
+  };
+
   // Notify customer — send deliverable ready email and update status
   const handleNotifyCustomer = async () => {
     if (isNotifying) return;
@@ -929,6 +969,15 @@ const ProjectDetail = ({ project, setSelectedProject }) => {
                 className="hidden"
               />
 
+              {/* Stop Processing Button */}
+              {project?.status === 'ai-processing' && (
+                <Button onClick={() => setIsStopConfirmOpen(true)} disabled={isStopping}
+                  className="flex items-center gap-2 bg-red-600 hover:bg-red-700 text-white">
+                  {isStopping ? <Loader2 className="h-4 w-4 animate-spin" /> : <Square className="h-4 w-4" />}
+                  <span>{isStopping ? 'Stopping...' : 'Stop AI'}</span>
+                </Button>
+              )}
+
               {/* Reprocess AI Button - Show for applicable statuses */}
               {project?.status !== 'planning' && project?.status !== 'in-progress' && (
                 <Button
@@ -953,6 +1002,15 @@ const ProjectDetail = ({ project, setSelectedProject }) => {
                 </Button>
               )}
 
+              {/* Reset AI Data Button */}
+              {project?.aiDetections?.total > 0 && project?.status !== 'ai-processing' && (
+                <Button onClick={() => setIsResetConfirmOpen(true)} disabled={isResetting} variant="outline"
+                  className="flex items-center gap-2 border-orange-300 text-orange-600 hover:bg-orange-50 hover:text-orange-700">
+                  {isResetting ? <Loader2 className="h-4 w-4 animate-spin" /> : <RotateCcw className="h-4 w-4" />}
+                  <span>{isResetting ? 'Resetting...' : 'Reset AI Data'}</span>
+                </Button>
+              )}
+
               {/* Notify Customer Button - Show when project is completed or qc-review done */}
               {(project?.status === 'completed' || project?.status === 'qc-review') && project?.status !== 'customer-notified' && (
                 <Button
@@ -974,15 +1032,15 @@ const ProjectDetail = ({ project, setSelectedProject }) => {
                 </Button>
               )}
 
-              {/* Settings Button - Navigates to edit project */}
+              {/* Edit Button - Navigates to edit project */}
               <Button
                 onClick={() => router.push(`/user/project/editProject/${project._id}`)}
                 variant="ghost"
                 size="icon"
                 className="hover:bg-gray-100 rounded-xl"
-                title="Project Settings"
+                title="Edit Project"
               >
-                <Settings className="h-5 w-5 text-gray-500" />
+                <Edit3 className="h-5 w-5 text-gray-500" />
               </Button>
             </div>
           </div>
@@ -1083,6 +1141,7 @@ const ProjectDetail = ({ project, setSelectedProject }) => {
                     ref={videoRef}
                     className="w-full h-full object-cover"
                     src={getVideoUrl(selectedVideo?._id || project.videoUrl)}
+                    crossOrigin="anonymous"
                     onTimeUpdate={onTimeUpdate}
                     onLoadedMetadata={onLoadedMetadata}
                     controls={false}
@@ -1187,6 +1246,7 @@ const ProjectDetail = ({ project, setSelectedProject }) => {
             <ObservationsPanel
               observations={observations}
               onAddObservation={observationOpen}
+              theme="indigo"
               pacpCodes={pacpCodes}
               projectId={project._id}
               page={obsPage}
@@ -1203,6 +1263,11 @@ const ProjectDetail = ({ project, setSelectedProject }) => {
                 videoRef.current.currentTime = seconds;
                 setIsPlaying(true);
                 videoRef.current.play().catch(() => {});
+              }}
+              onViewDetail={(obs) => setDetailObs(obs)}
+              onDeleteObservation={(id) => {
+                setObservations((prev) => prev.filter((o) => o._id !== id));
+                setObsTotal((prev) => Math.max(0, prev - 1));
               }}
             />
           </div>
@@ -1423,51 +1488,29 @@ const ProjectDetail = ({ project, setSelectedProject }) => {
 
             {/* Recording Information */}
             <div className="bg-white">
-              <div className="flex items-center justify-between mb-4">
-                <div className="flex items-center space-x-2">
-                  <button
-                    onClick={() => setIsRecordingInfoExpanded(!isRecordingInfoExpanded)}
-                    className="flex items-center space-x-2 text-gray-700 hover:text-gray-900"
-                  >
-                    {isRecordingInfoExpanded ? <ChevronUp className="h-4 w-4" /> : <ChevronDown className="h-4 w-4" />}
-                    <span className="font-medium">Recording Information</span>
-                  </button>
+              <button onClick={() => setIsRecordingInfoExpanded(!isRecordingInfoExpanded)} className="flex items-center justify-between w-full mb-3">
+                <div className="flex items-center gap-2">
+                  {isRecordingInfoExpanded ? <ChevronUp className="h-4 w-4 text-gray-400" /> : <ChevronDown className="h-4 w-4 text-gray-400" />}
+                  <span className="font-semibold text-sm text-gray-800">Recording Information</span>
                 </div>
-                <button className="p-1 hover:bg-gray-100 rounded">
-                  <ChevronDown className="h-4 w-4" />
-                </button>
-              </div>
-
+                <ChevronDown className={`h-4 w-4 text-gray-400 transition-transform ${isRecordingInfoExpanded ? 'rotate-180' : ''}`} />
+              </button>
               {isRecordingInfoExpanded && (
-                <div className="space-y-4">
+                <div className="space-y-1">
                   {Object.entries(recordingInfo).map(([key, value], index) => (
-                    <div
-                      key={`${key}-${index}`}
-                      className="flex justify-between items-center py-2 border-b border-gray-100 last:border-b-0"
-                    >
-                      <span className="text-sm text-gray-600 capitalize">{key.replace(/([A-Z])/g, ' $1').trim()}:</span>
-                      <span className="text-sm font-medium text-gray-900">{value || '-'}</span>
+                    <div key={`${key}-${index}`} className="flex justify-between items-center py-2 px-3 rounded-lg hover:bg-gray-50 transition-colors">
+                      <span className="text-xs font-medium text-gray-500 capitalize">{key.replace(/([A-Z])/g, ' $1').trim()}:</span>
+                      <span className="text-xs font-semibold text-gray-800 text-right max-w-[55%] truncate">{value || '—'}</span>
                     </div>
                   ))}
-
-                  <div className="flex space-x-2 mt-4">
-                    <Button
-                      className="flex-1 text-blue-600 border border-blue-600 px-3 py-1.5 rounded-md text-sm hover:bg-blue-50 flex items-center justify-center space-x-1"
-                      variant="outline"
-                      onClick={() => setIsAddMetadataOpen(true)}
-                    >
-                      <Plus className="h-4 w-4" />
-                      <span>ADD CUSTOM METADATA</span>
+                  <div className="grid grid-cols-2 gap-2 pt-3">
+                    <Button variant="outline" size="sm" className="text-xs h-9 border-dashed" onClick={() => setIsAddMetadataOpen(true)}>
+                      <Plus className="h-3 w-3 mr-1" /> Add Field
+                    </Button>
+                    <Button size="sm" className="text-xs h-9 bg-indigo-600 hover:bg-indigo-700 text-white" onClick={openEditMetadata}>
+                      <Edit3 className="h-3 w-3 mr-1" /> Edit All
                     </Button>
                   </div>
-
-                  <Button
-                    className="w-full bg-blue-600 text-white px-3 py-1.5 rounded-md text-sm hover:bg-blue-700 flex items-center justify-center space-x-1"
-                    onClick={openEditMetadata}
-                  >
-                    <Edit3 className="h-4 w-4" />
-                    <span>Edit Metadata</span>
-                  </Button>
                 </div>
               )}
             </div>
@@ -1484,87 +1527,68 @@ const ProjectDetail = ({ project, setSelectedProject }) => {
             videoRef={videoRef}
             currentTime={currentTime}
             currentDistance={project?.distance || "0.00"}
+            theme="indigo"
           />
 
           {/* Add Custom Metadata Dialog */}
           <Dialog open={isAddMetadataOpen} onOpenChange={setIsAddMetadataOpen}>
-            <DialogContent>
+            <DialogContent className="sm:max-w-md">
               <DialogHeader>
-                <DialogTitle>Add Custom Metadata</DialogTitle>
-                <DialogDescription>
-                  Add a custom key-value pair to the project metadata
-                </DialogDescription>
+                <DialogTitle className="flex items-center gap-2 text-base"><Plus className="h-4 w-4 text-indigo-600" /> Add Custom Field</DialogTitle>
+                <DialogDescription className="text-xs">Add a custom metadata field to this project.</DialogDescription>
               </DialogHeader>
-              <div className="space-y-4 py-4">
-                <div className="space-y-2">
-                  <Label htmlFor="metadataKey">Key</Label>
-                  <Input
-                    id="metadataKey"
-                    placeholder="e.g., Inspection Type"
-                    value={newMetadataKey}
-                    onChange={(e) => setNewMetadataKey(e.target.value)}
-                  />
+              <div className="space-y-4 py-3">
+                <div className="space-y-1.5">
+                  <Label htmlFor="metadataKey" className="text-xs font-medium">Field Name</Label>
+                  <Input id="metadataKey" placeholder="e.g., Inspection Type, Weather..." value={newMetadataKey} onChange={(e) => setNewMetadataKey(e.target.value)} className="h-9 text-sm" />
                 </div>
-                <div className="space-y-2">
-                  <Label htmlFor="metadataValue">Value</Label>
-                  <Input
-                    id="metadataValue"
-                    placeholder="e.g., Routine Inspection"
-                    value={newMetadataValue}
-                    onChange={(e) => setNewMetadataValue(e.target.value)}
-                  />
+                <div className="space-y-1.5">
+                  <Label htmlFor="metadataValue" className="text-xs font-medium">Value</Label>
+                  <Input id="metadataValue" placeholder="e.g., Routine Inspection" value={newMetadataValue} onChange={(e) => setNewMetadataValue(e.target.value)} className="h-9 text-sm" />
                 </div>
+                {newMetadataKey && newMetadataValue && (
+                  <div className="flex items-center justify-between p-2.5 bg-indigo-50 rounded-lg border border-indigo-100 text-xs">
+                    <span className="text-gray-500 font-medium">{newMetadataKey}:</span>
+                    <span className="text-gray-800 font-semibold">{newMetadataValue}</span>
+                  </div>
+                )}
               </div>
-              <DialogFooter>
-                <Button variant="outline" onClick={() => setIsAddMetadataOpen(false)}>
-                  Cancel
-                </Button>
-                <Button onClick={handleAddMetadata}>
-                  Add Metadata
-                </Button>
+              <DialogFooter className="gap-2">
+                <Button variant="outline" size="sm" className="text-xs" onClick={() => setIsAddMetadataOpen(false)}>Cancel</Button>
+                <Button size="sm" className="text-xs" onClick={handleAddMetadata} disabled={!newMetadataKey || !newMetadataValue}>Add Field</Button>
               </DialogFooter>
             </DialogContent>
           </Dialog>
 
           {/* Edit Metadata Dialog */}
           <Dialog open={isEditMetadataOpen} onOpenChange={setIsEditMetadataOpen}>
-            <DialogContent className="max-w-2xl max-h-[80vh] overflow-y-auto">
+            <DialogContent className="sm:max-w-lg max-h-[80vh] overflow-hidden flex flex-col">
               <DialogHeader>
-                <DialogTitle>Edit Metadata</DialogTitle>
-                <DialogDescription>
-                  Edit the project metadata fields
-                </DialogDescription>
+                <DialogTitle className="flex items-center gap-2 text-base"><Edit3 className="h-4 w-4 text-indigo-600" /> Edit Recording Information</DialogTitle>
+                <DialogDescription className="text-xs">Update the project metadata fields.</DialogDescription>
               </DialogHeader>
-              <div className="space-y-4 py-4">
+              <div className="flex-1 overflow-y-auto py-2 -mx-1 px-1">
                 {Object.keys(editingMetadata).length === 0 ? (
-                  <p className="text-sm text-gray-500 text-center py-4">No metadata to edit</p>
+                  <div className="flex flex-col items-center justify-center py-10 text-gray-400">
+                    <FileText className="h-10 w-10 mb-2 opacity-40" />
+                    <p className="text-sm">No metadata fields</p>
+                  </div>
                 ) : (
-                  Object.entries(editingMetadata).map(([key, value]) => (
-                    <div key={key} className="space-y-2">
-                      <Label htmlFor={`metadata-${key}`} className="capitalize">
-                        {key.replace(/([A-Z])/g, ' $1').trim()}
-                      </Label>
-                      <Input
-                        id={`metadata-${key}`}
-                        value={value || ''}
-                        onChange={(e) => {
-                          setEditingMetadata({
-                            ...editingMetadata,
-                            [key]: e.target.value
-                          });
-                        }}
-                      />
-                    </div>
-                  ))
+                  <div className="space-y-3">
+                    {Object.entries(editingMetadata).map(([key, value]) => (
+                      <div key={key} className="flex items-center gap-3">
+                        <div className="w-32 flex-shrink-0">
+                          <Label htmlFor={`metadata-${key}`} className="text-xs font-medium text-gray-500 capitalize truncate block">{key.replace(/([A-Z])/g, ' $1').trim()}</Label>
+                        </div>
+                        <Input id={`metadata-${key}`} value={value || ''} onChange={(e) => setEditingMetadata({ ...editingMetadata, [key]: e.target.value })} className="h-9 text-sm flex-1" />
+                      </div>
+                    ))}
+                  </div>
                 )}
               </div>
-              <DialogFooter>
-                <Button variant="outline" onClick={() => setIsEditMetadataOpen(false)}>
-                  Cancel
-                </Button>
-                <Button onClick={handleEditMetadata}>
-                  Save Changes
-                </Button>
+              <DialogFooter className="gap-2 border-t pt-4">
+                <Button variant="outline" size="sm" className="text-xs" onClick={() => setIsEditMetadataOpen(false)}>Cancel</Button>
+                <Button size="sm" className="text-xs" onClick={handleEditMetadata}><Save className="h-3 w-3 mr-1" /> Save Changes</Button>
               </DialogFooter>
             </DialogContent>
           </Dialog>
@@ -1699,6 +1723,27 @@ const ProjectDetail = ({ project, setSelectedProject }) => {
         onOpenChange={setShowAiModal}
         project={project}
         selectedVideo={project?.videos?.[0] || null}
+      />
+
+      <ReprocessModal open={isStopConfirmOpen} onOpenChange={setIsStopConfirmOpen} onConfirm={handleStopProcessing}
+        title="Stop AI Processing?" description="This will halt the current AI analysis mid-progress."
+        bullets={['Processing stops after current batch', 'Existing detections remain', 'Project status changes to "On Hold"', 'You can reprocess again anytime']}
+        confirmLabel="Yes, stop processing" confirmClassName="bg-red-600 hover:bg-red-700 text-white" />
+
+      <ReprocessModal open={isResetConfirmOpen} onOpenChange={setIsResetConfirmOpen} onConfirm={handleResetAIData}
+        title="Reset All AI Data?" description="This will permanently delete all AI-generated data for this project."
+        bullets={['All AI detections deleted', 'All AI observations removed', 'All AI snapshots cleared', 'Project resets to "Planning"', 'Manual observations preserved']}
+        confirmLabel="Yes, reset all AI data" confirmClassName="bg-orange-600 hover:bg-orange-700 text-white" />
+
+      <ObservationDetailPanel
+        open={!!detailObs}
+        onOpenChange={(open) => { if (!open) setDetailObs(null); }}
+        observation={detailObs}
+        projectId={project?._id}
+        videoRef={videoRef}
+        onDelete={(id) => { setObservations((p) => p.filter((o) => o._id !== id)); setObsTotal((p) => Math.max(0, p - 1)); setDetailObs(null); }}
+        onUpdate={(u) => { setObservations((p) => p.map((o) => o._id === u._id ? { ...o, ...u } : o)); }}
+        onGoToTime={(obs) => { if (!videoRef.current || !obs?.time) return; const pts = String(obs.time).split(':').map((p) => parseInt(p, 10) || 0); videoRef.current.currentTime = pts[0] * 3600 + pts[1] * 60 + pts[2]; setIsPlaying(true); videoRef.current.play().catch(() => {}); }}
       />
     </div>
   );

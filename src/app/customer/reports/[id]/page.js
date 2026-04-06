@@ -20,6 +20,7 @@ import { useCustomerReport } from '@/hooks/useQueryHooks';
 
 import InfoRow from '@/components/customer/report-detail/InfoRow';
 import DefectStat from '@/components/customer/report-detail/DefectStat';
+import Breadcrumb from '@/components/shared/Breadcrumb';
 
 export default function ReportDetailPage() {
   const params = useParams();
@@ -98,6 +99,7 @@ export default function ReportDetailPage() {
 
   return (
     <div className="space-y-6 p-4 md:p-6">
+      <Breadcrumb />
       <Button variant="ghost" size="sm" onClick={goBack} className="mb-2">
         <ChevronLeft className="h-4 w-4 mr-2" />
         Back to Reports

@@ -4,6 +4,7 @@ import { Search, Plus, Loader2, LayoutGrid, Rows, MapPin, Video } from "lucide-r
 import dynamic from "next/dynamic";
 const ProjectLiveTrackerView = dynamic(() => import("@/components/shared/ProjectLiveTrackerView"), { ssr: false });
 import StatusLegend from "@/components/shared/StatusLegend";
+import ExportButton from '@/components/shared/ExportButton';
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Select, SelectTrigger, SelectValue, SelectContent, SelectItem } from "@/components/ui/select";
@@ -268,7 +269,12 @@ const OperatorModulePage = () => {
 
                   <StatusLegend />
 
-                  
+                  <ExportButton
+                    data={projects}
+                    columns={["name", "status", "location", "progress", "workOrder"]}
+                    filename="operator-projects"
+                  />
+
                 </div>
               </div>
             </div>

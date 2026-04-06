@@ -33,6 +33,7 @@ import {
 import { Textarea } from "@/components/ui/textarea";
 import { useRouter } from "next/navigation";
 import { useUser } from "@/components/providers/UserContext";
+import Breadcrumb from '@/components/shared/Breadcrumb';
 
 const steps = [
   {
@@ -1042,6 +1043,7 @@ export default function CreateProjectPage({ backUrl = "/user/project", returnTo 
 
   return (
     <div className="max-w-7xl mx-auto h-auto bg-gray-100 border-gray-200 shadow-2xl">
+      <Breadcrumb />
 
       {/* Header */}
       <div className="bg-white border-b border-gray-200 sticky top-0 z-10">

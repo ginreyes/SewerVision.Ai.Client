@@ -6,6 +6,8 @@ import StatusLegend from "@/components/shared/StatusLegend";
 
 const ProjectLiveTrackerView = dynamic(() => import("@/components/shared/ProjectLiveTrackerView"), { ssr: false });
 import { Button } from "@/components/ui/button";
+import ExportButton from '@/components/shared/ExportButton';
+import EmptyState from '@/components/shared/EmptyState';
 
 import {
   DropdownMenu,
@@ -20,12 +22,14 @@ import ProjectDetail from "@/components/admin/project/ProjectDetail";
 import { api } from "@/lib/helper";
 import { useAlert } from "@/components/providers/AlertProvider";
 import debounce from "lodash/debounce";
+import { useDebouncedValue } from '@/hooks/useDebouncedValue';
 import { useRouter, useSearchParams, usePathname } from "next/navigation";
 
 const SewerVisionInspectionModuleContent = () => {
   const [projects, setProjects] = useState([]);
   const [selectedProject, setSelectedProject] = useState(null);
   const [searchTerm, setSearchTerm] = useState("");
+  const debouncedSearchValue = useDebouncedValue(searchTerm, 300);
   const [statusFilter, setStatusFilter] = useState("all");
   const [viewMode, setViewMode] = useState("grid"); // 'grid' | 'table'
   const navigatingBackRef = useRef(false);
@@ -234,6 +238,19 @@ const SewerVisionInspectionModuleContent = () => {
 
                   <StatusLegend />
 
+                  <ExportButton
+                    data={projects}
+                    columns={[
+                      { key: "name", label: "Name" },
+                      { key: "status", label: "Status" },
+                      { key: "location", label: "Location" },
+                      { key: "progress", label: "Progress" },
+                      { key: "workOrder", label: "Work Order" },
+                      { key: "client", label: "Client" },
+                    ]}
+                    filename="projects"
+                  />
+
                   {!isOperatorRoute && (
                     <Button
                       onClick={AddProject}
@@ -278,6 +295,15 @@ const SewerVisionInspectionModuleContent = () => {
             {viewMode === "tracker" ? (
               <ProjectLiveTrackerView projects={projects} theme="rose" />
             ) : viewMode === "grid" ? (
+              projects.length === 0 ? (
+                <EmptyState
+                  image="/background_pictures/no-projects.jpg"
+                  title="No projects found"
+                  description={searchTerm ? `No results for "${searchTerm}". Try a different search term.` : "No projects match the current filters."}
+                  actionLabel="Clear Filters"
+                  onAction={() => { setSearchTerm(""); setStatusFilter("all"); }}
+                />
+              ) : (
               <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
                 {projects.map((project) => (
                   <ProjectCard
@@ -290,6 +316,7 @@ const SewerVisionInspectionModuleContent = () => {
                   />
                 ))}
               </div>
+              )
             ) : (
               <div className="bg-white rounded-xl shadow-sm border border-gray-200 overflow-hidden">
                 <div className="min-w-full overflow-x-auto">

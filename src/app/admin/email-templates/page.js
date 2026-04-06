@@ -10,6 +10,7 @@ import { Input } from "@/components/ui/input";
 import { Badge } from "@/components/ui/badge";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { useAlert } from "@/components/providers/AlertProvider";
+import EmptyState from '@/components/shared/EmptyState';
 import { api } from "@/lib/helper";
 import { TemplateEditor } from "@/components/admin/email-templates";
 
@@ -59,6 +60,7 @@ export default function EmailTemplatesPage() {
   }
 
   async function handleDelete(id) {
+    if (!confirm('Delete this template? This action cannot be undone.')) return;
     try {
       const res = await api(`/api/email-templates/${id}`, "DELETE");
       if (res.ok) { showAlert("Template deleted", "success"); fetchTemplates(); }
@@ -153,11 +155,7 @@ export default function EmailTemplatesPage() {
       {/* Template list */}
       <div className="space-y-2">
         {filtered.length === 0 ? (
-          <div className="flex flex-col items-center justify-center py-16 text-gray-400 border-2 border-dashed border-gray-200 rounded-xl">
-            <Mail className="w-10 h-10 mb-2 opacity-30" />
-            <p className="text-sm">No email templates yet</p>
-            <p className="text-xs mt-1">Create your first template to get started</p>
-          </div>
+          <EmptyState icon={Mail} title="No email templates yet" description="Create your first template to get started" actionLabel="New Template" onAction={() => setEditing("new")} />
         ) : filtered.map(t => (
           <Card key={t._id} className={`border-gray-200 hover:shadow-sm transition-all ${!t.active ? "opacity-60" : ""}`}>
             <CardContent className="p-4 flex items-center gap-4">

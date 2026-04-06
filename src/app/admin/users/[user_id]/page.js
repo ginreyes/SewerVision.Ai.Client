@@ -29,6 +29,7 @@ import TeamLeadDetailed from "@/components/admin/users/user-management/TeamLeadD
 import OperatorDetailed, { OperatorWorkspaceOverview } from "@/components/admin/users/user-management/OperatorDetailed"
 import CustomerRepresentativeDetailed from "@/components/admin/users/user-management/CustomerRepresentativeDetailed"
 import PermissionsTab from "@/components/admin/users/permissions/PermissionsTab"
+import Breadcrumb from '@/components/shared/Breadcrumb';
 
 const roleOptions = [
   {
@@ -252,6 +253,7 @@ const UserProfile = () => {
 
   return (
     <div className="max-w-7xl mx-auto p-6 space-y-8 animate-in fade-in duration-500">
+      <Breadcrumb />
       {/* Top Navigation Bar */}
       <div className="flex items-center justify-between sticky top-0 z-10 bg-white/80 backdrop-blur-sm py-4 border-b border-gray-100 -mx-6 px-6">
         <Button onClick={() => window.history.back()} variant="ghost" className="text-gray-600 hover:text-rose-600">

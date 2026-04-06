@@ -12,7 +12,7 @@ import {
   SelectValue,
 } from "@/components/ui/select";
 import { useAlert } from "@/components/providers/AlertProvider";
-import { api } from "@/lib/helper";
+import { api, getCookie } from "@/lib/helper";
 import {
   Edit3,
   Building2,
@@ -36,6 +36,7 @@ import { useRouter } from "next/navigation";
 import { useUser } from "@/components/providers/UserContext";
 import { useParams } from "next/navigation";
 import { InputField } from "@/components/admin/project";
+import Breadcrumb from '@/components/shared/Breadcrumb';
 
 export default function EditProjectPage() {
   const { project_id } = useParams();
@@ -53,6 +54,10 @@ export default function EditProjectPage() {
   const [saving, setSaving] = useState(false);
   const [fetchingProject, setFetchingProject] = useState(true);
   const [errors, setErrors] = useState({});
+
+  // Upload progress state
+  const [isUploading, setIsUploading] = useState(false);
+  const [uploadProgress, setUploadProgress] = useState(0);
 
   // Original project data for reset functionality
   const [originalProject, setOriginalProject] = useState(null);
@@ -463,51 +468,92 @@ export default function EditProjectPage() {
     }
   };
 
-  // Save changes
+  // Save changes — uses XHR when video attached for real-time upload progress
   const handleSave = useCallback(async () => {
     if (!validateForm()) return;
-  
+
+    const sel = customers.find((c) => c._id === formData.customerId);
+    const clientFromCustomer = sel
+      ? [sel.first_name, sel.last_name].filter(Boolean).join(" ").trim() || sel.email || formData.client
+      : formData.client;
+
+    const correctedFormData = {
+      ...formData,
+      client: clientFromCustomer,
+      progress: Number(formData.progress),
+      confidence: Number(formData.confidence),
+    };
+
+    const form = new FormData();
+    form.append("userId", user_id);
+    form.append("projectData", JSON.stringify(correctedFormData));
+    if (videoFile) form.append("video", videoFile);
+
+    // If there's a video, use XHR for real-time progress
+    if (videoFile) {
+      setSaving(true);
+      setIsUploading(true);
+      setUploadProgress(0);
+
+      const xhr = new XMLHttpRequest();
+
+      xhr.upload.addEventListener("progress", (e) => {
+        if (e.lengthComputable) {
+          setUploadProgress(Math.round((e.loaded / e.total) * 100));
+        }
+      });
+
+      xhr.addEventListener("load", () => {
+        setIsUploading(false);
+        setUploadProgress(0);
+        setSaving(false);
+
+        if (xhr.status >= 200 && xhr.status < 300) {
+          showAlert("Project updated successfully", "success");
+          router.push(projectsPath);
+        } else {
+          try {
+            const err = JSON.parse(xhr.responseText);
+            showAlert(err.message || "Failed to update project", "error");
+          } catch {
+            showAlert("Failed to update project", "error");
+          }
+        }
+      });
+
+      xhr.addEventListener("error", () => {
+        setIsUploading(false);
+        setUploadProgress(0);
+        setSaving(false);
+        showAlert("Network error while uploading", "error");
+      });
+
+      const token = getCookie("authToken");
+      const apiUrl = process.env.NEXT_PUBLIC_BACKEND_URL || "http://localhost:5000";
+      xhr.open("PUT", `${apiUrl}/api/projects/update-project/${project_id}/${user_id}`);
+      if (token) xhr.setRequestHeader("Authorization", `Bearer ${token}`);
+      xhr.send(form);
+      return;
+    }
+
+    // No video — use standard fetch
     try {
       setSaving(true);
-
-
-      const sel = customers.find((c) => c._id === formData.customerId);
-      const clientFromCustomer = sel
-        ? [sel.first_name, sel.last_name].filter(Boolean).join(" ").trim() || sel.email || formData.client
-        : formData.client;
-
-      const correctedFormData = {
-        ...formData,
-        client: clientFromCustomer,
-        progress: Number(formData.progress),
-        confidence: Number(formData.confidence),
-      };
-      const form = new FormData();
-      form.append("userId", user_id);
-      form.append("projectData", JSON.stringify(correctedFormData));
-  
-      if (videoFile) {
-        form.append("video", videoFile);
-      }
-  
-      const { ok, data } = await api(
+      const { ok } = await api(
         `/api/projects/update-project/${project_id}/${user_id}`,
         "PUT",
         form
       );
-  
-  
-  
+
       if (!ok) {
         showAlert("Failed to update project", "error");
         return;
       }
-  
+
       showAlert("Project updated successfully", "success");
       router.push(projectsPath);
     } catch (error) {
       showAlert(error.message || "Failed to update project", "error");
-      console.error("Error updating project:", error);
     } finally {
       setSaving(false);
     }
@@ -558,6 +604,7 @@ export default function EditProjectPage() {
 
   return (
     <div className="max-w-7xl mx-auto bg-gray-50">
+      <Breadcrumb />
       {/* Header */}
       <div className="bg-white border-b border-gray-200 sticky top-0 z-10 shadow-sm">
         <div className="max-w-7xl mx-auto px-4 py-4">
@@ -1435,6 +1482,49 @@ export default function EditProjectPage() {
           </div>
         </div>
       </div>
+
+      {/* Upload Progress Dialog */}
+      {isUploading && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50">
+          <div className="bg-white rounded-2xl shadow-2xl p-8 w-[420px] text-center">
+            <div className="flex items-center gap-2 mb-2 justify-center">
+              <Video className="w-5 h-5 text-blue-600" />
+              <h3 className="text-lg font-bold text-gray-900">Uploading Video</h3>
+            </div>
+            <p className="text-sm text-blue-600 mb-6">Please wait while your video is being uploaded...</p>
+
+            {/* Circular progress */}
+            <div className="relative w-24 h-24 mx-auto mb-6">
+              <svg className="w-full h-full -rotate-90" viewBox="0 0 96 96">
+                <circle cx="48" cy="48" r="42" fill="none" stroke="#e5e7eb" strokeWidth="6" />
+                <circle cx="48" cy="48" r="42" fill="none" stroke="#3b82f6" strokeWidth="6" strokeLinecap="round"
+                  strokeDasharray={2 * Math.PI * 42}
+                  strokeDashoffset={2 * Math.PI * 42 * (1 - uploadProgress / 100)}
+                  className="transition-all duration-300"
+                />
+              </svg>
+              <span className="absolute inset-0 flex items-center justify-center text-xl font-bold text-blue-600">
+                {uploadProgress}%
+              </span>
+            </div>
+
+            {/* Linear progress bar */}
+            <div className="w-full h-2.5 bg-gray-200 rounded-full overflow-hidden mb-3">
+              <div className="h-full bg-gradient-to-r from-blue-500 to-indigo-600 rounded-full transition-all duration-300"
+                style={{ width: `${uploadProgress}%` }}
+              />
+            </div>
+            <p className="text-xs text-gray-500 mb-2">Uploading... {uploadProgress}% complete</p>
+
+            {uploadProgress === 100 && (
+              <div className="flex items-center gap-2 justify-center text-green-600 mt-3">
+                <CheckCircle className="w-4 h-4" />
+                <span className="text-sm font-medium">Processing video...</span>
+              </div>
+            )}
+          </div>
+        </div>
+      )}
     </div>
   );
 }

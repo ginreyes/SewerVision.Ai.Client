@@ -93,6 +93,7 @@ export default function KnowledgeBase() {
   }
 
   function handleDelete(id) {
+    if (!confirm('Delete this item? This action cannot be undone.')) return;
     deleteMutation.mutate(id, {
       onSuccess: () => showAlert("Article deleted", "success"),
     });

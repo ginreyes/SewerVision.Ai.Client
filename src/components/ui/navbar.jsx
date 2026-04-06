@@ -323,6 +323,7 @@ const Navbar = (props) => {
                 type="text"
                 placeholder={currentSearchConfig.placeholder}
                 className="w-full bg-transparent border-none focus-visible:ring-0 text-gray-700 pr-4"
+                data-search-input="true"
                 value={searchQuery}
                 onChange={handleSearchChange}
                 onFocus={() => setSearchOpen(true)}

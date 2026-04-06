@@ -9,6 +9,7 @@ import NotificationProvider from "./NotificationProvider";
 import { QueryProvider } from "./QueryProvider";
 import { SocketProvider } from "./SocketProvider";
 import { getCookie } from "@/lib/helper";
+import { useKeyboardShortcuts } from "@/hooks/useKeyboardShortcuts";
 
 
 
@@ -16,6 +17,7 @@ export function AppProviders({ children }) {
 
   const router = useRouter()
   const pathname = usePathname()
+  useKeyboardShortcuts();
   
   useEffect(() => {
     const role = getCookie("role");

@@ -41,17 +41,23 @@ import { Progress } from "@/components/ui/progress";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { useUser } from "@/components/providers/UserContext";
 import { useAlert } from "@/components/providers/AlertProvider";
+import { useSearchParams } from "next/navigation";
 import uploadsApi from "@/data/uploadsApi";
 import { api } from "@/lib/helper";
 import { useOperatorProjects } from "@/hooks/useQueryHooks";
 import SewerTable from "@/components/ui/SewerTable";
 import { getFileTypeIcon, getStatusColor } from "@/lib/utils";
+import ExportButton from '@/components/shared/ExportButton';
 
 export default function OperatorUploadsPage() {
   const { userId, userData } = useUser();
   const { showAlert } = useAlert();
+  const searchParams = useSearchParams();
   const fileInputRef = useRef(null);
   const dropZoneRef = useRef(null);
+
+  // Pre-select project from URL query param (from route planner "Upload Video" button)
+  const preselectedProjectId = searchParams?.get("projectId") || "";
 
   const [activeTab, setActiveTab] = useState("upload");
   const [files, setFiles] = useState([]);
@@ -62,7 +68,7 @@ export default function OperatorUploadsPage() {
   const [uploadData, setUploadData] = useState({
     device: "",
     location: "",
-    projectId: "",
+    projectId: preselectedProjectId,
   });
 
   // Fetch operator's projects for dropdown
@@ -360,6 +366,16 @@ export default function OperatorUploadsPage() {
                 <p className="text-sm text-gray-500">Upload inspection files to your assigned projects</p>
               </div>
             </div>
+            <ExportButton
+              data={uploads}
+              columns={[
+                { key: "filename", label: "Filename" },
+                { key: "status", label: "Status" },
+                { key: "size", label: "Size" },
+                { key: "uploadedAt", label: "Uploaded At" },
+              ]}
+              filename="uploads"
+            />
           </div>
         </div>
       </div>

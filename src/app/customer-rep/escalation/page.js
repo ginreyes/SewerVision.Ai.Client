@@ -89,6 +89,7 @@ export default function EscalationManager() {
   }
 
   function handleDelete(id) {
+    if (!confirm('Delete this item? This action cannot be undone.')) return;
     deleteMutation.mutate(id, {
       onSuccess: () => showAlert("Rule deleted", "success"),
       onError: (e) => showAlert(e.message, "error"),
