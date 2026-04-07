@@ -5,10 +5,7 @@ import { useParams, useRouter } from 'next/navigation';
 import {
   ArrowLeft,
   Download,
-  FileVideo,
-  FileText,
   Image as ImageIcon,
-  Archive,
   Loader2,
   Calendar,
   User,
@@ -16,7 +13,6 @@ import {
   HardDrive,
   Shield,
   Brain,
-  CheckCircle,
   AlertTriangle,
 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
@@ -128,7 +124,7 @@ const FileViewPage = () => {
     const k = 1024;
     const sizes = ["Bytes", "KB", "MB", "GB", "TB"];
     const i = Math.floor(Math.log(bytes) / Math.log(k));
-    return parseFloat((bytes / Math.pow(k, i)).toFixed(2)) + " " + sizes[i];
+    return `${parseFloat((bytes / Math.pow(k, i)).toFixed(2))} ${sizes[i]}`;
   };
 
   const getFileViewer = () => {

@@ -19,12 +19,15 @@ import {
   Wrench,
   CalendarDays,
   Upload,
+  GraduationCap,
+  Target,
+  BookOpen,
 } from 'lucide-react';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
 import { Button } from '@/components/ui/button';
-import { useUserTeamMemberDetail } from '@/hooks/useQueryHooks';
+import { useUserTeamMemberDetail, useTeamTrainingProgress } from '@/hooks/useQueryHooks';
 
 /* ─── Helpers ─── */
 
@@ -81,6 +84,7 @@ export default function UserTeamMemberDetailPage() {
   const userId = params?.user_id;
 
   const { data: memberData, isLoading: loading } = useUserTeamMemberDetail(userId);
+  const { data: allTraining = [] } = useTeamTrainingProgress();
   const profile = memberData?.user ?? memberData ?? null;
 
   /* ── Early returns ── */
@@ -152,6 +156,10 @@ export default function UserTeamMemberDetailPage() {
   const rlCfg = getRoleConfig(profile.role);
   const RoleIcon = rlCfg.icon;
   const { projectStats = {}, uploadStats = {} } = profile;
+  const memberTraining = allTraining.find((t) => {
+    const tid = t.user?._id || t.userId || t._id;
+    return String(tid) === String(userId);
+  });
 
   /* ── Stat card helper ── */
 
@@ -328,6 +336,62 @@ export default function UserTeamMemberDetailPage() {
           </div>
         </div>
       )}
+
+      {/* ── Training Progress ── */}
+      <div className="rounded-2xl border border-slate-200 bg-white shadow-sm overflow-hidden">
+        <div className="px-6 py-4 border-b border-slate-100">
+          <h2 className="text-sm font-semibold text-slate-900 flex items-center gap-2">
+            <GraduationCap className="w-4 h-4 text-indigo-500" />
+            Training Progress
+          </h2>
+        </div>
+        <div className="p-6 space-y-4">
+          {memberTraining ? (
+            <>
+              <div className="grid grid-cols-3 gap-4">
+                <div className="text-center p-4 bg-indigo-50 rounded-xl">
+                  <p className="text-2xl font-bold text-indigo-700">{memberTraining.modulesCompleted || 0}<span className="text-sm font-normal text-indigo-400">/{memberTraining.totalModules || 0}</span></p>
+                  <p className="text-[10px] text-indigo-500 mt-0.5">Modules Completed</p>
+                </div>
+                <div className="text-center p-4 bg-emerald-50 rounded-xl">
+                  <p className="text-2xl font-bold text-emerald-700">{memberTraining.avgScore || 0}%</p>
+                  <p className="text-[10px] text-emerald-500 mt-0.5">Average Score</p>
+                </div>
+                <div className="text-center p-4 bg-amber-50 rounded-xl">
+                  <p className="text-2xl font-bold text-amber-700">{memberTraining.totalAttempts || 0}</p>
+                  <p className="text-[10px] text-amber-500 mt-0.5">Total Attempts</p>
+                </div>
+              </div>
+              {/* Module-by-module breakdown */}
+              {memberTraining.bestByModule && Object.keys(memberTraining.bestByModule).length > 0 && (
+                <div className="space-y-2">
+                  <p className="text-xs font-semibold text-gray-500 uppercase tracking-wider">Module Performance</p>
+                  {Object.entries(memberTraining.bestByModule).slice(0, 5).map(([modId, data]) => (
+                    <div key={modId} className="flex items-center gap-3 p-2.5 bg-gray-50 rounded-lg text-xs">
+                      <BookOpen className="w-3.5 h-3.5 text-gray-400 flex-shrink-0" />
+                      <span className="flex-1 text-gray-700 truncate">{modId}</span>
+                      <span className={`font-bold ${data.passed ? 'text-emerald-600' : 'text-amber-600'}`}>{data.score || 0}%</span>
+                      {data.passed
+                        ? <Badge className="bg-emerald-50 text-emerald-700 text-[9px] h-4 border border-emerald-200">Passed</Badge>
+                        : <Badge className="bg-amber-50 text-amber-700 text-[9px] h-4 border border-amber-200">In Progress</Badge>
+                      }
+                    </div>
+                  ))}
+                </div>
+              )}
+              {memberTraining.lastActivity && (
+                <p className="text-[10px] text-gray-400">Last activity: {new Date(memberTraining.lastActivity).toLocaleDateString()}</p>
+              )}
+            </>
+          ) : (
+            <div className="text-center py-8">
+              <GraduationCap className="w-10 h-10 text-gray-200 mx-auto mb-2" />
+              <p className="text-sm text-gray-500">No training data yet</p>
+              <p className="text-xs text-gray-400 mt-0.5">This team member hasn't started any training modules</p>
+            </div>
+          )}
+        </div>
+      </div>
 
       {/* ── Account activity ── */}
       <div className="rounded-2xl border border-slate-200 bg-white shadow-sm overflow-hidden">

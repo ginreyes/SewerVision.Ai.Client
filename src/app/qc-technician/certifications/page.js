@@ -290,8 +290,8 @@ Verification URL: ${cert.verificationUrl || 'N/A'}
       <div className="mb-6">
         <div className="flex items-center justify-between mb-2">
           <div className="flex items-center gap-3">
-            <div className="p-2.5 bg-rose-100 rounded-xl">
-              <Shield className="w-6 h-6 text-rose-600" />
+            <div className="p-2.5 bg-amber-100 rounded-xl">
+              <Shield className="w-6 h-6 text-red-700" />
             </div>
             <div>
               <h1 className="text-2xl font-bold text-gray-900">My Certifications</h1>
@@ -352,7 +352,7 @@ Verification URL: ${cert.verificationUrl || 'N/A'}
           icon={AlertCircle}
           value={stats.expired}
           label="Expired"
-          gradient="from-red-500 to-rose-600"
+          gradient="from-red-500 to-red-700"
           onClick={() => setFilter('expired')}
           isActive={filter === 'expired'}
         />
@@ -454,14 +454,14 @@ Verification URL: ${cert.verificationUrl || 'N/A'}
           {filteredCertifications.map(cert => (
             <Card
               key={cert._id}
-              className="hover:shadow-md transition-all duration-200 bg-rose-50/40 border border-rose-100 group"
+              className="hover:shadow-md transition-all duration-200 bg-amber-50/40 border border-amber-100 group"
             >
               <CardContent className="pt-6">
                 <div className="flex flex-col md:flex-row md:items-start justify-between gap-4">
                   <div className="flex-1 min-w-0">
                     <div className="flex items-start gap-3 mb-3">
-                      <div className="p-2 bg-rose-100/80 rounded-lg shrink-0">
-                        <Award className="w-5 h-5 text-rose-600" />
+                      <div className="p-2 bg-amber-100/80 rounded-lg shrink-0">
+                        <Award className="w-5 h-5 text-red-700" />
                       </div>
                       <div className="flex-1 min-w-0">
                         <h3 className="text-base font-semibold text-gray-900 mb-0.5 truncate">{cert.name}</h3>
@@ -505,7 +505,7 @@ Verification URL: ${cert.verificationUrl || 'N/A'}
                         <span className="text-xs text-gray-400">+{cert.skills.length - 3} more</span>
                       )}
                       {cert.fileUrl && !cert.fileUrl.toLowerCase().includes('.pdf') && (
-                        <div className="w-16 h-16 rounded-md overflow-hidden border border-rose-200 bg-white ml-auto shrink-0">
+                        <div className="w-16 h-16 rounded-md overflow-hidden border border-amber-200 bg-white ml-auto shrink-0">
                           <img
                             src={buildCertFileSrc(cert)}
                             alt={cert.name}
@@ -576,8 +576,8 @@ Verification URL: ${cert.verificationUrl || 'N/A'}
 
           {selectedCert && (
             <div className="space-y-6">
-              <div className="text-center p-8 bg-gradient-to-br from-rose-50 to-pink-50 rounded-lg border-2 border-rose-200">
-                <Award className="w-16 h-16 text-rose-600 mx-auto mb-4" />
+              <div className="text-center p-8 bg-gradient-to-br from-amber-50 to-yellow-50 rounded-lg border-2 border-amber-200">
+                <Award className="w-16 h-16 text-red-700 mx-auto mb-4" />
                 <h3 className="text-2xl font-bold text-gray-900 mb-2">{selectedCert.name}</h3>
                 <p className="text-lg text-gray-700 mb-3">{selectedCert.issuer}</p>
                 <Badge variant={getStatusVariant(selectedCert.status)} className="flex items-center gap-2 w-fit mx-auto text-sm">
@@ -643,7 +643,7 @@ Verification URL: ${cert.verificationUrl || 'N/A'}
                       href={selectedCert.verificationUrl}
                       target="_blank"
                       rel="noopener noreferrer"
-                      className="text-rose-600 hover:text-rose-800 underline break-all flex items-center gap-1"
+                      className="text-red-700 hover:text-red-900 underline break-all flex items-center gap-1"
                     >
                       {selectedCert.verificationUrl}
                       <ExternalLink className="w-3 h-3 shrink-0" />

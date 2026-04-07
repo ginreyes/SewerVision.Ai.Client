@@ -241,6 +241,7 @@ const OperatorModulePage = () => {
                     Manage and monitor all your inspection projects
                   </p>
                 </div>
+
                 <div className="flex items-center gap-3">
                   {/* View mode toggle */}
                   <div className="inline-flex items-center rounded-lg border border-gray-200 bg-white shadow-sm overflow-hidden">

@@ -160,11 +160,11 @@ const ProjectConsolePage = () => {
                 progressBg: 'from-cyan-500 via-sky-500 to-blue-500',
             },
             'default': {
-                banner: 'from-rose-50 via-pink-50 to-rose-50',
-                bannerBorder: 'border-rose-200',
-                text: 'text-rose-600',
-                textGradient: 'from-rose-600 to-pink-600',
-                progressBg: 'from-rose-500 via-pink-500 to-red-500',
+                banner: 'from-amber-50 via-amber-50 to-amber-50',
+                bannerBorder: 'border-amber-200',
+                text: 'text-red-700',
+                textGradient: 'from-red-700 to-amber-500',
+                progressBg: 'from-red-600 via-amber-500 to-red-500',
             },
         };
 
@@ -336,7 +336,7 @@ const ProjectConsolePage = () => {
     if (loading) {
         return (
             <div className="h-screen flex items-center justify-center bg-gray-50">
-                <Loader2 className="w-6 h-6 animate-spin text-rose-500" />
+                <Loader2 className="w-6 h-6 animate-spin text-red-600" />
             </div>
         );
     }
@@ -386,7 +386,7 @@ const ProjectConsolePage = () => {
                                 <div className="flex items-center gap-2">
                                     <span>QC Progress</span>
                                     <div className="w-20 h-1.5 bg-gray-200 rounded-full overflow-hidden">
-                                        <div className="h-full rounded-full bg-rose-500 transition-all" style={{ width: `${progressPct}%` }} />
+                                        <div className="h-full rounded-full bg-red-600 transition-all" style={{ width: `${progressPct}%` }} />
                                     </div>
                                     <span className="font-semibold text-gray-700 tabular-nums">{progressPct}%</span>
                                 </div>
@@ -504,7 +504,7 @@ const ProjectConsolePage = () => {
                                         )}
                                     </div>
                                     <div className="absolute bottom-2 left-0 right-0 px-4 flex items-center space-x-4 bg-black/50 py-2 rounded z-20" onClick={(e) => e.stopPropagation()}>
-                                        <button type="button" onClick={togglePlay} className="text-white hover:text-rose-300 transition-colors">
+                                        <button type="button" onClick={togglePlay} className="text-white hover:text-amber-300 transition-colors">
                                             {isPlaying ? <Pause className="w-6 h-6" /> : <Play className="w-6 h-6" />}
                                         </button>
                                         <div
@@ -512,12 +512,12 @@ const ProjectConsolePage = () => {
                                             onClick={onSeekClick}
                                             style={{ position: 'relative' }}
                                         >
-                                            <div className="h-1 bg-rose-500 rounded" style={{ width: `${duration ? (currentTime / duration) * 100 : 0}%` }} />
+                                            <div className="h-1 bg-red-600 rounded" style={{ width: `${duration ? (currentTime / duration) * 100 : 0}%` }} />
                                         </div>
                                         <div className="text-white text-sm font-mono tabular-nums">
                                             {formatTime(currentTime)} / {formatTime(duration)}
                                         </div>
-                                        <button type="button" onClick={toggleFullscreen} className="text-white hover:text-rose-300 transition-colors">
+                                        <button type="button" onClick={toggleFullscreen} className="text-white hover:text-amber-300 transition-colors">
                                             {isFullscreen ? <Minimize2 className="w-6 h-6" /> : <Maximize className="w-6 h-6" />}
                                         </button>
                                     </div>
@@ -526,7 +526,7 @@ const ProjectConsolePage = () => {
                                 <div className="text-white text-lg font-semibold flex flex-col items-center justify-center h-full gap-2">
                                     <FileVideo className="w-12 h-12 text-gray-400" />
                                     <span>No video available</span>
-                                    <button onClick={handleRetry} className="text-sm text-rose-300 hover:text-rose-200 flex items-center gap-1.5 mt-1">
+                                    <button onClick={handleRetry} className="text-sm text-amber-300 hover:text-amber-200 flex items-center gap-1.5 mt-1">
                                         <RefreshCw className="w-4 h-4" /> Retry
                                     </button>
                                 </div>
@@ -552,28 +552,28 @@ const ProjectConsolePage = () => {
                                 </div>
                             </div>
                             <div className="w-full bg-gray-200 rounded-full h-2">
-                                <div className="bg-rose-500 h-2 rounded-full transition-all" style={{ width: `${duration ? (currentTime / duration) * 100 : 0}%` }} />
+                                <div className="bg-red-600 h-2 rounded-full transition-all" style={{ width: `${duration ? (currentTime / duration) * 100 : 0}%` }} />
                             </div>
                         </div>
                     </div>
 
                     {/* Right Sidebar — exact project detail style */}
                     <div className="w-80 bg-white/80 backdrop-blur-sm border border-gray-200/50 rounded-2xl p-5 space-y-5 shadow-sm h-fit">
-                        <div className="bg-gradient-to-br from-rose-50/50 to-pink-50/50 rounded-xl p-5 border border-rose-100/50">
+                        <div className="bg-gradient-to-br from-amber-50/50 to-amber-50/50 rounded-xl p-5 border border-amber-100/50">
                             <div className="flex items-center justify-between mb-4">
                                 <div className="flex items-center space-x-2">
                                     <span className="font-semibold text-base text-gray-900">DETECTIONS</span>
-                                    <Badge variant="secondary" className="text-sm bg-rose-100 text-rose-700 px-2">{filteredDetections.length}</Badge>
+                                    <Badge variant="secondary" className="text-sm bg-amber-100 text-red-800 px-2">{filteredDetections.length}</Badge>
                                 </div>
                                 <Button
                                     size="sm"
                                     variant="ghost"
-                                    className="h-8 w-8 p-0 hover:bg-rose-100 rounded-lg"
+                                    className="h-8 w-8 p-0 hover:bg-amber-100 rounded-lg"
                                     onClick={() => setShowManualForm((v) => !v)}
                                     disabled={!videoId}
                                     title="Add manual detection"
                                 >
-                                    <Plus className="h-5 w-5 text-rose-600" />
+                                    <Plus className="h-5 w-5 text-red-700" />
                                 </Button>
                             </div>
                             <div className="flex flex-wrap gap-2 mb-4">
@@ -581,7 +581,7 @@ const ProjectConsolePage = () => {
                                     <button
                                         key={key}
                                         onClick={() => setDetectionFilter(key)}
-                                        className={`px-3 py-1.5 rounded-lg text-sm font-medium transition-colors ${detectionFilter === key ? 'bg-rose-100 text-rose-700' : 'text-gray-600 hover:bg-white/80'}`}
+                                        className={`px-3 py-1.5 rounded-lg text-sm font-medium transition-colors ${detectionFilter === key ? 'bg-amber-100 text-red-800' : 'text-gray-600 hover:bg-white/80'}`}
                                     >
                                         {key.charAt(0).toUpperCase() + key.slice(1)} {key === 'all' ? stats.total : key === 'pending' ? stats.pending : key === 'approved' ? stats.approved : stats.rejected}
                                     </button>
@@ -607,7 +607,7 @@ const ProjectConsolePage = () => {
                                 )}
                             </div>
                             {selectedDetection && (
-                                <div className="mt-4 pt-3 border-t border-rose-100/50">
+                                <div className="mt-4 pt-3 border-t border-amber-100/50">
                                     <button onClick={() => setDetailOpen((v) => !v)} className="w-full flex items-center justify-between text-sm font-semibold text-gray-600 uppercase tracking-wider hover:text-gray-800 mb-2">
                                         <span>Details</span>
                                         {detailOpen ? <ChevronDown className="w-4 h-4" /> : <ChevronUp className="w-4 h-4" />}

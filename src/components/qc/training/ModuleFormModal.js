@@ -48,14 +48,14 @@ export default function ModuleFormModal({ open, editing, form, setForm, saving, 
 
       <div className="relative w-full max-w-3xl mx-4 bg-white rounded-2xl shadow-2xl overflow-hidden max-h-[90vh] flex flex-col">
         {/* Header */}
-        <div className="bg-gradient-to-r from-pink-500 via-rose-500 to-pink-600 px-6 py-4 flex items-center justify-between shrink-0">
+        <div className="bg-gradient-to-r from-red-700 via-red-600 to-amber-500 px-6 py-4 flex items-center justify-between shrink-0">
           <div className="flex items-center gap-3">
             <div className="w-9 h-9 rounded-xl bg-white/20 flex items-center justify-center">
               <BookOpen className="w-4 h-4 text-white" />
             </div>
             <div>
               <h2 className="text-base font-bold text-white">{editing ? "Edit Training Module" : "Create Training Module"}</h2>
-              <p className="text-xs text-rose-100">{form.questions.length} question{form.questions.length !== 1 ? "s" : ""} added</p>
+              <p className="text-xs text-amber-100">{form.questions.length} question{form.questions.length !== 1 ? "s" : ""} added</p>
             </div>
           </div>
           <button onClick={onClose} className="p-1.5 rounded-lg hover:bg-white/10 text-white/80 hover:text-white">
@@ -100,8 +100,8 @@ export default function ModuleFormModal({ open, editing, form, setForm, saving, 
               <div className="flex items-center gap-3 mt-1">
                 <input type="range" min={50} max={100} step={5} value={form.passingScore}
                   onChange={e => setForm(f => ({ ...f, passingScore: Number(e.target.value) }))}
-                  className="flex-1 accent-rose-500" />
-                <span className="text-sm font-bold text-rose-600 w-10 text-right">{form.passingScore}%</span>
+                  className="flex-1 accent-red-600" />
+                <span className="text-sm font-bold text-red-700 w-10 text-right">{form.passingScore}%</span>
               </div>
             </div>
           </div>
@@ -110,9 +110,9 @@ export default function ModuleFormModal({ open, editing, form, setForm, saving, 
           <div>
             <div className="flex items-center justify-between mb-3">
               <Label className="text-sm font-semibold flex items-center gap-1.5">
-                <HelpCircle className="w-4 h-4 text-rose-500" />Questions
+                <HelpCircle className="w-4 h-4 text-red-600" />Questions
               </Label>
-              <Button variant="outline" size="sm" onClick={addQuestion} className="gap-1 text-xs border-rose-200 text-rose-600 hover:bg-rose-50">
+              <Button variant="outline" size="sm" onClick={addQuestion} className="gap-1 text-xs border-amber-200 text-red-700 hover:bg-amber-50">
                 <Plus className="w-3 h-3" /> Add Question
               </Button>
             </div>
@@ -122,7 +122,7 @@ export default function ModuleFormModal({ open, editing, form, setForm, saving, 
                 <div key={qIdx} className="border border-gray-200 rounded-xl p-4 bg-gray-50/50">
                   <div className="flex items-center justify-between mb-3">
                     <span className="text-xs font-bold text-gray-500 flex items-center gap-1.5">
-                      <span className="w-5 h-5 rounded-full bg-rose-100 text-rose-600 flex items-center justify-center text-[10px] font-bold">
+                      <span className="w-5 h-5 rounded-full bg-amber-100 text-red-700 flex items-center justify-center text-[10px] font-bold">
                         {qIdx + 1}
                       </span>
                       Question {qIdx + 1}
@@ -140,7 +140,7 @@ export default function ModuleFormModal({ open, editing, form, setForm, saving, 
                       <div key={oIdx} className="flex items-center gap-2">
                         <input type="radio" name={`correct-${qIdx}`} checked={q.correctAnswer === oIdx}
                           onChange={() => updateQuestion(qIdx, 'correctAnswer', oIdx)}
-                          className="accent-rose-500 shrink-0" />
+                          className="accent-red-600 shrink-0" />
                         <Input value={opt} onChange={e => updateOption(qIdx, oIdx, e.target.value)}
                           placeholder={`Option ${String.fromCharCode(65 + oIdx)}`}
                           className={`text-xs h-8 ${q.correctAnswer === oIdx ? "border-emerald-300 bg-emerald-50" : ""}`} />
@@ -169,7 +169,7 @@ export default function ModuleFormModal({ open, editing, form, setForm, saving, 
           <p className="text-xs text-gray-400">{form.questions.length} question{form.questions.length !== 1 ? "s" : ""} · Pass at {form.passingScore}%</p>
           <div className="flex items-center gap-2">
             <Button variant="outline" onClick={onClose}>Cancel</Button>
-            <Button onClick={onSave} disabled={saving} className="bg-rose-600 hover:bg-rose-700 text-white px-6">
+            <Button onClick={onSave} disabled={saving} className="bg-red-700 hover:bg-red-800 text-white px-6">
               {saving ? <Loader2 className="w-4 h-4 animate-spin mr-1.5" /> : null}
               {editing ? "Save Changes" : "Create Module"}
             </Button>

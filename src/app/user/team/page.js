@@ -11,12 +11,13 @@ import {
 import { Input } from '@/components/ui/input';
 import PageHeroBanner from '@/components/shared/PageHeroBanner';
 import TeamMemberCard from '@/components/user/team/TeamMemberCard';
-import { useUserTeamMembers } from '@/hooks/useQueryHooks';
+import { useUserTeamMembers, useTeamTrainingProgress } from '@/hooks/useQueryHooks';
 
 export default function UserTeamPage() {
   const [searchQuery, setSearchQuery] = useState('');
 
   const { data: allUsers = [], isLoading: loading } = useUserTeamMembers();
+  const { data: trainingProgress = [] } = useTeamTrainingProgress();
 
   const operators = useMemo(() => allUsers.filter((u) => u.role === 'operator'), [allUsers]);
   const qcTechs = useMemo(() => allUsers.filter((u) => u.role === 'qc-technician'), [allUsers]);
@@ -59,9 +60,10 @@ export default function UserTeamPage() {
         <div className="text-center py-14 text-sm text-slate-400">{emptyMsg}</div>
       ) : (
         <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-4">
-          {users.map((u) => (
-            <TeamMemberCard key={u._id} user={u} role={role} />
-          ))}
+          {users.map((u) => {
+            const tp = trainingProgress.find((t) => String(t.user?._id || t.userId || t._id) === String(u._id));
+            return <TeamMemberCard key={u._id} user={u} role={role} training={tp} />;
+          })}
         </div>
       )}
     </div>

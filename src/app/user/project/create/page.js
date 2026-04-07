@@ -7,6 +7,7 @@ import { Label } from "@/components/ui/label";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { useAlert } from "@/components/providers/AlertProvider";
 import { api } from "@/lib/helper";
+import { useUploadLimits } from "@/hooks/useUploadLimits";
 import dynamic from "next/dynamic";
 
 const LocationPicker = dynamic(() => import("@/components/shared/LocationPicker"), { ssr: false });
@@ -106,6 +107,7 @@ const InputField = memo(({ label, name, value, onChange, required = false, type 
 InputField.displayName = 'InputField';
 
 export default function CreateProjectPage({ backUrl = "/user/project", returnTo }) {
+  const uploadLimits = useUploadLimits();
   const [currentStep, setCurrentStep] = useState(1);
   const [loading, setLoading] = useState(false);
   const [errors, setErrors] = useState({});
@@ -402,37 +404,76 @@ export default function CreateProjectPage({ backUrl = "/user/project", returnTo 
   const handleSubmit = useCallback(async () => {
     if (!validateStep(currentStep)) return;
 
+    if (videoFile) {
+      const maxBytes = uploadLimits.videoMaxMB * 1024 * 1024;
+      if (videoFile.size > maxBytes) {
+        showAlert(`Video file is too large. Maximum size is ${uploadLimits.videoMaxMB}MB.`, "error");
+        return;
+      }
+    }
+
     try {
       setLoading(true);
       const formData = getFormData();
-
       const { userId, ...projectFields } = formData;
+
+      if (videoFile) projectFields.status = "uploading";
 
       const form = new FormData();
       form.append("userId", userId);
       form.append("projectData", JSON.stringify(projectFields));
 
-      if (videoFile) {
-        form.append("video", videoFile);
-      }
-
-      const { ok, data } = await api("/api/projects/create-project", "POST", form);
-
-      if (!ok) {
-        showAlert("Project creation failed", "error");
+      if (!videoFile) {
+        const { ok } = await api("/api/projects/create-project", "POST", form);
+        if (!ok) { showAlert("Project creation failed", "error"); return; }
+        showAlert("Project created successfully", "success");
+        router.push(redirectAfterCreate);
         return;
       }
 
-      showAlert("Project created successfully", "success");
-      setCurrentStep(1);
+      // Create project without video first
+      const { ok, data } = await api("/api/projects/create-project", "POST", form);
+      if (!ok) { showAlert("Project creation failed", "error"); return; }
+
+      const createdProjectId = data?.data?._id || data?.data?.id;
+      showAlert("Project created! Video is uploading in the background...", "success");
       router.push(redirectAfterCreate);
+
+      // Upload video in background
+      if (createdProjectId) {
+        const videoForm = new FormData();
+        videoForm.append("video", videoFile);
+        videoForm.append("projectId", createdProjectId);
+        const token = typeof window !== "undefined" ? (document.cookie.match(/authToken=([^;]*)/)?.[1] || "") : "";
+        const apiUrl = process.env.NEXT_PUBLIC_BACKEND_URL || "http://localhost:5000";
+
+        const markUploadFailed = (errorMsg) => {
+          api(`/api/projects/update-project/${createdProjectId}/${userId}`, "PUT", {
+            projectData: JSON.stringify({ status: "on-hold", uploadError: errorMsg || "Video upload failed" }),
+          }).catch(() => {});
+        };
+
+        const xhr = new XMLHttpRequest();
+        xhr.addEventListener("load", () => {
+          if (xhr.status < 200 || xhr.status >= 300) {
+            try { markUploadFailed(JSON.parse(xhr.responseText).message); } catch { markUploadFailed(`Upload failed (${xhr.status})`); }
+          }
+        });
+        xhr.addEventListener("error", () => markUploadFailed("Network error during video upload"));
+        xhr.addEventListener("timeout", () => markUploadFailed("Video upload timed out"));
+        xhr.timeout = 600000;
+
+        xhr.open("POST", `${apiUrl}/api/videos/upload`);
+        if (token) xhr.setRequestHeader("Authorization", `Bearer ${token}`);
+        xhr.send(videoForm);
+      }
 
     } catch (error) {
       showAlert(error.message || "Failed to create project", "error");
     } finally {
       setLoading(false);
     }
-  }, [currentStep, getFormData, showAlert, validateStep, videoFile, router, redirectAfterCreate]);
+  }, [currentStep, getFormData, showAlert, validateStep, videoFile, router, redirectAfterCreate, uploadLimits]);
 
 
   const renderStepContent = () => {

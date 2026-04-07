@@ -89,7 +89,7 @@ const QCUploadsPage = () => {
             <Card key={upload._id}>
               <CardHeader>
                 <div className="flex items-center gap-2">
-                  <FileVideo className="w-5 h-5 text-rose-600" />
+                  <FileVideo className="w-5 h-5 text-red-700" />
                   <CardTitle className="text-lg">
                     {upload.filename || upload.name || "Unnamed File"}
                   </CardTitle>

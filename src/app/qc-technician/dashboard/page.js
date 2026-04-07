@@ -25,12 +25,15 @@ import { useRouter } from 'next/navigation'
 import { usePolling } from '@/hooks'
 import { LoadingState, ErrorState, EmptyState } from '@/components/qc'
 import { POLL_INTERVAL } from '@/components/qc/constants'
+import OnboardingChecklist from '@/components/qc/OnboardingChecklist'
+import { useOnboardingProgress } from '@/hooks/useOnboarding'
 import { StatCard, QuickAction } from '@/components/qc/dashboard'
 
 const QCTechnicianDashboard = () => {
   const { userId, userData } = useUser()
   const router = useRouter()
   const [refreshing, setRefreshing] = useState(false)
+  const { data: onboarding } = useOnboardingProgress(userId)
 
   // Real data state
   const [dashboardStats, setDashboardStats] = useState(null)
@@ -152,7 +155,7 @@ const QCTechnicianDashboard = () => {
       case 'pending_qc':
       case 'pending': return 'bg-yellow-100 text-yellow-700'
       case 'in_review':
-      case 'in-review': return 'bg-rose-100 text-rose-700'
+      case 'in-review': return 'bg-amber-100 text-red-800'
       case 'processing': return 'bg-gray-100 text-gray-700'
       case 'completed': return 'bg-green-100 text-green-700'
       default: return 'bg-gray-100 text-gray-700'
@@ -294,7 +297,7 @@ const QCTechnicianDashboard = () => {
 
   // Loading state
   if (loading && !dashboardStats) {
-    return <LoadingState message="Loading dashboard data..." spinnerColor="text-rose-600" />
+    return <LoadingState message="Loading dashboard data..." spinnerColor="text-red-700" />
   }
 
   // Error state
@@ -309,6 +312,8 @@ const QCTechnicianDashboard = () => {
 
   return (
     <div className="p-6 space-y-6 max-w-7xl mx-auto">
+      {/* Onboarding Checklist for new QC Technicians */}
+      <OnboardingChecklist onboarding={onboarding} userId={userId} />
       {/* Header */}
       <div className="flex items-center justify-between">
         <div>
@@ -410,7 +415,7 @@ const QCTechnicianDashboard = () => {
                 pendingProjects.map((project) => (
                   <div
                     key={project.id}
-                    className="p-3 rounded-xl cursor-pointer transition-all border border-gray-100 hover:border-rose-200 hover:bg-gray-50 group"
+                    className="p-3 rounded-xl cursor-pointer transition-all border border-gray-100 hover:border-amber-200 hover:bg-gray-50 group"
                     onClick={() => router.push('/qc-technician/quality-control')}
                   >
                     <div className="flex items-start justify-between mb-2">
@@ -438,10 +443,10 @@ const QCTechnicianDashboard = () => {
 
                     <div className="mt-2 flex items-center justify-between">
                       <div className="text-xs font-medium text-gray-700 flex items-center gap-1">
-                        <AlertTriangle className="w-3 h-3 text-rose-500" />
+                        <AlertTriangle className="w-3 h-3 text-red-600" />
                         {project.totalDetections} detections
                       </div>
-                      <ChevronRight className="w-3.5 h-3.5 text-gray-300 group-hover:text-rose-400 transition-colors" />
+                      <ChevronRight className="w-3.5 h-3.5 text-gray-300 group-hover:text-red-500 transition-colors" />
                     </div>
                   </div>
                 ))
@@ -467,7 +472,7 @@ const QCTechnicianDashboard = () => {
             <div className="h-64 relative z-10">
               <canvas ref={qcStatsChartRef}></canvas>
             </div>
-            <div className="absolute -top-20 -right-20 w-64 h-64 bg-rose-50 rounded-full opacity-50 z-0 pointer-events-none"></div>
+            <div className="absolute -top-20 -right-20 w-64 h-64 bg-amber-50 rounded-full opacity-50 z-0 pointer-events-none"></div>
           </div>
 
           {/* Charts Row - Detection Types & Priority Distribution */}
@@ -516,7 +521,7 @@ const QCTechnicianDashboard = () => {
               </div>
               <button
                 onClick={() => router.push('/qc-technician/quality-control')}
-                className="text-xs text-rose-600 hover:text-rose-700 font-medium flex items-center gap-1"
+                className="text-xs text-red-700 hover:text-red-800 font-medium flex items-center gap-1"
               >
                 View All <ChevronRight className="w-3 h-3" />
               </button>
@@ -536,7 +541,7 @@ const QCTechnicianDashboard = () => {
                   >
                     <div className="flex items-center gap-3">
                       <div className={`w-2 h-2 rounded-full ${project.status === 'completed' ? 'bg-green-500' :
-                          project.status === 'in_review' ? 'bg-rose-500' : 'bg-yellow-500'
+                          project.status === 'in_review' ? 'bg-red-600' : 'bg-yellow-500'
                         }`} />
                       <div>
                         <p className="text-sm font-medium text-gray-900">{project.projectName}</p>

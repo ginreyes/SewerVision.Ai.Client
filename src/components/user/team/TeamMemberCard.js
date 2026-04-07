@@ -1,7 +1,7 @@
 'use client';
 
 import Link from 'next/link';
-import { Mail, ChevronRight, Briefcase, Shield } from 'lucide-react';
+import { Mail, ChevronRight, Briefcase, Shield, GraduationCap } from 'lucide-react';
 import { Badge } from '@/components/ui/badge';
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
 import { getRoleStyle } from '@/components/user/constants';
@@ -22,7 +22,7 @@ const statusConfig = (status) => {
 
 const ROLE_ICONS = { operator: Briefcase, 'qc-technician': Shield };
 
-export default function TeamMemberCard({ user, role }) {
+export default function TeamMemberCard({ user, role, training }) {
     const name = [user.first_name, user.last_name].filter(Boolean).join(' ').trim() || user.username || user.email || 'Unknown';
     const initials = name.split(' ').map((n) => n[0]).join('').toUpperCase().slice(0, 2);
     const status = formatStatus(user);
@@ -65,6 +65,19 @@ export default function TeamMemberCard({ user, role }) {
                             {user.email}
                         </p>
                     </div>
+                    {/* Training Progress */}
+                    {training && (
+                        <div className="pt-2">
+                            <div className="flex items-center justify-between text-[10px] text-slate-500 mb-1">
+                                <span className="flex items-center gap-0.5"><GraduationCap className="w-2.5 h-2.5" /> Training</span>
+                                <span className="font-semibold text-slate-700">{training.modulesCompleted || 0} modules · {training.avgScore || 0}%</span>
+                            </div>
+                            <div className="h-1.5 bg-slate-100 rounded-full overflow-hidden">
+                                <div className="h-full bg-indigo-500 rounded-full transition-all" style={{ width: `${Math.min(100, (training.avgScore || 0))}%` }} />
+                            </div>
+                        </div>
+                    )}
+
                     <div className="pt-2 border-t border-slate-100">
                         <span className="inline-flex items-center gap-1 text-xs font-medium text-indigo-600 group-hover:text-indigo-800 transition-colors">
                             View profile

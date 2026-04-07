@@ -319,10 +319,10 @@ const AddDeviceModal = (props) => {
   const buildConnectionUrl = () => {
     if (!connectionResult?.deviceId || !connectionResult?.secret) return ''
     const base = typeof window !== 'undefined' ? (process.env.NEXT_PUBLIC_APP_URL || window.location.origin) : (process.env.NEXT_PUBLIC_APP_URL || '')
-    const params = 'deviceId=' + encodeURIComponent(connectionResult.deviceId) + '&secret=' + encodeURIComponent(connectionResult.secret)
+    const params = `deviceId=${encodeURIComponent(connectionResult.deviceId)}&secret=${encodeURIComponent(connectionResult.secret)}`
     const apiBase = process.env.NEXT_PUBLIC_BACKEND_URL
-    const qs = apiBase ? params + '&apiBase=' + encodeURIComponent(apiBase) : params
-    return base + '/device-connect?' + qs
+    const qs = apiBase ? `${params}&apiBase=${encodeURIComponent(apiBase)}` : params
+    return `${base}/device-connect?${qs}`
   }
 
   const handleConnectionDone = () => {

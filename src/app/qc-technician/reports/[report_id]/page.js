@@ -56,7 +56,7 @@ const InfoRow = ({ icon: Icon, label, value, subValue, iconColor = 'text-gray-40
 )
 
 /* ─── Timeline item ─── */
-const TimelineItem = ({ icon: Icon, title, time, description, isLast, color = 'bg-rose-500' }) => (
+const TimelineItem = ({ icon: Icon, title, time, description, isLast, color = 'bg-red-600' }) => (
   <div className="flex gap-3">
     <div className="flex flex-col items-center">
       <div className={`w-8 h-8 rounded-full ${color} flex items-center justify-center shrink-0`}>
@@ -323,8 +323,8 @@ const ReportDetailView = () => {
     return (
       <div className="flex items-center justify-center h-[60vh]">
         <div className="text-center">
-          <div className="w-16 h-16 rounded-2xl bg-rose-50 flex items-center justify-center mx-auto mb-4">
-            <Loader2 className="w-8 h-8 animate-spin text-rose-500" />
+          <div className="w-16 h-16 rounded-2xl bg-amber-50 flex items-center justify-center mx-auto mb-4">
+            <Loader2 className="w-8 h-8 animate-spin text-red-600" />
           </div>
           <p className="text-gray-900 font-medium">Loading report details</p>
           <p className="text-gray-400 text-sm mt-1">Please wait...</p>

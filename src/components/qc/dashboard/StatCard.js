@@ -4,9 +4,9 @@ const StatCard = ({ icon: Icon, value, label, trend, color = 'blue', suffix = ''
     blue: 'from-blue-500 to-blue-600',
     green: 'from-green-500 to-emerald-600',
     orange: 'from-orange-500 to-amber-600',
-    red: 'from-red-500 to-rose-600',
+    red: 'from-red-500 to-red-700',
     purple: 'from-purple-500 to-indigo-600',
-    rose: 'from-rose-500 to-pink-600',
+    rose: 'from-red-600 to-amber-500',
     yellow: 'from-yellow-400 to-orange-500'
   }
 

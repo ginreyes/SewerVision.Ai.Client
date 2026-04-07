@@ -262,11 +262,11 @@ const QCCalendarPage = () => {
 
             {/* QC Assignments Summary */}
             {qcAssignments.length > 0 && (
-              <div className="mt-4 p-3 bg-rose-50 rounded-lg border border-rose-200">
-                <div className="text-sm font-semibold text-rose-800 mb-2">
+              <div className="mt-4 p-3 bg-amber-50 rounded-lg border border-amber-200">
+                <div className="text-sm font-semibold text-red-900 mb-2">
                   QC Assignments
                 </div>
-                <div className="text-xs text-rose-600">
+                <div className="text-xs text-red-700">
                   {qcAssignments.filter(a => a.status === 'assigned' || a.status === 'in-progress').length} active
                 </div>
                 <div className="text-xs text-gray-600 mt-1">

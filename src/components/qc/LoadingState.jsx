@@ -9,7 +9,7 @@ import { Loader2 } from 'lucide-react'
  * @property {string} [size='default'] - Size variant ('sm', 'default', 'lg')
  * @property {string} [variant='default'] - Visual variant ('default', 'minimal', 'overlay')
  * @property {string} [className] - Additional CSS classes
- * @property {string} [spinnerColor='text-rose-600'] - Tailwind color class for spinner
+ * @property {string} [spinnerColor='text-red-700'] - Tailwind color class for spinner
  */
 
 /**
@@ -63,7 +63,7 @@ const LoadingState = memo(({
   size = 'default',
   variant = 'default',
   className = '',
-  spinnerColor = 'text-rose-600'
+  spinnerColor = 'text-red-700'
 }) => {
   const config = sizeConfig[size] || sizeConfig.default
 

@@ -55,7 +55,7 @@ const ToggleSetting = ({ label, description, checked, onCheckedChange }) => (
       <Label className="text-base font-medium text-gray-900">{label}</Label>
       <p className="text-sm text-gray-500">{description}</p>
     </div>
-    <Switch checked={checked} onCheckedChange={onCheckedChange} className="data-[state=checked]:bg-rose-600" />
+    <Switch checked={checked} onCheckedChange={onCheckedChange} className="data-[state=checked]:bg-red-700" />
   </div>
 );
 
@@ -386,7 +386,7 @@ function QCSettingsContent() {
           <Button variant="outline" className="text-gray-600" onClick={() => router.back()}>
             Cancel
           </Button>
-          <Button onClick={handleSaveSettings} disabled={saving} className="bg-rose-600 hover:bg-rose-700">
+          <Button onClick={handleSaveSettings} disabled={saving} className="bg-red-700 hover:bg-red-800">
             {saving ? <Loader2 className="w-4 h-4 mr-2 animate-spin" /> : <Save className="w-4 h-4 mr-2" />}
             Save Changes
           </Button>
@@ -409,11 +409,11 @@ function QCSettingsContent() {
                   key={item.id}
                   onClick={() => handleTabChange(item.id)}
                   className={`flex items-center w-full px-3 py-2 text-sm font-medium rounded-lg transition-colors ${activeTab === item.id
-                    ? 'bg-rose-50 text-rose-700'
+                    ? 'bg-amber-50 text-red-800'
                     : 'text-gray-600 hover:bg-gray-50 hover:text-gray-900'
                     }`}
                 >
-                  <item.icon className={`w-4 h-4 mr-3 ${activeTab === item.id ? 'text-rose-600' : 'text-gray-400'
+                  <item.icon className={`w-4 h-4 mr-3 ${activeTab === item.id ? 'text-red-700' : 'text-gray-400'
                     }`} />
                   {item.label}
                 </button>
@@ -482,7 +482,7 @@ function QCSettingsContent() {
                       />
                       <Avatar className="w-24 h-24 border-4 border-white shadow-lg cursor-pointer" onClick={handleAvatarClick}>
                         <AvatarImage src={profile.avatar} />
-                        <AvatarFallback className="bg-rose-100 text-rose-600 text-2xl">
+                        <AvatarFallback className="bg-amber-100 text-red-700 text-2xl">
                           {profile.firstName?.[0]}{profile.lastName?.[0]}
                         </AvatarFallback>
                       </Avatar>
@@ -493,7 +493,7 @@ function QCSettingsContent() {
                         <Camera className="w-8 h-8 text-white" />
                       </div>
                       <div className="absolute -bottom-2 -right-2 bg-white p-1.5 rounded-full shadow-md border border-gray-100 pointer-events-none">
-                        {loading ? <Loader2 className="w-4 h-4 text-rose-600 animate-spin" /> : <Upload className="w-4 h-4 text-gray-600" />}
+                        {loading ? <Loader2 className="w-4 h-4 text-red-700 animate-spin" /> : <Upload className="w-4 h-4 text-gray-600" />}
                       </div>
                     </div>
 
@@ -504,7 +504,7 @@ function QCSettingsContent() {
                       <p className="text-sm text-gray-500">{profile.role} • {profile.department || 'Quality Control'}</p>
 
                       <div className="flex items-center justify-center sm:justify-start gap-2 mt-3">
-                        <Badge variant="secondary" className="bg-rose-50 text-rose-700 hover:bg-rose-100">
+                        <Badge variant="secondary" className="bg-amber-50 text-red-800 hover:bg-amber-100">
                           PACP Certified
                         </Badge>
                         <Badge variant="outline" className="text-gray-600">
@@ -595,7 +595,7 @@ function QCSettingsContent() {
                   {isEditingProfile && (
                     <div className="flex justify-end pt-4">
                       <Button variant="ghost" onClick={() => setIsEditingProfile(false)} className="mr-2">Cancel</Button>
-                      <Button onClick={handleSaveProfile} disabled={saving} className="bg-rose-600">
+                      <Button onClick={handleSaveProfile} disabled={saving} className="bg-red-700">
                         {saving && <Loader2 className="w-4 h-4 mr-2 animate-spin" />}
                         Save Changes
                       </Button>
@@ -671,7 +671,7 @@ function QCSettingsContent() {
                         </button>
                       </div>
                     </div>
-                    <Button type="submit" disabled={saving || !passwordForm.currentPassword || !passwordForm.newPassword} className="bg-rose-600 hover:bg-rose-700">
+                    <Button type="submit" disabled={saving || !passwordForm.currentPassword || !passwordForm.newPassword} className="bg-red-700 hover:bg-red-800">
                       {saving && <Loader2 className="w-4 h-4 mr-2 animate-spin" />}
                       Update Password
                     </Button>
@@ -738,7 +738,7 @@ function QCSettingsContent() {
                           key={quality}
                           onClick={() => updateSetting('playbackQuality', quality)}
                           className={`cursor-pointer rounded-xl border-2 p-4 text-center transition-all ${settings.playbackQuality === quality
-                            ? 'border-rose-500 bg-rose-50 text-rose-700'
+                            ? 'border-red-600 bg-amber-50 text-red-800'
                             : 'border-gray-100 hover:border-gray-200'
                             }`}
                         >
@@ -889,7 +889,7 @@ function QCSettingsContent() {
 }
 
 const SettingPageQcSide = () => (
-  <Suspense fallback={<div className="min-h-screen flex items-center justify-center"><Loader2 className="w-8 h-8 animate-spin text-rose-500" /></div>}>
+  <Suspense fallback={<div className="min-h-screen flex items-center justify-center"><Loader2 className="w-8 h-8 animate-spin text-red-600" /></div>}>
     <QCSettingsContent />
   </Suspense>
 );

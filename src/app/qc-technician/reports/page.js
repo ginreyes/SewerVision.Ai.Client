@@ -554,8 +554,8 @@ const QualityReportPage = () => {
         <CardContent className="pt-6">
           <div className="flex items-start justify-between mb-3">
             <div className="flex items-start gap-3 flex-1">
-              <div className="p-2 bg-rose-50 rounded-lg">
-                <FileText className="w-5 h-5 text-rose-600" />
+              <div className="p-2 bg-amber-50 rounded-lg">
+                <FileText className="w-5 h-5 text-red-700" />
               </div>
               <div className="flex-1 min-w-0">
                 <h3 className="font-semibold text-gray-900 mb-1 line-clamp-1">{projectName}</h3>
@@ -648,8 +648,8 @@ const QualityReportPage = () => {
       <div className="mb-6">
         <div className="flex items-center justify-between mb-2">
           <div className="flex items-center gap-3">
-            <div className="p-2 bg-rose-100 rounded-lg">
-              <FileText className="w-6 h-6 text-rose-600" />
+            <div className="p-2 bg-amber-100 rounded-lg">
+              <FileText className="w-6 h-6 text-red-700" />
             </div>
             <div>
               <h1 className="text-2xl font-bold text-gray-900">Quality Reports</h1>
@@ -719,7 +719,7 @@ const QualityReportPage = () => {
                 </div>
                 <div className="bg-white rounded-xl border border-gray-100 p-4 hover:shadow-md transition-all">
                   <div className="flex items-center justify-between">
-                    <div className="p-2 rounded-lg bg-gradient-to-br from-rose-500 to-pink-600">
+                    <div className="p-2 rounded-lg bg-gradient-to-br from-red-600 to-amber-500">
                       <Target className="w-5 h-5 text-white" />
                     </div>
                   </div>
@@ -730,7 +730,7 @@ const QualityReportPage = () => {
                 </div>
                 <div className="bg-white rounded-xl border border-gray-100 p-4 hover:shadow-md transition-all">
                   <div className="flex items-center justify-between">
-                    <div className="p-2 rounded-lg bg-gradient-to-br from-rose-500 to-pink-600">
+                    <div className="p-2 rounded-lg bg-gradient-to-br from-red-600 to-amber-500">
                       <FileText className="w-5 h-5 text-white" />
                     </div>
                   </div>
@@ -786,7 +786,7 @@ const QualityReportPage = () => {
               {/* Reports Grid */}
               {loading ? (
                 <div className="flex justify-center py-12">
-                  <Loader2 className="h-8 w-8 animate-spin text-rose-500" />
+                  <Loader2 className="h-8 w-8 animate-spin text-red-600" />
                 </div>
               ) : reports.length === 0 ? (
                 <Card>
@@ -822,7 +822,7 @@ const QualityReportPage = () => {
               {loading ? (
                 <Card>
                   <CardContent className="py-12 flex flex-col items-center justify-center">
-                    <Loader2 className="w-8 h-8 animate-spin text-rose-500 mb-3" />
+                    <Loader2 className="w-8 h-8 animate-spin text-red-600 mb-3" />
                     <p className="text-sm text-gray-500">Loading templates...</p>
                   </CardContent>
                 </Card>
@@ -845,8 +845,8 @@ const QualityReportPage = () => {
                       <CardContent className="pt-6">
                         <div className="flex items-start justify-between mb-4">
                           <div className="flex items-start gap-3 flex-1">
-                            <div className="p-2 bg-rose-50 rounded-lg">
-                              <FileCheck className="w-5 h-5 text-rose-600" />
+                            <div className="p-2 bg-amber-50 rounded-lg">
+                              <FileCheck className="w-5 h-5 text-red-700" />
                             </div>
                             <div className="flex-1 min-w-0">
                               <h3 className="font-semibold text-gray-900 mb-1">
@@ -937,8 +937,8 @@ const QualityReportPage = () => {
 
                 <Card>
                   <CardContent className="pt-6 text-center">
-                    <div className="p-3 bg-rose-100 rounded-lg inline-flex mb-3">
-                      <Clock className="w-6 h-6 text-rose-600" />
+                    <div className="p-3 bg-amber-100 rounded-lg inline-flex mb-3">
+                      <Clock className="w-6 h-6 text-red-700" />
                     </div>
                     <p className="text-2xl font-bold text-gray-900 mb-1">2.3h</p>
                     <p className="text-sm text-gray-500">Avg Time to Complete</p>
@@ -947,8 +947,8 @@ const QualityReportPage = () => {
 
                 <Card>
                   <CardContent className="pt-6 text-center">
-                    <div className="p-3 bg-rose-100 rounded-lg inline-flex mb-3">
-                      <Target className="w-6 h-6 text-rose-600" />
+                    <div className="p-3 bg-amber-100 rounded-lg inline-flex mb-3">
+                      <Target className="w-6 h-6 text-red-700" />
                     </div>
                     <p className="text-2xl font-bold text-gray-900 mb-1">98.1%</p>
                     <p className="text-sm text-gray-500">Client Approval Rate</p>
@@ -1028,7 +1028,7 @@ const QualityReportPage = () => {
       {/* New Report Modal with Sidebar Tabs */}
       <Dialog open={isNewReportModalOpen} onOpenChange={setIsNewReportModalOpen}>
         <DialogContent className="max-w-6xl h-[85vh] p-0 gap-0 flex flex-col">
-          <DialogHeader className="px-6 pt-6 pb-4 border-b bg-gradient-to-r from-rose-50 to-orange-50">
+          <DialogHeader className="px-6 pt-6 pb-4 border-b bg-gradient-to-r from-amber-50 to-orange-50">
             <DialogTitle className="text-2xl font-bold text-gray-900">Create New Report</DialogTitle>
             <DialogDescription className="text-gray-600">
               Select a category from the left sidebar to fill in report details
@@ -1048,11 +1048,11 @@ const QualityReportPage = () => {
                   onClick={() => setCreateReportTab('project')}
                   className={`w-full flex items-center gap-3 px-4 py-3 rounded-xl text-sm font-medium transition-all ${
                     createReportTab === 'project'
-                      ? 'bg-gradient-to-r from-rose-600 to-rose-500 text-white shadow-lg shadow-rose-200 scale-105'
+                      ? 'bg-gradient-to-r from-red-700 to-red-600 text-white shadow-lg shadow-amber-200 scale-105'
                       : 'text-gray-700 hover:bg-white hover:shadow-md'
                   }`}
                 >
-                  <div className={`p-1.5 rounded-lg ${createReportTab === 'project' ? 'bg-white/20' : 'bg-rose-100'}`}>
+                  <div className={`p-1.5 rounded-lg ${createReportTab === 'project' ? 'bg-white/20' : 'bg-amber-100'}`}>
                     <FileText className="h-4 w-4" />
                   </div>
                   <span className="flex-1 text-left">Project Selection</span>
@@ -1064,11 +1064,11 @@ const QualityReportPage = () => {
                   onClick={() => setCreateReportTab('details')}
                   className={`w-full flex items-center gap-3 px-4 py-3 rounded-xl text-sm font-medium transition-all ${
                     createReportTab === 'details'
-                      ? 'bg-gradient-to-r from-rose-600 to-rose-500 text-white shadow-lg shadow-rose-200 scale-105'
+                      ? 'bg-gradient-to-r from-red-700 to-red-600 text-white shadow-lg shadow-amber-200 scale-105'
                       : 'text-gray-700 hover:bg-white hover:shadow-md'
                   }`}
                 >
-                  <div className={`p-1.5 rounded-lg ${createReportTab === 'details' ? 'bg-white/20' : 'bg-rose-100'}`}>
+                  <div className={`p-1.5 rounded-lg ${createReportTab === 'details' ? 'bg-white/20' : 'bg-amber-100'}`}>
                     <FileCheck className="h-4 w-4" />
                   </div>
                   <span className="flex-1 text-left">Report Details</span>
@@ -1080,11 +1080,11 @@ const QualityReportPage = () => {
                   onClick={() => setCreateReportTab('conditions')}
                   className={`w-full flex items-center gap-3 px-4 py-3 rounded-xl text-sm font-medium transition-all ${
                     createReportTab === 'conditions'
-                      ? 'bg-gradient-to-r from-rose-600 to-rose-500 text-white shadow-lg shadow-rose-200 scale-105'
+                      ? 'bg-gradient-to-r from-red-700 to-red-600 text-white shadow-lg shadow-amber-200 scale-105'
                       : 'text-gray-700 hover:bg-white hover:shadow-md'
                   }`}
                 >
-                  <div className={`p-1.5 rounded-lg ${createReportTab === 'conditions' ? 'bg-white/20' : 'bg-rose-100'}`}>
+                  <div className={`p-1.5 rounded-lg ${createReportTab === 'conditions' ? 'bg-white/20' : 'bg-amber-100'}`}>
                     <Target className="h-4 w-4" />
                   </div>
                   <span className="flex-1 text-left">Conditions</span>
@@ -1096,11 +1096,11 @@ const QualityReportPage = () => {
                   onClick={() => setCreateReportTab('template')}
                   className={`w-full flex items-center gap-3 px-4 py-3 rounded-xl text-sm font-medium transition-all ${
                     createReportTab === 'template'
-                      ? 'bg-gradient-to-r from-rose-600 to-rose-500 text-white shadow-lg shadow-rose-200 scale-105'
+                      ? 'bg-gradient-to-r from-red-700 to-red-600 text-white shadow-lg shadow-amber-200 scale-105'
                       : 'text-gray-700 hover:bg-white hover:shadow-md'
                   }`}
                 >
-                  <div className={`p-1.5 rounded-lg ${createReportTab === 'template' ? 'bg-white/20' : 'bg-rose-100'}`}>
+                  <div className={`p-1.5 rounded-lg ${createReportTab === 'template' ? 'bg-white/20' : 'bg-amber-100'}`}>
                     <FileText className="h-4 w-4" />
                   </div>
                   <span className="flex-1 text-left">Template</span>
@@ -1112,11 +1112,11 @@ const QualityReportPage = () => {
                   onClick={() => setCreateReportTab('review')}
                   className={`w-full flex items-center gap-3 px-4 py-3 rounded-xl text-sm font-medium transition-all ${
                     createReportTab === 'review'
-                      ? 'bg-gradient-to-r from-rose-600 to-rose-500 text-white shadow-lg shadow-rose-200 scale-105'
+                      ? 'bg-gradient-to-r from-red-700 to-red-600 text-white shadow-lg shadow-amber-200 scale-105'
                       : 'text-gray-700 hover:bg-white hover:shadow-md'
                   }`}
                 >
-                  <div className={`p-1.5 rounded-lg ${createReportTab === 'review' ? 'bg-white/20' : 'bg-rose-100'}`}>
+                  <div className={`p-1.5 rounded-lg ${createReportTab === 'review' ? 'bg-white/20' : 'bg-amber-100'}`}>
                     <Eye className="h-4 w-4" />
                   </div>
                   <span className="flex-1 text-left">Review & Create</span>
@@ -1126,9 +1126,9 @@ const QualityReportPage = () => {
                 </button>
               </nav>
               
-              <div className="mt-4 p-3 bg-white rounded-lg border border-rose-100">
+              <div className="mt-4 p-3 bg-white rounded-lg border border-amber-100">
                 <p className="text-xs text-gray-600">
-                  <span className="font-semibold text-rose-600">Tip:</span> Fill in all required fields marked with *
+                  <span className="font-semibold text-red-700">Tip:</span> Fill in all required fields marked with *
                 </p>
               </div>
             </div>
@@ -1139,25 +1139,25 @@ const QualityReportPage = () => {
               {createReportTab === 'project' && (
                 <div className="space-y-6">
                   {/* Instructions Card */}
-                  <Card className="bg-gradient-to-br from-rose-50 via-pink-50 to-rose-50 border-rose-200">
+                  <Card className="bg-gradient-to-br from-amber-50 via-amber-50 to-amber-50 border-amber-200">
                     <CardContent className="pt-5">
                       <div className="flex items-start gap-4">
                         <div className="p-2.5 bg-white rounded-xl shadow-sm">
-                          <FileText className="h-6 w-6 text-rose-600" />
+                          <FileText className="h-6 w-6 text-red-700" />
                         </div>
                         <div className="flex-1">
                           <h3 className="text-base font-semibold text-gray-900 mb-2">Getting Started</h3>
                           <div className="space-y-2 text-sm text-gray-700">
                             <div className="flex items-start gap-2">
-                              <CheckCircle className="h-4 w-4 text-rose-600 mt-0.5 flex-shrink-0" />
+                              <CheckCircle className="h-4 w-4 text-red-700 mt-0.5 flex-shrink-0" />
                               <p>Select the project you'll be inspecting from your assigned projects</p>
                             </div>
                             <div className="flex items-start gap-2">
-                              <CheckCircle className="h-4 w-4 text-rose-600 mt-0.5 flex-shrink-0" />
+                              <CheckCircle className="h-4 w-4 text-red-700 mt-0.5 flex-shrink-0" />
                               <p>Only projects assigned to you will appear in the dropdown</p>
                             </div>
                             <div className="flex items-start gap-2">
-                              <CheckCircle className="h-4 w-4 text-rose-600 mt-0.5 flex-shrink-0" />
+                              <CheckCircle className="h-4 w-4 text-red-700 mt-0.5 flex-shrink-0" />
                               <p>Review project details before proceeding to the next section</p>
                             </div>
                           </div>
@@ -1204,7 +1204,7 @@ const QualityReportPage = () => {
                 )}
 
                 {selectedProject && (
-                  <Card className="bg-gradient-to-br from-rose-50 to-orange-50 border-rose-200">
+                  <Card className="bg-gradient-to-br from-amber-50 to-orange-50 border-amber-200">
                     <CardHeader className="pb-3">
                       <CardTitle className="text-sm">Project Details</CardTitle>
                     </CardHeader>
@@ -1232,25 +1232,25 @@ const QualityReportPage = () => {
               {createReportTab === 'details' && (
                 <div className="space-y-6">
                   {/* Instructions Card */}
-                  <Card className="bg-gradient-to-br from-rose-50 via-pink-50 to-rose-50 border-rose-200">
+                  <Card className="bg-gradient-to-br from-amber-50 via-amber-50 to-amber-50 border-amber-200">
                     <CardContent className="pt-5">
                       <div className="flex items-start gap-4">
                         <div className="p-2.5 bg-white rounded-xl shadow-sm">
-                          <FileCheck className="h-6 w-6 text-rose-600" />
+                          <FileCheck className="h-6 w-6 text-red-700" />
                         </div>
                         <div className="flex-1">
                           <h3 className="text-base font-semibold text-gray-900 mb-2">Report Details</h3>
                           <div className="space-y-2 text-sm text-gray-700">
                             <div className="flex items-start gap-2">
-                              <CheckCircle className="h-4 w-4 text-rose-600 mt-0.5 flex-shrink-0" />
+                              <CheckCircle className="h-4 w-4 text-red-700 mt-0.5 flex-shrink-0" />
                               <p>Enter a descriptive title for easy identification</p>
                             </div>
                             <div className="flex items-start gap-2">
-                              <CheckCircle className="h-4 w-4 text-rose-600 mt-0.5 flex-shrink-0" />
+                              <CheckCircle className="h-4 w-4 text-red-700 mt-0.5 flex-shrink-0" />
                               <p>Set the inspection date and report type (initial, follow-up, etc.)</p>
                             </div>
                             <div className="flex items-start gap-2">
-                              <CheckCircle className="h-4 w-4 text-rose-600 mt-0.5 flex-shrink-0" />
+                              <CheckCircle className="h-4 w-4 text-red-700 mt-0.5 flex-shrink-0" />
                               <p>Assign priority level to help organize your workflow</p>
                             </div>
                           </div>
@@ -1336,25 +1336,25 @@ const QualityReportPage = () => {
               {createReportTab === 'conditions' && (
                 <div className="space-y-6">
                   {/* Instructions Card */}
-                  <Card className="bg-gradient-to-br from-rose-50 via-pink-50 to-rose-50 border-rose-200">
+                  <Card className="bg-gradient-to-br from-amber-50 via-amber-50 to-amber-50 border-amber-200">
                     <CardContent className="pt-5">
                       <div className="flex items-start gap-4">
                         <div className="p-2.5 bg-white rounded-xl shadow-sm">
-                          <Target className="h-6 w-6 text-rose-600" />
+                          <Target className="h-6 w-6 text-red-700" />
                         </div>
                         <div className="flex-1">
                           <h3 className="text-base font-semibold text-gray-900 mb-2">Inspection Conditions</h3>
                           <div className="space-y-2 text-sm text-gray-700">
                             <div className="flex items-start gap-2">
-                              <CheckCircle className="h-4 w-4 text-rose-600 mt-0.5 flex-shrink-0" />
+                              <CheckCircle className="h-4 w-4 text-red-700 mt-0.5 flex-shrink-0" />
                               <p>Document environmental conditions during inspection</p>
                             </div>
                             <div className="flex items-start gap-2">
-                              <CheckCircle className="h-4 w-4 text-rose-600 mt-0.5 flex-shrink-0" />
+                              <CheckCircle className="h-4 w-4 text-red-700 mt-0.5 flex-shrink-0" />
                               <p>Record flow conditions and pre-cleaning status for PACP compliance</p>
                             </div>
                             <div className="flex items-start gap-2">
-                              <CheckCircle className="h-4 w-4 text-rose-600 mt-0.5 flex-shrink-0" />
+                              <CheckCircle className="h-4 w-4 text-red-700 mt-0.5 flex-shrink-0" />
                               <p>Specify equipment used for reference and quality control</p>
                             </div>
                           </div>
@@ -1437,25 +1437,25 @@ const QualityReportPage = () => {
               {createReportTab === 'template' && (
                 <div className="space-y-6">
                   {/* Instructions Card */}
-                  <Card className="bg-gradient-to-br from-rose-50 via-pink-50 to-rose-50 border-rose-200">
+                  <Card className="bg-gradient-to-br from-amber-50 via-amber-50 to-amber-50 border-amber-200">
                     <CardContent className="pt-5">
                       <div className="flex items-start gap-4">
                         <div className="p-2.5 bg-white rounded-xl shadow-sm">
-                          <FileCheck className="h-6 w-6 text-rose-600" />
+                          <FileCheck className="h-6 w-6 text-red-700" />
                         </div>
                         <div className="flex-1">
                           <h3 className="text-base font-semibold text-gray-900 mb-2">Report Template</h3>
                           <div className="space-y-2 text-sm text-gray-700">
                             <div className="flex items-start gap-2">
-                              <CheckCircle className="h-4 w-4 text-rose-600 mt-0.5 flex-shrink-0" />
+                              <CheckCircle className="h-4 w-4 text-red-700 mt-0.5 flex-shrink-0" />
                               <p>Choose a template for structured reporting (optional but recommended)</p>
                             </div>
                             <div className="flex items-start gap-2">
-                              <CheckCircle className="h-4 w-4 text-rose-600 mt-0.5 flex-shrink-0" />
+                              <CheckCircle className="h-4 w-4 text-red-700 mt-0.5 flex-shrink-0" />
                               <p>The default PACP template includes comprehensive sewer inspection sections</p>
                             </div>
                             <div className="flex items-start gap-2">
-                              <CheckCircle className="h-4 w-4 text-rose-600 mt-0.5 flex-shrink-0" />
+                              <CheckCircle className="h-4 w-4 text-red-700 mt-0.5 flex-shrink-0" />
                               <p>Templates ensure consistency and compliance with industry standards</p>
                             </div>
                           </div>
@@ -1505,7 +1505,7 @@ const QualityReportPage = () => {
                 </div>
 
                 {selectedTemplate && selectedTemplate.sections && selectedTemplate.sections.length > 0 && (
-                  <Card className="bg-gradient-to-br from-rose-50 to-pink-50 border-rose-200">
+                  <Card className="bg-gradient-to-br from-amber-50 to-yellow-50 border-amber-200">
                     <CardHeader className="pb-2">
                       <CardTitle className="text-sm flex items-center gap-2">
                         <FileCheck className="h-4 w-4" />
@@ -1518,13 +1518,13 @@ const QualityReportPage = () => {
                       </p>
                       <div className="space-y-1">
                         {selectedTemplate.sections.slice(0, 6).map((section, index) => (
-                          <div key={index} className="flex items-center gap-2 text-xs text-rose-700">
+                          <div key={index} className="flex items-center gap-2 text-xs text-red-800">
                             <CheckCircle className="h-3 w-3" />
                             <span>{section.name}</span>
                           </div>
                         ))}
                         {selectedTemplate.sections.length > 6 && (
-                          <div className="text-xs text-rose-700 font-medium">
+                          <div className="text-xs text-red-800 font-medium">
                             +{selectedTemplate.sections.length - 6} more sections...
                           </div>
                         )}
@@ -1734,7 +1734,7 @@ const QualityReportPage = () => {
       {/* Create Template Modal with Sidebar Tabs */}
       <Dialog open={isTemplateModalOpen} onOpenChange={setIsTemplateModalOpen}>
         <DialogContent className="max-w-6xl h-[85vh] p-0 gap-0 flex flex-col">
-          <DialogHeader className="px-6 pt-6 pb-4 border-b bg-gradient-to-r from-rose-50 to-orange-50">
+          <DialogHeader className="px-6 pt-6 pb-4 border-b bg-gradient-to-r from-amber-50 to-orange-50">
             <DialogTitle className="text-2xl font-bold text-gray-900">Create New Template</DialogTitle>
             <DialogDescription className="text-gray-600">
               Design your PACP inspection template using the sidebar sections
@@ -1755,11 +1755,11 @@ const QualityReportPage = () => {
                   onClick={() => setCreateTemplateTab('info')}
                   className={`w-full flex items-center gap-3 px-4 py-3 rounded-xl text-sm font-medium transition-all ${
                     createTemplateTab === 'info'
-                      ? 'bg-gradient-to-r from-rose-600 to-rose-500 text-white shadow-lg shadow-rose-200 scale-105'
+                      ? 'bg-gradient-to-r from-red-700 to-red-600 text-white shadow-lg shadow-amber-200 scale-105'
                       : 'text-gray-700 hover:bg-white hover:shadow-md'
                   }`}
                 >
-                  <div className={`p-1.5 rounded-lg ${createTemplateTab === 'info' ? 'bg-white/20' : 'bg-rose-100'}`}>
+                  <div className={`p-1.5 rounded-lg ${createTemplateTab === 'info' ? 'bg-white/20' : 'bg-amber-100'}`}>
                     <FileCheck className="h-4 w-4" />
                   </div>
                   <span className="flex-1 text-left">Basic Information</span>
@@ -1771,11 +1771,11 @@ const QualityReportPage = () => {
                   onClick={() => setCreateTemplateTab('sections')}
                   className={`w-full flex items-center gap-3 px-4 py-3 rounded-xl text-sm font-medium transition-all ${
                     createTemplateTab === 'sections'
-                      ? 'bg-gradient-to-r from-rose-600 to-rose-500 text-white shadow-lg shadow-rose-200 scale-105'
+                      ? 'bg-gradient-to-r from-red-700 to-red-600 text-white shadow-lg shadow-amber-200 scale-105'
                       : 'text-gray-700 hover:bg-white hover:shadow-md'
                   }`}
                 >
-                  <div className={`p-1.5 rounded-lg ${createTemplateTab === 'sections' ? 'bg-white/20' : 'bg-rose-100'}`}>
+                  <div className={`p-1.5 rounded-lg ${createTemplateTab === 'sections' ? 'bg-white/20' : 'bg-amber-100'}`}>
                     <FileText className="h-4 w-4" />
                   </div>
                   <span className="flex-1 text-left">Report Sections</span>
@@ -1785,9 +1785,9 @@ const QualityReportPage = () => {
                 </button>
               </nav>
               
-              <div className="mt-4 p-3 bg-white rounded-lg border border-rose-100">
+              <div className="mt-4 p-3 bg-white rounded-lg border border-amber-100">
                 <p className="text-xs text-gray-600">
-                  <span className="font-semibold text-rose-600">Tip:</span> Templates can be reused for consistent reporting
+                  <span className="font-semibold text-red-700">Tip:</span> Templates can be reused for consistent reporting
                 </p>
               </div>
             </div>
@@ -1798,25 +1798,25 @@ const QualityReportPage = () => {
               {createTemplateTab === 'info' && (
                 <div className="space-y-6">
                   {/* Instructions Card */}
-                  <Card className="bg-gradient-to-br from-rose-50 via-pink-50 to-rose-50 border-rose-200">
+                  <Card className="bg-gradient-to-br from-amber-50 via-amber-50 to-amber-50 border-amber-200">
                     <CardContent className="pt-5">
                       <div className="flex items-start gap-4">
                         <div className="p-2.5 bg-white rounded-xl shadow-sm">
-                          <FileCheck className="h-6 w-6 text-rose-600" />
+                          <FileCheck className="h-6 w-6 text-red-700" />
                         </div>
                         <div className="flex-1">
                           <h3 className="text-base font-semibold text-gray-900 mb-2">Template Information</h3>
                           <div className="space-y-2 text-sm text-gray-700">
                             <div className="flex items-start gap-2">
-                              <CheckCircle className="h-4 w-4 text-rose-600 mt-0.5 flex-shrink-0" />
+                              <CheckCircle className="h-4 w-4 text-red-700 mt-0.5 flex-shrink-0" />
                               <p>Give your template a descriptive name (e.g., "PACP Sewer Inspection")</p>
                             </div>
                             <div className="flex items-start gap-2">
-                              <CheckCircle className="h-4 w-4 text-rose-600 mt-0.5 flex-shrink-0" />
+                              <CheckCircle className="h-4 w-4 text-red-700 mt-0.5 flex-shrink-0" />
                               <p>Add a clear description of what this template will be used for</p>
                             </div>
                             <div className="flex items-start gap-2">
-                              <CheckCircle className="h-4 w-4 text-rose-600 mt-0.5 flex-shrink-0" />
+                              <CheckCircle className="h-4 w-4 text-red-700 mt-0.5 flex-shrink-0" />
                               <p>Quick reference fields help categorize your report structure</p>
                             </div>
                           </div>
@@ -1861,10 +1861,10 @@ const QualityReportPage = () => {
                   <p className="text-xs text-gray-500">Comma-separated high-level categories</p>
                 </div>
 
-                <Card className="bg-gradient-to-br from-rose-50 to-orange-50 border-rose-200">
+                <Card className="bg-gradient-to-br from-amber-50 to-orange-50 border-amber-200">
                   <CardContent className="pt-4">
                     <div className="flex items-start gap-3">
-                      <FileCheck className="h-5 w-5 text-rose-600 mt-0.5" />
+                      <FileCheck className="h-5 w-5 text-red-700 mt-0.5" />
                       <div>
                         <p className="text-sm font-medium text-gray-900 mb-1">💡 Next Step</p>
                         <p className="text-xs text-gray-600">
@@ -1882,25 +1882,25 @@ const QualityReportPage = () => {
               {createTemplateTab === 'sections' && (
                 <div className="space-y-6">
                   {/* Instructions Card */}
-                  <Card className="bg-gradient-to-br from-rose-50 via-pink-50 to-rose-50 border-rose-200">
+                  <Card className="bg-gradient-to-br from-amber-50 via-amber-50 to-amber-50 border-amber-200">
                     <CardContent className="pt-5">
                       <div className="flex items-start gap-4">
                         <div className="p-2.5 bg-white rounded-xl shadow-sm">
-                          <FileText className="h-6 w-6 text-rose-600" />
+                          <FileText className="h-6 w-6 text-red-700" />
                         </div>
                         <div className="flex-1">
                           <h3 className="text-base font-semibold text-gray-900 mb-2">Building Template Sections</h3>
                           <div className="space-y-2 text-sm text-gray-700">
                             <div className="flex items-start gap-2">
-                              <CheckCircle className="h-4 w-4 text-rose-600 mt-0.5 flex-shrink-0" />
+                              <CheckCircle className="h-4 w-4 text-red-700 mt-0.5 flex-shrink-0" />
                               <p>Create sections like "Executive Summary", "Pipeline Specs", etc.</p>
                             </div>
                             <div className="flex items-start gap-2">
-                              <CheckCircle className="h-4 w-4 text-rose-600 mt-0.5 flex-shrink-0" />
+                              <CheckCircle className="h-4 w-4 text-red-700 mt-0.5 flex-shrink-0" />
                               <p>Each section can have multiple fields (comma-separated)</p>
                             </div>
                             <div className="flex items-start gap-2">
-                              <CheckCircle className="h-4 w-4 text-rose-600 mt-0.5 flex-shrink-0" />
+                              <CheckCircle className="h-4 w-4 text-red-700 mt-0.5 flex-shrink-0" />
                               <p>Use the PACP suggestions below for industry-standard templates</p>
                             </div>
                           </div>
@@ -1934,12 +1934,12 @@ const QualityReportPage = () => {
                 ) : (
                   <div className="space-y-3">
                     {newTemplateForm.sections.map((section, index) => (
-                      <Card key={index} className="border-l-4 border-l-rose-500">
+                      <Card key={index} className="border-l-4 border-l-red-600">
                         <CardContent className="pt-4">
                           <div className="flex items-start gap-2">
                             <div className="flex-1 space-y-3">
                               <div className="flex items-center gap-2">
-                                <Badge variant="default" className="bg-rose-600 text-xs whitespace-nowrap">
+                                <Badge variant="default" className="bg-red-700 text-xs whitespace-nowrap">
                                   #{index + 1}
                                 </Badge>
                                 <Input
@@ -1978,10 +1978,10 @@ const QualityReportPage = () => {
                 )}
 
                 {newTemplateForm.sections.length > 0 && (
-                  <Card className="bg-gradient-to-br from-rose-50 to-pink-50 border-rose-200">
+                  <Card className="bg-gradient-to-br from-amber-50 to-yellow-50 border-amber-200">
                     <CardContent className="pt-4">
                       <div className="flex items-center gap-3">
-                        <Award className="h-5 w-5 text-rose-600" />
+                        <Award className="h-5 w-5 text-red-700" />
                         <div>
                           <p className="text-sm font-medium text-rose-900">
                             {newTemplateForm.sections.length} section{newTemplateForm.sections.length !== 1 ? 's' : ''}, {' '}
@@ -1993,10 +1993,10 @@ const QualityReportPage = () => {
                   </Card>
                 )}
 
-                <Card className="bg-gradient-to-br from-rose-50 to-orange-50 border-rose-200">
+                <Card className="bg-gradient-to-br from-amber-50 to-orange-50 border-amber-200">
                   <CardContent className="pt-4">
                     <div className="flex items-start gap-3">
-                      <FileCheck className="h-5 w-5 text-rose-600 mt-0.5" />
+                      <FileCheck className="h-5 w-5 text-red-700 mt-0.5" />
                       <div>
                         <p className="text-sm font-medium text-gray-900 mb-1">💡 PACP Sections</p>
                         <p className="text-xs text-gray-600">
@@ -2106,7 +2106,7 @@ const QualityReportPage = () => {
               ) : (
                 <div className="space-y-3">
                   {editTemplateForm.sections.map((section, index) => (
-                    <Card key={index} className="border-l-4 border-l-rose-500">
+                    <Card key={index} className="border-l-4 border-l-red-600">
                       <CardContent className="pt-4">
                         <div className="flex items-start gap-3">
                           <div className="flex-1 space-y-3">
@@ -2155,7 +2155,7 @@ const QualityReportPage = () => {
               <Card className="bg-gray-50">
                 <CardContent className="pt-4">
                   <div className="flex items-start gap-3">
-                    <FileCheck className="h-5 w-5 text-rose-600 mt-0.5" />
+                    <FileCheck className="h-5 w-5 text-red-700 mt-0.5" />
                     <div>
                       <p className="text-sm font-medium text-gray-900 mb-1">Template Summary</p>
                       <p className="text-sm text-gray-600">

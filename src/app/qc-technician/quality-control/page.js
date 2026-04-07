@@ -271,7 +271,7 @@ const QualityControlPage = () => {
               <button
                 onClick={() => handleConfirmComplete(true)}
                 disabled={completingReview}
-                className="w-full py-3 bg-rose-600 hover:bg-rose-700 text-white rounded-xl font-semibold text-sm flex items-center justify-center gap-2 transition-colors disabled:opacity-50"
+                className="w-full py-3 bg-red-700 hover:bg-red-800 text-white rounded-xl font-semibold text-sm flex items-center justify-center gap-2 transition-colors disabled:opacity-50"
               >
                 {completingReview ? <Loader2 className="w-4 h-4 animate-spin" /> : <FileText className="w-4 h-4" />}
                 Complete & Create Report
@@ -300,7 +300,7 @@ const QualityControlPage = () => {
       <div className="bg-white border-b border-gray-200 px-6 py-4 flex-none z-10">
         <div className="flex items-center justify-between max-w-[1920px] mx-auto">
           <div className="flex items-center gap-4">
-            <div className="w-10 h-10 bg-gradient-to-br from-rose-500 to-pink-600 rounded-xl flex items-center justify-center shadow-sm shadow-rose-200">
+            <div className="w-10 h-10 bg-gradient-to-br from-red-600 to-amber-500 rounded-xl flex items-center justify-center shadow-sm shadow-amber-200">
               <Activity className="h-5 w-5 text-white" />
             </div>
             <div>
@@ -315,7 +315,7 @@ const QualityControlPage = () => {
           <div className="flex items-center gap-4">
             <div className="hidden md:flex items-center gap-4 px-4 py-2 bg-gray-50 rounded-lg border border-gray-100">
               <div className="flex items-center gap-2">
-                <div className="w-2 h-2 rounded-full bg-rose-500 animate-pulse" />
+                <div className="w-2 h-2 rounded-full bg-red-600 animate-pulse" />
                 <span className="text-xs font-medium text-gray-700">{todayStats.assigned} Assigned</span>
               </div>
               <div className="w-px h-3 bg-gray-200" />
@@ -344,7 +344,7 @@ const QualityControlPage = () => {
           <div className="p-4 border-b border-gray-100">
             <div className="flex items-center justify-between mb-4">
               <h2 className="font-bold text-gray-900 flex items-center gap-2">
-                <Target className="w-4 h-4 text-rose-500" />
+                <Target className="w-4 h-4 text-red-600" />
                 Assignments
               </h2>
               <button onClick={fetchAssignments} disabled={loading} className="p-1.5 hover:bg-gray-100 rounded-lg transition-colors text-gray-500 hover:text-gray-700">
@@ -388,9 +388,9 @@ const QualityControlPage = () => {
               const isActive = activeProject?._id === project._id;
               return (
                 <div key={project._id}
-                  className={`group p-3 rounded-xl cursor-pointer transition-all border relative overflow-hidden ${isActive ? 'border-rose-500 bg-rose-50/50 shadow-sm' : 'border-gray-100 hover:border-rose-200 hover:bg-gray-50 bg-white'}`}
+                  className={`group p-3 rounded-xl cursor-pointer transition-all border relative overflow-hidden ${isActive ? 'border-red-600 bg-amber-50/50 shadow-sm' : 'border-gray-100 hover:border-amber-200 hover:bg-gray-50 bg-white'}`}
                   onClick={() => handleProjectSelect(project)}>
-                  {isActive && <div className="absolute left-0 top-0 bottom-0 w-1 bg-rose-500" />}
+                  {isActive && <div className="absolute left-0 top-0 bottom-0 w-1 bg-red-600" />}
                   <div className="flex items-start justify-between mb-2 pl-2">
                     <h3 className="text-sm font-semibold text-gray-900 line-clamp-1 flex-1 pr-2">{projectData?.name || 'Unnamed Project'}</h3>
                     <span className={`text-[10px] uppercase font-bold px-1.5 py-0.5 rounded border ${getPriorityColor(project.priority)}`}>{project.priority || 'MED'}</span>
@@ -402,7 +402,7 @@ const QualityControlPage = () => {
                       <span className={progress === 100 ? 'text-green-600' : 'text-gray-500'}>{progress}%</span>
                     </div>
                     <div className="w-full bg-gray-100 rounded-full h-1.5 overflow-hidden">
-                      <div className={`h-full rounded-full transition-all duration-500 ${progress === 100 ? 'bg-green-500' : 'bg-rose-500'}`} style={{ width: `${progress}%` }} />
+                      <div className={`h-full rounded-full transition-all duration-500 ${progress === 100 ? 'bg-green-500' : 'bg-red-600'}`} style={{ width: `${progress}%` }} />
                     </div>
                   </div>
                 </div>
@@ -418,7 +418,7 @@ const QualityControlPage = () => {
               {/* Toolbar */}
               <div className="bg-white border-b border-gray-200 px-6 py-3 flex items-center justify-between flex-none shadow-sm z-10">
                 <div className="flex items-center gap-4">
-                  <div className="p-2 bg-rose-50 rounded-lg"><Building2 className="w-5 h-5 text-rose-600" /></div>
+                  <div className="p-2 bg-amber-50 rounded-lg"><Building2 className="w-5 h-5 text-red-700" /></div>
                   <div>
                     <h2 className="text-lg font-bold text-gray-900 leading-tight">{(activeProject.projectId || activeProject)?.name || 'Unnamed Project'}</h2>
                     <p className="text-xs text-gray-500">
@@ -430,11 +430,11 @@ const QualityControlPage = () => {
                   {/* View mode toggle */}
                   <div className="flex items-center border border-gray-200 rounded-lg overflow-hidden">
                     <button onClick={() => setViewMode('detail')}
-                      className={`flex items-center gap-1.5 px-3 py-1.5 text-xs font-medium transition-colors ${viewMode === 'detail' ? 'bg-rose-50 text-rose-600' : 'text-gray-500 hover:bg-gray-50'}`}>
+                      className={`flex items-center gap-1.5 px-3 py-1.5 text-xs font-medium transition-colors ${viewMode === 'detail' ? 'bg-amber-50 text-red-700' : 'text-gray-500 hover:bg-gray-50'}`}>
                       <Eye className="w-3.5 h-3.5" />Detail
                     </button>
                     <button onClick={() => setViewMode('comparison')}
-                      className={`flex items-center gap-1.5 px-3 py-1.5 text-xs font-medium border-l border-gray-200 transition-colors ${viewMode === 'comparison' ? 'bg-rose-50 text-rose-600' : 'text-gray-500 hover:bg-gray-50'}`}>
+                      className={`flex items-center gap-1.5 px-3 py-1.5 text-xs font-medium border-l border-gray-200 transition-colors ${viewMode === 'comparison' ? 'bg-amber-50 text-red-700' : 'text-gray-500 hover:bg-gray-50'}`}>
                       <SplitSquareHorizontal className="w-3.5 h-3.5" />Comparison
                     </button>
                   </div>
@@ -499,7 +499,7 @@ const QualityControlPage = () => {
 
                   <div className="flex-1 overflow-y-auto p-3 space-y-3 custom-scrollbar bg-gray-50/30">
                     {detectionLoading ? (
-                      <div className="flex justify-center py-10"><Loader2 className="w-6 h-6 animate-spin text-rose-500" /></div>
+                      <div className="flex justify-center py-10"><Loader2 className="w-6 h-6 animate-spin text-red-600" /></div>
                     ) : filteredDetections.length === 0 ? (
                       <div className="text-center py-10 text-gray-400">
                         {projectDetections.length > 0 ? (
@@ -513,7 +513,7 @@ const QualityControlPage = () => {
                       const isSelected = selectedDetection?._id === detection._id;
                       return (
                         <div key={detection._id} id={`detection-${detection._id}`} onClick={() => setSelectedDetection(detection)}
-                          className={`group p-3 rounded-xl border cursor-pointer transition-all duration-200 ${isSelected ? 'bg-white border-rose-500 ring-1 ring-rose-500 shadow-md transform scale-[1.02] z-10' : 'bg-white border-gray-200 hover:border-gray-300 hover:shadow-sm'} ${detection.qcStatus === 'pending' ? 'border-l-4 border-l-amber-400' : ''}`}>
+                          className={`group p-3 rounded-xl border cursor-pointer transition-all duration-200 ${isSelected ? 'bg-white border-red-600 ring-1 ring-red-600 shadow-md transform scale-[1.02] z-10' : 'bg-white border-gray-200 hover:border-gray-300 hover:shadow-sm'} ${detection.qcStatus === 'pending' ? 'border-l-4 border-l-amber-400' : ''}`}>
                           <div className="flex justify-between items-start mb-2">
                             <div className="flex items-center gap-2">
                               <span className="font-semibold text-gray-900 text-sm">{detection.type || 'Anomaly'}</span>
@@ -697,8 +697,8 @@ const QualityControlPage = () => {
             <div className="flex-1 flex items-center justify-center">
               <div className="text-center">
                 <div className="w-32 h-32 bg-white rounded-full flex items-center justify-center shadow-xl mx-auto mb-8 relative">
-                  <div className="absolute inset-0 bg-rose-50 rounded-full animate-ping opacity-20" />
-                  <Zap className="h-12 w-12 text-rose-500" />
+                  <div className="absolute inset-0 bg-amber-50 rounded-full animate-ping opacity-20" />
+                  <Zap className="h-12 w-12 text-red-600" />
                 </div>
                 <h2 className="text-2xl font-bold text-gray-900 mb-3">Ready to Review</h2>
                 <p className="text-gray-500 max-w-md mx-auto mb-8">

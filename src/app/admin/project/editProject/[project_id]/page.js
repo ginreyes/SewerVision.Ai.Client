@@ -13,6 +13,7 @@ import {
 } from "@/components/ui/select";
 import { useAlert } from "@/components/providers/AlertProvider";
 import { api, getCookie } from "@/lib/helper";
+import { useUploadLimits } from "@/hooks/useUploadLimits";
 import {
   Edit3,
   Building2,
@@ -50,6 +51,7 @@ export default function EditProjectPage() {
   const projectsPath = isUserRole ? "/user/project" : "/admin/project";
 
   // Loading and error states
+  const uploadLimits = useUploadLimits();
   const [loading, setLoading] = useState(false);
   const [saving, setSaving] = useState(false);
   const [fetchingProject, setFetchingProject] = useState(true);
@@ -487,7 +489,14 @@ export default function EditProjectPage() {
     const form = new FormData();
     form.append("userId", user_id);
     form.append("projectData", JSON.stringify(correctedFormData));
-    if (videoFile) form.append("video", videoFile);
+    if (videoFile) {
+      const maxBytes = uploadLimits.videoMaxMB * 1024 * 1024;
+      if (videoFile.size > maxBytes) {
+        showAlert(`Video file is too large. Maximum size is ${uploadLimits.videoMaxMB}MB.`, "error");
+        return;
+      }
+      form.append("video", videoFile);
+    }
 
     // If there's a video, use XHR for real-time progress
     if (videoFile) {
@@ -1261,7 +1270,7 @@ export default function EditProjectPage() {
                         : "Click to upload video file"}
                     </span>
                     <p className="text-gray-500 mt-2">
-                      Supports MP4, AVI, MOV files
+                      Supports MP4, AVI, MOV files. Max {uploadLimits.videoMaxMB}MB.
                     </p>
                   </Label>
                 </div>

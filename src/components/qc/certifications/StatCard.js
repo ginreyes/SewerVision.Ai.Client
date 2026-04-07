@@ -3,7 +3,7 @@ const StatCard = ({ icon: Icon, value, label, gradient, onClick, isActive }) => 
     type="button"
     onClick={onClick}
     className={`bg-white rounded-xl border p-4 hover:shadow-md transition-all text-left w-full
-      ${isActive ? 'border-rose-300 ring-2 ring-rose-100' : 'border-gray-100'}`}
+      ${isActive ? 'border-amber-300 ring-2 ring-amber-100' : 'border-gray-100'}`}
   >
     <div className="flex items-center justify-between">
       <div className={`p-2 rounded-lg bg-gradient-to-br ${gradient}`}>

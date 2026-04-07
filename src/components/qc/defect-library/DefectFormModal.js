@@ -225,7 +225,7 @@ export default function DefectFormModal({
               type="submit"
               size="sm"
               disabled={!valid || isSubmitting}
-              className="text-xs bg-rose-600 hover:bg-rose-700 text-white"
+              className="text-xs bg-red-700 hover:bg-red-800 text-white"
             >
               {isSubmitting && <Loader2 className="w-3 h-3 mr-1 animate-spin" />}
               {isEdit ? "Save Changes" : "Create Defect"}

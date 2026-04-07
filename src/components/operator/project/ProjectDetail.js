@@ -29,6 +29,9 @@ import {
   Zap,
   Monitor,
   RotateCcw,
+  AlertTriangle,
+  FileText,
+  Save,
 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from '@/components/ui/dialog';
@@ -45,6 +48,7 @@ import { ReprocessModal } from '@/components/project/ReprocessModal';
 import { useUser } from '@/components/providers/UserContext';
 import { useAlert } from '@/components/providers/AlertProvider';
 import { api, getCookie } from '@/lib/helper';
+import { useUploadLimits } from '@/hooks/useUploadLimits';
 import { useRouter } from 'next/navigation';
 import { getVideoUrl } from '@/lib/getVideoUrl';
 
@@ -54,6 +58,7 @@ const ProjectDetail = ({ project, setSelectedProject, onBack }) => {
   const [isVideosExpanded, setIsVideosExpanded] = useState(true);
   const [isPlaying, setIsPlaying] = useState(false);
   const [currentTime, setCurrentTime] = useState(0);
+  const uploadLimits = useUploadLimits();
   const [duration, setDuration] = useState(0);
   const [isObservationOpen, setIsObservationOpen] = useState(false);
   const [detailObs, setDetailObs] = useState(null);
@@ -501,9 +506,9 @@ const ProjectDetail = ({ project, setSelectedProject, onBack }) => {
     }
 
     // Validate file size (max 500MB)
-    const maxSize = 500 * 1024 * 1024;
+    const maxSize = uploadLimits.videoMaxMB * 1024 * 1024;
     if (file.size > maxSize) {
-      showAlert('Video file is too large. Maximum size is 500MB.', 'error');
+      showAlert(`Video file is too large. Maximum size is ${uploadLimits.videoMaxMB}MB.`, 'error');
       return;
     }
 
@@ -1038,6 +1043,28 @@ const ProjectDetail = ({ project, setSelectedProject, onBack }) => {
             </div>
           </div>
         </div>
+
+        {/* Upload Error Banner */}
+        {project?.uploadError && (
+          <div className="mb-4 flex items-center gap-3 p-4 bg-red-50 border border-red-200 rounded-xl">
+            <div className="w-9 h-9 rounded-full bg-red-100 flex items-center justify-center flex-shrink-0">
+              <AlertTriangle className="h-4 w-4 text-red-600" />
+            </div>
+            <div className="flex-1 min-w-0">
+              <p className="text-sm font-semibold text-red-800">Video Upload Failed</p>
+              <p className="text-xs text-red-600 truncate">{project.uploadError}</p>
+            </div>
+          </div>
+        )}
+        {project?.status === 'uploading' && !project?.uploadError && (
+          <div className="mb-4 flex items-center gap-3 p-4 bg-blue-50 border border-blue-200 rounded-xl">
+            <Loader2 className="h-5 w-5 text-blue-600 animate-spin flex-shrink-0" />
+            <div>
+              <p className="text-sm font-semibold text-blue-800">Video Uploading</p>
+              <p className="text-xs text-blue-600">Video is being uploaded in the background.</p>
+            </div>
+          </div>
+        )}
 
         <div className="flex gap-6">
           {/* Main Content */}

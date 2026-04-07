@@ -43,7 +43,7 @@ export default function ReviewAnalytics() {
   if (isLoading) {
     return (
       <div className="flex items-center justify-center min-h-[60vh]">
-        <Loader2 className="w-8 h-8 animate-spin text-rose-500" />
+        <Loader2 className="w-8 h-8 animate-spin text-red-600" />
       </div>
     );
   }
@@ -62,7 +62,7 @@ export default function ReviewAnalytics() {
     <div className="max-w-6xl mx-auto px-6 py-6">
       {/* Header */}
       <div className="flex items-center gap-3 mb-5">
-        <div className="w-10 h-10 rounded-xl bg-gradient-to-br from-pink-500 to-rose-600 flex items-center justify-center text-white shadow-md">
+        <div className="w-10 h-10 rounded-xl bg-gradient-to-br from-red-700 to-amber-500 flex items-center justify-center text-white shadow-md">
           <BarChart2 className="w-5 h-5" />
         </div>
         <div>
@@ -74,7 +74,7 @@ export default function ReviewAnalytics() {
       {/* KPIs */}
       <div className="grid grid-cols-4 gap-3 mb-5">
         {[
-          { label: "Reviewed This Week", value: totalReviewed, icon: BarChart2, bg: "bg-rose-50", color: "text-rose-600" },
+          { label: "Reviewed This Week", value: totalReviewed, icon: BarChart2, bg: "bg-amber-50", color: "text-red-700" },
           { label: "Approved", value: totalApproved, icon: CheckCircle2, bg: "bg-emerald-50", color: "text-emerald-600" },
           { label: "Rejected", value: totalReviewed - totalApproved, icon: XCircle, bg: "bg-red-50", color: "text-red-600" },
           { label: "Approval Rate", value: `${approvalRate}%`, icon: Target, bg: "bg-blue-50", color: "text-blue-600" },

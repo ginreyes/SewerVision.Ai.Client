@@ -70,7 +70,7 @@ const Breadcrumb = memo(function Breadcrumb({ className = "" }) {
     if (segments.length <= 2) return []; // Don't show for top-level pages
 
     return segments.map((seg, i) => {
-      const path = "/" + segments.slice(0, i + 1).join("/");
+      const path = `/${segments.slice(0, i + 1).join("/")}`;
       const isLast = i === segments.length - 1;
       // Skip dynamic segments (MongoDB IDs)
       const isDynamic = /^[a-f0-9]{24}$/.test(seg) || seg.startsWith("[");

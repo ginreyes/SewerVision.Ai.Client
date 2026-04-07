@@ -84,7 +84,7 @@ export default function QCReviewTemplates() {
   if (isLoading) {
     return (
       <div className="flex items-center justify-center min-h-[60vh]">
-        <Loader2 className="w-8 h-8 animate-spin text-rose-500" />
+        <Loader2 className="w-8 h-8 animate-spin text-red-600" />
       </div>
     );
   }
@@ -94,7 +94,7 @@ export default function QCReviewTemplates() {
       {/* Header */}
       <div className="flex items-center justify-between mb-5">
         <div className="flex items-center gap-3">
-          <div className="w-10 h-10 rounded-xl bg-gradient-to-br from-pink-500 to-rose-600 flex items-center justify-center text-white shadow-md">
+          <div className="w-10 h-10 rounded-xl bg-gradient-to-br from-red-700 to-amber-500 flex items-center justify-center text-white shadow-md">
             <ClipboardCheck className="w-5 h-5" />
           </div>
           <div>
@@ -102,7 +102,7 @@ export default function QCReviewTemplates() {
             <p className="text-sm text-gray-500">Predefined review criteria templates per defect type</p>
           </div>
         </div>
-        <Button onClick={() => setShowForm(true)} className="bg-rose-600 hover:bg-rose-700 text-white gap-1.5">
+        <Button onClick={() => setShowForm(true)} className="bg-red-700 hover:bg-red-800 text-white gap-1.5">
           <Plus className="w-4 h-4" /> New Template
         </Button>
       </div>
@@ -118,14 +118,14 @@ export default function QCReviewTemplates() {
             const tId = t.id || t._id;
             return (
               <button key={tId} onClick={() => setSelected(tId)}
-                className={`w-full text-left p-3 rounded-xl border transition-all ${selected === tId ? "border-rose-300 bg-rose-50" : "border-gray-200 bg-white hover:border-rose-200"}`}>
+                className={`w-full text-left p-3 rounded-xl border transition-all ${selected === tId ? "border-amber-300 bg-amber-50" : "border-gray-200 bg-white hover:border-amber-200"}`}>
                 <div className="flex items-start justify-between gap-1 mb-1">
                   <p className="text-sm font-semibold text-gray-900 leading-snug">{t.name}</p>
                   <button onClick={e => { e.stopPropagation(); toggleStar(tId); }} className="shrink-0">
                     <Star className={`w-3.5 h-3.5 ${t.starred || t.favorite ? "text-amber-400 fill-amber-400" : "text-gray-300"}`} />
                   </button>
                 </div>
-                <Badge variant="outline" className="text-[10px] bg-rose-50 text-rose-700 border-rose-200">{t.defectType}</Badge>
+                <Badge variant="outline" className="text-[10px] bg-amber-50 text-red-800 border-amber-200">{t.defectType}</Badge>
                 <p className="text-[10px] text-gray-400 mt-1">{(t.criteria || []).length} criteria</p>
               </button>
             );
@@ -140,10 +140,10 @@ export default function QCReviewTemplates() {
                 <div className="flex items-start justify-between">
                   <div>
                     <CardTitle className="text-base">{selectedTemplate.name}</CardTitle>
-                    <Badge variant="outline" className="mt-1 text-[10px] bg-rose-50 text-rose-700 border-rose-200">{selectedTemplate.defectType}</Badge>
+                    <Badge variant="outline" className="mt-1 text-[10px] bg-amber-50 text-red-800 border-amber-200">{selectedTemplate.defectType}</Badge>
                   </div>
                   <div className="flex items-center gap-1">
-                    <button onClick={() => handleDuplicate(selectedTemplate)} className="p-1.5 rounded-lg hover:bg-gray-100 text-gray-400 hover:text-rose-600 transition-colors">
+                    <button onClick={() => handleDuplicate(selectedTemplate)} className="p-1.5 rounded-lg hover:bg-gray-100 text-gray-400 hover:text-red-700 transition-colors">
                       <Copy className="w-4 h-4" />
                     </button>
                     <button onClick={() => handleDelete(selectedTemplate.id || selectedTemplate._id)} className="p-1.5 rounded-lg hover:bg-gray-100 text-gray-400 hover:text-red-500 transition-colors">
@@ -156,7 +156,7 @@ export default function QCReviewTemplates() {
                 <p className="text-xs font-semibold text-gray-400 uppercase tracking-wide mb-3">Review Criteria</p>
                 {(selectedTemplate.criteria || []).map((c, i) => (
                   <div key={c.id || c._id || i} className="flex items-center gap-3 p-3 rounded-lg border border-gray-100 bg-gray-50">
-                    <span className="w-5 h-5 rounded-full bg-rose-100 text-rose-700 text-[10px] font-bold flex items-center justify-center shrink-0">{i + 1}</span>
+                    <span className="w-5 h-5 rounded-full bg-amber-100 text-red-800 text-[10px] font-bold flex items-center justify-center shrink-0">{i + 1}</span>
                     <p className="text-sm text-gray-800 flex-1">{c.label}</p>
                     {c.required && <Badge variant="outline" className="text-[10px] bg-red-50 text-red-600 border-red-200 shrink-0">Required</Badge>}
                   </div>
@@ -194,7 +194,7 @@ export default function QCReviewTemplates() {
             </div>
             <div className="flex justify-end gap-2 pt-2">
               <Button variant="outline" onClick={() => setShowForm(false)}>Cancel</Button>
-              <Button onClick={handleCreate} disabled={createMutation.isPending} className="bg-rose-600 hover:bg-rose-700 text-white">Create</Button>
+              <Button onClick={handleCreate} disabled={createMutation.isPending} className="bg-red-700 hover:bg-red-800 text-white">Create</Button>
             </div>
           </div>
         </DialogContent>

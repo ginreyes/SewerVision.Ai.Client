@@ -47,7 +47,7 @@ const defaultGetSeverityColor = (severity) => {
     case 'Critical': return 'bg-red-100 text-red-700'
     case 'Major': return 'bg-orange-100 text-orange-700'
     case 'Moderate': return 'bg-yellow-100 text-yellow-700'
-    case 'Minor': return 'bg-rose-100 text-rose-700'
+    case 'Minor': return 'bg-amber-100 text-red-800'
     default: return 'bg-gray-100 text-gray-700'
   }
 }
@@ -175,7 +175,7 @@ const DetectionCard = memo(({
     <div
       className={`p-4 rounded-lg cursor-pointer transition-all border ${
         isSelected || isExpanded
-          ? 'border-rose-500 bg-rose-50 shadow-sm'
+          ? 'border-red-600 bg-amber-50 shadow-sm'
           : 'border-gray-200 hover:border-gray-300'
       } ${disabled ? 'opacity-60 cursor-not-allowed' : ''} ${className}`}
       onClick={handleClick}
@@ -295,7 +295,7 @@ const DetectionCard = memo(({
           <button
             onClick={handleJumpToFrame}
             disabled={disabled}
-            className="w-full text-xs text-rose-600 hover:text-rose-800 font-medium
+            className="w-full text-xs text-red-700 hover:text-red-900 font-medium
                        flex items-center justify-center gap-1 py-1 transition-colors
                        disabled:opacity-50 disabled:cursor-not-allowed"
             aria-label="Jump to frame in video"

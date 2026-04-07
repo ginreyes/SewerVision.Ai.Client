@@ -28,7 +28,7 @@ const QueueItem = memo(({ detection, isSelected, onClick }) => {
 
   return (
     <button onClick={() => onClick(detection)}
-      className={`w-full text-left p-3 rounded-xl border transition-all ${isSelected ? "border-rose-300 bg-rose-50 shadow-sm" : "border-gray-200 bg-white hover:border-rose-200"}`}>
+      className={`w-full text-left p-3 rounded-xl border transition-all ${isSelected ? "border-amber-300 bg-amber-50 shadow-sm" : "border-gray-200 bg-white hover:border-amber-200"}`}>
       <div className="flex items-center justify-between mb-1">
         <span className="text-[11px] font-mono text-gray-500 flex items-center gap-1">
           <Hash className="w-3 h-3" />{detection.frameNumber || 0}
@@ -141,7 +141,7 @@ const ComparisonView = memo(({
             {/* Side-by-side frames */}
             <div className="grid grid-cols-2 gap-3">
               <DetectionImage detection={selectedDetection} label="AI Detection View" colorClass="text-blue-500" />
-              <DetectionImage detection={null} label="Original Frame" colorClass="text-rose-500" />
+              <DetectionImage detection={null} label="Original Frame" colorClass="text-red-600" />
             </div>
 
             {/* Notes + approve/reject */}
@@ -151,7 +151,7 @@ const ComparisonView = memo(({
                   value={notes}
                   onChange={e => setNotes(e.target.value)}
                   placeholder="Add reviewer notes (optional)…"
-                  className="w-full text-sm border border-gray-200 rounded-lg px-3 py-2 resize-none focus:ring-1 focus:ring-rose-300 mb-3"
+                  className="w-full text-sm border border-gray-200 rounded-lg px-3 py-2 resize-none focus:ring-1 focus:ring-amber-300 mb-3"
                   rows={2}
                 />
                 {status === "pending" && (

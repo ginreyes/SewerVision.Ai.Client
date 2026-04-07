@@ -52,7 +52,7 @@ export default function Announcements() {
     setShowForm(true);
   }
 
-  async function handleSave() {
+  const handleSave = async () => {
     if (!form.title.trim() || !form.body.trim()) { showAlert("Title and content required", "error"); return; }
     if (form.roles.length === 0) { showAlert("Select at least one role", "error"); return; }
     setSaving(true);
@@ -71,7 +71,7 @@ export default function Announcements() {
     finally { setSaving(false); }
   }
 
-  async function handleSend(id) {
+  const handleSend = async (id) => {
     setSending(id);
     try {
       const res = await api(`/api/announcements/send/${id}`, "PUT");

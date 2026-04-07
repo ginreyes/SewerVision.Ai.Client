@@ -72,7 +72,6 @@ const LocationPicker = memo(function LocationPicker({
 
     // Update map marker
     if (mapInstanceRef.current && markerRef.current) {
-      const L = require("leaflet");
       markerRef.current.setLatLng([suggestion.lat, suggestion.lng]);
       mapInstanceRef.current.setView([suggestion.lat, suggestion.lng], 14);
     }

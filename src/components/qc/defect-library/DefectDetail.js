@@ -105,7 +105,7 @@ const DefectDetail = memo(function DefectDetail({
           <Button
             variant="ghost"
             size="icon"
-            className="shrink-0 h-7 w-7 text-gray-400 hover:text-rose-600"
+            className="shrink-0 h-7 w-7 text-gray-400 hover:text-red-700"
             onClick={() => onEdit?.(defect)}
           >
             <Pencil className="w-3.5 h-3.5" />
@@ -203,7 +203,7 @@ const DefectDetail = memo(function DefectDetail({
                 </Button>
                 <Button
                   size="sm"
-                  className="h-6 text-[10px] px-2 bg-rose-600 hover:bg-rose-700 text-white"
+                  className="h-6 text-[10px] px-2 bg-red-700 hover:bg-red-800 text-white"
                   onClick={handleSaveNote}
                 >
                   Save
@@ -213,7 +213,7 @@ const DefectDetail = memo(function DefectDetail({
           ) : (
             <button
               onClick={() => setNoteEditing(true)}
-              className="w-full text-left text-xs text-gray-400 italic border border-dashed border-gray-200 rounded-lg p-2 hover:border-rose-300 hover:text-gray-500 transition-colors"
+              className="w-full text-left text-xs text-gray-400 italic border border-dashed border-gray-200 rounded-lg p-2 hover:border-amber-300 hover:text-gray-500 transition-colors"
             >
               {noteText || "Click to add notes..."}
             </button>
@@ -236,7 +236,7 @@ const DefectDetail = memo(function DefectDetail({
                   <button
                     key={rdId}
                     onClick={() => onSelectRelated?.(rdId)}
-                    className="w-full flex items-center gap-2 p-1.5 rounded-lg border border-gray-100 hover:border-rose-200 hover:bg-rose-50/30 transition-colors text-left"
+                    className="w-full flex items-center gap-2 p-1.5 rounded-lg border border-gray-100 hover:border-amber-200 hover:bg-amber-50/30 transition-colors text-left"
                   >
                     <div className={`w-1 h-6 rounded-full ${rdColors.stripe}`} />
                     <span className="text-[10px] font-bold text-gray-500">{rd.code}</span>

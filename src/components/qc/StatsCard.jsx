@@ -66,8 +66,8 @@ const sizeConfig = {
  *   icon={Eye}
  *   value={42}
  *   label="Pending QC"
- *   iconColor="text-rose-600"
- *   bgColor="bg-rose-100"
+ *   iconColor="text-red-700"
+ *   bgColor="bg-amber-100"
  * />
  * 
  * @example

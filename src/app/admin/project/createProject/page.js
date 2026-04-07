@@ -35,6 +35,7 @@ import { useRouter } from "next/navigation";
 import { useUser } from "@/components/providers/UserContext";
 import { InputField } from "@/components/admin/project";
 import Breadcrumb from '@/components/shared/Breadcrumb';
+import { useUploadLimits } from '@/hooks/useUploadLimits';
 
 const steps = [
   {
@@ -76,6 +77,7 @@ const steps = [
 
 
 export default function CreateProjectPage({ backUrl = "/admin/project", returnTo }) {
+  const uploadLimits = useUploadLimits();
   const [currentStep, setCurrentStep] = useState(1);
   const [loading, setLoading] = useState(false);
   const [errors, setErrors] = useState({});
@@ -377,37 +379,87 @@ export default function CreateProjectPage({ backUrl = "/admin/project", returnTo
   const handleSubmit = useCallback(async () => {
     if (!validateStep(currentStep)) return;
 
-    const maxVideoSize = 100 * 1024 * 1024; // 100MB (must match backend)
+    const maxVideoSize = uploadLimits.videoMaxMB * 1024 * 1024;
     if (videoFile && videoFile.size > maxVideoSize) {
-      showAlert("Video file is too large. Maximum size is 100MB.", "error");
+      showAlert(`Video file is too large. Maximum size is ${uploadLimits.videoMaxMB}MB.`, "error");
       return;
     }
 
     try {
       setLoading(true);
       const formData = getFormData();
-
       const { userId, ...projectFields } = formData;
 
+      // If there's a video, set status to 'uploading' and create project first without the video
+      if (videoFile) {
+        projectFields.status = "uploading";
+      }
+
+      // Step 1: Create project (without video for fast creation)
       const form = new FormData();
       form.append("userId", userId);
       form.append("projectData", JSON.stringify(projectFields));
 
-      if (videoFile) {
-        form.append("video", videoFile);
-      }
-
-      const { ok, data } = await api("/api/projects/create-project", "POST", form);
-
-      if (!ok) {
-        const msg = data?.message || data?.error || "Project creation failed";
-        showAlert(msg, "error");
+      // If no video, just create normally
+      if (!videoFile) {
+        const { ok, data } = await api("/api/projects/create-project", "POST", form);
+        if (!ok) {
+          showAlert(data?.message || data?.error || "Project creation failed", "error");
+          return;
+        }
+        showAlert("Project created successfully", "success");
+        router.push(redirectAfterCreate);
         return;
       }
 
-      showAlert("Project created successfully", "success");
-      setCurrentStep(1);
+      // Step 1: Create project without video
+      const { ok, data } = await api("/api/projects/create-project", "POST", form);
+      if (!ok) {
+        showAlert(data?.message || data?.error || "Project creation failed", "error");
+        return;
+      }
+
+      const createdProjectId = data?.data?._id || data?.data?.id;
+      showAlert("Project created! Video is uploading in the background...", "success");
       router.push(redirectAfterCreate);
+
+      // Step 2: Upload video in the background (non-blocking)
+      if (createdProjectId) {
+        const videoForm = new FormData();
+        videoForm.append("video", videoFile);
+        videoForm.append("projectId", createdProjectId);
+
+        const token = typeof window !== "undefined" ? (document.cookie.match(/authToken=([^;]*)/)?.[1] || "") : "";
+        const apiUrl = process.env.NEXT_PUBLIC_BACKEND_URL || "http://localhost:5000";
+
+        const xhr = new XMLHttpRequest();
+
+        // On failure, mark project with upload error so the console shows it
+        const markUploadFailed = (errorMsg) => {
+          api(`/api/projects/update-project/${createdProjectId}/${userId}`, "PUT", {
+            projectData: JSON.stringify({ status: "on-hold", uploadError: errorMsg || "Video upload failed" }),
+          }).catch(() => {});
+        };
+
+        xhr.addEventListener("load", () => {
+          if (xhr.status < 200 || xhr.status >= 300) {
+            try {
+              const err = JSON.parse(xhr.responseText);
+              markUploadFailed(err.message || `Upload failed (${xhr.status})`);
+            } catch {
+              markUploadFailed(`Upload failed (${xhr.status})`);
+            }
+          }
+        });
+
+        xhr.addEventListener("error", () => markUploadFailed("Network error during video upload"));
+        xhr.addEventListener("timeout", () => markUploadFailed("Video upload timed out"));
+        xhr.timeout = 600000; // 10 min timeout for large files
+
+        xhr.open("POST", `${apiUrl}/api/videos/upload`);
+        if (token) xhr.setRequestHeader("Authorization", `Bearer ${token}`);
+        xhr.send(videoForm);
+      }
 
     } catch (error) {
       const msg = error?.data?.message || error?.message || "Failed to create project";
@@ -415,7 +467,7 @@ export default function CreateProjectPage({ backUrl = "/admin/project", returnTo
     } finally {
       setLoading(false);
     }
-  }, [currentStep, getFormData, showAlert, validateStep, videoFile, router, redirectAfterCreate]);
+  }, [currentStep, getFormData, showAlert, validateStep, videoFile, router, redirectAfterCreate, uploadLimits]);
 
 
   const renderStepContent = () => {
@@ -1023,7 +1075,7 @@ export default function CreateProjectPage({ backUrl = "/admin/project", returnTo
                     Click to upload video file
                   </span>
                   <p className="text-gray-500 mt-2">or drag and drop</p>
-                  <p className="text-gray-400 mt-2 text-sm">Supports MP4, AVI, MOV. Max 100MB.</p>
+                  <p className="text-gray-400 mt-2 text-sm">Supports MP4, AVI, MOV. Max {uploadLimits.videoMaxMB}MB.</p>
                 </Label>
               </div>
 

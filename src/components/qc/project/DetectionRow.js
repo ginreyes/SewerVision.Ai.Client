@@ -11,7 +11,7 @@ const DetectionRow = ({ detection, isSelected, onClick, onApprove, onReject }) =
             onClick={onClick}
             className={`flex items-center gap-2 px-3 py-2.5 rounded-lg cursor-pointer transition-colors text-sm leading-snug
                 ${isSelected
-                    ? 'bg-rose-50 ring-1 ring-rose-300'
+                    ? 'bg-amber-50 ring-1 ring-amber-300'
                     : 'hover:bg-gray-100'
                 }`}
         >

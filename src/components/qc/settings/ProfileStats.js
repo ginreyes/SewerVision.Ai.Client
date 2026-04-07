@@ -1,8 +1,8 @@
 const ProfileStats = ({ stats }) => (
   <div className="grid grid-cols-2 gap-4 py-4">
-    <div className="text-center p-3 bg-rose-50 rounded-lg">
-      <div className="text-2xl font-bold text-rose-600">{stats.reviews}</div>
-      <div className="text-xs text-rose-600 font-medium">Reviews</div>
+    <div className="text-center p-3 bg-amber-50 rounded-lg">
+      <div className="text-2xl font-bold text-red-700">{stats.reviews}</div>
+      <div className="text-xs text-red-700 font-medium">Reviews</div>
     </div>
     <div className="text-center p-3 bg-green-50 rounded-lg">
       <div className="text-2xl font-bold text-green-600">{stats.reports}</div>

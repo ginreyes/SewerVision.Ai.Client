@@ -9,7 +9,7 @@ import { useEffect } from "react";
  */
 export function useKeyboardShortcuts() {
   useEffect(() => {
-    function handleKeyDown(e) {
+    const handleKeyDown = (e) => {
       // Ctrl+K or Cmd+K → focus search
       if ((e.ctrlKey || e.metaKey) && e.key === "k") {
         e.preventDefault();

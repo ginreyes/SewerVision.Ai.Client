@@ -1,18 +1,16 @@
 'use client'
 import React, { useState, useEffect, useCallback } from 'react'
-import { Camera, BarChart3, Brain, Shield, FileText, Loader2, RefreshCw } from 'lucide-react'
+import { Camera, BarChart3, Brain, Shield, Loader2, RefreshCw } from 'lucide-react'
 import dashboardApi from '@/data/dashboardApi'
 import { useCharts } from '@/components/admin/dashboard/useCharts'
 import OverviewTab from '@/components/admin/dashboard/OverviewTab'
 import AiModelsTab from '@/components/admin/dashboard/AiModelsTab'
 import QcReviewTab from '@/components/admin/dashboard/QcReviewTab'
-import ReportsTab from '@/components/admin/dashboard/ReportsTab'
 
 const TABS = [
   { id: 'overview', label: 'Overview', icon: BarChart3 },
   { id: 'ai-models', label: 'AI Models', icon: Brain },
   { id: 'qc-review', label: 'QC Review', icon: Shield },
-  { id: 'reports', label: 'Reports', icon: FileText },
 ]
 
 const AdminDashboard = () => {
@@ -134,11 +132,7 @@ const AdminDashboard = () => {
         )}
 
         {activeTab === 'qc-review' && (
-          <QcReviewTab qcReviewProjects={qcReviewProjects} projectStats={projectStats} />
-        )}
-
-        {activeTab === 'reports' && (
-          <ReportsTab projectStats={projectStats} recentProjects={recentProjects} />
+          <QcReviewTab qcReviewProjects={qcReviewProjects} projectStats={projectStats} recentProjects={recentProjects} />
         )}
       </main>
     </div>

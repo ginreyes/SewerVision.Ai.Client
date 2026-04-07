@@ -884,10 +884,10 @@ const DeviceSettingsModal = (props) => {
                             <QRCodeSVG
                               value={(() => {
                                 const base = typeof window !== 'undefined' ? (process.env.NEXT_PUBLIC_APP_URL || window.location.origin) : (process.env.NEXT_PUBLIC_APP_URL || '')
-                                const params = 'deviceId=' + encodeURIComponent(device?._id || '') + '&secret=' + encodeURIComponent(generatedSecret || '')
+                                const params = `deviceId=${encodeURIComponent(device?._id || '')}&secret=${encodeURIComponent(generatedSecret || '')}`
                                 const apiBase = process.env.NEXT_PUBLIC_BACKEND_URL
-                                const qs = apiBase ? params + '&apiBase=' + encodeURIComponent(apiBase) : params
-                                return base + '/device-connect?' + qs
+                                const qs = apiBase ? `${params}&apiBase=${encodeURIComponent(apiBase)}` : params
+                                return `${base}/device-connect?${qs}`
                               })()}
                               size={140}
                               level="M"
@@ -900,10 +900,10 @@ const DeviceSettingsModal = (props) => {
                                 className="font-mono text-xs"
                                 value={(() => {
                                   const base = typeof window !== 'undefined' ? (process.env.NEXT_PUBLIC_APP_URL || window.location.origin) : (process.env.NEXT_PUBLIC_APP_URL || '')
-                                  const params = 'deviceId=' + encodeURIComponent(device?._id || '') + '&secret=' + encodeURIComponent(generatedSecret || '')
+                                  const params = `deviceId=${encodeURIComponent(device?._id || '')}&secret=${encodeURIComponent(generatedSecret || '')}`
                                   const apiBase = process.env.NEXT_PUBLIC_BACKEND_URL
-                                  const qs = apiBase ? params + '&apiBase=' + encodeURIComponent(apiBase) : params
-                                  return base + '/device-connect?' + qs
+                                  const qs = apiBase ? `${params}&apiBase=${encodeURIComponent(apiBase)}` : params
+                                  return `${base}/device-connect?${qs}`
                                 })()}
                               />
                               <Button
@@ -911,10 +911,10 @@ const DeviceSettingsModal = (props) => {
                                 size="sm"
                                 onClick={() => {
                                   const base = typeof window !== 'undefined' ? (process.env.NEXT_PUBLIC_APP_URL || window.location.origin) : ''
-                                  const params = 'deviceId=' + encodeURIComponent(device?._id || '') + '&secret=' + encodeURIComponent(generatedSecret || '')
+                                  const params = `deviceId=${encodeURIComponent(device?._id || '')}&secret=${encodeURIComponent(generatedSecret || '')}`
                                   const apiBase = process.env.NEXT_PUBLIC_BACKEND_URL
-                                  const qs = apiBase ? params + '&apiBase=' + encodeURIComponent(apiBase) : params
-                                  const url = base + '/device-connect?' + qs
+                                  const qs = apiBase ? `${params}&apiBase=${encodeURIComponent(apiBase)}` : params
+                                  const url = `${base}/device-connect?${qs}`
                                   navigator.clipboard?.writeText(url)
                                   showAlert('Link copied. Open it on the device.', 'success')
                                 }}

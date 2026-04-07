@@ -86,7 +86,10 @@ export default function UserLayout({ children }) {
             }`}
           >
             <Navbar openSideBar={handleToggleSidebar} role="user" />
-            <main className="p-4"><AnnouncementBanner role="user" />{children}</main>
+            <main className="p-4">
+              <AnnouncementBanner role="user" />
+              {children}
+            </main>
           </div>
         </div>
 

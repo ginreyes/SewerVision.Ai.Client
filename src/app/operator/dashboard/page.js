@@ -34,6 +34,7 @@ import { useUser } from '@/components/providers/UserContext'
 import { LoadingState, ErrorState } from '@/components/qc'
 import StatCard from '@/components/operator/dashboard/StatCard'
 import EquipmentCard from '@/components/operator/dashboard/EquipmentCard'
+import ProgressTracker from '@/components/operator/ProgressTracker'
 import ActivityItem from '@/components/operator/dashboard/ActivityItem'
 import ProjectRow from '@/components/operator/dashboard/ProjectRow'
 import { formatRelativeTime } from '@/components/operator/constants'
@@ -276,6 +277,9 @@ export default function OperatorDashboardContent() {
         <StatCard icon={AlertTriangle} value={operationalStats.criticalAlerts + operationalStats.maintenanceDue} label="Alerts" color="orange" />
         <StatCard icon={Zap} value={operationalStats.systemUptime} suffix="%" label="Device Uptime" color="purple" />
       </div>
+
+      {/* Progress Tracker */}
+      <ProgressTracker stats={operationalStats} />
 
       {/* Main Content Grid */}
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">

@@ -87,7 +87,10 @@ export default function AdminLayout({ children }) {
             }`}
         >
           <Navbar openSideBar={handleToggleSidebar} role="admin" />
-          <main className="p-4"><AnnouncementBanner role="admin" />{children}</main>
+          <main className="p-4">
+            <AnnouncementBanner role="admin" />
+            {children}
+          </main>
         </div>
 
         {/* Tour Guide Modal */}

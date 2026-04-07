@@ -103,7 +103,7 @@ const Reports = () => {
       return m ? [m.first_name, m.last_name].filter(Boolean).join(' ') || m.username || m.email || '' : ''
     }
     const headers = ['Inspection ID', 'Location', 'Date', 'Status', 'Project', 'Leader', 'Operator', 'QC', 'Footage', 'Defects', 'Critical', 'Confidence']
-    const rows = reports.map((r) => [r.inspectionId || '', r.location || '', r.date || '', r.status || '', (r.projectId && (r.projectId.name || r.projectId._id)) || '', leaderName(r), (r.operator && (r.operator.first_name + ' ' + r.operator.last_name)) || '', (r.qcTechnician && (r.qcTechnician.first_name + ' ' + r.qcTechnician.last_name)) || '', r.footage || '0', r.totalDefects ?? '', r.criticalDefects ?? '', r.confidence ?? ''])
+    const rows = reports.map((r) => [r.inspectionId || '', r.location || '', r.date || '', r.status || '', (r.projectId && (r.projectId.name || r.projectId._id)) || '', leaderName(r), (r.operator && (`${r.operator.first_name} ${r.operator.last_name}`)) || '', (r.qcTechnician && (`${r.qcTechnician.first_name} ${r.qcTechnician.last_name}`)) || '', r.footage || '0', r.totalDefects ?? '', r.criticalDefects ?? '', r.confidence ?? ''])
     const ws = XLSX.utils.aoa_to_sheet([headers, ...rows])
     const wb = XLSX.utils.book_new()
     XLSX.utils.book_append_sheet(wb, ws, 'Reports')

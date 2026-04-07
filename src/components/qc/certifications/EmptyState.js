@@ -5,8 +5,8 @@ import { Button } from '@/components/ui/button'
 const EmptyState = ({ filter, onAdd }) => (
   <Card className="border-dashed border-2 border-gray-200">
     <CardContent className="py-16 text-center">
-      <div className="inline-flex items-center justify-center w-16 h-16 rounded-full bg-rose-50 mb-4">
-        <Award className="w-8 h-8 text-rose-400" />
+      <div className="inline-flex items-center justify-center w-16 h-16 rounded-full bg-amber-50 mb-4">
+        <Award className="w-8 h-8 text-red-500" />
       </div>
       <h3 className="text-lg font-semibold text-gray-900 mb-1">
         {filter === 'all' ? 'No certifications yet' : `No ${filter} certifications`}

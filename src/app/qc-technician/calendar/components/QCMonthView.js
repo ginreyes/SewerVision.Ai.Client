@@ -72,11 +72,11 @@ export default function QCMonthViewCalendar({ currentYear, currentMonth, today, 
                 onClick={day ? () => AddEvent(clickedDate) : undefined}
                 className={`h-32 p-2 border-r border-b border-gray-300 last:border-r-0 
                   ${day ? 'hover:bg-gray-50 cursor-pointer' : 'bg-gray-50'} 
-                  ${day && day === today.getDate() && currentMonth === today.getMonth() && currentYear === today.getFullYear() ? 'bg-rose-50 border-rose-200' : ''}`}
+                  ${day && day === today.getDate() && currentMonth === today.getMonth() && currentYear === today.getFullYear() ? 'bg-amber-50 border-amber-200' : ''}`}
               >
                 {day && (
                   <>
-                    <div className={`text-lg font-medium ${day === today.getDate() && currentMonth === today.getMonth() && currentYear === today.getFullYear() ? 'text-rose-600' : 'text-gray-800'}`}>
+                    <div className={`text-lg font-medium ${day === today.getDate() && currentMonth === today.getMonth() && currentYear === today.getFullYear() ? 'text-red-700' : 'text-gray-800'}`}>
                       {day}
                     </div>
 
@@ -104,7 +104,7 @@ export default function QCMonthViewCalendar({ currentYear, currentMonth, today, 
                             e.stopPropagation()
                             setOpenPopoverIndex(index)
                           }}
-                          className="mt-1 text-xs text-rose-500 underline cursor-pointer"
+                          className="mt-1 text-xs text-red-600 underline cursor-pointer"
                         >
                           +{remainingCount} more
                         </div>

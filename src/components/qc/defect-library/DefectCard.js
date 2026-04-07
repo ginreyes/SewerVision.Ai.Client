@@ -31,8 +31,8 @@ const DefectCard = memo(function DefectCard({ defect, isSelected, onSelect, onTo
       onKeyDown={(e) => { if (e.key === "Enter" || e.key === " ") onSelect(); }}
       className={`group w-full text-left flex items-stretch rounded-xl border transition-all overflow-hidden cursor-pointer ${
         isSelected
-          ? "border-rose-300 bg-rose-50/60 shadow-sm"
-          : "border-gray-200 bg-white hover:border-rose-200 hover:shadow-sm"
+          ? "border-amber-300 bg-amber-50/60 shadow-sm"
+          : "border-gray-200 bg-white hover:border-amber-200 hover:shadow-sm"
       }`}
     >
       {/* Severity color stripe */}

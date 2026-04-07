@@ -1,7 +1,7 @@
 const SectionHeader = ({ icon: Icon, title, description }) => (
   <div className="flex items-center space-x-4 mb-6">
-    <div className="p-2 bg-rose-100 rounded-lg">
-      <Icon className="w-6 h-6 text-rose-600" />
+    <div className="p-2 bg-amber-100 rounded-lg">
+      <Icon className="w-6 h-6 text-red-700" />
     </div>
     <div>
       <h2 className="text-lg font-semibold text-gray-900">{title}</h2>

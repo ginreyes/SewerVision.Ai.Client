@@ -34,11 +34,11 @@ import { StatusBadge, ProjectCard } from '@/components/qc/project';
 const ReviewQueueItem = ({ project }) => {
   return (
     <div className="flex items-center gap-4 p-3 bg-gray-50 rounded-xl hover:bg-gray-100 transition-colors cursor-pointer">
-      <div className={`p-2 rounded-lg ${project.status === 'completed' ? 'bg-green-100' : 'bg-rose-100'}`}>
+      <div className={`p-2 rounded-lg ${project.status === 'completed' ? 'bg-green-100' : 'bg-amber-100'}`}>
         {project.status === 'completed' ? (
           <CheckCircle className="w-4 h-4 text-green-600" />
         ) : (
-          <Clock className="w-4 h-4 text-rose-600" />
+          <Clock className="w-4 h-4 text-red-700" />
         )}
       </div>
       <div className="flex-1 min-w-0">
@@ -50,7 +50,7 @@ const ReviewQueueItem = ({ project }) => {
         </div>
         <div className="w-full bg-gray-200 rounded-full h-1.5">
           <div
-            className={`h-1.5 rounded-full ${project.status === 'completed' ? 'bg-green-500' : 'bg-rose-500'}`}
+            className={`h-1.5 rounded-full ${project.status === 'completed' ? 'bg-green-500' : 'bg-red-600'}`}
             style={{ width: `${project.progress}%` }}
           />
         </div>
@@ -149,7 +149,7 @@ const QCProjectsPage = () => {
     return (
       <div className="flex items-center justify-center h-[60vh]">
         <div className="text-center">
-          <Loader2 className="w-10 h-10 animate-spin text-rose-500 mx-auto mb-3" />
+          <Loader2 className="w-10 h-10 animate-spin text-red-600 mx-auto mb-3" />
           <p className="text-gray-500">Loading assignments...</p>
         </div>
       </div>
@@ -168,7 +168,7 @@ const QCProjectsPage = () => {
           {/* Quick Stats - hidden on mobile */}
           <div className="hidden md:flex items-center gap-4 mr-4">
             <div className="flex items-center gap-2">
-              <div className="w-2 h-2 rounded-full bg-rose-500 animate-pulse" />
+              <div className="w-2 h-2 rounded-full bg-red-600 animate-pulse" />
               <span className="text-sm font-medium">{activeCount} Active</span>
             </div>
             <div className="flex items-center gap-2">
@@ -218,7 +218,7 @@ const QCProjectsPage = () => {
           <Card className="border-0 shadow-sm bg-transparent !p-0">
             <div className="flex items-center justify-between mb-3 px-1">
               <h3 className="text-base font-semibold text-gray-900 flex items-center gap-2">
-                <Folder className="w-5 h-5 text-rose-600" />
+                <Folder className="w-5 h-5 text-red-700" />
                 Assignments
               </h3>
               <Badge variant="secondary">{filteredProjects.length} projects</Badge>
@@ -250,7 +250,7 @@ const QCProjectsPage = () => {
             <Card className="border-0 shadow-sm overflow-hidden mt-6">
               <div className={`p-4 ${selectedProject.status === 'completed'
                 ? 'bg-gradient-to-r from-green-600 to-emerald-600'
-                : 'bg-gradient-to-r from-rose-600 to-pink-600'} text-white`}>
+                : 'bg-gradient-to-r from-red-700 to-amber-500'} text-white`}>
                 <div className="flex items-center justify-between">
                   <div className="flex items-center gap-3">
                     <div className="p-2 bg-white/20 rounded-lg">
@@ -274,7 +274,7 @@ const QCProjectsPage = () => {
               <CardContent className="p-4">
                 <div className="grid grid-cols-4 gap-3 text-center">
                   <div className="p-3 bg-gray-50 rounded-xl">
-                    <Radio className="w-5 h-5 text-rose-600 mx-auto mb-1" />
+                    <Radio className="w-5 h-5 text-red-700 mx-auto mb-1" />
                     <p className="text-lg font-bold text-gray-900">{selectedProject.totalDetections}</p>
                     <p className="text-xs text-gray-500">Detections</p>
                   </div>
@@ -297,7 +297,7 @@ const QCProjectsPage = () => {
 
                 <div className="flex gap-3 mt-4">
                   <Button
-                    className={`flex-1 gap-2 ${selectedProject.status === 'completed' ? 'bg-green-600 hover:bg-green-700' : 'bg-rose-600 hover:bg-rose-700'}`}
+                    className={`flex-1 gap-2 ${selectedProject.status === 'completed' ? 'bg-green-600 hover:bg-green-700' : 'bg-red-700 hover:bg-red-800'}`}
                     onClick={() => handleStartReview(selectedProject)}
                   >
                     {selectedProject.status === 'completed' ? <FileText className="w-4 h-4" /> : <Play className="w-4 h-4" />}
@@ -319,7 +319,7 @@ const QCProjectsPage = () => {
             <CardHeader className="pb-3">
               <div className="flex items-center justify-between">
                 <CardTitle className="text-base font-semibold flex items-center gap-2">
-                  <Clock className="w-5 h-5 text-rose-600" />
+                  <Clock className="w-5 h-5 text-red-700" />
                   Review Queue
                 </CardTitle>
                 <Badge variant="secondary">{activeCount} active</Badge>
@@ -339,7 +339,7 @@ const QCProjectsPage = () => {
           </Card>
 
           {/* AI Status Card */}
-          <Card className="border-0 shadow-sm bg-gradient-to-br from-indigo-50 to-rose-50">
+          <Card className="border-0 shadow-sm bg-gradient-to-br from-indigo-50 to-amber-50">
             <CardHeader className="pb-3">
               <CardTitle className="text-base font-semibold flex items-center gap-2">
                 <Radio className="w-5 h-5 text-indigo-600" />

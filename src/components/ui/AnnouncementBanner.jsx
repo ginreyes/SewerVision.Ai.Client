@@ -144,7 +144,7 @@ export default function AnnouncementBanner({ role }) {
   }, [fetchAnnouncements]);
 
   // Track view
-  async function handleExpand(id) {
+  const handleExpand = async (id) => {
     if (expanded === id) {
       setExpanded(null);
       return;
@@ -155,7 +155,7 @@ export default function AnnouncementBanner({ role }) {
     } catch {}
   }
 
-  function handleDismiss(id) {
+  const handleDismiss = (id) => {
     const next = new Set([...dismissed, id]);
     setDismissed(next);
     try {

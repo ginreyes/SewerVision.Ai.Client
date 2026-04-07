@@ -101,7 +101,7 @@ export default function AuditLogPage() {
   // Reset page when filters change
   useEffect(() => { setPage(1); }, [actionFilter, severityFilter, search]);
 
-  async function handleExport() {
+  const handleExport = async () => {
     try {
       const params = new URLSearchParams();
       if (actionFilter !== "all") params.append("action", actionFilter);

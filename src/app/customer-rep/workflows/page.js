@@ -70,14 +70,14 @@ export default function CannedWorkflows() {
     });
   }
 
-  function handleDuplicate(wf) {
+  const handleDuplicate = (wf) => {
     dupMutation.mutate(wf._id, {
       onSuccess: (data) => { showAlert("Workflow duplicated", "success"); if (data?._id) setSelected(data._id); },
       onError: (e) => showAlert(e.message, "error"),
     });
   }
 
-  function handleDelete(id) {
+  const handleDelete = (id) => {
     deleteMutation.mutate(id, {
       onSuccess: () => { if (selected === id) setSelected(null); showAlert("Workflow deleted", "success"); },
       onError: (e) => showAlert(e.message, "error"),
@@ -87,7 +87,7 @@ export default function CannedWorkflows() {
   function openCreate() { setEditing(null); setForm(EMPTY_WORKFLOW); setShowForm(true); }
   function openEdit(wf) { setEditing(wf._id); setForm({ name: wf.name, description: wf.description, active: wf.active }); setShowForm(true); }
 
-  function handleSave() {
+  const handleSave = () => {
     if (!form.name.trim()) { showAlert("Workflow name required", "error"); return; }
     if (editing) {
       updateMutation.mutate({ id: editing, ...form }, {

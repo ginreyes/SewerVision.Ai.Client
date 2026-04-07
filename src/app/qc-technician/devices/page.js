@@ -146,8 +146,8 @@ const QCDevicesPage = () => {
       {/* Header */}
       <div className="mb-6">
         <div className="flex items-center gap-3 mb-2">
-          <div className="p-2 bg-rose-100 rounded-lg">
-            <Monitor className="w-6 h-6 text-rose-600" />
+          <div className="p-2 bg-amber-100 rounded-lg">
+            <Monitor className="w-6 h-6 text-red-700" />
           </div>
           <div>
             <h1 className="text-2xl font-bold text-gray-900">Device Management</h1>
@@ -198,7 +198,7 @@ const QCDevicesPage = () => {
       {loading ? (
         <Card>
           <CardContent className="py-12 flex flex-col items-center justify-center">
-            <Loader2 className="w-8 h-8 animate-spin text-rose-500 mb-3" />
+            <Loader2 className="w-8 h-8 animate-spin text-red-600 mb-3" />
             <p className="text-sm text-gray-500">Loading devices...</p>
           </CardContent>
         </Card>
@@ -240,11 +240,11 @@ const QCDevicesPage = () => {
                     />
                   ) : null}
                   <div 
-                    className={`${device.image || device.imageFileId ? 'hidden' : 'flex'} absolute inset-0 items-center justify-center bg-gradient-to-br from-rose-50 to-purple-50`}
+                    className={`${device.image || device.imageFileId ? 'hidden' : 'flex'} absolute inset-0 items-center justify-center bg-gradient-to-br from-amber-50 to-purple-50`}
                     style={{ display: device.image || device.imageFileId ? 'none' : 'flex' }}
                   >
                     <div className="p-6 bg-white rounded-2xl shadow-lg">
-                      <DeviceIcon className="w-12 h-12 text-rose-500" />
+                      <DeviceIcon className="w-12 h-12 text-red-600" />
                     </div>
                   </div>
                   
@@ -260,11 +260,11 @@ const QCDevicesPage = () => {
                 <CardHeader className="pb-3">
                   <div className="flex items-start justify-between">
                     <div className="flex items-center gap-3 flex-1">
-                      <div className="p-2 bg-gradient-to-br from-rose-500 to-rose-600 rounded-lg shadow-md">
+                      <div className="p-2 bg-gradient-to-br from-red-600 to-red-700 rounded-lg shadow-md">
                         <DeviceIcon className="w-4 h-4 text-white" />
                       </div>
                       <div className="flex-1 min-w-0">
-                        <CardTitle className="text-base font-bold text-gray-900 truncate group-hover:text-rose-600 transition-colors">
+                        <CardTitle className="text-base font-bold text-gray-900 truncate group-hover:text-red-700 transition-colors">
                           {device.name || device.deviceName || "Unnamed Device"}
                         </CardTitle>
                         <p className="text-xs text-gray-500 mt-0.5">{device.model || device.type}</p>
@@ -277,7 +277,7 @@ const QCDevicesPage = () => {
                   {/* Type */}
                   <div className="flex items-center justify-between py-2 px-3 bg-gray-50 rounded-lg hover:bg-gray-100 transition-colors">
                     <span className="text-xs text-gray-600 flex items-center gap-2 font-medium">
-                      <Activity className="w-3.5 h-3.5 text-rose-500" />
+                      <Activity className="w-3.5 h-3.5 text-red-600" />
                       Type
                     </span>
                     <span className="text-xs font-semibold text-gray-900">{device.type || "N/A"}</span>

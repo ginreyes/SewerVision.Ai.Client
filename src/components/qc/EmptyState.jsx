@@ -58,8 +58,8 @@ const variantConfig = {
   },
   search: {
     icon: Search,
-    iconColor: 'text-rose-400',
-    bgColor: 'bg-rose-50',
+    iconColor: 'text-red-500',
+    bgColor: 'bg-amber-50',
     defaultTitle: 'No Results',
     defaultMessage: 'No results found for your search. Try adjusting your filters.'
   },
@@ -151,7 +151,7 @@ const EmptyState = memo(({
       {onAction && (
         <button
           onClick={onAction}
-          className={`${sizeStyles.button} bg-rose-600 text-white rounded-lg hover:bg-rose-700 
+          className={`${sizeStyles.button} bg-red-700 text-white rounded-lg hover:bg-red-800 
                      transition-colors inline-flex items-center gap-2`}
         >
           <Plus className="w-4 h-4" />

@@ -161,7 +161,7 @@ const ErrorState = memo(({
         {onRetry && (
           <button
             onClick={onRetry}
-            className={`${sizeStyles.button} bg-rose-600 text-white rounded-lg hover:bg-rose-700 
+            className={`${sizeStyles.button} bg-red-700 text-white rounded-lg hover:bg-red-800 
                        transition-colors inline-flex items-center gap-2`}
           >
             <RefreshCw className="w-4 h-4" />

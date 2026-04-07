@@ -87,7 +87,7 @@ export const getStatusColor = (status) => {
   switch (status) {
     case 'assigned':
     case 'pending': return 'bg-amber-100 text-amber-700'
-    case 'in-progress': return 'bg-rose-100 text-rose-700'
+    case 'in-progress': return 'bg-amber-100 text-red-800'
     case 'completed': return 'bg-green-100 text-green-700'
     default: return 'bg-gray-100 text-gray-700'
   }

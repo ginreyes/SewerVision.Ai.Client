@@ -97,7 +97,7 @@ const DeviceDetailModal = ({ isOpen, onClose, device }) => {
 
   const SectionTitle = ({ icon: Icon, title }) => (
     <div className="flex items-center gap-2 mb-3">
-      <Icon className="w-5 h-5 text-rose-500" />
+      <Icon className="w-5 h-5 text-red-600" />
       <h3 className="text-lg font-semibold text-gray-900">{title}</h3>
     </div>
   );
@@ -125,10 +125,10 @@ const DeviceDetailModal = ({ isOpen, onClose, device }) => {
               />
             ) : null}
             <div 
-              className={`${device.image || device.imageFileId ? 'hidden' : 'flex'} absolute inset-0 items-center justify-center bg-gradient-to-br from-rose-50 to-purple-50`}
+              className={`${device.image || device.imageFileId ? 'hidden' : 'flex'} absolute inset-0 items-center justify-center bg-gradient-to-br from-amber-50 to-purple-50`}
             >
               <div className="p-8 bg-white rounded-3xl shadow-lg">
-                <DeviceIcon className="w-16 h-16 text-rose-500" />
+                <DeviceIcon className="w-16 h-16 text-red-600" />
               </div>
             </div>
             
@@ -143,7 +143,7 @@ const DeviceDetailModal = ({ isOpen, onClose, device }) => {
 
           {/* Device Title */}
           <div className="flex items-start gap-4 mb-6">
-            <div className="p-3 bg-gradient-to-br from-rose-500 to-rose-600 rounded-xl shadow-md">
+            <div className="p-3 bg-gradient-to-br from-red-600 to-red-700 rounded-xl shadow-md">
               <DeviceIcon className="w-6 h-6 text-white" />
             </div>
             <div className="flex-1">
@@ -168,7 +168,7 @@ const DeviceDetailModal = ({ isOpen, onClose, device }) => {
                   icon={Activity} 
                   label="Device Type" 
                   value={device.type}
-                  iconColor="text-rose-500"
+                  iconColor="text-red-600"
                 />
                 <InfoRow 
                   icon={Package} 

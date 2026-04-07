@@ -30,7 +30,7 @@ const ProgressRow = memo(({ member, totalModules }) => {
   return (
     <div className="border-b border-gray-50 last:border-0">
       <div className="flex items-center gap-4 px-4 py-3 hover:bg-gray-50/50 cursor-pointer" onClick={() => setExpanded(!expanded)}>
-        <div className="w-8 h-8 rounded-full bg-rose-100 flex items-center justify-center text-rose-700 text-xs font-bold shrink-0">
+        <div className="w-8 h-8 rounded-full bg-amber-100 flex items-center justify-center text-red-800 text-xs font-bold shrink-0">
           {member.user?.name?.[0]?.toUpperCase() || "?"}
         </div>
         <div className="flex-1 min-w-0">
@@ -43,7 +43,7 @@ const ProgressRow = memo(({ member, totalModules }) => {
             <span className="text-[10px] font-bold text-gray-700">{pct}%</span>
           </div>
           <div className="h-1.5 bg-gray-100 rounded-full overflow-hidden">
-            <div className="h-full bg-rose-500 rounded-full transition-all" style={{ width: `${pct}%` }} />
+            <div className="h-full bg-red-600 rounded-full transition-all" style={{ width: `${pct}%` }} />
           </div>
         </div>
         <div className="w-16 text-center shrink-0">
@@ -91,7 +91,7 @@ export default function TeamProgressView({ progress, isLoading }) {
   if (isLoading) {
     return (
       <div className="flex items-center justify-center py-16">
-        <Loader2 className="w-6 h-6 animate-spin text-rose-500" />
+        <Loader2 className="w-6 h-6 animate-spin text-red-600" />
       </div>
     );
   }
@@ -111,7 +111,7 @@ export default function TeamProgressView({ progress, isLoading }) {
     <div className="space-y-4">
       {/* Stats */}
       <div className="grid grid-cols-4 gap-3">
-        <StatCard title="QC Technicians" value={stats.techs} icon={Users} color="text-rose-600" bg="bg-rose-50" />
+        <StatCard title="QC Technicians" value={stats.techs} icon={Users} color="text-red-700" bg="bg-amber-50" />
         <StatCard title="Avg Completion" value={`${stats.avgCompletion}%`} icon={TrendingUp} color="text-blue-600" bg="bg-blue-50" />
         <StatCard title="Top Performer" value={stats.topPerformer?.user?.name?.split(' ')[0] || "—"} icon={Award} color="text-amber-600" bg="bg-amber-50" />
         <StatCard title="Needs Attention" value={stats.needsAttention} icon={AlertTriangle} color="text-red-600" bg="bg-red-50" />
@@ -121,7 +121,7 @@ export default function TeamProgressView({ progress, isLoading }) {
       <Card className="border-gray-200">
         <CardHeader className="pb-2">
           <CardTitle className="text-sm flex items-center gap-2">
-            <Target className="w-4 h-4 text-rose-500" /> Team Training Progress
+            <Target className="w-4 h-4 text-red-600" /> Team Training Progress
           </CardTitle>
         </CardHeader>
         <CardContent className="p-0">
