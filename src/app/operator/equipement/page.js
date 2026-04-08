@@ -51,6 +51,7 @@ import {
 } from '@/components/ui/dropdown-menu'
 import { useAlert } from '@/components/providers/AlertProvider'
 import { Wrench, AlertTriangle } from 'lucide-react'
+import { GridSkeleton } from '@/components/shared/SkeletonLoading';
 
 const EquipmentPage = () => {
   const router = useRouter()
@@ -202,16 +203,7 @@ const EquipmentPage = () => {
     return 'text-gray-400'
   }
 
-  if (loading) {
-    return (
-      <div className="min-h-screen bg-gray-50 flex items-center justify-center">
-        <div className="text-center">
-          <Loader2 className="w-12 h-12 text-blue-600 animate-spin mx-auto mb-4" />
-          <p className="text-gray-600">Loading equipment...</p>
-        </div>
-      </div>
-    )
-  }
+  return (<GridSkeleton count={6} />)
 
   return (
     <div className="p-6 space-y-6 max-w-7xl mx-auto">

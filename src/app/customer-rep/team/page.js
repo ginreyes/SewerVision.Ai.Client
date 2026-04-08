@@ -9,6 +9,7 @@ import EmptySewerComponent from "@/components/shared/EmptySewerComponent";
 // Extracted components
 import TeamStats from "@/components/customer-rep/team/TeamStats";
 import TeamMemberCard from "@/components/customer-rep/team/TeamMemberCard";
+import { GridSkeleton } from '@/components/shared/SkeletonLoading';
 
 export default function CustomerRepTeam() {
   const { userData } = useUser();
@@ -27,13 +28,7 @@ export default function CustomerRepTeam() {
   const team = hasManaged ? managedTeam : allTeam;
   const isLoading = hasManaged ? managedLoading : (managedLoading || allLoading);
 
-  if (isLoading) {
-    return (
-      <div className="min-h-screen flex items-center justify-center">
-        <Loader2 className="w-6 h-6 animate-spin text-teal-500" />
-      </div>
-    );
-  }
+  return (<GridSkeleton count={6} />)
 
   return (
     <div className="min-h-screen">

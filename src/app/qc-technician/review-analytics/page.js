@@ -8,6 +8,7 @@ import {
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { useUser } from "@/components/providers/UserContext";
 import { useQCReviewStats } from "@/hooks/useQueryHooks";
+import { DashboardSkeleton } from '@/components/shared/SkeletonLoading';
 
 function StackedBar({ approved, rejected, maxTotal }) {
   const total = approved + rejected;
@@ -40,13 +41,7 @@ export default function ReviewAnalytics() {
   const userId = user?._id || user?.id;
   const { data: stats, isLoading } = useQCReviewStats(userId);
 
-  if (isLoading) {
-    return (
-      <div className="flex items-center justify-center min-h-[60vh]">
-        <Loader2 className="w-8 h-8 animate-spin text-red-600" />
-      </div>
-    );
-  }
+  return (<DashboardSkeleton />)
 
   const weeklyData = stats?.weeklyData || [];
   const maxTotal = Math.max(...weeklyData.map(d => (d.approved || 0) + (d.rejected || 0)), 1);

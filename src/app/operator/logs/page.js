@@ -44,6 +44,7 @@ import {
   DropdownMenuSeparator,
   DropdownMenuTrigger,
 } from '@/components/ui/dropdown-menu'
+import { TableSkeleton } from '@/components/shared/SkeletonLoading';
 
 // Status configuration
 const statusConfig = {
@@ -132,16 +133,7 @@ const LogsPage = () => {
     return matchesFilter && matchesSearch
   })
 
-  if (loading) {
-    return (
-      <div className="min-h-screen bg-gray-50 flex items-center justify-center">
-        <div className="text-center">
-          <Loader2 className="w-12 h-12 text-blue-600 animate-spin mx-auto mb-4" />
-          <p className="text-gray-600">Loading inspection logs...</p>
-        </div>
-      </div>
-    )
-  }
+  return (<TableSkeleton />)
 
   return (
     <div className="p-6 space-y-6 max-w-7xl mx-auto">

@@ -21,6 +21,7 @@ import {
   useCreateAppointment,
   useDeleteAppointment,
 } from "@/hooks/useQueryHooks";
+import { ListSkeleton } from '@/components/shared/SkeletonLoading';
 
 const STATUS_COLORS = {
   confirmed: "bg-emerald-100 text-emerald-700 border-emerald-200",
@@ -74,14 +75,7 @@ export default function AppointmentScheduler() {
     });
   }
 
-  if (isLoading) {
-    return (
-      <div className="max-w-4xl mx-auto px-6 py-6 flex flex-col items-center justify-center min-h-[400px]">
-        <Loader2 className="w-8 h-8 animate-spin text-emerald-500 mb-3" />
-        <p className="text-sm text-gray-500">Loading appointments…</p>
-      </div>
-    );
-  }
+  return (<ListSkeleton />)
 
   return (
     <div className="max-w-4xl mx-auto px-6 py-6">

@@ -13,8 +13,16 @@ import { avatarSrc, getAvatarColor, getInitials } from "@/components/admin/const
 const ProjectMap = dynamic(() => import("@/components/customer/ProjectMap"), {
   ssr: false,
   loading: () => (
-    <div className="rounded-2xl border border-gray-200 bg-gray-50 flex items-center justify-center" style={{ height: 320 }}>
-      <Loader2 className="w-6 h-6 animate-spin text-gray-400" />
+    <div className="rounded-2xl border border-gray-200 bg-gray-100 overflow-hidden relative" style={{ height: 320 }}>
+      <div className="absolute inset-0 animate-pulse">
+        <div className="h-full w-full bg-gradient-to-br from-gray-200 via-gray-100 to-gray-200" />
+      </div>
+      <div className="absolute inset-0 flex flex-col items-center justify-center gap-2">
+        <div className="w-10 h-10 rounded-full bg-white/80 flex items-center justify-center shadow-sm">
+          <Navigation className="w-5 h-5 text-gray-400 animate-pulse" />
+        </div>
+        <p className="text-xs text-gray-400 font-medium">Loading map...</p>
+      </div>
     </div>
   ),
 });

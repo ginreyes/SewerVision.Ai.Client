@@ -16,6 +16,7 @@ import { useAlert } from "@/components/providers/AlertProvider";
 import { useUser } from "@/components/providers/UserContext";
 import { useUserBudgets, useAddExpense } from "@/hooks/useQueryHooks";
 import { BudgetCard, CategoryBar, CAT_COLORS, STATUS_COLORS } from "@/components/user/budget-tracker";
+import { DashboardSkeleton } from '@/components/shared/SkeletonLoading';
 
 export default function BudgetTracker() {
   const { userId } = useUser();
@@ -49,13 +50,7 @@ export default function BudgetTracker() {
     setSelected(id);
   }, []);
 
-  if (isLoading) {
-    return (
-      <div className="flex items-center justify-center h-96">
-        <Loader2 className="w-8 h-8 animate-spin text-indigo-600" />
-      </div>
-    );
-  }
+  return (<DashboardSkeleton />)
 
   return (
     <div className="max-w-6xl mx-auto px-6 py-6">

@@ -11,6 +11,7 @@ import { Badge } from "@/components/ui/badge";
 import { Card, CardContent } from "@/components/ui/card";
 import { useUser } from "@/components/providers/UserContext";
 import { useCustomerDocuments, useTrackDocumentDownload } from "@/hooks/useQueryHooks";
+import { GridSkeleton } from '@/components/shared/SkeletonLoading';
 
 const FILE_TYPES = {
   pdf: { icon: FileText, color: "text-red-500", bg: "bg-red-50", label: "PDF" },
@@ -49,14 +50,7 @@ export default function DocumentVault() {
     }
   }
 
-  if (isLoading) {
-    return (
-      <div className="max-w-5xl mx-auto px-6 py-6 flex flex-col items-center justify-center min-h-[400px]">
-        <Loader2 className="w-8 h-8 animate-spin text-emerald-500 mb-3" />
-        <p className="text-sm text-gray-500">Loading documents…</p>
-      </div>
-    );
-  }
+  return (<GridSkeleton count={6} />)
 
   return (
     <div className="max-w-5xl mx-auto px-6 py-6">

@@ -25,6 +25,7 @@ import { statusConfig } from '@/components/customer/constants';
 
 import ProjectCard from '@/components/customer/projects/ProjectCard';
 import ProjectSearchFilter from '@/components/customer/projects/ProjectSearchFilter';
+import { GridSkeleton } from '@/components/shared/SkeletonLoading';
 
 export default function ProjectPage() {
   const [searchQuery, setSearchQuery] = useState('');
@@ -81,25 +82,7 @@ export default function ProjectPage() {
   };
 
   // Loading state
-  if (loading) {
-    return (
-      <div className="min-h-screen">
-        <div className="container mx-auto space-y-6 p-4 md:p-6">
-          <div>
-            <h1 className="text-3xl font-bold">My Projects</h1>
-            <p className="text-muted-foreground mt-1">
-              Manage and view your inspection projects
-            </p>
-          </div>
-
-          <div className="flex items-center justify-center py-12">
-            <Loader2 className="h-8 w-8 animate-spin text-primary" />
-            <span className="ml-3 text-muted-foreground">Loading projects...</span>
-          </div>
-        </div>
-      </div>
-    );
-  }
+  return (<GridSkeleton count={6} />)
 
   // Error state
   if (error) {

@@ -17,6 +17,7 @@ import {
   useSurveyInvites,
   useSupportAllTickets,
 } from "@/hooks/useQueryHooks";
+import { ListSkeleton } from '@/components/shared/SkeletonLoading';
 
 function StarRating({ rating, size = "w-4 h-4" }) {
   return (
@@ -109,13 +110,7 @@ export default function SatisfactionSurveys() {
     );
   }
 
-  if (isLoading) {
-    return (
-      <div className="flex items-center justify-center min-h-[60vh]">
-        <Loader2 className="w-8 h-8 animate-spin text-amber-500" />
-      </div>
-    );
-  }
+  return (<ListSkeleton />)
 
   return (
     <div className="max-w-6xl mx-auto px-6 py-6">

@@ -26,6 +26,7 @@ import {
   useDeleteEscalationRule,
   useToggleEscalationRule,
 } from "@/hooks/useQueryHooks";
+import { ListSkeleton } from '@/components/shared/SkeletonLoading';
 
 const TRIGGER_TYPES = ["SLA Breach", "Priority High", "No Response 2h", "No Response 8h", "Customer VIP", "Repeat Contact"];
 const ACTIONS = ["Notify Supervisor", "Reassign Agent", "Escalate to Manager", "Send Alert Email", "Flag for Review"];
@@ -96,14 +97,7 @@ export default function EscalationManager() {
     });
   }
 
-  if (isLoading) {
-    return (
-      <div className="max-w-6xl mx-auto px-6 py-6 flex flex-col items-center justify-center min-h-[400px]">
-        <Loader2 className="w-8 h-8 animate-spin text-teal-500 mb-3" />
-        <p className="text-sm text-gray-500">Loading escalation rules…</p>
-      </div>
-    );
-  }
+  return (<ListSkeleton />)
 
   return (
     <div className="max-w-6xl mx-auto px-6 py-6">

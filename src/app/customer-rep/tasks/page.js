@@ -19,6 +19,7 @@ import {
   useUpdateSupportTicket,
 } from "@/hooks/useQueryHooks";
 import TicketDetail from "@/components/customer-rep/tickets/TicketDetail";
+import { ListSkeleton } from '@/components/shared/SkeletonLoading';
 
 // ── Constants ──
 const SLA_HOURS = 24;

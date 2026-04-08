@@ -20,6 +20,7 @@ import { useAlert } from "@/components/providers/AlertProvider";
 import { useUser } from "@/components/providers/UserContext";
 import { useOperatorIncidents, useCreateIncident, useUpdateIncident } from "@/hooks/useQueryHooks";
 import { IncidentCard, TYPE_OPTIONS } from "@/components/operator/incidents";
+import { ListSkeleton } from '@/components/shared/SkeletonLoading';
 
 const EMPTY_FORM = { title: "", type: "Equipment Failure", severity: "medium", location: "", description: "" };
 
@@ -77,13 +78,7 @@ export default function IncidentReports() {
   const handleOpenForm = useCallback(() => setShowForm(true), []);
   const handleCloseForm = useCallback(() => setShowForm(false), []);
 
-  if (isLoading) {
-    return (
-      <div className="flex items-center justify-center h-96">
-        <Loader2 className="w-8 h-8 animate-spin text-orange-600" />
-      </div>
-    );
-  }
+  return (<ListSkeleton />)
 
   return (
     <div className="max-w-6xl mx-auto px-6 py-6">

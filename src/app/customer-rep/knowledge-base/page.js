@@ -26,6 +26,7 @@ import {
   useUpdateKBArticle,
   useDeleteKBArticle,
 } from "@/hooks/useQueryHooks";
+import { GridSkeleton } from '@/components/shared/SkeletonLoading';
 
 const EMPTY_FORM = { title: "", category: "General", tags: "", body: "", shared: false };
 
@@ -99,13 +100,7 @@ export default function KnowledgeBase() {
     });
   }
 
-  if (isLoading) {
-    return (
-      <div className="flex items-center justify-center min-h-[60vh]">
-        <Loader2 className="w-8 h-8 animate-spin text-teal-500" />
-      </div>
-    );
-  }
+  return (<GridSkeleton count={6} />)
 
   return (
     <div className="max-w-6xl mx-auto px-6 py-6">

@@ -30,6 +30,7 @@ import {
   Hash,
 } from 'lucide-react';
 import { priorityConfig } from '@/components/admin/constants';
+import { CardSkeleton } from '@/components/shared/SkeletonLoading';
 
 const PriorityBadge = ({ priority }) => {
   const cfg = priorityConfig[priority] || priorityConfig.medium;

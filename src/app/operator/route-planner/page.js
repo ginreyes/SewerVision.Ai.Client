@@ -13,6 +13,7 @@ import { useUser } from "@/components/providers/UserContext";
 import { useRouter } from "next/navigation";
 import { useOperatorRouteSites, useCompleteRouteSite } from "@/hooks/useQueryHooks";
 import { SiteCard, STATUS_CONFIG } from "@/components/operator/route-planner";
+import { DashboardSkeleton } from '@/components/shared/SkeletonLoading';
 
 const ProjectMap = dynamic(() => import("@/components/customer/ProjectMap"), { ssr: false });
 
@@ -48,13 +49,7 @@ export default function RoutePlanner() {
     [sites.length, pending, totalKm, completedCount]
   );
 
-  if (isLoading) {
-    return (
-      <div className="flex items-center justify-center h-96">
-        <Loader2 className="w-8 h-8 animate-spin text-blue-600" />
-      </div>
-    );
-  }
+  return (<DashboardSkeleton />)
 
   return (
     <div className="max-w-6xl mx-auto px-6 py-6">

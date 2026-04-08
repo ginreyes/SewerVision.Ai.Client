@@ -8,6 +8,7 @@ import {
   useAllTrainingAssignments, useAssignTrainingModules,
 } from "@/hooks/useQueryHooks";
 import { TrainingOverview, AssignmentManager } from "@/components/admin/training";
+import { GridSkeleton } from '@/components/shared/SkeletonLoading';
 
 export default function AdminTrainingCenter() {
   const { data: modulesRaw = [], isLoading: modulesLoading } = useTrainingModules();
@@ -18,13 +19,7 @@ export default function AdminTrainingCenter() {
   const modules = Array.isArray(modulesRaw) ? modulesRaw : [];
   const isLoading = modulesLoading || progressLoading;
 
-  if (isLoading) {
-    return (
-      <div className="flex items-center justify-center min-h-[60vh]">
-        <Loader2 className="w-8 h-8 animate-spin text-rose-500" />
-      </div>
-    );
-  }
+  return (<GridSkeleton count={6} />)
 
   return (
     <div className="max-w-7xl mx-auto px-6 py-6">

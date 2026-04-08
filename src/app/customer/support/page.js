@@ -33,6 +33,7 @@ import {
 } from '@/hooks/useQueryHooks';
 import supportApi from '@/data/supportApi';
 import complaintApi from '@/data/complaintApi';
+import { ListSkeleton } from '@/components/shared/SkeletonLoading';
 
 // ── Utilities ──
 const BACKEND = process.env.NEXT_PUBLIC_BACKEND_URL || 'http://localhost:5000';

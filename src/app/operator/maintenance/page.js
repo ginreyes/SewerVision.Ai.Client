@@ -37,6 +37,7 @@ import {
   useDismissMaintenanceAlert,
 } from '@/hooks/useQueryHooks'
 import { StatCard, SystemStatusCard, AlertItem, TaskRow } from '@/components/operator/maintenance'
+import { DashboardSkeleton } from '@/components/shared/SkeletonLoading';
 
 const categoryIcons = {
   cloud: Server,
@@ -153,16 +154,7 @@ const MaintenancePage = () => {
     return matchesStatus && matchesSearch
   })
 
-  if (loading) {
-    return (
-      <div className="min-h-screen flex items-center justify-center">
-        <div className="text-center">
-          <Loader2 className="w-12 h-12 animate-spin text-blue-500 mx-auto mb-4" />
-          <p className="text-gray-500 animate-pulse">Loading maintenance dashboard...</p>
-        </div>
-      </div>
-    )
-  }
+  return (<DashboardSkeleton />)
 
   return (
     <div className="min-h-screen ">

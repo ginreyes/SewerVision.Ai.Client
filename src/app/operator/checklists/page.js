@@ -15,6 +15,7 @@ import { useAlert } from "@/components/providers/AlertProvider";
 import { useUser } from "@/components/providers/UserContext";
 import { useOperatorChecklists, useToggleChecklistItem, useCreateChecklist } from "@/hooks/useQueryHooks";
 import { ChecklistItem, STATUS_CONFIG } from "@/components/operator/checklists";
+import { ListSkeleton } from '@/components/shared/SkeletonLoading';
 
 export default function FieldChecklist() {
   const { showAlert } = useAlert();
@@ -66,13 +67,7 @@ export default function FieldChecklist() {
   const totalCount = selectedList?.items?.length || 0;
   const pct = totalCount > 0 ? Math.round((doneCount / totalCount) * 100) : 0;
 
-  if (isLoading) {
-    return (
-      <div className="flex items-center justify-center h-96">
-        <Loader2 className="w-8 h-8 animate-spin text-blue-600" />
-      </div>
-    );
-  }
+  return (<ListSkeleton />)
 
   return (
     <div className="max-w-6xl mx-auto px-6 py-6">

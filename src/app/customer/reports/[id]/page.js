@@ -183,13 +183,13 @@ export default function ReportDetailPage() {
         <CardContent className="grid grid-cols-1 sm:grid-cols-2 gap-4">
           <div>
             <h4 className="font-medium">Field Operator</h4>
-            <p className="text-sm text-muted-foreground">{report.assignedOperator.name}</p>
-            <p className="text-xs text-muted-foreground">{report.assignedOperator.email}</p>
+            <p className="text-sm text-muted-foreground">{report.assignedOperator?.name || report.assignedOperator?.first_name || 'Not assigned'}</p>
+            <p className="text-xs text-muted-foreground">{report.assignedOperator?.email || ''}</p>
           </div>
           <div>
             <h4 className="font-medium">QC Technician</h4>
-            <p className="text-sm text-muted-foreground">{report.qcTechnician.name}</p>
-            <p className="text-xs text-muted-foreground">{report.qcTechnician.email}</p>
+            <p className="text-sm text-muted-foreground">{report.qcTechnician?.name || report.qcTechnician?.first_name || 'Not assigned'}</p>
+            <p className="text-xs text-muted-foreground">{report.qcTechnician?.email || ''}</p>
           </div>
         </CardContent>
       </Card>

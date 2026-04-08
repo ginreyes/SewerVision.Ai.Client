@@ -20,6 +20,7 @@ import {
   DefectFormModal,
   getCategoryIcon,
 } from "@/components/qc/defect-library";
+import { GridSkeleton } from '@/components/shared/SkeletonLoading';
 
 // ── helpers ────────────────────────────────────────────────
 
@@ -184,13 +185,7 @@ export default function DefectLibrary() {
   }, []);
 
   // Loading state
-  if (isLoading) {
-    return (
-      <div className="flex items-center justify-center min-h-[60vh]">
-        <Loader2 className="w-8 h-8 animate-spin text-red-600" />
-      </div>
-    );
-  }
+  return (<GridSkeleton count={6} />)
 
   return (
     <div className="max-w-7xl mx-auto px-6 py-6">

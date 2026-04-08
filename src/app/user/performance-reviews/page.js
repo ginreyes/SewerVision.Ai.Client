@@ -10,6 +10,7 @@ import { Button } from "@/components/ui/button";
 import { useUser } from "@/components/providers/UserContext";
 import { useUserTeamMetrics, useUserTeamSummary } from "@/hooks/useQueryHooks";
 import { MemberCard, ScoreBar } from "@/components/user/performance-reviews";
+import { ListSkeleton } from '@/components/shared/SkeletonLoading';
 
 function StarScore({ score }) {
   const stars = Math.round(score / 20);
@@ -68,13 +69,7 @@ export default function PerformanceReviews() {
 
   const isLoading = metricsLoading || summaryLoading;
 
-  if (isLoading) {
-    return (
-      <div className="flex items-center justify-center h-96">
-        <Loader2 className="w-8 h-8 animate-spin text-indigo-600" />
-      </div>
-    );
-  }
+  return (<ListSkeleton />)
 
   return (
     <div className="max-w-6xl mx-auto px-6 py-6">

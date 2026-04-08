@@ -45,6 +45,7 @@ import {
   useUpdateOperatorEventStatus,
   useDeleteOperatorEvent,
 } from '@/hooks/useQueryHooks'
+import { DashboardSkeleton } from '@/components/shared/SkeletonLoading';
 
 // Event type configuration matching operator design
 const eventTypes = {

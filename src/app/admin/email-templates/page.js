@@ -13,6 +13,7 @@ import { useAlert } from "@/components/providers/AlertProvider";
 import EmptyState from '@/components/shared/EmptyState';
 import { api } from "@/lib/helper";
 import { TemplateEditor } from "@/components/admin/email-templates";
+import { ListSkeleton } from '@/components/shared/SkeletonLoading';
 
 const CATEGORY_COLORS = {
   system: "bg-blue-100 text-blue-700 border-blue-200",

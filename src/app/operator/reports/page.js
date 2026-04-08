@@ -55,6 +55,7 @@ import { Dialog, DialogContent } from '@/components/ui/dialog'
 import { useUser } from '@/components/providers/UserContext'
 import { useAlert } from '@/components/providers/AlertProvider'
 import GenerateReportModal from './components/GenerateReportModal'
+import { TableSkeleton } from '@/components/shared/SkeletonLoading';
 
 // Status configuration matching operator design
 const statusConfig = {
@@ -234,16 +235,7 @@ const ReportsPage = () => {
     // TODO: Implement bulk share
   }
 
-  if (loading) {
-    return (
-      <div className="min-h-screen bg-gray-50 flex items-center justify-center">
-        <div className="text-center">
-          <Loader2 className="w-12 h-12 text-blue-600 animate-spin mx-auto mb-4" />
-          <p className="text-gray-600">Loading inspection reports...</p>
-        </div>
-      </div>
-    )
-  }
+  return (<TableSkeleton />)
 
   return (
     <div className="p-6 space-y-6 max-w-7xl mx-auto">

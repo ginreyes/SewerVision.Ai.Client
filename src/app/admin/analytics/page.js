@@ -14,19 +14,14 @@ import {
   TeamProductivityTable,
 } from "@/components/admin/analytics";
 import { useAdminAnalytics } from "@/hooks/useQueryHooks";
+import { DashboardSkeleton } from '@/components/shared/SkeletonLoading';
 
 const ICON_MAP = { FolderOpen, Users, CheckCircle2, Clock };
 
 export default function AdminAnalytics() {
   const { data: analytics, isLoading } = useAdminAnalytics();
 
-  if (isLoading) {
-    return (
-      <div className="flex items-center justify-center min-h-[60vh]">
-        <Loader2 className="w-8 h-8 animate-spin text-rose-500" />
-      </div>
-    );
-  }
+  return (<DashboardSkeleton />)
 
   const kpiMetrics = analytics?.kpiMetrics || [];
   const monthlyProjects = analytics?.monthlyProjects || [];

@@ -14,6 +14,7 @@ import {
   useOperatorProjects,
 } from "@/hooks/useQueryHooks";
 import { TimeEntryRow, TYPE_COLORS, TYPE_OPTIONS } from "@/components/operator/time-tracking";
+import { TableSkeleton } from '@/components/shared/SkeletonLoading';
 
 function formatElapsed(seconds) {
   const h = Math.floor(seconds / 3600);
@@ -125,13 +126,7 @@ export default function TimeTracking() {
     [todayHours, weekHours, entries.length]
   );
 
-  if (isLoading) {
-    return (
-      <div className="flex items-center justify-center h-96">
-        <Loader2 className="w-8 h-8 animate-spin text-blue-600" />
-      </div>
-    );
-  }
+  return (<TableSkeleton />)
 
   return (
     <div className="max-w-6xl mx-auto px-6 py-6">

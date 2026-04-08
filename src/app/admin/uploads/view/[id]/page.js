@@ -25,6 +25,7 @@ import { useAlert } from '@/components/providers/AlertProvider';
 import { getFileTypeIcon, getStatusColor } from '@/lib/utils';
 import { apiBlob } from '@/lib/helper';
 import Breadcrumb from '@/components/shared/Breadcrumb';
+import { ProfileSkeleton } from '@/components/shared/SkeletonLoading';
 
 const FileViewPage = () => {
   const params = useParams();

@@ -25,6 +25,7 @@ import {
   useUseTemplate,
 } from "@/hooks/useQueryHooks";
 import { TemplateCard } from "@/components/user/project-templates";
+import { GridSkeleton } from '@/components/shared/SkeletonLoading';
 
 export default function ProjectTemplates() {
   const { userId } = useUser();
@@ -114,13 +115,7 @@ export default function ProjectTemplates() {
     );
   }, [form, createTemplate, showAlert]);
 
-  if (isLoading) {
-    return (
-      <div className="flex items-center justify-center h-96">
-        <Loader2 className="w-8 h-8 animate-spin text-indigo-600" />
-      </div>
-    );
-  }
+  return (<GridSkeleton count={6} />)
 
   return (
     <div className="max-w-6xl mx-auto px-6 py-6">

@@ -280,9 +280,9 @@ const AdminUploads = () => {
 
   const filteredUploads = uploads.filter((upload) => {
     const matchesSearch =
-      upload.filename.toLowerCase().includes(searchQuery.toLowerCase()) ||
-      upload.uploadedBy.toLowerCase().includes(searchQuery.toLowerCase()) ||
-      upload.location.toLowerCase().includes(searchQuery.toLowerCase());
+      (upload.filename || '').toLowerCase().includes(searchQuery.toLowerCase()) ||
+      (typeof upload.uploadedBy === 'string' ? upload.uploadedBy : upload.uploadedBy?.email || '').toLowerCase().includes(searchQuery.toLowerCase()) ||
+      (upload.location || '').toLowerCase().includes(searchQuery.toLowerCase());
     const matchesStatus =
       filterStatus === "all" || upload.status === filterStatus;
     const matchesType = filterType === "all" || upload.type === filterType;
@@ -474,7 +474,8 @@ const AdminUploads = () => {
     }
 
     if (col.key === "uploadedBy") {
-      return <span className="text-sm text-gray-600 truncate">{item.uploadedBy}</span>;
+      const upBy = typeof item.uploadedBy === 'object' ? item.uploadedBy?.email || 'Unknown' : item.uploadedBy || 'Unknown';
+      return <span className="text-sm text-gray-600 truncate">{upBy}</span>;
     }
 
     if (col.key === "location") {
@@ -1645,7 +1646,7 @@ const AdminUploads = () => {
                           <div>
                             <h4 className="font-medium text-sm">{upload.originalName}</h4>
                             <p className="text-xs text-gray-500">
-                              {upload.uploadedBy} · {upload.size} · {upload.location}
+                              {typeof upload.uploadedBy === 'object' ? upload.uploadedBy?.email : upload.uploadedBy} · {upload.size} · {upload.location}
                             </p>
                           </div>
                         </div>
@@ -1732,7 +1733,7 @@ const AdminUploads = () => {
                             {upload.processingError || 'Upload failed — unknown error'}
                           </p>
                           <div className="flex items-center gap-3 mt-1.5 text-xs text-red-500">
-                            <span>{upload.uploadedBy}</span>
+                            <span>{typeof upload.uploadedBy === 'object' ? upload.uploadedBy?.email : upload.uploadedBy}</span>
                             <span>·</span>
                             <span>{upload.size}</span>
                             <span>·</span>

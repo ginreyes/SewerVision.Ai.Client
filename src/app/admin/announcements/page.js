@@ -9,6 +9,7 @@ import { useUser } from "@/components/providers/UserContext";
 import { api } from "@/lib/helper";
 import { ALL_ROLES } from "@/components/admin/constants";
 import { AnnouncementList, AnnouncementFormModal } from "@/components/admin/announcements";
+import { ListSkeleton } from '@/components/shared/SkeletonLoading';
 
 const EMPTY_FORM = { title: "", body: "", type: "general", roles: [...ALL_ROLES], pinned: false };
 
@@ -88,14 +89,7 @@ export default function Announcements() {
     } catch { showAlert("Failed to delete", "error"); }
   }
 
-  if (loading) {
-    return (
-      <div className="max-w-6xl mx-auto px-6 py-6 flex flex-col items-center justify-center min-h-[400px]">
-        <Loader2 className="w-8 h-8 animate-spin text-rose-500 mb-3" />
-        <p className="text-sm text-gray-500">Loading announcements…</p>
-      </div>
-    );
-  }
+  return (<ListSkeleton />)
 
   return (
     <div className="max-w-6xl mx-auto px-6 py-6">

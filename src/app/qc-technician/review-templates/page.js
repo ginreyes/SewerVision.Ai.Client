@@ -22,6 +22,7 @@ import {
   useDeleteReviewTemplate,
   useToggleTemplateFavorite,
 } from "@/hooks/useQueryHooks";
+import { ListSkeleton } from '@/components/shared/SkeletonLoading';
 
 export default function QCReviewTemplates() {
   const { showAlert } = useAlert();
@@ -81,13 +82,7 @@ export default function QCReviewTemplates() {
     );
   }
 
-  if (isLoading) {
-    return (
-      <div className="flex items-center justify-center min-h-[60vh]">
-        <Loader2 className="w-8 h-8 animate-spin text-red-600" />
-      </div>
-    );
-  }
+  return (<ListSkeleton />)
 
   return (
     <div className="max-w-6xl mx-auto px-6 py-6">

@@ -14,6 +14,7 @@ import {
   useSupportAssignedTickets,
   useSupportGlobalStats,
 } from "@/hooks/useQueryHooks";
+import { DashboardSkeleton } from '@/components/shared/SkeletonLoading';
 
 // ── Helpers ──
 function getHoursAgo(dateStr) {
@@ -244,13 +245,7 @@ export default function AnalyticsPage() {
     return { total, open, resolved, inProgress, resolutionPct, slaPct };
   }, [allTickets]);
 
-  if (isLoading) {
-    return (
-      <div className="max-w-7xl mx-auto px-6 py-6 flex items-center justify-center py-24">
-        <Loader2 className="w-6 h-6 animate-spin text-teal-500" />
-      </div>
-    );
-  }
+  return (<DashboardSkeleton />)
 
   return (
     <div className="max-w-7xl mx-auto px-6 py-6 space-y-6">

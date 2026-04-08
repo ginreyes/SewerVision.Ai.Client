@@ -25,6 +25,7 @@ import {
   useToggleCannedWorkflow,
   useDuplicateCannedWorkflow,
 } from "@/hooks/useQueryHooks";
+import { ListSkeleton } from '@/components/shared/SkeletonLoading';
 
 const STEP_TYPES = [
   { value: "send_email", label: "Send Email", icon: Mail, color: "bg-blue-100 text-blue-700" },
@@ -102,14 +103,7 @@ export default function CannedWorkflows() {
     }
   }
 
-  if (isLoading) {
-    return (
-      <div className="max-w-7xl mx-auto px-6 py-6 flex flex-col items-center justify-center min-h-[400px]">
-        <Loader2 className="w-8 h-8 animate-spin text-teal-500 mb-3" />
-        <p className="text-sm text-gray-500">Loading workflows…</p>
-      </div>
-    );
-  }
+  return (<ListSkeleton />)
 
   return (
     <div className="max-w-7xl mx-auto px-6 py-6">
