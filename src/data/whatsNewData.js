@@ -1,10 +1,232 @@
 
 export const whatsNewData = [
     {
+        id: "v2.1.0",
+        date: "April 6 – 8, 2026",
+        label: "AI Pipeline Overhaul + LMS Training System",
+        isNew: true,
+        updates: {
+            admin: [
+                {
+                    type: 'feature',
+                    title: 'QC Review Dashboard Redesign',
+                    description: 'Completely redesigned QC Review tab with two-column layout, approval rate tracking, severity distribution, and inline approve/reject actions.',
+                    details: [
+                        'Progress rings showing approval rate and AI accuracy',
+                        'Review queue cards with stacked progress bars (approved/rejected/pending)',
+                        '2-column detection grid with inline Approve/Reject buttons',
+                        'Bulk select and bulk approve/reject actions',
+                        'Severity distribution horizontal bars'
+                    ]
+                },
+                {
+                    type: 'improvement',
+                    title: 'AI Pipeline 5x Faster',
+                    description: 'Parallelized video frame processing with configurable concurrency, batch DB writes, and reduced progress saves.',
+                    details: [
+                        'Frames processed in parallel batches (AI_CONCURRENCY env var, default 5)',
+                        'insertMany for detections and observations instead of per-frame creates',
+                        'Progress saved every 5% instead of every frame',
+                        'Async file reads replacing blocking readFileSync',
+                        'Stop AI + Reset AI Data endpoints with cancellation token support'
+                    ]
+                },
+                {
+                    type: 'improvement',
+                    title: 'Database Optimization',
+                    description: 'Added MongoDB indexes to 6 models, .lean() to 10+ controllers, field selection on .populate() calls.',
+                    details: [
+                        'Compound indexes on Observation, Snapshot, PacpCode, Calendar, Certifications, Note',
+                        '.lean() on read-only queries reducing memory overhead',
+                        'Selective .populate() fields cutting data transfer',
+                        'Bulk insertMany replacing N+1 query loops'
+                    ]
+                },
+                {
+                    type: 'feature',
+                    title: 'Observations UI Overhaul',
+                    description: 'Redesigned observations table with severity badges, AI chips, snapshot thumbnails, and a new slide-over detail panel with Before/After comparison.',
+                    details: [
+                        'Color-coded severity badges (red/amber/green)',
+                        'AI confidence chips showing detection percentage',
+                        'Snapshot thumbnails in table rows',
+                        'Slide-over detail panel with edit mode and Before/After draggable viewer',
+                        'Delete with confirmation, Go to Time button'
+                    ]
+                },
+                {
+                    type: 'feature',
+                    title: 'Export & System Polish',
+                    description: 'Export dropdown with Excel/CSV/PDF options, branded PDF output, error boundaries, keyboard shortcuts, and search debouncing.',
+                    details: [
+                        'Export button with format picker (Excel via SheetJS, CSV, branded PDF)',
+                        'Error boundaries for all 6 roles',
+                        'Ctrl+K global search focus shortcut',
+                        'Debounced search inputs across project pages',
+                        'Skeleton loading components for all dashboards'
+                    ]
+                },
+            ],
+            operator: [
+                {
+                    type: 'feature',
+                    title: 'Progress Tracker',
+                    description: 'New progress tracker card on the operator dashboard with circular progress rings showing projects, uploads, AI success rate, and inspections.',
+                    details: [
+                        '4 circular progress rings with trend indicators',
+                        'Month-over-month comparison arrows',
+                        'Integrated into existing dashboard layout'
+                    ]
+                },
+                {
+                    type: 'improvement',
+                    title: 'Settings Page Redesign',
+                    description: 'Operator settings split from 776 lines into 7 modular components with redesigned profile card using operator background image.',
+                    details: [
+                        'Profile hero card with operator_background.jpg cover',
+                        'Stat cards with emoji icons (Inspections, Uploads, Completion, Hours)',
+                        'Split into ProfileTab, DataSyncTab, VideoAITab, NotificationsTab, PreferencesTab',
+                        'Constants and UI components extracted to separate files'
+                    ]
+                },
+                {
+                    type: 'fix',
+                    title: 'Route Planner Auto-Population',
+                    description: 'Route sites now auto-created when projects are assigned to operators with locations.',
+                    details: [
+                        'Auto-creates on project creation if operator + location present',
+                        'Auto-creates on project update when operator newly assigned',
+                        'Duplicate check prevents multiple route sites per project'
+                    ]
+                },
+            ],
+            'qc-technician': [
+                {
+                    type: 'feature',
+                    title: 'Learning Management System',
+                    description: 'Full LMS with learning paths, interactive defect exercises, and certificate generation.',
+                    details: [
+                        'Learning Paths with sequential module progression and auto-unlock',
+                        'Interactive Defect Identification: draw bounding boxes on sewer images',
+                        'IoU-based scoring comparing user marks to ground truth',
+                        'Certificate viewer with branded SewerVision.ai PDF template',
+                        'Image-based module cards using training pictures'
+                    ]
+                },
+                {
+                    type: 'feature',
+                    title: 'Onboarding Checklist',
+                    description: 'Guided onboarding banner on the dashboard for new QC technicians with 5 setup steps.',
+                    details: [
+                        'Complete profile, first review, training, first report, calibration',
+                        'Each step links to the relevant page',
+                        'Progress bar with step completion tracking',
+                        'Dismissible (saves to localStorage)'
+                    ]
+                },
+                {
+                    type: 'improvement',
+                    title: 'Mustard + Red Color Scheme',
+                    description: 'Updated QC Technician color scheme from rose/pink to mustard and red across all 71 QC files.',
+                    details: [
+                        'Primary: red-700 buttons, red-600 accents',
+                        'Secondary: amber-500 highlights, amber-50/100 backgrounds',
+                        'Sidebar gradient: from-red-700 to-amber-500',
+                        'Distinct from admin (rose) to avoid confusion'
+                    ]
+                },
+                {
+                    type: 'feature',
+                    title: 'Add Observation Wizard',
+                    description: 'Rebuilt as a 4-step sidebar wizard with visual clock position picker.',
+                    details: [
+                        'Steps: Basic Info, Assessment, Snapshot, Review & Save',
+                        'Circular clock dial for pipe position selection',
+                        'Frame capture from video player (no fake LIVE canvas)',
+                        'Role-themed colors throughout'
+                    ]
+                },
+            ],
+            user: [
+                {
+                    type: 'feature',
+                    title: 'Training Center',
+                    description: 'New Training Center page for team leads to oversee QC technician training and take modules themselves.',
+                    details: [
+                        '4 tabs: Team Progress, Assign Training, Learning Paths, My Training',
+                        'Assign modules to QC techs with checkbox selection',
+                        'View learning paths and enroll',
+                        'Full quiz player for self-training'
+                    ]
+                },
+                {
+                    type: 'improvement',
+                    title: 'Team Page with Training Progress',
+                    description: 'Team member cards now show training progress bars, and detail pages include training stats and module breakdown.',
+                    details: [
+                        'Progress bar on each team member card (modules completed, avg score)',
+                        'Training Progress section on detail page with 3 stat cards',
+                        'Module-by-module breakdown with pass/fail badges',
+                        'Training Center added to sidebar menu'
+                    ]
+                },
+            ],
+            customer: [
+                {
+                    type: 'improvement',
+                    title: 'Upload & Delivery Improvements',
+                    description: 'Async video upload on project creation, upload error banners, and settings-based size limits.',
+                    details: [
+                        'Projects created instantly with "uploading" status while video uploads in background',
+                        'Error banner on project console if upload fails',
+                        'Upload size limit respects admin settings (useUploadLimits hook)',
+                        'Real-time XHR upload progress with circular dialog'
+                    ]
+                },
+            ],
+            platform: [
+                {
+                    type: 'improvement',
+                    title: 'Turborepo Monorepo + Docker',
+                    description: 'Project restructured as Turborepo monorepo with single Dockerfile for API + Web.',
+                    details: [
+                        'npm workspaces with Turbo build caching (FULL TURBO in 182ms)',
+                        'Single multi-stage Dockerfile with supervisord',
+                        'docker-compose.yml with MongoDB',
+                        'AWS deployment guide (App Runner, console-only)',
+                        '.env.example documenting all 36+ environment variables'
+                    ]
+                },
+                {
+                    type: 'improvement',
+                    title: 'Memory & Performance',
+                    description: '651 console statements removed from backend, streaming video upload, skeleton loading across all dashboards.',
+                    details: [
+                        'All console.log/warn/error stripped from production build',
+                        'Video upload streams to temp file (disk) instead of RAM buffering',
+                        'Skeleton loading components for dashboards, grids, tables, profiles',
+                        'ES6 audit: template literals, arrow functions, no require()'
+                    ]
+                },
+                {
+                    type: 'feature',
+                    title: 'Status Guide Redesign',
+                    description: 'Project Status Guide redesigned as a workflow progression layout with step numbers and color-coded cards.',
+                    details: [
+                        '7-step workflow visualization (Planning → Customer Notified)',
+                        'Color-coded status cards with tinted backgrounds',
+                        'Step numbers and arrow indicators between stages',
+                        'Footer explaining automatic progression'
+                    ]
+                },
+            ],
+        },
+    },
+    {
         id: "v2.0.0",
         date: "March 23 – April 3, 2026",
         label: "Major Platform Update",
-        isNew: true,
+        isNew: false,
         updates: {
             admin: [
                 {

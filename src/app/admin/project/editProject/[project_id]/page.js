@@ -505,11 +505,19 @@ export default function EditProjectPage() {
       setUploadProgress(0);
 
       const xhr = new XMLHttpRequest();
+      xhr.timeout = 600000; // 10 min timeout for large uploads
 
       xhr.upload.addEventListener("progress", (e) => {
         if (e.lengthComputable) {
           setUploadProgress(Math.round((e.loaded / e.total) * 100));
         }
+      });
+
+      xhr.addEventListener("timeout", () => {
+        setIsUploading(false);
+        setUploadProgress(0);
+        setSaving(false);
+        showAlert("Upload timed out. The file may be too large for the server.", "error");
       });
 
       xhr.addEventListener("load", () => {

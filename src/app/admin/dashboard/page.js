@@ -1,6 +1,7 @@
 'use client'
 import React, { useState, useEffect, useCallback } from 'react'
 import { Camera, BarChart3, Brain, Shield, Loader2, RefreshCw } from 'lucide-react'
+import { DashboardSkeleton } from '@/components/shared/SkeletonLoading'
 import dashboardApi from '@/data/dashboardApi'
 import { useCharts } from '@/components/admin/dashboard/useCharts'
 import OverviewTab from '@/components/admin/dashboard/OverviewTab'
@@ -116,12 +117,7 @@ const AdminDashboard = () => {
 
       {/* Main Content */}
       <main className="px-6 py-6">
-        {loading && (
-          <div className="flex items-center justify-center py-12">
-            <Loader2 className="w-8 h-8 animate-spin text-blue-600 mr-3" />
-            <span className="text-gray-600">Loading dashboard data...</span>
-          </div>
-        )}
+        {loading && <DashboardSkeleton />}
 
         {!loading && activeTab === 'overview' && (
           <OverviewTab projectStats={projectStats} recentProjects={recentProjects} getCanvasRef={getCanvasRef} />

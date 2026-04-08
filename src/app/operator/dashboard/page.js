@@ -32,6 +32,7 @@ import { useUser } from '@/components/providers/UserContext'
 
 // Import extracted components
 import { LoadingState, ErrorState } from '@/components/qc'
+import { DashboardSkeleton } from '@/components/shared/SkeletonLoading'
 import StatCard from '@/components/operator/dashboard/StatCard'
 import EquipmentCard from '@/components/operator/dashboard/EquipmentCard'
 import ProgressTracker from '@/components/operator/ProgressTracker'
@@ -233,7 +234,7 @@ export default function OperatorDashboardContent() {
 
   // ── Loading state ──
   if (loadingStats && !dashboardData) {
-    return <LoadingState message="Loading dashboard..." spinnerColor="text-blue-600" />
+    return <DashboardSkeleton />
   }
 
   // ── Error state ──

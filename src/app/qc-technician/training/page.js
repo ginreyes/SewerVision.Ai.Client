@@ -19,6 +19,7 @@ import {
 } from "@/hooks/useQueryHooks";
 import { ModuleFormModal, TeamProgressView, DIFFICULTY_CONFIG, CATEGORIES, EMPTY_QUESTION } from "@/components/qc/training";
 import LearningPathCard from "@/components/qc/training/LearningPathCard";
+import { GridSkeleton } from "@/components/shared/SkeletonLoading";
 import DefectExercisePlayer from "@/components/qc/training/DefectExercisePlayer";
 import CertificateViewer from "@/components/qc/training/CertificateViewer";
 import { useLearningPaths, useUserPathProgress, useEnrollInPath, useDefectExercises, useSubmitExercise, useCertificate } from "@/hooks/useTrainingPaths";
@@ -138,7 +139,7 @@ export default function TrainingCalibration() {
   const avgScore = stats?.avgScore ?? NaN;
 
   if (isLoading) {
-    return <div className="flex items-center justify-center min-h-[60vh]"><Loader2 className="w-8 h-8 animate-spin text-red-600" /></div>;
+    return <div className="max-w-6xl mx-auto px-6 py-6"><GridSkeleton count={6} withImage /></div>;
   }
 
   return (

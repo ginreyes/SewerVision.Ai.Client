@@ -24,6 +24,7 @@ import { useUser } from '@/components/providers/UserContext'
 import { useRouter } from 'next/navigation'
 import { usePolling } from '@/hooks'
 import { LoadingState, ErrorState, EmptyState } from '@/components/qc'
+import { DashboardSkeleton } from '@/components/shared/SkeletonLoading'
 import { POLL_INTERVAL } from '@/components/qc/constants'
 import OnboardingChecklist from '@/components/qc/OnboardingChecklist'
 import { useOnboardingProgress } from '@/hooks/useOnboarding'
@@ -297,7 +298,7 @@ const QCTechnicianDashboard = () => {
 
   // Loading state
   if (loading && !dashboardStats) {
-    return <LoadingState message="Loading dashboard data..." spinnerColor="text-red-700" />
+    return <DashboardSkeleton />
   }
 
   // Error state
