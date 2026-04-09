@@ -245,8 +245,7 @@ export default function AnalyticsPage() {
     return { total, open, resolved, inProgress, resolutionPct, slaPct };
   }, [allTickets]);
 
-  return (<DashboardSkeleton />)
-
+  if (isLoading) return (<DashboardSkeleton />)
   return (
     <div className="max-w-7xl mx-auto px-6 py-6 space-y-6">
       {/* Header */}

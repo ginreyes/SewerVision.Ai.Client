@@ -598,13 +598,20 @@ export function useQCDashboardStats(qcTechnicianId, options = {}) {
 }
 
 /**
- * Hook for fetching QC assignments
+ * Hook for fetching QC assignments.
+ *
+ * staleTime: 2 minutes. Assignments change rarely (admin reassignments,
+ * completion events). Two minutes keeps navigation back-and-forth snappy
+ * without serving stale counts — mutations (approve/reject, complete)
+ * explicitly invalidate this key, so edits still propagate instantly.
  */
 export function useQCAssignments(qcTechnicianId, status = 'all', options = {}) {
     return useQuery({
         queryKey: queryKeys.qcAssignments(qcTechnicianId, status),
         queryFn: () => qcApi.getAssignments(qcTechnicianId, status),
         enabled: !!qcTechnicianId,
+        staleTime: 1000 * 60 * 2,
+        gcTime: 1000 * 60 * 10,
         ...options,
     });
 }
@@ -634,25 +641,39 @@ export function useProject(projectId, options = {}) {
 }
 
 /**
- * Hook for fetching project videos
+ * Hook for fetching project videos.
+ *
+ * staleTime: 5 minutes. Videos are uploaded infrequently and immutable once
+ * stored — long staleTime is safe and eliminates the refetch-on-every-
+ * project-switch that used to happen with the default staleTime of 0.
  */
 export function useProjectVideos(projectId, options = {}) {
     return useQuery({
         queryKey: queryKeys.projectVideos(projectId),
         queryFn: () => qcApi.getProjectVideos(projectId),
         enabled: !!projectId,
+        staleTime: 1000 * 60 * 5,
+        gcTime: 1000 * 60 * 15,
         ...options,
     });
 }
 
 /**
- * Hook for fetching project detections
+ * Hook for fetching project detections.
+ *
+ * staleTime: 1 minute. Detections change via mutations (approve/reject,
+ * manual entry) which explicitly invalidate this key, so we don't need a
+ * short window — the 1-minute buffer just prevents redundant fetches when
+ * the tech flips back and forth between views. Mutations bypass staleTime
+ * via queryClient.invalidateQueries, so live edits still propagate.
  */
 export function useProjectDetections(projectId, qcStatus = 'all', options = {}) {
     return useQuery({
         queryKey: queryKeys.qcDetections(projectId, qcStatus),
         queryFn: () => qcApi.getProjectDetections(projectId, qcStatus),
         enabled: !!projectId,
+        staleTime: 1000 * 60,
+        gcTime: 1000 * 60 * 10,
         ...options,
     });
 }
@@ -682,7 +703,27 @@ export function useDetectionComments(detectionId, options = {}) {
 }
 
 /**
- * Hook for reviewing a detection (approve/reject/modify)
+ * Hook for reviewing a detection (approve/reject/modify).
+ *
+ * Optimistic flow:
+ *  1. onMutate → snapshot current detection list + assignments list
+ *  2. Patch the detection list cache: if the filter is 'pending' and we just
+ *     moved the detection out of pending, remove it; otherwise patch its
+ *     qcStatus in-place.
+ *  3. Patch the assignments cache: decrement pendingDetections, increment
+ *     reviewedDetections + the specific status counter on the project.
+ *  4. onError → roll back both snapshots.
+ *  5. onSettled → targeted invalidation of just the project's detection query
+ *     (NOT the global 'qc.detections' prefix — that was over-invalidating and
+ *     wiping out adjacent cache entries).
+ *
+ * Call signature for optimistic behavior:
+ *    mutateAsync({
+ *      detectionId,
+ *      reviewData,               // { qcStatus, qcReviewedBy, action, ... }
+ *      projectId,                // required for optimistic update
+ *      qcStatusFilter = 'pending' // which list the detection currently lives in
+ *    })
  */
 export function useReviewDetection() {
     const queryClient = useQueryClient();
@@ -690,10 +731,87 @@ export function useReviewDetection() {
     return useMutation({
         mutationFn: ({ detectionId, reviewData }) =>
             qcApi.reviewDetection(detectionId, reviewData),
-        onSuccess: (data, variables) => {
+
+        onMutate: async ({ detectionId, reviewData, projectId, qcStatusFilter = 'pending' }) => {
+            const detectionsKey = projectId ? queryKeys.qcDetections(projectId, qcStatusFilter) : null;
+
+            // Cancel any in-flight queries so they don't clobber our optimistic state
+            if (detectionsKey) {
+                await queryClient.cancelQueries({ queryKey: detectionsKey });
+            }
+            await queryClient.cancelQueries({ queryKey: ['qc', 'assignments'] });
+
+            const prevDetections = detectionsKey ? queryClient.getQueryData(detectionsKey) : null;
+
+            // Patch the detection list cache
+            if (detectionsKey && Array.isArray(prevDetections)) {
+                const nextStatus = reviewData?.qcStatus;
+                queryClient.setQueryData(detectionsKey, (old) => {
+                    if (!Array.isArray(old)) return old;
+                    // If we're filtering by 'pending' and moved this detection
+                    // out of pending, drop it entirely from the list so the
+                    // queue shrinks immediately.
+                    if (qcStatusFilter === 'pending' && nextStatus && nextStatus !== 'pending') {
+                        return old.filter(d => d._id !== detectionId);
+                    }
+                    // Otherwise patch the status in place
+                    return old.map(d => d._id === detectionId ? { ...d, qcStatus: nextStatus } : d);
+                });
+            }
+
+            // Patch every cached assignments list (all status filters) so the
+            // project card in the left rail updates its pending/reviewed counts
+            // immediately.
+            const assignmentQueries = queryClient.getQueriesData({ queryKey: ['qc', 'assignments'] });
+            const prevAssignments = assignmentQueries.map(([key, data]) => [key, data]);
+
+            if (projectId) {
+                for (const [key, data] of assignmentQueries) {
+                    if (!Array.isArray(data)) continue;
+                    queryClient.setQueryData(key, data.map(project => {
+                        const pid = project?.projectId?._id || project?.projectId || project?._id;
+                        if (pid !== projectId) return project;
+                        const delta = reviewData?.qcStatus;
+                        const next = { ...project };
+                        if (delta && delta !== 'pending') {
+                            next.pendingDetections = Math.max(0, (next.pendingDetections || 0) - 1);
+                            next.reviewedDetections = (next.reviewedDetections || 0) + 1;
+                            if (delta === 'approved') next.approvedDetections = (next.approvedDetections || 0) + 1;
+                            if (delta === 'rejected') next.rejectedDetections = (next.rejectedDetections || 0) + 1;
+                        }
+                        return next;
+                    }));
+                }
+            }
+
+            return { prevDetections, prevAssignments, detectionsKey };
+        },
+
+        onError: (_err, _variables, context) => {
+            // Roll back on failure — both detection list and assignments list
+            if (context?.detectionsKey && context?.prevDetections != null) {
+                queryClient.setQueryData(context.detectionsKey, context.prevDetections);
+            }
+            if (Array.isArray(context?.prevAssignments)) {
+                for (const [key, data] of context.prevAssignments) {
+                    queryClient.setQueryData(key, data);
+                }
+            }
+        },
+
+        onSettled: (_data, _error, variables) => {
+            // Targeted invalidation — only the specific project's detection
+            // query, NOT the global ['qc','detections'] prefix which would
+            // wipe out unrelated project caches. Assignments stay as the
+            // optimistic patch (the 2-minute staleTime handles eventual
+            // consistency on next refocus).
+            if (variables?.projectId) {
+                queryClient.invalidateQueries({
+                    queryKey: ['qc', 'detections', variables.projectId],
+                    exact: false,
+                });
+            }
             queryClient.invalidateQueries({ queryKey: ['qc', 'detection', variables.detectionId] });
-            queryClient.invalidateQueries({ queryKey: ['qc', 'detections'] });
-            queryClient.invalidateQueries({ queryKey: ['qc', 'dashboard'] });
         },
     });
 }

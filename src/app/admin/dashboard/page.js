@@ -7,6 +7,7 @@ import { useCharts } from '@/components/admin/dashboard/useCharts'
 import OverviewTab from '@/components/admin/dashboard/OverviewTab'
 import AiModelsTab from '@/components/admin/dashboard/AiModelsTab'
 import QcReviewTab from '@/components/admin/dashboard/QcReviewTab'
+import { useSocket } from '@/components/providers/SocketProvider'
 
 const TABS = [
   { id: 'overview', label: 'Overview', icon: BarChart3 },
@@ -15,6 +16,7 @@ const TABS = [
 ]
 
 const AdminDashboard = () => {
+  const socket = useSocket()
   const [activeTab, setActiveTab] = useState('overview')
 
   // Data state
@@ -61,6 +63,15 @@ const AdminDashboard = () => {
     const interval = setInterval(fetchDashboardData, 10000)
     return () => clearInterval(interval)
   }, [projectStats.aiProcessing, fetchDashboardData])
+
+  // Real-time Socket.IO dashboard updates
+  useEffect(() => {
+    if (!socket?.on) return
+    const handleUpdate = () => fetchDashboardData()
+    socket.on('dashboard-update', handleUpdate)
+    socket.on('project-status-changed', handleUpdate)
+    return () => { socket.off?.('dashboard-update', handleUpdate); socket.off?.('project-status-changed', handleUpdate) }
+  }, [socket, fetchDashboardData])
 
   // Chart management
   const { getCanvasRef } = useCharts({

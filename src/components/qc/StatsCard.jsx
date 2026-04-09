@@ -8,8 +8,8 @@ import { TrendingUp, TrendingDown, Minus } from 'lucide-react'
  * @property {React.ComponentType} icon - Lucide icon component to display
  * @property {string|number} value - Main statistic value to display
  * @property {string} label - Label describing the statistic
- * @property {string} [iconColor='text-blue-600'] - Tailwind CSS class for icon color
- * @property {string} [bgColor='bg-blue-100'] - Tailwind CSS class for icon background
+ * @property {string} [iconColor='text-red-700'] - Tailwind CSS class for icon color
+ * @property {string} [bgColor='bg-red-50'] - Tailwind CSS class for icon background
  * @property {number} [trend] - Percentage change from previous period (-100 to 100)
  * @property {string} [trendLabel] - Label for the trend (e.g., 'vs last week')
  * @property {boolean} [loading=false] - Whether the card is in loading state
@@ -104,8 +104,8 @@ const StatsCard = memo(({
   icon: Icon, 
   value, 
   label, 
-  iconColor = 'text-blue-600', 
-  bgColor = 'bg-blue-100',
+  iconColor = 'text-red-700',
+  bgColor = 'bg-red-50',
   trend,
   trendLabel,
   loading = false,

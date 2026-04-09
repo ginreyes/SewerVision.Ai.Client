@@ -10,7 +10,7 @@ import React from "react";
 const ROLE_HSL = {
   admin:          { h: 347, s: 77, l: 50 },  // rose-600
   operator:       { h: 217, s: 91, l: 60 },  // blue-600
-  "qc-technician":{ h: 271, s: 91, l: 65 },  // purple-600
+  "qc-technician":{ h:   0, s: 74, l: 42 },  // red-700 (matches sidebar red-700 → amber-500 gradient)
   user:           { h: 239, s: 84, l: 67 },  // indigo-600
   customer:       { h: 160, s: 84, l: 39 },  // emerald-600
   "customer-rep": { h: 175, s: 77, l: 40 },  // teal-600

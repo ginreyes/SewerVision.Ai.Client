@@ -1,19 +1,22 @@
 // Compact Stat Card Component (gradient-style)
-const StatCard = ({ icon: Icon, value, label, trend, color = 'blue', suffix = '' }) => {
+// Default uses QC brand gradient (red-700 → amber-500).
+const StatCard = ({ icon: Icon, value, label, trend, color = 'qc', suffix = '' }) => {
   const colorClasses = {
-    blue: 'from-blue-500 to-blue-600',
+    qc: 'from-red-700 to-amber-500',
+    blue: 'from-red-700 to-amber-500', // legacy alias → QC brand
     green: 'from-green-500 to-emerald-600',
     orange: 'from-orange-500 to-amber-600',
     red: 'from-red-500 to-red-700',
-    purple: 'from-purple-500 to-indigo-600',
+    purple: 'from-red-700 to-amber-500', // legacy alias → QC brand
     rose: 'from-red-600 to-amber-500',
-    yellow: 'from-yellow-400 to-orange-500'
+    yellow: 'from-yellow-400 to-orange-500',
+    amber: 'from-amber-500 to-orange-500',
   }
 
   return (
     <div className="bg-white rounded-xl border border-gray-100 p-4 hover:shadow-md transition-all">
       <div className="flex items-center justify-between">
-        <div className={`p-2 rounded-lg bg-gradient-to-br ${colorClasses[color] || colorClasses.blue} bg-opacity-10`}>
+        <div className={`p-2 rounded-lg bg-gradient-to-br ${colorClasses[color] || colorClasses.qc} bg-opacity-10`}>
           <Icon className="w-5 h-5 text-white" />
         </div>
         {trend !== undefined && trend !== null && (

@@ -15,7 +15,8 @@ import {
   Calendar,
   ClipboardCheck,
   FolderOpen,
-  Award
+  Award,
+  Target,
 } from 'lucide-react'
 
 import Chart from 'chart.js/auto'
@@ -363,6 +364,36 @@ const QCTechnicianDashboard = () => {
         />
       </div>
 
+      {/* Today's Performance */}
+      <div className="bg-white rounded-xl border border-gray-100 p-5 shadow-sm">
+        <h3 className="text-sm font-semibold text-gray-900 mb-3 flex items-center gap-2">
+          <Target className="w-4 h-4 text-amber-500" />
+          Today's Performance
+        </h3>
+        <div className="grid grid-cols-4 gap-4">
+          <div className="text-center p-3 bg-red-50 rounded-xl">
+            <p className="text-xl font-bold text-red-700">{stats.todayReviewed || approvedCount + rejectedCount}</p>
+            <p className="text-[10px] text-red-600">Reviews Today</p>
+          </div>
+          <div className="text-center p-3 bg-amber-50 rounded-xl">
+            <p className="text-xl font-bold text-amber-700">
+              {stats.avgReviewTime ? `${Math.round(stats.avgReviewTime / 1000)}s` : '—'}
+            </p>
+            <p className="text-[10px] text-amber-600">Avg Review Time</p>
+          </div>
+          <div className="text-center p-3 bg-yellow-50 rounded-xl">
+            <p className="text-xl font-bold text-red-800">
+              {(approvedCount + rejectedCount) > 0 ? `${Math.round((approvedCount / (approvedCount + rejectedCount)) * 100)}%` : '—'}
+            </p>
+            <p className="text-[10px] text-red-700">Approval Rate</p>
+          </div>
+          <div className="text-center p-3 bg-orange-50 rounded-xl">
+            <p className="text-xl font-bold text-orange-700">{stats.reviewStreak || 1}</p>
+            <p className="text-[10px] text-orange-600">Day Streak</p>
+          </div>
+        </div>
+      </div>
+
       {/* Main Content Grid */}
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
         {/* Left Column - Quick Actions & Projects List */}
@@ -375,25 +406,25 @@ const QCTechnicianDashboard = () => {
                 icon={ClipboardCheck}
                 label="Quality Control"
                 onClick={() => router.push('/qc-technician/quality-control')}
-                color="rose"
+                color="red"
               />
               <QuickAction
                 icon={FolderOpen}
                 label="Projects"
                 onClick={() => router.push('/qc-technician/project')}
-                color="blue"
+                color="amber"
               />
               <QuickAction
                 icon={FileText}
                 label="Reports"
                 onClick={() => router.push('/qc-technician/reports')}
-                color="green"
+                color="red"
               />
               <QuickAction
                 icon={Calendar}
                 label="Calendar"
                 onClick={() => router.push('/qc-technician/calendar')}
-                color="purple"
+                color="amber"
               />
             </div>
           </div>
@@ -466,7 +497,7 @@ const QCTechnicianDashboard = () => {
                 <p className="text-sm text-gray-500">Weekly review performance</p>
               </div>
               <div className="flex space-x-2">
-                <div className="px-3 py-1 rounded-full bg-blue-50 text-blue-700 text-xs font-medium">Reviewed</div>
+                <div className="px-3 py-1 rounded-full bg-red-50 text-red-700 text-xs font-medium">Reviewed</div>
                 <div className="px-3 py-1 rounded-full bg-green-50 text-green-700 text-xs font-medium">Approved</div>
               </div>
             </div>

@@ -43,6 +43,7 @@ import DefectCard from '@/components/customer/project-detail/DefectCard';
 import SnapshotGrid from '@/components/customer/project-detail/SnapshotGrid';
 import VideoModal from '@/components/customer/project-detail/VideoModal';
 import DefectSummary from '@/components/customer/project-detail/DefectSummary';
+import ProjectTimeline from '@/components/customer/ProjectTimeline';
 
 export default function ProjectPageViewDetails() {
   const router = useRouter();
@@ -301,6 +302,7 @@ export default function ProjectPageViewDetails() {
         <TabsList>
           <TabsTrigger value="defects">Defects ({observations.length})</TabsTrigger>
           <TabsTrigger value="snapshots">Snapshots ({snapshots.length})</TabsTrigger>
+          <TabsTrigger value="timeline">Timeline</TabsTrigger>
           <TabsTrigger value="details">Project Details</TabsTrigger>
         </TabsList>
 
@@ -350,6 +352,19 @@ export default function ProjectPageViewDetails() {
             videos={videosData}
             onOpenVideo={openVideoModal}
           />
+        </TabsContent>
+
+        {/* Timeline Tab */}
+        <TabsContent value="timeline">
+          <Card>
+            <CardHeader>
+              <CardTitle className="text-base">Project Timeline</CardTitle>
+              <p className="text-xs text-gray-500">Track the progress of your inspection project through each stage</p>
+            </CardHeader>
+            <CardContent>
+              <ProjectTimeline project={project} />
+            </CardContent>
+          </Card>
         </TabsContent>
 
         {/* Details Tab */}

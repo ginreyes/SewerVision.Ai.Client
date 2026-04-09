@@ -125,7 +125,7 @@ const DeviceDetailModal = ({ isOpen, onClose, device }) => {
               />
             ) : null}
             <div 
-              className={`${device.image || device.imageFileId ? 'hidden' : 'flex'} absolute inset-0 items-center justify-center bg-gradient-to-br from-amber-50 to-purple-50`}
+              className={`${device.image || device.imageFileId ? 'hidden' : 'flex'} absolute inset-0 items-center justify-center bg-gradient-to-br from-red-50 to-amber-50`}
             >
               <div className="p-8 bg-white rounded-3xl shadow-lg">
                 <DeviceIcon className="w-16 h-16 text-red-600" />
@@ -174,20 +174,20 @@ const DeviceDetailModal = ({ isOpen, onClose, device }) => {
                   icon={Package} 
                   label="Category" 
                   value={device.category ? device.category.charAt(0).toUpperCase() + device.category.slice(1) : 'N/A'}
-                  iconColor="text-purple-500"
+                  iconColor="text-red-700"
                 />
                 <InfoRow 
                   icon={MapPin} 
                   label="Location" 
                   value={device.location}
-                  iconColor="text-blue-500"
+                  iconColor="text-amber-600"
                 />
                 {device.operator && (
                   <InfoRow 
                     icon={User} 
                     label="Operator" 
                     value={device.operator.name || `${device.operator.first_name || ''} ${device.operator.last_name || ''}`.trim() || 'N/A'}
-                    iconColor="text-indigo-500"
+                    iconColor="text-red-600"
                   />
                 )}
               </div>
@@ -215,14 +215,14 @@ const DeviceDetailModal = ({ isOpen, onClose, device }) => {
                   icon={HardDrive} 
                   label="Manufacturer" 
                   value={device.manufacturer}
-                  iconColor="text-purple-500"
+                  iconColor="text-red-700"
                 />
                 {device.macAddress && (
                   <InfoRow 
                     icon={Wifi} 
                     label="MAC Address" 
                     value={device.macAddress}
-                    iconColor="text-cyan-500"
+                    iconColor="text-amber-700"
                   />
                 )}
                 {device.ipAddress && (
@@ -230,7 +230,7 @@ const DeviceDetailModal = ({ isOpen, onClose, device }) => {
                     icon={Wifi} 
                     label="IP Address" 
                     value={device.ipAddress}
-                    iconColor="text-blue-500"
+                    iconColor="text-amber-600"
                   />
                 )}
               </div>
@@ -248,7 +248,7 @@ const DeviceDetailModal = ({ isOpen, onClose, device }) => {
                       icon={Monitor} 
                       label="Resolution" 
                       value={device.specifications.resolution}
-                      iconColor="text-indigo-500"
+                      iconColor="text-red-600"
                     />
                   )}
                   {device.specifications.storage && (
@@ -256,7 +256,7 @@ const DeviceDetailModal = ({ isOpen, onClose, device }) => {
                       icon={HardDrive} 
                       label="Storage" 
                       value={device.specifications.storage}
-                      iconColor="text-purple-500"
+                      iconColor="text-red-700"
                     />
                   )}
                   {device.specifications.battery && (
@@ -270,7 +270,7 @@ const DeviceDetailModal = ({ isOpen, onClose, device }) => {
                   {device.specifications.connectivity && device.specifications.connectivity.length > 0 && (
                     <div className="py-3 px-4 bg-gray-50 rounded-lg">
                       <div className="flex items-center gap-3 mb-2">
-                        <Wifi className="w-4 h-4 text-cyan-500" />
+                        <Wifi className="w-4 h-4 text-amber-700" />
                         <span className="text-sm font-medium text-gray-700">Connectivity</span>
                       </div>
                       <div className="flex flex-wrap gap-2 ml-7">
@@ -300,7 +300,7 @@ const DeviceDetailModal = ({ isOpen, onClose, device }) => {
                     </Badge>
                   )}
                   {device.certifications.lacp && (
-                    <Badge className="bg-blue-100 text-blue-700 border-blue-200">
+                    <Badge className="bg-amber-100 text-amber-700 border-amber-200">
                       <CheckCircle className="w-3 h-3 mr-1" />
                       LACP Certified
                     </Badge>
@@ -341,7 +341,7 @@ const DeviceDetailModal = ({ isOpen, onClose, device }) => {
                       month: 'long', 
                       day: 'numeric' 
                     })}
-                    iconColor="text-blue-500"
+                    iconColor="text-amber-600"
                   />
                 )}
                 {device.lastSeen && (

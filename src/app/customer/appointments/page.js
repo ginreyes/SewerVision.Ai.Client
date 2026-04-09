@@ -75,8 +75,7 @@ export default function AppointmentScheduler() {
     });
   }
 
-  return (<ListSkeleton />)
-
+  if (isLoading) return (<ListSkeleton />)
   return (
     <div className="max-w-4xl mx-auto px-6 py-6">
       {/* Header */}

@@ -295,8 +295,7 @@ const OperationsPage = () => {
     }
   }, [stopRecordingMutation])
 
-  return (<DashboardSkeleton />)
-
+  if (loading) return (<DashboardSkeleton />)
   const selectedDeviceData = devices.find(d => d.id === selectedDevice)
   const recordingCount = devices.filter(d => d.status === 'recording').length
   const onlineCount = devices.filter(d => d.status === 'online' || d.status === 'ready').length

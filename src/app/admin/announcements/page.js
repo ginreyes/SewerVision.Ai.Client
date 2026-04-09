@@ -89,8 +89,7 @@ export default function Announcements() {
     } catch { showAlert("Failed to delete", "error"); }
   }
 
-  return (<ListSkeleton />)
-
+  if (loading) return (<ListSkeleton />)
   return (
     <div className="max-w-6xl mx-auto px-6 py-6">
       {/* Header */}

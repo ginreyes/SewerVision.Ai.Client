@@ -240,7 +240,7 @@ const QCDevicesPage = () => {
                     />
                   ) : null}
                   <div 
-                    className={`${device.image || device.imageFileId ? 'hidden' : 'flex'} absolute inset-0 items-center justify-center bg-gradient-to-br from-amber-50 to-purple-50`}
+                    className={`${device.image || device.imageFileId ? 'hidden' : 'flex'} absolute inset-0 items-center justify-center bg-gradient-to-br from-red-50 to-amber-50`}
                     style={{ display: device.image || device.imageFileId ? 'none' : 'flex' }}
                   >
                     <div className="p-6 bg-white rounded-2xl shadow-lg">
@@ -298,7 +298,7 @@ const QCDevicesPage = () => {
                   {device.location && (
                     <div className="flex items-center justify-between py-2 px-3 bg-gray-50 rounded-lg hover:bg-gray-100 transition-colors">
                       <span className="text-xs text-gray-600 flex items-center gap-2 font-medium">
-                        <MapPin className="w-3.5 h-3.5 text-blue-500" />
+                        <MapPin className="w-3.5 h-3.5 text-amber-600" />
                         Location
                       </span>
                       <span className="text-xs font-semibold text-gray-900 truncate ml-2">{device.location}</span>
@@ -309,7 +309,7 @@ const QCDevicesPage = () => {
                   {device.manufacturer && (
                     <div className="flex items-center justify-between py-2 px-3 bg-gray-50 rounded-lg hover:bg-gray-100 transition-colors">
                       <span className="text-xs text-gray-600 flex items-center gap-2 font-medium">
-                        <HardDrive className="w-3.5 h-3.5 text-purple-500" />
+                        <HardDrive className="w-3.5 h-3.5 text-red-700" />
                         Manufacturer
                       </span>
                       <span className="text-xs font-semibold text-gray-900 truncate ml-2">{device.manufacturer}</span>

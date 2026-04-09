@@ -154,6 +154,13 @@ const ReportDetailView = () => {
   useEffect(() => {
     const fetchData = async () => {
       if (!report_id) return
+      // Guard: reportId must look like a MongoDB ObjectId (24 hex chars).
+      // If not, bounce back to the reports list — almost always a dead link
+      // (deleted report, stale bookmark, or stray URL segment like "detailed").
+      if (!/^[a-f0-9]{24}$/i.test(String(report_id))) {
+        router.replace('/qc-technician/reports')
+        return
+      }
       try {
         setLoading(true)
         const response = await api(`/api/qc-technicians/reports/detail/${report_id}`, 'GET')
@@ -382,14 +389,14 @@ const ReportDetailView = () => {
   }
   if (report.operator) {
     timeline.push({
-      icon: User, title: `Operator: ${operatorName}`, color: 'bg-sky-500',
+      icon: User, title: `Operator: ${operatorName}`, color: 'bg-amber-500',
       time: createdAt ? createdAt.toLocaleString() : '—',
       description: null,
     })
   }
   if (report.qcTechnician) {
     timeline.push({
-      icon: Shield, title: `QC Tech: ${qcTechName}`, color: 'bg-violet-500',
+      icon: Shield, title: `QC Tech: ${qcTechName}`, color: 'bg-red-600',
       time: updatedAt ? updatedAt.toLocaleString() : '—',
       description: null,
     })
@@ -471,7 +478,7 @@ const ReportDetailView = () => {
             label: 'Footage',
             value: `${report.footage || 0} ft`,
             icon: Ruler,
-            iconBg: 'bg-sky-50 text-sky-600',
+            iconBg: 'bg-amber-50 text-amber-700',
           },
           {
             label: 'Total Defects',
@@ -489,7 +496,7 @@ const ReportDetailView = () => {
             label: 'AI Confidence',
             value: `${report.confidence != null ? Number(report.confidence).toFixed(1) : 0}%`,
             icon: Zap,
-            iconBg: 'bg-violet-50 text-violet-600',
+            iconBg: 'bg-red-50 text-red-700',
           },
         ].map((stat, i) => (
           <div key={i} className="bg-white border border-gray-100 rounded-xl p-3 flex items-center gap-3">
@@ -551,11 +558,11 @@ const ReportDetailView = () => {
               <div className="grid grid-cols-1 sm:grid-cols-2 divide-y sm:divide-y-0 sm:divide-x divide-gray-100">
                 <div className="pr-0 sm:pr-4 space-y-0 divide-y divide-gray-50">
                   <InfoRow icon={MapPin} label="Location" value={location} iconColor="text-emerald-500" />
-                  <InfoRow icon={User} label="Operator" value={operatorName} iconColor="text-sky-500" />
+                  <InfoRow icon={User} label="Operator" value={operatorName} iconColor="text-amber-600" />
                 </div>
                 <div className="pl-0 sm:pl-4 space-y-0 divide-y divide-gray-50">
                   <InfoRow icon={Ruler} label="Pipe Material" value={report.pipeType || '—'} iconColor="text-amber-500" />
-                  <InfoRow icon={Target} label="Diameter" value={report.pipeDiameter || '—'} iconColor="text-violet-500" />
+                  <InfoRow icon={Target} label="Diameter" value={report.pipeDiameter || '—'} iconColor="text-red-700" />
                 </div>
               </div>
             </CardContent>
@@ -576,7 +583,7 @@ const ReportDetailView = () => {
                     icon={Calendar}
                     label="Inspection Date"
                     value={reportDate ? reportDate.toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' }) : '—'}
-                    iconColor="text-sky-500"
+                    iconColor="text-amber-600"
                   />
                   <InfoRow
                     icon={Hash}
@@ -590,7 +597,7 @@ const ReportDetailView = () => {
                     icon={Shield}
                     label="QC Technician"
                     value={qcTechName}
-                    iconColor="text-violet-500"
+                    iconColor="text-red-700"
                   />
                   <InfoRow
                     icon={Activity}
@@ -749,8 +756,8 @@ const ReportDetailView = () => {
             </CardHeader>
             <CardContent className="p-2">
               {[
-                { label: 'Export PDF', icon: Download, color: 'text-sky-600', bg: 'hover:bg-sky-50', onClick: handleDownload },
-                { label: 'Print Report', icon: Printer, color: 'text-violet-600', bg: 'hover:bg-violet-50', onClick: () => window.print() },
+                { label: 'Export PDF', icon: Download, color: 'text-red-700', bg: 'hover:bg-red-50', onClick: handleDownload },
+                { label: 'Print Report', icon: Printer, color: 'text-amber-600', bg: 'hover:bg-amber-50', onClick: () => window.print() },
                 { label: 'Share Report', icon: Share2, color: 'text-emerald-600', bg: 'hover:bg-emerald-50', onClick: null },
                 { label: 'Filter View', icon: Filter, color: 'text-amber-600', bg: 'hover:bg-amber-50', onClick: null },
               ].map((action, i) => (

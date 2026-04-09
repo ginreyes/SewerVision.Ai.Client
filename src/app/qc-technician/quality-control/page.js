@@ -1,5 +1,5 @@
 'use client'
-import React, { useState, useEffect, useCallback, useMemo } from 'react';
+import React, { useState, useEffect, useCallback, useMemo, useRef } from 'react';
 import {
   CheckCircle,
   XCircle,
@@ -26,8 +26,10 @@ import {
   Camera,
   Layers,
   SplitSquareHorizontal,
+  Film,
+  Info,
+  Plus,
 } from 'lucide-react';
-import { api } from '@/lib/helper';
 import { Input } from '@/components/ui/input';
 import { Button } from '@/components/ui/button';
 import { Select, SelectTrigger, SelectValue, SelectContent, SelectItem } from '@/components/ui/select';
@@ -41,86 +43,219 @@ import {
   getSeverityStyle,
   getPriorityColor,
   getStatusColor,
+  BACKEND_URL,
 } from '@/components/qc/constants';
 import { ComparisonView } from '@/components/qc/quality-control';
+import { VideoPane, ProjectInfoDrawer, useWorkspaceUrlState } from '@/components/qc/workspace';
+import {
+  useProjectVideos,
+  useCreateManualDetection,
+  useQCAssignments,
+  useProjectDetections,
+  useReviewDetection,
+  useCompleteQCAssignment,
+} from '@/hooks/useQueryHooks';
+import { ManualForm } from '@/components/qc/project';
 
 // ─── Page ───────────────────────────────────────────────────
 const QualityControlPage = () => {
   const [activeProject, setActiveProject] = useState(null);
   const [selectedDetection, setSelectedDetection] = useState(null);
   const [filterStatus, setFilterStatus] = useState('assigned');
-  const [assignedProjects, setAssignedProjects] = useState([]);
-  const [projectDetections, setProjectDetections] = useState([]);
-  const [loading, setLoading] = useState(true);
-  const [detectionLoading, setDetectionLoading] = useState(false);
-  const [todayStats, setTodayStats] = useState({ assigned: 0, completed: 0 });
   const [searchTerm, setSearchTerm] = useState('');
   const [detectionSearch, setDetectionSearch] = useState('');
   const [detectionSeverityFilter, setDetectionSeverityFilter] = useState('all');
   const [reviewingId, setReviewingId] = useState(null);
   const [showCompleteDialog, setShowCompleteDialog] = useState(false);
-  const [completingReview, setCompletingReview] = useState(false);
-  const [viewMode, setViewMode] = useState('detail'); // 'detail' | 'comparison'
+  // Third mode added: 'video' renders the full HTML5 player with detection seek.
+  const [viewMode, setViewMode] = useState('detail'); // 'detail' | 'comparison' | 'video'
+
+  // Workspace-unification state (added when merging /qc-technician/project/[id]):
+  const [showInfoDrawer, setShowInfoDrawer] = useState(false);
+  const [showManualForm, setShowManualForm] = useState(false);
+  const [videoCurrentTime, setVideoCurrentTime] = useState(0);
+  // Track whether initial URL-state hydration has been applied yet
+  const didHydrateFromUrl = useRef(false);
 
   const { userId, userData } = useUser();
   const { showAlert } = useAlert();
   const router = useRouter();
 
-  // ─── Data Fetching ──────────────────────────────────────
-  const fetchAssignments = useCallback(async () => {
-    if (!userId) return;
-    try {
-      setLoading(true);
-      const params = new URLSearchParams();
-      if (filterStatus && filterStatus !== 'all') params.append('status', filterStatus);
+  // URL state — ?project=<id>&detection=<id>&view=detail|comparison|video
+  const {
+    projectParam, detectionParam, viewParam,
+    setProjectParam, setDetectionParam, setViewParam,
+  } = useWorkspaceUrlState();
 
-      const response = await api(`/api/qc-technicians/get-assignments/${userId}?${params.toString()}`, 'GET');
-      if (response.ok && response.data?.success) {
-        const projects = response.data.data || [];
-        setAssignedProjects(projects);
-        setTodayStats({
-          assigned: projects.length,
-          completed: projects.filter(p => p.status === 'completed').length
-        });
-      } else {
-        setAssignedProjects([]);
-      }
-    } catch {
-      setAssignedProjects([]);
-    } finally {
-      setLoading(false);
+  // Derive the active projectId for secondary data fetches (videos, manual form)
+  const activeProjectId = useMemo(() => {
+    if (!activeProject) return null;
+    return activeProject.projectId?._id || activeProject.projectId || activeProject._id;
+  }, [activeProject]);
+
+  // ─── Data hooks (TanStack Query) ────────────────────────
+  // Assignments + detections are cached across navigations via useQueryHooks.
+  // staleTimes: assignments = 2min, detections = 1min, videos = 5min. Every
+  // mutation (approve/reject/manual add/complete) invalidates or optimistically
+  // patches the caches so edits still propagate instantly.
+  const {
+    data: assignedProjectsData,
+    isLoading: loading,
+    refetch: refetchAssignments,
+  } = useQCAssignments(userId, filterStatus, { enabled: !!userId });
+  const assignedProjects = useMemo(
+    () => (Array.isArray(assignedProjectsData) ? assignedProjectsData : []),
+    [assignedProjectsData]
+  );
+
+  const {
+    data: projectDetectionsData,
+    isLoading: detectionLoading,
+  } = useProjectDetections(activeProjectId, 'pending', { enabled: !!activeProjectId });
+  const projectDetections = useMemo(
+    () => (Array.isArray(projectDetectionsData) ? projectDetectionsData : []),
+    [projectDetectionsData]
+  );
+
+  // Derived dashboard counters — no longer need useState + useEffect
+  const todayStats = useMemo(
+    () => ({
+      assigned: assignedProjects.length,
+      completed: assignedProjects.filter(p => p.status === 'completed').length,
+    }),
+    [assignedProjects]
+  );
+
+  // Project videos feed the Video view mode + anchor the manual-detection form
+  const { data: projectVideos, refetch: refetchProjectVideos } = useProjectVideos(activeProjectId);
+  const { videoUrl, videoId } = useMemo(() => {
+    const videos = Array.isArray(projectVideos) ? projectVideos : [];
+    const latest = videos[0];
+    if (latest?._id) {
+      return { videoUrl: `${BACKEND_URL}/api/videos/${latest._id}`, videoId: latest._id };
     }
-  }, [userId, filterStatus]);
+    return { videoUrl: null, videoId: null };
+  }, [projectVideos]);
 
-  useEffect(() => { fetchAssignments(); }, [fetchAssignments]);
+  const createManualMutation = useCreateManualDetection();
+  const reviewMutation = useReviewDetection();
+  const completeMutation = useCompleteQCAssignment();
 
-  const fetchProjectDetections = useCallback(async (projectId) => {
-    if (!projectId) return;
-    try {
-      setDetectionLoading(true);
-      const response = await api(`/api/qc-technicians/projects/${projectId}/detections?qcStatus=pending`, 'GET');
-      if (response.ok && response.data?.success) {
-        setProjectDetections(response.data.data || []);
-      } else {
-        setProjectDetections([]);
-      }
-    } catch {
-      setProjectDetections([]);
-    } finally {
-      setDetectionLoading(false);
-    }
-  }, []);
-
-  const handleProjectSelect = useCallback(async (project) => {
+  const handleProjectSelect = useCallback((project) => {
     setActiveProject(project);
     setSelectedDetection(null);
     setDetectionSearch('');
     setDetectionSeverityFilter('all');
     const projectId = project.projectId?._id || project.projectId || project._id;
-    if (projectId) await fetchProjectDetections(projectId);
-  }, [fetchProjectDetections]);
+    if (projectId) {
+      // Reflect the selection in the URL so refresh/back/bookmarks work. The
+      // useProjectDetections hook sees activeProjectId change and fetches
+      // automatically — no manual fetchProjectDetections call required.
+      setProjectParam(projectId);
+    }
+  }, [setProjectParam]);
+
+  // ─── URL state hydration ──────────────────────────────────
+  //
+  // IMPORTANT: After initial hydration, URL flow is **one-directional**:
+  //   user click / setSelectedDetection → URL
+  // The URL does NOT write back into state after mount. An earlier version
+  // had a bidirectional sync that fought itself in an infinite loop:
+  //   click A → state=A, URL=B (stale) → sync-from-URL reverts state to B
+  //   → sync-to-URL writes A to URL → sync-from-URL reverts state to B → ...
+  // Route history/back-button navigation is a known minor limitation: the
+  // user's current selection does not rewind on "back". Fix if needed later
+  // via a popstate listener rather than reinstating the bidirectional sync.
+  //
+  // Hydration runs exactly once, and only for the initial values present in
+  // the URL at mount time (refresh, bookmark, or a redirect from the retired
+  // /qc-technician/project/[id] stub).
+
+  const didHydrateProjectRef = useRef(false);
+  const didHydrateDetectionRef = useRef(false);
+  // Track our own last URL writes so nothing can mistake the echo for an
+  // external navigation and try to re-sync.
+  const lastWrittenDetectionRef = useRef(null);
+  const lastWrittenViewRef = useRef(null);
+
+  // Project + view-mode hydration — fires once, when the assignments list
+  // is first ready. Also applies the initial ?view=... so a bookmark like
+  // ?project=X&view=video opens the workspace straight into Video mode.
+  useEffect(() => {
+    if (didHydrateProjectRef.current) return;
+    if (!assignedProjects.length) return;
+    didHydrateProjectRef.current = true;
+    // Combined flag tells the sync-to-URL effects that hydration is done
+    // and they may start writing state back out to the URL.
+    didHydrateFromUrl.current = true;
+
+    // Apply initial view mode (if the URL carried one) before touching the
+    // ref so the sync-to-URL effect will see a no-op on first write.
+    if (viewParam && viewParam !== viewMode) {
+      setViewMode(viewParam);
+      lastWrittenViewRef.current = viewParam;
+    } else {
+      lastWrittenViewRef.current = viewMode;
+    }
+
+    if (!projectParam) return;
+    const match = assignedProjects.find(p => {
+      const pid = p.projectId?._id || p.projectId || p._id;
+      return pid === projectParam;
+    });
+    if (match) handleProjectSelect(match);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [assignedProjects]);
+
+  // Detection hydration — fires once, after a project's detections arrive,
+  // if the URL carried ?detection=<id>. Never runs again after that to avoid
+  // reviving the bidirectional-sync loop we just killed.
+  useEffect(() => {
+    if (didHydrateDetectionRef.current) return;
+    if (!detectionParam) {
+      // No URL detection to hydrate — mark done once the workspace has
+      // started loading real data so we don't re-enter this branch on every
+      // projectDetections refetch (e.g. after approve/reject).
+      if (projectDetections.length || didHydrateProjectRef.current) {
+        didHydrateDetectionRef.current = true;
+      }
+      return;
+    }
+    if (!projectDetections.length) return;
+    const match = projectDetections.find(d => d._id === detectionParam);
+    if (match) {
+      setSelectedDetection(match);
+      lastWrittenDetectionRef.current = detectionParam;
+    }
+    didHydrateDetectionRef.current = true;
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [projectDetections]);
+
+  // ─── Sync local state → URL ───────────────────────────────
+  // These only WRITE to the URL, never read it back. Each effect guards with
+  // a ref so an echo (our own write coming back through useSearchParams) is a
+  // no-op.
+  useEffect(() => {
+    if (!didHydrateFromUrl.current) return;
+    const nextId = selectedDetection?._id || null;
+    if (nextId === lastWrittenDetectionRef.current) return;
+    lastWrittenDetectionRef.current = nextId;
+    setDetectionParam(nextId);
+  }, [selectedDetection, setDetectionParam]);
+
+  useEffect(() => {
+    if (!didHydrateFromUrl.current) return;
+    if (viewMode === lastWrittenViewRef.current) return;
+    lastWrittenViewRef.current = viewMode;
+    setViewParam(viewMode);
+  }, [viewMode, setViewParam]);
 
   // ─── Review Actions ─────────────────────────────────────
+  // Uses the useReviewDetection mutation which now performs optimistic
+  // updates on BOTH the detection list and the assignments list, then only
+  // targeted invalidation of the specific project's detection cache. No
+  // more full refetches of assignments + detections per click — the UI
+  // reflects the action instantly and rolls back on server error.
   const handleReviewDetection = useCallback(async (detectionId, status) => {
     const reviewerId = userData?._id || userData?.id || userId;
     if (!reviewerId) {
@@ -129,24 +264,20 @@ const QualityControlPage = () => {
     }
     setReviewingId(detectionId);
     try {
-      const response = await api(`/api/qc-technicians/detections/${detectionId}`, 'PATCH', {
-        qcStatus: status, qcReviewedBy: reviewerId, action: status
+      await reviewMutation.mutateAsync({
+        detectionId,
+        reviewData: { qcStatus: status, qcReviewedBy: reviewerId, action: status },
+        projectId: activeProjectId,
+        qcStatusFilter: 'pending',
       });
-      if (response.ok && response.data?.success) {
-        const projectId = activeProject?.projectId?._id || activeProject?.projectId || activeProject?._id;
-        if (projectId) await fetchProjectDetections(projectId);
-        await fetchAssignments();
-        setSelectedDetection(null);
-        showAlert(`Detection ${status} successfully`, 'success');
-      } else {
-        showAlert(response.data?.error || `Failed to ${status} detection`, 'error');
-      }
+      setSelectedDetection(null);
+      showAlert(`Detection ${status} successfully`, 'success');
     } catch (err) {
       showAlert(err?.message || `Failed to ${status} detection`, 'error');
     } finally {
       setReviewingId(null);
     }
-  }, [userData, userId, activeProject, fetchProjectDetections, fetchAssignments, showAlert]);
+  }, [reviewMutation, userData, userId, activeProjectId, showAlert]);
 
   /** Show confirmation dialog before completing */
   const handleMarkCompleteClick = useCallback(() => {
@@ -155,35 +286,27 @@ const QualityControlPage = () => {
   }, [activeProject]);
 
   /** Actually mark the project review as complete, then offer report creation */
+  const completingReview = completeMutation.isPending;
   const handleConfirmComplete = useCallback(async (createReport = false) => {
     if (!activeProject) return;
-    setCompletingReview(true);
+    const projectId = activeProject?.projectId?._id || activeProject?.projectId || activeProject?._id;
+    if (!projectId) return;
     try {
-      const projectId = activeProject?.projectId?._id || activeProject?.projectId || activeProject?._id;
-      const response = await api(`/api/qc-technicians/assignments/${projectId}`, 'PATCH', {
-        status: 'completed', completedAt: new Date().toISOString()
-      });
-      if (response.ok && response.data?.success) {
-        await fetchAssignments();
-        const projectName = (activeProject.projectId || activeProject)?.name || 'Project';
-        setShowCompleteDialog(false);
-        setActiveProject(null);
-        setSelectedDetection(null);
-        showAlert(`"${projectName}" review completed`, 'success');
-
-        if (createReport) {
-          // Navigate to reports page with project pre-selected
-          router.push(`/qc-technician/reports?newReport=true&projectId=${projectId}`);
-        }
-      } else {
-        showAlert(response.data?.error || 'Failed to mark project as complete', 'error');
+      await completeMutation.mutateAsync(projectId);
+      // The hook already invalidates the assignments cache; TanStack will
+      // refetch in the background. No manual refetch needed.
+      const projectName = (activeProject.projectId || activeProject)?.name || 'Project';
+      setShowCompleteDialog(false);
+      setActiveProject(null);
+      setSelectedDetection(null);
+      showAlert(`"${projectName}" review completed`, 'success');
+      if (createReport) {
+        router.push(`/qc-technician/reports?newReport=true&projectId=${projectId}`);
       }
     } catch (err) {
       showAlert(err?.message || 'Failed to mark project as complete', 'error');
-    } finally {
-      setCompletingReview(false);
     }
-  }, [activeProject, fetchAssignments, showAlert, router]);
+  }, [activeProject, completeMutation, showAlert, router]);
 
   const calculateProgress = (project) => {
     const total = project.totalDetections || 0;
@@ -191,6 +314,44 @@ const QualityControlPage = () => {
     if (total === 0) return 0;
     return Math.round((reviewed / total) * 100);
   };
+
+  // ─── Manual detection ───────────────────────────────────
+  // Triggered from the "+ Add" popover in the detection-queue header.
+  // When in Video mode the anchor timestamp is the current video playback
+  // time; otherwise it falls back to the currently selected detection's
+  // timestamp (or 0). Requires a videoId — disabled if the project has no
+  // uploaded video yet.
+  const handleAddManualDetection = useCallback(async ({ type, severity, distance, notes, timestamp }) => {
+    if (!activeProjectId) return;
+    if (!videoId) {
+      showAlert('Cannot add manual detection: this project has no video uploaded yet.', 'error');
+      return;
+    }
+    const anchorTs = timestamp != null
+      ? Number(timestamp)
+      : (viewMode === 'video' ? videoCurrentTime : (selectedDetection?.timestamp ?? 0));
+    const reviewerId = userData?._id || userData?.id || userId;
+    const payload = {
+      videoId,
+      type: (type || '').trim(),
+      severity,
+      timestamp: Math.round(anchorTs),
+      location: { distance: distance ? Number(distance) : undefined, description: notes || undefined },
+      qcNotes: notes || undefined,
+      qcTechnicianId: reviewerId,
+    };
+    try {
+      // useCreateManualDetection already invalidates qcDetections for this
+      // project in its onSuccess, so the useProjectDetections hook will
+      // refetch on its own — no manual fetchProjectDetections call needed.
+      const newDet = await createManualMutation.mutateAsync({ projectId: activeProjectId, payload });
+      if (newDet) setSelectedDetection(newDet);
+      setShowManualForm(false);
+      showAlert('Manual detection added.', 'success');
+    } catch (err) {
+      showAlert(err?.message || 'Failed to add manual detection.', 'error');
+    }
+  }, [activeProjectId, videoId, viewMode, videoCurrentTime, selectedDetection, userData, userId, createManualMutation, showAlert]);
 
   // ─── Filtered Detections ────────────────────────────────
   const filteredDetections = useMemo(() => {
@@ -200,14 +361,29 @@ const QualityControlPage = () => {
     }
     if (detectionSearch.trim()) {
       const q = detectionSearch.toLowerCase();
-      filtered = filtered.filter(d =>
-        (d.type || '').toLowerCase().includes(q) ||
-        (d.description || d.notes || d.qcNotes || '').toLowerCase().includes(q) ||
-        (d.severity || '').toLowerCase().includes(q)
-      );
+      // NOTE: AIDetection has no `description` field — search real fields only:
+      // type, qcNotes, location.description, pacpCode, annotations[].value.
+      filtered = filtered.filter(d => {
+        if ((d.type || '').toLowerCase().includes(q)) return true;
+        if ((d.qcNotes || '').toLowerCase().includes(q)) return true;
+        if ((d.severity || '').toLowerCase().includes(q)) return true;
+        if ((d.location?.description || '').toLowerCase().includes(q)) return true;
+        if ((d.location?.segment || '').toLowerCase().includes(q)) return true;
+        if ((d.pacpCode || '').toLowerCase().includes(q)) return true;
+        if (Array.isArray(d.annotations) && d.annotations.some(a => (a?.value || '').toLowerCase().includes(q))) return true;
+        return false;
+      });
     }
     return filtered;
   }, [projectDetections, detectionSearch, detectionSeverityFilter]);
+
+  // Pending count across the entire project (not the filtered view) — used to
+  // gate the "Complete Review" CTA so we don't let a tech close a project with
+  // pending items hidden behind a filter.
+  const projectPendingCount = useMemo(
+    () => projectDetections.filter(d => d.qcStatus === 'pending').length,
+    [projectDetections]
+  );
 
   // ─── Keyboard Shortcuts ─────────────────────────────────
   useEffect(() => {
@@ -251,6 +427,13 @@ const QualityControlPage = () => {
   // ─── Render ─────────────────────────────────────────────
   return (
     <div className="h-[calc(100vh-7rem)] bg-gray-50 flex flex-col overflow-hidden">
+      {/* Project Info drawer — floats above the workspace. Null when closed. */}
+      <ProjectInfoDrawer
+        open={showInfoDrawer}
+        onClose={() => setShowInfoDrawer(false)}
+        project={activeProject}
+      />
+
       {/* ═══ Complete Review Dialog ═══ */}
       {showCompleteDialog && (
         <div className="fixed inset-0 bg-black/50 z-50 flex items-center justify-center p-4" onClick={() => !completingReview && setShowCompleteDialog(false)}>
@@ -304,9 +487,9 @@ const QualityControlPage = () => {
               <Activity className="h-5 w-5 text-white" />
             </div>
             <div>
-              <h1 className="text-xl font-bold text-gray-900">QC Console</h1>
+              <h1 className="text-xl font-bold text-gray-900">Review Workspace</h1>
               <div className="flex items-center gap-2 text-xs text-gray-500">
-                <span>Quality Control</span>
+                <span>QC Technician</span>
                 <ChevronRight className="w-3 h-3" />
                 <span>Review</span>
               </div>
@@ -347,7 +530,7 @@ const QualityControlPage = () => {
                 <Target className="w-4 h-4 text-red-600" />
                 Assignments
               </h2>
-              <button onClick={fetchAssignments} disabled={loading} className="p-1.5 hover:bg-gray-100 rounded-lg transition-colors text-gray-500 hover:text-gray-700">
+              <button onClick={() => refetchAssignments()} disabled={loading} className="p-1.5 hover:bg-gray-100 rounded-lg transition-colors text-gray-500 hover:text-gray-700">
                 <RefreshCw className={`h-3.5 w-3.5 ${loading ? 'animate-spin' : ''}`} />
               </button>
             </div>
@@ -427,7 +610,8 @@ const QualityControlPage = () => {
                   </div>
                 </div>
                 <div className="flex items-center gap-3">
-                  {/* View mode toggle */}
+                  {/* View mode toggle — Detail / Comparison / Video.
+                      The third "Video" pill absorbs the old /project/[id] player. */}
                   <div className="flex items-center border border-gray-200 rounded-lg overflow-hidden">
                     <button onClick={() => setViewMode('detail')}
                       className={`flex items-center gap-1.5 px-3 py-1.5 text-xs font-medium transition-colors ${viewMode === 'detail' ? 'bg-amber-50 text-red-700' : 'text-gray-500 hover:bg-gray-50'}`}>
@@ -437,7 +621,21 @@ const QualityControlPage = () => {
                       className={`flex items-center gap-1.5 px-3 py-1.5 text-xs font-medium border-l border-gray-200 transition-colors ${viewMode === 'comparison' ? 'bg-amber-50 text-red-700' : 'text-gray-500 hover:bg-gray-50'}`}>
                       <SplitSquareHorizontal className="w-3.5 h-3.5" />Comparison
                     </button>
+                    <button onClick={() => setViewMode('video')}
+                      className={`flex items-center gap-1.5 px-3 py-1.5 text-xs font-medium border-l border-gray-200 transition-colors ${viewMode === 'video' ? 'bg-amber-50 text-red-700' : 'text-gray-500 hover:bg-gray-50'}`}
+                      title="Video player with detection seek">
+                      <Film className="w-3.5 h-3.5" />Video
+                    </button>
                   </div>
+                  {/* Project info drawer trigger */}
+                  <button
+                    onClick={() => setShowInfoDrawer(v => !v)}
+                    className={`p-2 rounded-lg border transition-colors ${showInfoDrawer ? 'bg-amber-50 border-red-200 text-red-700' : 'bg-white border-gray-200 text-gray-500 hover:bg-gray-50'}`}
+                    title="Project info (device, operator, pipeline, due date…)"
+                    aria-label="Project info"
+                  >
+                    <Info className="w-4 h-4" />
+                  </button>
                   <div className="hidden lg:flex items-center gap-2 px-3 py-1.5 bg-gray-50 rounded-lg border border-gray-200" title="Shortcuts">
                     <Keyboard className="w-3.5 h-3.5 text-gray-400" />
                     <div className="text-[10px] text-gray-500 font-medium space-x-2">
@@ -446,9 +644,19 @@ const QualityControlPage = () => {
                       <span><kbd className="font-sans border border-gray-300 rounded px-1 bg-white">Esc</kbd> Clear</span>
                     </div>
                   </div>
-                  <button onClick={handleMarkCompleteClick}
-                    className="px-4 py-2 bg-black text-white rounded-lg text-sm font-medium hover:bg-gray-800 transition-colors flex items-center gap-2">
-                    <CheckCircle className="h-4 w-4" /><span>Complete Review</span>
+                  <button
+                    onClick={handleMarkCompleteClick}
+                    disabled={projectPendingCount > 0}
+                    title={projectPendingCount > 0 ? `${projectPendingCount} detection${projectPendingCount === 1 ? '' : 's'} still pending review` : 'Mark this project review as complete'}
+                    className="px-4 py-2 bg-black text-white rounded-lg text-sm font-medium hover:bg-gray-800 transition-colors flex items-center gap-2 disabled:bg-gray-300 disabled:cursor-not-allowed disabled:hover:bg-gray-300"
+                  >
+                    <CheckCircle className="h-4 w-4" />
+                    <span>Complete Review</span>
+                    {projectPendingCount > 0 && (
+                      <span className="ml-1 px-1.5 py-0.5 rounded-full bg-white/20 text-[10px] font-bold">
+                        {projectPendingCount} pending
+                      </span>
+                    )}
                   </button>
                 </div>
               </div>
@@ -472,10 +680,31 @@ const QualityControlPage = () => {
                       <h3 className="font-semibold text-gray-900 text-sm flex items-center gap-2">
                         <Zap className="w-4 h-4 text-amber-500" />Review Queue
                       </h3>
-                      <span className="text-xs font-medium px-2 py-0.5 bg-amber-100 text-amber-700 rounded-full">
-                        {filteredDetections.filter(d => d.qcStatus === 'pending').length} remaining
-                      </span>
+                      <div className="flex items-center gap-1.5">
+                        <span className="text-xs font-medium px-2 py-0.5 bg-amber-100 text-amber-700 rounded-full">
+                          {filteredDetections.filter(d => d.qcStatus === 'pending').length} remaining
+                        </span>
+                        {/* Manual-detection popover. Disabled until a project has an uploaded video. */}
+                        <button
+                          onClick={() => setShowManualForm(v => !v)}
+                          disabled={!videoId}
+                          title={videoId ? 'Add a manual detection at the current video time' : 'No video uploaded for this project'}
+                          className="p-1 rounded-md bg-red-50 text-red-700 hover:bg-red-100 border border-red-200 transition-colors disabled:opacity-40 disabled:cursor-not-allowed"
+                          aria-label="Add manual detection"
+                        >
+                          <Plus className="w-3.5 h-3.5" />
+                        </button>
+                      </div>
                     </div>
+                    {showManualForm && videoId && (
+                      <div className="bg-white rounded-lg border border-gray-200 p-2 shadow-sm">
+                        <ManualForm
+                          currentTime={viewMode === 'video' ? videoCurrentTime : (selectedDetection?.timestamp ?? 0)}
+                          onSubmit={handleAddManualDetection}
+                          onClose={() => setShowManualForm(false)}
+                        />
+                      </div>
+                    )}
                     <div className="flex gap-2">
                       <div className="relative flex-1">
                         <Search className="absolute left-2 top-1/2 transform -translate-y-1/2 w-3 h-3 text-gray-400 z-10" />
@@ -486,12 +715,13 @@ const QualityControlPage = () => {
                         <SelectTrigger className="text-xs h-8 w-[100px]">
                           <SelectValue placeholder="All" />
                         </SelectTrigger>
+                        {/* Values must match AIDetection.severity enum: low | medium | high | critical */}
                         <SelectContent>
                           <SelectItem value="all">All</SelectItem>
                           <SelectItem value="critical">Critical</SelectItem>
-                          <SelectItem value="major">Major</SelectItem>
-                          <SelectItem value="moderate">Moderate</SelectItem>
-                          <SelectItem value="minor">Minor</SelectItem>
+                          <SelectItem value="high">High</SelectItem>
+                          <SelectItem value="medium">Medium</SelectItem>
+                          <SelectItem value="low">Low</SelectItem>
                         </SelectContent>
                       </Select>
                     </div>
@@ -502,10 +732,27 @@ const QualityControlPage = () => {
                       <div className="flex justify-center py-10"><Loader2 className="w-6 h-6 animate-spin text-red-600" /></div>
                     ) : filteredDetections.length === 0 ? (
                       <div className="text-center py-10 text-gray-400">
-                        {projectDetections.length > 0 ? (
-                          <><Search className="w-10 h-10 mx-auto mb-2 text-gray-300" /><p className="text-sm">No matching detections</p><p className="text-xs mt-1">Try adjusting your search or filter</p></>
+                        {projectDetections.length === 0 ? (
+                          // Project genuinely has no AI detections yet
+                          <>
+                            <Target className="w-10 h-10 mx-auto mb-2 text-gray-300" />
+                            <p className="text-sm text-gray-500">No AI detections on this project yet</p>
+                            <p className="text-xs mt-1">Run AI processing on an uploaded video to generate detections.</p>
+                          </>
+                        ) : projectPendingCount === 0 ? (
+                          // All detections reviewed
+                          <>
+                            <CheckCircle className="w-10 h-10 mx-auto mb-2 text-green-500" />
+                            <p className="text-sm text-gray-700 font-medium">All caught up!</p>
+                            <p className="text-xs mt-1">Every detection has been reviewed — you can complete this project.</p>
+                          </>
                         ) : (
-                          <><CheckCircle className="w-10 h-10 mx-auto mb-2 text-green-500/20" /><p className="text-sm">All caught up!</p></>
+                          // Search/filter mismatch — pending items exist but filtered out
+                          <>
+                            <Search className="w-10 h-10 mx-auto mb-2 text-gray-300" />
+                            <p className="text-sm">No matching detections</p>
+                            <p className="text-xs mt-1">Try adjusting your search or filter</p>
+                          </>
                         )}
                       </div>
                     ) : filteredDetections.map(detection => {
@@ -550,27 +797,73 @@ const QualityControlPage = () => {
                   </div>
                 </div>
 
-                {/* ── Detection Detail Panel ── */}
+                {/* ── Right Panel: Video player (video mode) OR Detection Detail Card ── */}
                 <div className="w-2/3 bg-gray-50 flex flex-col overflow-y-auto relative">
                   <div className="absolute inset-0 z-0 bg-gray-100 pattern-grid-lg opacity-50" />
 
-                  {selectedDetection ? (() => {
+                  {viewMode === 'video' ? (
+                    <div className="p-5 z-10 relative">
+                      <VideoPane
+                        videoUrl={videoUrl}
+                        selectedDetection={selectedDetection}
+                        onTimeChange={setVideoCurrentTime}
+                        onRetry={() => refetchProjectVideos && refetchProjectVideos()}
+                      />
+                      {/* Mini approve/reject strip under the video, so the tech doesn't
+                          have to switch to Detail mode to act on the current detection. */}
+                      {selectedDetection && selectedDetection.qcStatus === 'pending' && (
+                        <div className="mt-4 bg-white rounded-xl border border-gray-200 shadow-sm p-3 flex items-center gap-3">
+                          <div className="flex-1 min-w-0">
+                            <p className="text-xs text-gray-500 uppercase tracking-wider font-semibold">Current detection</p>
+                            <p className="text-sm font-semibold text-gray-900 truncate">
+                              {selectedDetection.type || 'Detection'} · Frame #{selectedDetection.frameNumber != null ? selectedDetection.frameNumber : '—'}
+                            </p>
+                          </div>
+                          <button
+                            onClick={() => handleReviewDetection(selectedDetection._id, 'approved')}
+                            disabled={reviewingId === selectedDetection._id}
+                            className="px-3 py-1.5 rounded-lg bg-green-600 hover:bg-green-700 text-white text-xs font-bold flex items-center gap-1.5 disabled:opacity-50"
+                          >
+                            {reviewingId === selectedDetection._id ? <Loader2 className="w-3.5 h-3.5 animate-spin" /> : <CheckCircle className="w-3.5 h-3.5" />}
+                            Approve
+                          </button>
+                          <button
+                            onClick={() => handleReviewDetection(selectedDetection._id, 'rejected')}
+                            disabled={reviewingId === selectedDetection._id}
+                            className="px-3 py-1.5 rounded-lg bg-red-600 hover:bg-red-700 text-white text-xs font-bold flex items-center gap-1.5 disabled:opacity-50"
+                          >
+                            {reviewingId === selectedDetection._id ? <Loader2 className="w-3.5 h-3.5 animate-spin" /> : <XCircle className="w-3.5 h-3.5" />}
+                            Reject
+                          </button>
+                        </div>
+                      )}
+                      {!selectedDetection && (
+                        <div className="mt-4 text-center text-sm text-gray-400">
+                          Click a detection in the queue to jump to its frame.
+                        </div>
+                      )}
+                    </div>
+                  ) : selectedDetection ? (() => {
                     const conf = normalizeConfidence(selectedDetection.confidence);
                     return (
                       <div className="p-6 flex items-start justify-center z-10 relative min-h-full">
                         <div className="bg-white rounded-2xl shadow-xl border border-gray-200 overflow-hidden w-full max-w-2xl animate-in zoom-in-95 duration-200">
-                          {/* Card Header */}
+                          {/* Card Header — AIDetection has no `description` field; subtitle shows
+                              the source video filename when available (populated from videoId). */}
                           <div className="px-5 py-4 border-b border-gray-100 bg-gradient-to-r from-gray-50 to-white">
                             <div className="flex items-start justify-between">
-                              <div>
+                              <div className="min-w-0">
                                 <h3 className="text-lg font-bold text-gray-900 flex items-center gap-2">
                                   {selectedDetection.type || 'Unknown Detection'}
                                   <span className="text-xs font-normal text-gray-400 px-2 py-0.5 border border-gray-200 rounded-full bg-white">
                                     {selectedDetection._id.slice(-6).toUpperCase()}
                                   </span>
                                 </h3>
-                                {selectedDetection.description && (
-                                  <p className="text-sm text-gray-500 mt-1 line-clamp-2">{selectedDetection.description}</p>
+                                {selectedDetection.videoId?.originalName && (
+                                  <p className="text-xs text-gray-500 mt-1 truncate flex items-center gap-1">
+                                    <Camera className="w-3 h-3 shrink-0" />
+                                    <span className="truncate">{selectedDetection.videoId.originalName}</span>
+                                  </p>
                                 )}
                               </div>
                               <span className={`shrink-0 ml-3 px-3 py-1.5 rounded-lg text-xs font-bold border ${getConfidenceColor(conf)}`}>
@@ -579,24 +872,27 @@ const QualityControlPage = () => {
                             </div>
                           </div>
 
-                          {/* Stats Row */}
+                          {/* Stats Row — null-safe. `frameNumber` and `location.distance`
+                              are both optional on the schema; use `!= null` so legitimate
+                              zero values ("frame #0", "0m distance") render correctly
+                              instead of falling into the placeholder branch. */}
                           <div className="grid grid-cols-4 divide-x divide-gray-100 border-b border-gray-100">
                             <div className="px-4 py-3 text-center">
                               <div className="flex items-center justify-center gap-1.5 text-gray-400 mb-1"><Play className="w-3.5 h-3.5" /><span className="text-[10px] font-semibold uppercase tracking-wider">Time</span></div>
-                              <p className="text-sm font-bold text-gray-900">{formatTimestamp(selectedDetection.timestamp)}</p>
+                              <p className="text-sm font-bold text-gray-900">{selectedDetection.timestamp != null ? formatTimestamp(selectedDetection.timestamp) : '—'}</p>
                             </div>
                             <div className="px-4 py-3 text-center">
                               <div className="flex items-center justify-center gap-1.5 text-gray-400 mb-1"><Hash className="w-3.5 h-3.5" /><span className="text-[10px] font-semibold uppercase tracking-wider">Frame</span></div>
-                              <p className="text-sm font-bold text-gray-900">#{selectedDetection.frameNumber || '0'}</p>
+                              <p className="text-sm font-bold text-gray-900">{selectedDetection.frameNumber != null ? `#${selectedDetection.frameNumber}` : '—'}</p>
                             </div>
                             <div className="px-4 py-3 text-center">
                               <div className="flex items-center justify-center gap-1.5 text-gray-400 mb-1"><Ruler className="w-3.5 h-3.5" /><span className="text-[10px] font-semibold uppercase tracking-wider">Distance</span></div>
-                              <p className="text-sm font-bold text-gray-900">{selectedDetection.location?.distance ? `${selectedDetection.location.distance}m` : 'N/A'}</p>
+                              <p className="text-sm font-bold text-gray-900">{selectedDetection.location?.distance != null ? `${selectedDetection.location.distance}m` : '—'}</p>
                             </div>
                             <div className="px-4 py-3 text-center">
                               <div className="flex items-center justify-center gap-1.5 text-gray-400 mb-1"><AlertTriangle className="w-3.5 h-3.5" /><span className="text-[10px] font-semibold uppercase tracking-wider">Severity</span></div>
-                              <span className={`inline-block px-2 py-0.5 rounded border text-xs font-bold ${getSeverityStyle(selectedDetection.severity)}`}>
-                                {selectedDetection.severity || 'N/A'}
+                              <span className={`inline-block px-2 py-0.5 rounded border text-xs font-bold capitalize ${getSeverityStyle(selectedDetection.severity)}`}>
+                                {selectedDetection.severity || '—'}
                               </span>
                             </div>
                           </div>
@@ -616,27 +912,138 @@ const QualityControlPage = () => {
                                     loading="lazy"
                                   />
                                   <div className="absolute bottom-2 left-2 flex items-center gap-1 px-2 py-0.5 bg-black/50 rounded text-white text-xs">
-                                    <Camera className="h-3 w-3" /> Frame #{selectedDetection.frameNumber || '0'}
+                                    <Camera className="h-3 w-3" /> {selectedDetection.frameNumber != null ? `Frame #${selectedDetection.frameNumber}` : 'Snapshot'}
                                   </div>
                                 </div>
                               </div>
                             )}
 
-                            {/* Analysis Notes */}
-                            <div>
-                              <span className="text-[10px] font-semibold text-gray-400 uppercase tracking-wider block mb-1.5">Analysis Notes</span>
-                              <div className="bg-blue-50 text-blue-800 p-3 rounded-lg text-sm leading-relaxed border border-blue-100">
-                                {selectedDetection.qcNotes || selectedDetection.description || 'No automated analysis notes available for this detection.'}
-                              </div>
-                            </div>
+                            {/* Analysis Notes — synthesized from AI fields + any reviewer notes */}
+                            {(() => {
+                              const d = selectedDetection;
+                              const confPct = Math.round(normalizeConfidence(d.confidence));
+                              const confLabel =
+                                confPct >= 90 ? 'very high'
+                                : confPct >= 75 ? 'high'
+                                : confPct >= 50 ? 'moderate'
+                                : confPct >= 30 ? 'low' : 'very low';
+                              const sev = (d.severity || '').toString();
+                              const typeLabel = d.type || 'defect';
+                              const frameN = d.frameNumber ?? 'N/A';
+                              const ts = d.timestamp != null ? formatTimestamp(d.timestamp) : null;
+                              const bb = d.boundingBox;
+                              const hasBBox = bb && (bb.width || bb.height);
+                              const aiSummary = [
+                                `AI classified this as ${typeLabel} with ${confPct}% (${confLabel}) confidence.`,
+                                sev && `Severity has been rated ${sev}.`,
+                                frameN !== 'N/A' && `Captured on frame #${frameN}${ts ? ` at ${ts}` : ''}.`,
+                                hasBBox && `Bounding box covers ~${Math.round((bb.width || 0) * 100)}% × ${Math.round((bb.height || 0) * 100)}% of the frame.`,
+                                d.aiModelVersion && `Analyzed by model ${d.aiModelVersion}.`,
+                                d.pacpCode && `Matched PACP code ${d.pacpCode}${d.pacpScore != null ? ` (score ${d.pacpScore})` : ''}.`,
+                              ].filter(Boolean).join(' ');
 
-                            {/* Location & PACP */}
+                              return (
+                                <div>
+                                  <span className="text-[10px] font-semibold text-gray-400 uppercase tracking-wider block mb-1.5">Analysis Notes</span>
+                                  <div className="bg-amber-50 text-amber-900 p-3 rounded-lg text-sm leading-relaxed border border-amber-100 space-y-2">
+                                    <p>{aiSummary}</p>
+                                    {Array.isArray(d.annotations) && d.annotations.length > 0 && (
+                                      <div className="pt-2 border-t border-amber-200/60">
+                                        <p className="text-[10px] font-semibold uppercase tracking-wider text-amber-700/80 mb-1">AI Annotations</p>
+                                        <ul className="space-y-0.5">
+                                          {d.annotations.map((a, i) => (
+                                            <li key={i} className="text-[12px] text-amber-900/90">
+                                              <span className="font-semibold">{a.type || 'note'}:</span> {a.value || '—'}
+                                            </li>
+                                          ))}
+                                        </ul>
+                                      </div>
+                                    )}
+                                    {d.qcNotes && (
+                                      <div className="pt-2 border-t border-amber-200/60">
+                                        <p className="text-[10px] font-semibold uppercase tracking-wider text-amber-700/80 mb-1">Reviewer Notes</p>
+                                        <p className="text-[12px] text-amber-900/90 whitespace-pre-wrap">{d.qcNotes}</p>
+                                      </div>
+                                    )}
+                                  </div>
+                                </div>
+                              );
+                            })()}
+
+                            {/* Provenance — where this detection came from and who/what touched it.
+                                Every row is conditional so missing fields don't render. Reviewer name
+                                and video filename require the backend populates in getProjectDetections. */}
+                            {(() => {
+                              const d = selectedDetection;
+                              const video = d.videoId && typeof d.videoId === 'object' ? d.videoId : null;
+                              const reviewer = d.qcReviewedBy && typeof d.qcReviewedBy === 'object' ? d.qcReviewedBy : null;
+                              const reviewerName = reviewer
+                                ? [reviewer.first_name, reviewer.last_name].filter(Boolean).join(' ') || reviewer.email
+                                : null;
+                              const detectedAt = d.detectedAt ? new Date(d.detectedAt) : null;
+                              const reviewedAt = d.qcReviewedAt ? new Date(d.qcReviewedAt) : null;
+                              const rows = [
+                                video?.originalName && { label: 'Source video', value: video.originalName },
+                                video?.duration != null && { label: 'Video length', value: `${Math.round(video.duration)}s` },
+                                detectedAt && { label: 'Detected at', value: detectedAt.toLocaleString() },
+                                d.aiModelVersion && { label: 'AI model', value: d.aiModelVersion },
+                                reviewerName && { label: 'Reviewed by', value: reviewerName },
+                                reviewedAt && { label: 'Reviewed at', value: reviewedAt.toLocaleString() },
+                                d.qcConfidence != null && { label: 'Reviewer confidence', value: `${Math.round(d.qcConfidence)}%` },
+                              ].filter(Boolean);
+                              if (rows.length === 0) return null;
+                              return (
+                                <div>
+                                  <span className="text-[10px] font-semibold text-gray-400 uppercase tracking-wider block mb-1.5">Provenance</span>
+                                  <div className="bg-gray-50 rounded-lg border border-gray-100 p-3 text-sm text-gray-700 grid grid-cols-2 gap-x-4 gap-y-1">
+                                    {rows.map((r, i) => (
+                                      <div key={i} className="flex items-start justify-between gap-2">
+                                        <span className="text-[10px] uppercase tracking-wider text-gray-400 font-semibold mt-0.5 shrink-0">{r.label}</span>
+                                        <span className="text-xs font-medium text-gray-800 text-right truncate" title={r.value}>{r.value}</span>
+                                      </div>
+                                    ))}
+                                  </div>
+                                </div>
+                              );
+                            })()}
+
+                            {/* Location & Status */}
                             <div className="grid grid-cols-2 gap-4">
                               <div>
                                 <span className="text-[10px] font-semibold text-gray-400 uppercase tracking-wider block mb-1.5">Location</span>
-                                <div className="bg-gray-50 rounded-lg border border-gray-100 p-3 text-sm text-gray-700">
-                                  {selectedDetection.location?.description || selectedDetection.location?.segment || 'No location data'}
-                                </div>
+                                {(() => {
+                                  const loc = selectedDetection.location || {};
+                                  const bb = selectedDetection.boundingBox;
+                                  const hasBBox = bb && (bb.width || bb.height);
+                                  const projectName = activeProject?.projectId?.name || activeProject?.name;
+                                  const rows = [
+                                    projectName && { label: 'Project', value: projectName },
+                                    loc.segment && { label: 'Segment', value: loc.segment },
+                                    loc.distance != null && { label: 'Distance', value: `${loc.distance}m` },
+                                    loc.description && { label: 'Description', value: loc.description },
+                                    hasBBox && {
+                                      label: 'In-frame',
+                                      value: `x:${Math.round((bb.x || 0) * 100)}% y:${Math.round((bb.y || 0) * 100)}%`,
+                                    },
+                                  ].filter(Boolean);
+                                  if (rows.length === 0) {
+                                    return (
+                                      <div className="bg-gray-50 rounded-lg border border-gray-100 p-3 text-sm text-gray-400 italic">
+                                        No location metadata recorded
+                                      </div>
+                                    );
+                                  }
+                                  return (
+                                    <div className="bg-gray-50 rounded-lg border border-gray-100 p-3 text-sm text-gray-700 space-y-1">
+                                      {rows.map((r, i) => (
+                                        <div key={i} className="flex items-start justify-between gap-2">
+                                          <span className="text-[10px] uppercase tracking-wider text-gray-400 font-semibold mt-0.5">{r.label}</span>
+                                          <span className="text-xs font-medium text-gray-800 text-right">{r.value}</span>
+                                        </div>
+                                      ))}
+                                    </div>
+                                  );
+                                })()}
                               </div>
                               <div>
                                 <span className="text-[10px] font-semibold text-gray-400 uppercase tracking-wider block mb-1.5">Status</span>
@@ -651,7 +1058,7 @@ const QualityControlPage = () => {
                               <div>
                                 <span className="text-[10px] font-semibold text-gray-400 uppercase tracking-wider block mb-1.5">PACP Code</span>
                                 <div className="flex items-center gap-3">
-                                  <span className="bg-indigo-50 text-indigo-700 border border-indigo-200 px-3 py-1.5 rounded-lg text-sm font-mono font-bold">{selectedDetection.pacpCode}</span>
+                                  <span className="bg-red-50 text-red-700 border border-red-200 px-3 py-1.5 rounded-lg text-sm font-mono font-bold">{selectedDetection.pacpCode}</span>
                                   {selectedDetection.pacpScore != null && (
                                     <span className="text-sm text-gray-600">Score: <strong>{selectedDetection.pacpScore}</strong></span>
                                   )}

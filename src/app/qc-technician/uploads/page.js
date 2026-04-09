@@ -35,13 +35,26 @@ const QCUploadsPage = () => {
       }
 
       const result = await api("/api/uploads/get-all-uploads", "GET");
-      if (result.ok && result.data?.data) {
+      if (result.ok) {
+        // Response shape: { data: { uploads: [...], pagination: {...} } }
+        // Also tolerate a bare array in case the backend changes.
+        const raw = result.data?.data;
+        const list = Array.isArray(raw)
+          ? raw
+          : Array.isArray(raw?.uploads)
+          ? raw.uploads
+          : [];
+
         // Filter uploads to only show those related to assigned projects
-        const filtered = result.data.data.filter(upload => 
-          projectIds.some(id => 
-            upload.projectId?.toString() === id.toString() || 
-            upload.project?.toString() === id.toString()
-          )
+        const filtered = list.filter((upload) =>
+          projectIds.some((id) => {
+            const projId =
+              upload.projectId?._id?.toString() ||
+              upload.projectId?.toString() ||
+              upload.project?._id?.toString() ||
+              upload.project?.toString();
+            return projId === id.toString();
+          })
         );
         setUploads(filtered);
       }

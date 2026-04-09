@@ -154,8 +154,7 @@ const MaintenancePage = () => {
     return matchesStatus && matchesSearch
   })
 
-  return (<DashboardSkeleton />)
-
+  if (isLoading) return (<DashboardSkeleton />)
   return (
     <div className="min-h-screen ">
       <div className="max-w-7xl mx-auto p-6">

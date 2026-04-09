@@ -67,8 +67,7 @@ export default function FieldChecklist() {
   const totalCount = selectedList?.items?.length || 0;
   const pct = totalCount > 0 ? Math.round((doneCount / totalCount) * 100) : 0;
 
-  return (<ListSkeleton />)
-
+  if (isLoading) return (<ListSkeleton />)
   return (
     <div className="max-w-6xl mx-auto px-6 py-6">
       {/* Header */}

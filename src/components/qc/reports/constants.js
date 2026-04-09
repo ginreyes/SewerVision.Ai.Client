@@ -10,11 +10,11 @@ export const statusConfig = {
     icon: Clock, label: 'Pending',
   },
   'in-review': {
-    bg: 'bg-sky-50', text: 'text-sky-700', border: 'border-sky-200',
+    bg: 'bg-orange-50', text: 'text-orange-700', border: 'border-orange-200',
     icon: Eye, label: 'In Review',
   },
   in_review: {
-    bg: 'bg-sky-50', text: 'text-sky-700', border: 'border-sky-200',
+    bg: 'bg-orange-50', text: 'text-orange-700', border: 'border-orange-200',
     icon: Eye, label: 'In Review',
   },
   draft: {

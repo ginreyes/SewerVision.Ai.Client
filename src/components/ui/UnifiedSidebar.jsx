@@ -150,6 +150,7 @@ const ADMIN_MENU_GROUPS = [
       { label: 'Notes', icon: 'StickyNote', path: '/admin/notes', module: 'notes' },
       { label: 'Support', icon: 'Inbox', path: '/admin/support', module: 'support' },
       { label: 'Analytics', icon: 'BarChart2', path: '/admin/analytics', module: 'analytics' },
+      { label: 'AI Analytics', icon: 'Brain', path: '/admin/ai-analytics', key: 'ai-analytics' },
     ],
   },
   {
@@ -305,12 +306,14 @@ const FALLBACK_MENUS = {
   'qc-technician': [
     { label: 'Main', items: [
       { label: 'Dashboard', icon: 'LayoutDashboard', path: '/qc-technician/dashboard', key: 'dashboard', locked: true },
-      { label: 'Projects', icon: 'FolderOpen', path: '/qc-technician/project', key: 'projects' },
       { label: 'Calendar', icon: 'Calendar', path: '/qc-technician/calendar', key: 'calendar' },
     ]},
     { label: 'Work', items: [
       { label: 'Tasks', icon: 'ClipboardList', path: '/qc-technician/task', key: 'tasks' },
-      { label: 'Quality Control', icon: 'ClipboardCheck', path: '/qc-technician/quality-control', key: 'quality-control' },
+      // Review Workspace replaces the old separate "Projects" + "Quality Control"
+      // menu entries. The workspace handles project selection, detection review,
+      // the video player, and manual detection entry in a single page.
+      { label: 'Review Workspace', icon: 'ClipboardCheck', path: '/qc-technician/quality-control', key: 'quality-control' },
       { label: 'Review Templates', icon: 'FileText', path: '/qc-technician/review-templates', key: 'review-templates' },
       { label: 'Devices', icon: 'Monitor', path: '/qc-technician/devices', key: 'devices' },
     ]},
@@ -325,6 +328,7 @@ const FALLBACK_MENUS = {
       { label: 'Certifications', icon: 'Award', path: '/qc-technician/certifications', key: 'certifications' },
     ]},
     { label: 'Account', items: [
+      { label: 'Clock', icon: 'Clock', path: '/qc-technician/time-tracking', key: 'time-tracking' },
       { label: 'Notifications', icon: 'Bell', path: '/qc-technician/notifications', key: 'notifications', locked: true },
       { label: 'Settings', icon: 'Settings', path: '/qc-technician/settings', key: 'settings', locked: true },
     ]},
@@ -351,6 +355,7 @@ const FALLBACK_MENUS = {
       { label: 'Training Center', icon: 'GraduationCap', path: '/user/training', key: 'training' },
       { label: 'Reports', icon: 'BarChart2', path: '/user/reports', key: 'reports' },
       { label: 'Calendar', icon: 'Calendar', path: '/user/calendar', key: 'calendar' },
+      { label: 'Time Tracking', icon: 'Clock', path: '/user/time-tracking', key: 'time-tracking' },
       { label: 'Settings', icon: 'Settings', path: '/user/settings', key: 'settings', locked: true },
     ]},
   ],
@@ -400,6 +405,7 @@ const FALLBACK_MENUS = {
       { label: 'Team', icon: 'Users', path: '/customer-rep/team', key: 'team' },
     ]},
     { label: 'Account', items: [
+      { label: 'Clock', icon: 'Clock', path: '/customer-rep/time-tracking', key: 'time-tracking' },
       { label: 'Notifications', icon: 'Bell', path: '/customer-rep/notifications', key: 'notifications', locked: true },
       { label: 'Settings', icon: 'Settings', path: '/customer-rep/settings', key: 'settings', locked: true },
     ]},

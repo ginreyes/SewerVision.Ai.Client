@@ -21,8 +21,7 @@ const ICON_MAP = { FolderOpen, Users, CheckCircle2, Clock };
 export default function AdminAnalytics() {
   const { data: analytics, isLoading } = useAdminAnalytics();
 
-  return (<DashboardSkeleton />)
-
+  if (isLoading) return (<DashboardSkeleton />)
   const kpiMetrics = analytics?.kpiMetrics || [];
   const monthlyProjects = analytics?.monthlyProjects || [];
   const aiAccuracy = analytics?.aiAccuracy || [];

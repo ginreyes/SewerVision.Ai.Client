@@ -19,8 +19,7 @@ export default function AdminTrainingCenter() {
   const modules = Array.isArray(modulesRaw) ? modulesRaw : [];
   const isLoading = modulesLoading || progressLoading;
 
-  return (<GridSkeleton count={6} />)
-
+  if (isLoading) return (<GridSkeleton count={6} />)
   return (
     <div className="max-w-7xl mx-auto px-6 py-6">
       {/* Header */}

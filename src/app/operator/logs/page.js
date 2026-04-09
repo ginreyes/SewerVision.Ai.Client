@@ -133,8 +133,7 @@ const LogsPage = () => {
     return matchesFilter && matchesSearch
   })
 
-  return (<TableSkeleton />)
-
+  if (isLoading) return (<TableSkeleton />)
   return (
     <div className="p-6 space-y-6 max-w-7xl mx-auto">
       {/* Header */}

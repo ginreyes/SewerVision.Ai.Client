@@ -49,8 +49,7 @@ export default function RoutePlanner() {
     [sites.length, pending, totalKm, completedCount]
   );
 
-  return (<DashboardSkeleton />)
-
+  if (isLoading) return (<DashboardSkeleton />)
   return (
     <div className="max-w-6xl mx-auto px-6 py-6">
       {/* Header */}

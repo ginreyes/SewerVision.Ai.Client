@@ -324,7 +324,7 @@ export default function TrainingCalibration() {
                           })}
                         </div>
                         {submitted && q.explanation && (
-                          <div className="bg-blue-50 border border-blue-200 rounded-lg p-3 mb-3 text-xs text-blue-800">
+                          <div className="bg-amber-50 border border-amber-200 rounded-lg p-3 mb-3 text-xs text-amber-800">
                             <strong>Explanation:</strong> {q.explanation}
                           </div>
                         )}

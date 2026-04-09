@@ -2,15 +2,17 @@
 
 import React, { createContext, useContext, useState, useEffect, useCallback } from 'react';
 import { useUser } from './UserContext';
+import { useSocket } from './SocketProvider';
 import notificationApi from '@/data/notificationApi ';
 
 const NotificationContext = createContext(undefined);
 
-export const NotificationProvider = ({ 
+export const NotificationProvider = ({
   children,
-  pollInterval = 30000 
+  pollInterval = 120000  // Reduced from 30s to 120s — Socket.IO handles real-time
 }) => {
   const { userId } = useUser();
+  const socket = useSocket();
 
   const [notifications, setNotifications] = useState([]);
   const [unreadCount, setUnreadCount] = useState(0);
@@ -140,16 +142,26 @@ export const NotificationProvider = ({
     }
   }, [userId]); // eslint-disable-line react-hooks/exhaustive-deps
 
-  // Poll for new notifications
+  // Poll for new notifications (fallback — Socket.IO is primary)
   useEffect(() => {
     if (!userId || pollInterval <= 0) return;
-
-    const interval = setInterval(() => {
-      refreshUnreadCount();
-    }, pollInterval);
-
+    const interval = setInterval(() => refreshUnreadCount(), pollInterval);
     return () => clearInterval(interval);
   }, [userId, pollInterval, refreshUnreadCount]);
+
+  // Real-time Socket.IO listener
+  useEffect(() => {
+    if (!socket?.on || !userId) return;
+
+    const handleNotification = (data) => {
+      // Prepend new notification to list
+      setNotifications((prev) => [data, ...prev]);
+      setUnreadCount((prev) => prev + 1);
+    };
+
+    socket.on('notification', handleNotification);
+    return () => socket.off?.('notification', handleNotification);
+  }, [socket, userId]);
 
   const value = {
     notifications,

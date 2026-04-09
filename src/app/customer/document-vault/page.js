@@ -50,8 +50,7 @@ export default function DocumentVault() {
     }
   }
 
-  return (<GridSkeleton count={6} />)
-
+  if (isLoading) return (<GridSkeleton count={6} />)
   return (
     <div className="max-w-5xl mx-auto px-6 py-6">
       {/* Header */}

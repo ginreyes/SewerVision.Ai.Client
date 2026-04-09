@@ -78,8 +78,7 @@ export default function IncidentReports() {
   const handleOpenForm = useCallback(() => setShowForm(true), []);
   const handleCloseForm = useCallback(() => setShowForm(false), []);
 
-  return (<ListSkeleton />)
-
+  if (isLoading) return (<ListSkeleton />)
   return (
     <div className="max-w-6xl mx-auto px-6 py-6">
       {/* Header */}

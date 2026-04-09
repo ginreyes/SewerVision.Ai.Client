@@ -1,9 +1,10 @@
 import { CheckCircle, XCircle } from 'lucide-react';
-import { fmtTime } from '@/components/qc/constants';
+import { fmtTime, normalizeConfidence } from '@/components/qc/constants';
 
 // Compact Detection Row
 const DetectionRow = ({ detection, isSelected, onClick, onApprove, onReject }) => {
-    const confidence = Math.round((detection.confidence || 0) * 100);
+    // Use normalizeConfidence — raw value may be 0–1 (AI) or 0–100 (manual entry).
+    const confidence = Math.round(normalizeConfidence(detection.confidence));
     const st = detection.qcStatus;
 
     return (

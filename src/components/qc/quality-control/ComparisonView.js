@@ -21,7 +21,7 @@ const STATUS_ICON = {
 };
 
 const QueueItem = memo(({ detection, isSelected, onClick }) => {
-  const status = detection.qcStatus || detection.status || "pending";
+  const status = detection.qcStatus || "pending";
   const conf = normalizeConfidence(detection.confidence);
   const confColor = getConfidenceColor(conf);
   const label = detection.type || detection.defectType || "Detection";
@@ -64,8 +64,9 @@ const ComparisonView = memo(({
 }) => {
   const [notes, setNotes] = useState("");
 
-  const pending = detections.filter(d => (d.qcStatus || d.status) === "pending");
-  const status = selectedDetection ? (selectedDetection.qcStatus || selectedDetection.status || "pending") : null;
+  // AIDetection has no `status` field — only `qcStatus`.
+  const pending = detections.filter(d => d.qcStatus === "pending");
+  const status = selectedDetection ? (selectedDetection.qcStatus || "pending") : null;
   const conf = selectedDetection ? normalizeConfidence(selectedDetection.confidence) : 0;
   const confColor = selectedDetection ? getConfidenceColor(conf) : {};
 
@@ -138,10 +139,15 @@ const ComparisonView = memo(({
               </CardContent>
             </Card>
 
-            {/* Side-by-side frames */}
+            {/* Side-by-side frames. Backend currently stores ONE snapshot per detection
+                (videoProcessingService → type: 'snapshot'), so both panels show the same
+                image — the AI side overlays the bounding box + confidence badge, the
+                right side shows the clean reference. If a separate `type: 'original'`
+                image is ever stored, DetectionImage will automatically prefer it on the
+                right side without further changes here. */}
             <div className="grid grid-cols-2 gap-3">
-              <DetectionImage detection={selectedDetection} label="AI Detection View" colorClass="text-blue-500" />
-              <DetectionImage detection={null} label="Original Frame" colorClass="text-red-600" />
+              <DetectionImage detection={selectedDetection} label="AI Detection View" colorClass="text-amber-600" showOverlay />
+              <DetectionImage detection={selectedDetection} label="Snapshot (no overlay)" colorClass="text-red-600" showOverlay={false} />
             </div>
 
             {/* Notes + approve/reject */}

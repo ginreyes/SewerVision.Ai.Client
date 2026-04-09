@@ -28,6 +28,7 @@ const QCReviewPage = () => {
   const [statusFilter, setStatusFilter] = useState("all")
   const [selectedIds, setSelectedIds] = useState(new Set())
   const [actionLoading, setActionLoading] = useState(null)
+  const [reviewNotes, setReviewNotes] = useState({}) // { detectionId: 'note text' }
 
   useEffect(() => { if (project_id) fetchData() }, [project_id])
 
@@ -48,7 +49,7 @@ const QCReviewPage = () => {
   const handleReview = async (detectionId, status) => {
     setActionLoading(detectionId)
     try {
-      const { ok } = await api(`/api/qc-technicians/detections/${detectionId}/review`, "PUT", { qcStatus: status })
+      const { ok } = await api(`/api/qc-technicians/detections/${detectionId}/review`, "PUT", { qcStatus: status, qcNotes: reviewNotes[detectionId] || '' })
       if (ok) {
         setDetections(prev => prev.map(d => d._id === detectionId ? { ...d, qcStatus: status } : d))
         showAlert(`Detection ${status}`, "success")
@@ -285,6 +286,21 @@ const QCReviewPage = () => {
                     <span>Time: <strong className="text-gray-700">{formatTimestamp(det.timestamp)}</strong></span>
                   </div>
 
+                  {/* Review Notes */}
+                  {isPending && (
+                    <textarea
+                      placeholder="Add review notes (optional)..."
+                      value={reviewNotes[det._id] || ''}
+                      onChange={(e) => setReviewNotes(prev => ({ ...prev, [det._id]: e.target.value }))}
+                      className="w-full text-xs border border-gray-200 rounded-lg p-2 mb-2 resize-none h-16 focus:ring-1 focus:ring-blue-400 focus:border-blue-400"
+                    />
+                  )}
+                  {det.qcNotes && !isPending && (
+                    <div className="text-xs bg-gray-50 rounded-lg p-2 mb-2 text-gray-600 italic border border-gray-100">
+                      <span className="font-medium text-gray-700 not-italic">Note:</span> {det.qcNotes}
+                    </div>
+                  )}
+
                   {/* Inline Approve/Reject */}
                   {isPending && (
                     <div className="flex gap-2">
@@ -323,6 +339,14 @@ const QCReviewPage = () => {
           })}
         </div>
       )}
+
+      {/* Keyboard Shortcuts Hint */}
+      <div className="mt-4 flex items-center justify-center gap-4 text-[10px] text-gray-400 bg-gray-50 rounded-lg py-2 px-4">
+        <span><kbd className="px-1 py-0.5 bg-white border border-gray-200 rounded text-[9px] font-mono">A</kbd> Approve</span>
+        <span><kbd className="px-1 py-0.5 bg-white border border-gray-200 rounded text-[9px] font-mono">R</kbd> Reject</span>
+        <span><kbd className="px-1 py-0.5 bg-white border border-gray-200 rounded text-[9px] font-mono">↑↓</kbd> Navigate</span>
+        <span><kbd className="px-1 py-0.5 bg-white border border-gray-200 rounded text-[9px] font-mono">Esc</kbd> Deselect</span>
+      </div>
 
       {/* Footer */}
       <div className="mt-6 flex justify-between items-center">

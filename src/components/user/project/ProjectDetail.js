@@ -15,12 +15,8 @@ import {
   Plus,
   Edit3,
   PlayCircle,
-  X,
-  RefreshCw,
   Loader2,
-  Video,
   Trash2,
-  User,
   Clock,
   Film,
   FileVideo,
@@ -31,21 +27,31 @@ import {
   Ruler,
   Calendar,
   CheckCircle2,
-  AlertCircle,
   Zap,
   Square,
   RotateCcw,
   AlertTriangle,
 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
-import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from '@/components/ui/dialog';
-import { Input } from '@/components/ui/input';
-import { Label } from '@/components/ui/label';
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuLabel,
+  DropdownMenuSeparator,
+  DropdownMenuTrigger,
+} from '@/components/ui/dropdown-menu';
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
 import { Badge } from '@/components/ui/badge';
 import AddObservation from './AddObersavation';
 import ObservationsPanel from './ObservationsPanel';
 import ObservationDetailPanel from '@/components/shared/ObservationDetailPanel';
+import {
+  AddCustomMetadataDialog,
+  EditMetadataDialog,
+  DeleteVideoDialog,
+  UploadProgressDialog,
+} from '@/components/shared/project-dialogs';
 import { useUser } from '@/components/providers/UserContext';
 import { useAlert } from '@/components/providers/AlertProvider';
 import { api } from '@/lib/helper';
@@ -961,7 +967,7 @@ const ProjectDetail = ({ project, setSelectedProject }) => {
               </div>
             </div>
 
-            {/* Action Buttons */}
+            {/* Action Menu — consolidated dropdown */}
             <div className="flex items-center space-x-2">
               {/* Hidden File Input */}
               <input
@@ -972,79 +978,96 @@ const ProjectDetail = ({ project, setSelectedProject }) => {
                 className="hidden"
               />
 
-              {/* Stop Processing Button */}
-              {project?.status === 'ai-processing' && (
-                <Button onClick={() => setIsStopConfirmOpen(true)} disabled={isStopping}
-                  className="flex items-center gap-2 bg-red-600 hover:bg-red-700 text-white">
-                  {isStopping ? <Loader2 className="h-4 w-4 animate-spin" /> : <Square className="h-4 w-4" />}
-                  <span>{isStopping ? 'Stopping...' : 'Stop AI'}</span>
-                </Button>
-              )}
+              {(() => {
+                const canStop = project?.status === 'ai-processing';
+                const canReprocess = project?.status !== 'planning' && project?.status !== 'in-progress';
+                const canReset = project?.aiDetections?.total > 0 && project?.status !== 'ai-processing';
+                const canNotify =
+                  (project?.status === 'completed' || project?.status === 'qc-review') &&
+                  project?.status !== 'customer-notified';
+                const isBusy = isStopping || isReprocessing || isResetting || isNotifying;
 
-              {/* Reprocess AI Button - Show for applicable statuses */}
-              {project?.status !== 'planning' && project?.status !== 'in-progress' && (
-                <Button
-                  onClick={handleReprocess}
-                  disabled={isReprocessing}
-                  className={`flex items-center gap-2 transition-all duration-300 ${isReprocessing
-                    ? 'bg-gradient-to-r from-violet-500 to-purple-600 shadow-lg shadow-violet-200'
-                    : 'bg-gradient-to-r from-violet-600 to-purple-700 hover:from-violet-700 hover:to-purple-800'
-                    } text-white`}
-                >
-                  {isReprocessing ? (
-                    <>
-                      <Loader2 className="h-4 w-4 animate-spin" />
-                      <span>Reprocessing...</span>
-                    </>
-                  ) : (
-                    <>
-                      <Zap className="h-4 w-4" />
-                      <span>Reprocess AI</span>
-                    </>
-                  )}
-                </Button>
-              )}
+                return (
+                  <DropdownMenu>
+                    <DropdownMenuTrigger asChild>
+                      <Button
+                        disabled={isBusy}
+                        className="flex items-center gap-2 bg-gradient-to-r from-indigo-600 to-purple-700 hover:from-indigo-700 hover:to-purple-800 text-white"
+                      >
+                        {isBusy ? (
+                          <Loader2 className="h-4 w-4 animate-spin" />
+                        ) : (
+                          <MoreHorizontal className="h-4 w-4" />
+                        )}
+                        <span>
+                          {isStopping
+                            ? 'Stopping...'
+                            : isReprocessing
+                              ? 'Reprocessing...'
+                              : isResetting
+                                ? 'Resetting...'
+                                : isNotifying
+                                  ? 'Sending...'
+                                  : 'Actions'}
+                        </span>
+                      </Button>
+                    </DropdownMenuTrigger>
+                    <DropdownMenuContent align="end" className="w-56">
+                      <DropdownMenuLabel>Project Actions</DropdownMenuLabel>
+                      <DropdownMenuSeparator />
 
-              {/* Reset AI Data Button */}
-              {project?.aiDetections?.total > 0 && project?.status !== 'ai-processing' && (
-                <Button onClick={() => setIsResetConfirmOpen(true)} disabled={isResetting} variant="outline"
-                  className="flex items-center gap-2 border-orange-300 text-orange-600 hover:bg-orange-50 hover:text-orange-700">
-                  {isResetting ? <Loader2 className="h-4 w-4 animate-spin" /> : <RotateCcw className="h-4 w-4" />}
-                  <span>{isResetting ? 'Resetting...' : 'Reset AI Data'}</span>
-                </Button>
-              )}
+                      {canStop && (
+                        <DropdownMenuItem
+                          onClick={() => setIsStopConfirmOpen(true)}
+                          disabled={isStopping}
+                          className="text-red-600 focus:text-red-700"
+                        >
+                          <Square className="h-4 w-4 mr-2" />
+                          Stop AI Processing
+                        </DropdownMenuItem>
+                      )}
 
-              {/* Notify Customer Button - Show when project is completed or qc-review done */}
-              {(project?.status === 'completed' || project?.status === 'qc-review') && project?.status !== 'customer-notified' && (
-                <Button
-                  onClick={handleNotifyCustomer}
-                  disabled={isNotifying}
-                  className="flex items-center gap-2 bg-emerald-600 hover:bg-emerald-700 text-white"
-                >
-                  {isNotifying ? (
-                    <>
-                      <Loader2 className="h-4 w-4 animate-spin" />
-                      <span>Sending...</span>
-                    </>
-                  ) : (
-                    <>
-                      <Send className="h-4 w-4" />
-                      <span>Notify Customer</span>
-                    </>
-                  )}
-                </Button>
-              )}
+                      {canReprocess && (
+                        <DropdownMenuItem onClick={handleReprocess} disabled={isReprocessing}>
+                          <Zap className="h-4 w-4 mr-2 text-violet-600" />
+                          Reprocess AI
+                        </DropdownMenuItem>
+                      )}
 
-              {/* Edit Button - Navigates to edit project */}
-              <Button
-                onClick={() => router.push(`/user/project/editProject/${project._id}`)}
-                variant="ghost"
-                size="icon"
-                className="hover:bg-gray-100 rounded-xl"
-                title="Edit Project"
-              >
-                <Edit3 className="h-5 w-5 text-gray-500" />
-              </Button>
+                      {canReset && (
+                        <DropdownMenuItem
+                          onClick={() => setIsResetConfirmOpen(true)}
+                          disabled={isResetting}
+                          className="text-orange-600 focus:text-orange-700"
+                        >
+                          <RotateCcw className="h-4 w-4 mr-2" />
+                          Reset AI Data
+                        </DropdownMenuItem>
+                      )}
+
+                      {canNotify && (
+                        <DropdownMenuItem
+                          onClick={handleNotifyCustomer}
+                          disabled={isNotifying}
+                          className="text-emerald-600 focus:text-emerald-700"
+                        >
+                          <Send className="h-4 w-4 mr-2" />
+                          Notify Customer
+                        </DropdownMenuItem>
+                      )}
+
+                      {(canStop || canReprocess || canReset || canNotify) && <DropdownMenuSeparator />}
+
+                      <DropdownMenuItem
+                        onClick={() => router.push(`/user/project/editProject/${project._id}`)}
+                      >
+                        <Edit3 className="h-4 w-4 mr-2 text-gray-600" />
+                        Edit Project
+                      </DropdownMenuItem>
+                    </DropdownMenuContent>
+                  </DropdownMenu>
+                );
+              })()}
             </div>
           </div>
         </div>
@@ -1560,191 +1583,36 @@ const ProjectDetail = ({ project, setSelectedProject }) => {
             theme="indigo"
           />
 
-          {/* Add Custom Metadata Dialog */}
-          <Dialog open={isAddMetadataOpen} onOpenChange={setIsAddMetadataOpen}>
-            <DialogContent className="sm:max-w-md">
-              <DialogHeader>
-                <DialogTitle className="flex items-center gap-2 text-base"><Plus className="h-4 w-4 text-indigo-600" /> Add Custom Field</DialogTitle>
-                <DialogDescription className="text-xs">Add a custom metadata field to this project.</DialogDescription>
-              </DialogHeader>
-              <div className="space-y-4 py-3">
-                <div className="space-y-1.5">
-                  <Label htmlFor="metadataKey" className="text-xs font-medium">Field Name</Label>
-                  <Input id="metadataKey" placeholder="e.g., Inspection Type, Weather..." value={newMetadataKey} onChange={(e) => setNewMetadataKey(e.target.value)} className="h-9 text-sm" />
-                </div>
-                <div className="space-y-1.5">
-                  <Label htmlFor="metadataValue" className="text-xs font-medium">Value</Label>
-                  <Input id="metadataValue" placeholder="e.g., Routine Inspection" value={newMetadataValue} onChange={(e) => setNewMetadataValue(e.target.value)} className="h-9 text-sm" />
-                </div>
-                {newMetadataKey && newMetadataValue && (
-                  <div className="flex items-center justify-between p-2.5 bg-indigo-50 rounded-lg border border-indigo-100 text-xs">
-                    <span className="text-gray-500 font-medium">{newMetadataKey}:</span>
-                    <span className="text-gray-800 font-semibold">{newMetadataValue}</span>
-                  </div>
-                )}
-              </div>
-              <DialogFooter className="gap-2">
-                <Button variant="outline" size="sm" className="text-xs" onClick={() => setIsAddMetadataOpen(false)}>Cancel</Button>
-                <Button size="sm" className="text-xs" onClick={handleAddMetadata} disabled={!newMetadataKey || !newMetadataValue}>Add Field</Button>
-              </DialogFooter>
-            </DialogContent>
-          </Dialog>
+          <AddCustomMetadataDialog
+            open={isAddMetadataOpen}
+            onOpenChange={setIsAddMetadataOpen}
+            keyValue={newMetadataKey}
+            setKeyValue={setNewMetadataKey}
+            value={newMetadataValue}
+            setValue={setNewMetadataValue}
+            onSubmit={handleAddMetadata}
+            accent="indigo"
+          />
 
-          {/* Edit Metadata Dialog */}
-          <Dialog open={isEditMetadataOpen} onOpenChange={setIsEditMetadataOpen}>
-            <DialogContent className="sm:max-w-lg max-h-[80vh] overflow-hidden flex flex-col">
-              <DialogHeader>
-                <DialogTitle className="flex items-center gap-2 text-base"><Edit3 className="h-4 w-4 text-indigo-600" /> Edit Recording Information</DialogTitle>
-                <DialogDescription className="text-xs">Update the project metadata fields.</DialogDescription>
-              </DialogHeader>
-              <div className="flex-1 overflow-y-auto py-2 -mx-1 px-1">
-                {Object.keys(editingMetadata).length === 0 ? (
-                  <div className="flex flex-col items-center justify-center py-10 text-gray-400">
-                    <FileText className="h-10 w-10 mb-2 opacity-40" />
-                    <p className="text-sm">No metadata fields</p>
-                  </div>
-                ) : (
-                  <div className="space-y-3">
-                    {Object.entries(editingMetadata).map(([key, value]) => (
-                      <div key={key} className="flex items-center gap-3">
-                        <div className="w-32 flex-shrink-0">
-                          <Label htmlFor={`metadata-${key}`} className="text-xs font-medium text-gray-500 capitalize truncate block">{key.replace(/([A-Z])/g, ' $1').trim()}</Label>
-                        </div>
-                        <Input id={`metadata-${key}`} value={value || ''} onChange={(e) => setEditingMetadata({ ...editingMetadata, [key]: e.target.value })} className="h-9 text-sm flex-1" />
-                      </div>
-                    ))}
-                  </div>
-                )}
-              </div>
-              <DialogFooter className="gap-2 border-t pt-4">
-                <Button variant="outline" size="sm" className="text-xs" onClick={() => setIsEditMetadataOpen(false)}>Cancel</Button>
-                <Button size="sm" className="text-xs" onClick={handleEditMetadata}><Save className="h-3 w-3 mr-1" /> Save Changes</Button>
-              </DialogFooter>
-            </DialogContent>
-          </Dialog>
+          <EditMetadataDialog
+            open={isEditMetadataOpen}
+            onOpenChange={setIsEditMetadataOpen}
+            metadata={editingMetadata}
+            setMetadata={setEditingMetadata}
+            onSubmit={handleEditMetadata}
+            accent="indigo"
+          />
 
-          {/* Delete Video Confirmation Dialog */}
-          <Dialog open={isDeleteVideoOpen} onOpenChange={setIsDeleteVideoOpen}>
-            <DialogContent>
-              <DialogHeader>
-                <DialogTitle className="text-red-600">Delete Video</DialogTitle>
-                <DialogDescription>
-                  Are you sure you want to delete this video? This action cannot be undone.
-                </DialogDescription>
-              </DialogHeader>
-              {videoToDelete && (
-                <div className="py-4">
-                  <div className="bg-gray-50 rounded-lg p-3 space-y-2">
-                    <p className="font-medium text-gray-900">{videoToDelete.originalName || videoToDelete.filename}</p>
-                    <p className="text-sm text-gray-500">Size: {formatFileSize(videoToDelete.fileSize)}</p>
-                    <p className="text-sm text-gray-500">
-                      Uploaded: {new Date(videoToDelete.uploadedAt).toLocaleString()}
-                    </p>
-                  </div>
-                </div>
-              )}
-              <DialogFooter>
-                <Button
-                  variant="outline"
-                  onClick={() => {
-                    setIsDeleteVideoOpen(false);
-                    setVideoToDelete(null);
-                  }}
-                  disabled={deletingVideo}
-                >
-                  Cancel
-                </Button>
-                <Button
-                  variant="destructive"
-                  onClick={handleDeleteVideo}
-                  disabled={deletingVideo}
-                >
-                  {deletingVideo ? (
-                    <>
-                      <Loader2 className="w-4 h-4 mr-2 animate-spin" />
-                      Deleting...
-                    </>
-                  ) : (
-                    <>
-                      <Trash2 className="w-4 h-4 mr-2" />
-                      Delete Video
-                    </>
-                  )}
-                </Button>
-              </DialogFooter>
-            </DialogContent>
-          </Dialog>
+          <DeleteVideoDialog
+            open={isDeleteVideoOpen}
+            onOpenChange={setIsDeleteVideoOpen}
+            video={videoToDelete}
+            onConfirm={handleDeleteVideo}
+            onCancel={() => setVideoToDelete(null)}
+            loading={deletingVideo}
+          />
 
-          {/* Upload Progress Modal */}
-          <Dialog open={isUploading} onOpenChange={() => { }}>
-            <DialogContent className="max-w-md" onPointerDownOutside={(e) => e.preventDefault()}>
-              <DialogHeader>
-                <DialogTitle className="flex items-center gap-2">
-                  <Upload className="w-5 h-5 text-blue-600" />
-                  Uploading Video
-                </DialogTitle>
-                <DialogDescription>
-                  Please wait while your video is being uploaded...
-                </DialogDescription>
-              </DialogHeader>
-
-              <div className="py-6">
-                {/* Progress Circle */}
-                <div className="flex flex-col items-center justify-center mb-6">
-                  <div className="relative w-24 h-24">
-                    <svg className="w-24 h-24 transform -rotate-90">
-                      <circle
-                        cx="48"
-                        cy="48"
-                        r="40"
-                        stroke="currentColor"
-                        strokeWidth="8"
-                        fill="transparent"
-                        className="text-gray-200"
-                      />
-                      <circle
-                        cx="48"
-                        cy="48"
-                        r="40"
-                        stroke="currentColor"
-                        strokeWidth="8"
-                        fill="transparent"
-                        strokeDasharray={251.2}
-                        strokeDashoffset={251.2 - (251.2 * uploadProgress) / 100}
-                        className="text-blue-600 transition-all duration-300"
-                        strokeLinecap="round"
-                      />
-                    </svg>
-                    <div className="absolute inset-0 flex items-center justify-center">
-                      <span className="text-2xl font-bold text-gray-800">{uploadProgress}%</span>
-                    </div>
-                  </div>
-                </div>
-
-                {/* Progress Bar */}
-                <div className="space-y-2">
-                  <div className="w-full bg-gray-200 rounded-full h-3 overflow-hidden">
-                    <div
-                      className="h-3 rounded-full bg-gradient-to-r from-blue-500 via-blue-600 to-indigo-600 transition-all duration-300 ease-out"
-                      style={{ width: `${uploadProgress}%` }}
-                    />
-                  </div>
-                  <div className="flex justify-between text-sm text-gray-500">
-                    <span>Uploading...</span>
-                    <span>{uploadProgress}% complete</span>
-                  </div>
-                </div>
-
-                {/* Processing indicator */}
-                {uploadProgress === 100 && (
-                  <div className="flex items-center justify-center gap-2 mt-4 text-green-600">
-                    <CheckCircle2 className="w-5 h-5" />
-                    <span className="font-medium">Processing video...</span>
-                  </div>
-                )}
-              </div>
-            </DialogContent>
-          </Dialog>
+          <UploadProgressDialog open={isUploading} progress={uploadProgress} accent="indigo" />
         </div>
       </div>
       {/* AI Processing Modal with SSE */}

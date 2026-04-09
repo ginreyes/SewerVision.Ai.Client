@@ -73,8 +73,8 @@ export default function UserLayout({ children }) {
       <>
         <div className="flex">
           <div
-            className={`fixed top-0 left-0 h-full transition-all duration-300 border-2 bg-gray-100 ${
-              openSidebar ? "w-[270px]" : "w-[90px]"
+            className={`fixed top-0 left-0 h-full transition-all duration-300 border-r bg-gray-100 z-50 ${
+              openSidebar ? "w-[270px]" : "w-[90px] hidden lg:block"
             }`}
           >
             <UnifiedSidebar isOpen={openSidebar} role={role} displayName={userRoleMeta?.displayName} />
@@ -82,11 +82,11 @@ export default function UserLayout({ children }) {
 
           <div
             className={`flex-1 transition-all duration-300 ${
-              openSidebar ? "ml-[270px]" : "ml-[90px]"
+              openSidebar ? "lg:ml-[270px]" : "lg:ml-[90px]"
             }`}
           >
             <Navbar openSideBar={handleToggleSidebar} role="user" />
-            <main className="p-4">
+            <main className="p-3 sm:p-4">
               <AnnouncementBanner role="user" />
               {children}
             </main>

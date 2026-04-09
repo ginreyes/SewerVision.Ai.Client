@@ -112,7 +112,7 @@ export default function TeamProgressView({ progress, isLoading }) {
       {/* Stats */}
       <div className="grid grid-cols-4 gap-3">
         <StatCard title="QC Technicians" value={stats.techs} icon={Users} color="text-red-700" bg="bg-amber-50" />
-        <StatCard title="Avg Completion" value={`${stats.avgCompletion}%`} icon={TrendingUp} color="text-blue-600" bg="bg-blue-50" />
+        <StatCard title="Avg Completion" value={`${stats.avgCompletion}%`} icon={TrendingUp} color="text-amber-700" bg="bg-amber-50" />
         <StatCard title="Top Performer" value={stats.topPerformer?.user?.name?.split(' ')[0] || "—"} icon={Award} color="text-amber-600" bg="bg-amber-50" />
         <StatCard title="Needs Attention" value={stats.needsAttention} icon={AlertTriangle} color="text-red-600" bg="bg-red-50" />
       </div>

@@ -28,8 +28,7 @@ export default function CustomerRepTeam() {
   const team = hasManaged ? managedTeam : allTeam;
   const isLoading = hasManaged ? managedLoading : (managedLoading || allLoading);
 
-  return (<GridSkeleton count={6} />)
-
+  if (isLoading) return (<GridSkeleton count={6} />)
   return (
     <div className="min-h-screen">
       <div className="max-w-7xl mx-auto px-6 py-6">

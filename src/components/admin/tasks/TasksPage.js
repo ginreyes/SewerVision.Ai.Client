@@ -32,6 +32,7 @@ import { Input } from '@/components/ui/input';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import AddNewTaskModal from './AddNewTaskModal';
+import { TaskDetailDrawer } from '@/components/operator/task';
 import { useUser } from '@/components/providers/UserContext';
 import { useAlert } from '@/components/providers/AlertProvider';
 import qcApi from '@/data/qcApi';
@@ -207,6 +208,7 @@ const TasksPage = ({ role = 'admin' }) => {
     const [filterPriority, setFilterPriority] = useState('all');
     const [activeTab, setActiveTab] = useState('active');
     const [selectedTask, setSelectedTask] = useState(null);
+    const [isTaskDrawerOpen, setIsTaskDrawerOpen] = useState(false);
     const [tasks, setTasks] = useState([]);
     const [loading, setLoading] = useState(true);
     const [refreshing, setRefreshing] = useState(false);
@@ -420,6 +422,8 @@ const TasksPage = ({ role = 'admin' }) => {
             router.push(`/qc-technician/quality-control?projectId=${task.projectId}`);
         } else if (role === 'admin' && task.id) {
             router.push(`/admin/task/${task.id}`);
+        } else if (role === 'operator') {
+            setIsTaskDrawerOpen(true);
         }
     };
 
@@ -593,6 +597,15 @@ const TasksPage = ({ role = 'admin' }) => {
                         </div>
                     </CardContent>
                 </Card>
+            )}
+
+            {/* Operator — task detail drawer */}
+            {role === 'operator' && (
+                <TaskDetailDrawer
+                    open={isTaskDrawerOpen}
+                    onOpenChange={setIsTaskDrawerOpen}
+                    task={selectedTask}
+                />
             )}
         </div>
     );

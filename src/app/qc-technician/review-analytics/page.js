@@ -41,8 +41,7 @@ export default function ReviewAnalytics() {
   const userId = user?._id || user?.id;
   const { data: stats, isLoading } = useQCReviewStats(userId);
 
-  return (<DashboardSkeleton />)
-
+  if (isLoading) return (<DashboardSkeleton />)
   const weeklyData = stats?.weeklyData || [];
   const maxTotal = Math.max(...weeklyData.map(d => (d.approved || 0) + (d.rejected || 0)), 1);
 
@@ -72,7 +71,7 @@ export default function ReviewAnalytics() {
           { label: "Reviewed This Week", value: totalReviewed, icon: BarChart2, bg: "bg-amber-50", color: "text-red-700" },
           { label: "Approved", value: totalApproved, icon: CheckCircle2, bg: "bg-emerald-50", color: "text-emerald-600" },
           { label: "Rejected", value: totalReviewed - totalApproved, icon: XCircle, bg: "bg-red-50", color: "text-red-600" },
-          { label: "Approval Rate", value: `${approvalRate}%`, icon: Target, bg: "bg-blue-50", color: "text-blue-600" },
+          { label: "Approval Rate", value: `${approvalRate}%`, icon: Target, bg: "bg-amber-50", color: "text-amber-700" },
         ].map(s => (
           <Card key={s.label} className="border-gray-200">
             <CardContent className="p-4 flex items-center gap-3">
@@ -120,7 +119,7 @@ export default function ReviewAnalytics() {
               </div>
             </div>
             <div className="flex items-center justify-between">
-              <DonutRing pct={consistencyScore} color="#3b82f6" />
+              <DonutRing pct={consistencyScore} color="#b91c1c" />
               <div className="flex-1 ml-3">
                 <p className="text-xs font-semibold text-gray-700">Consistency Score</p>
                 <p className="text-[10px] text-gray-400">vs team baseline</p>
@@ -145,7 +144,7 @@ export default function ReviewAnalytics() {
             <div key={d.label} className="flex items-center gap-3">
               <span className="text-xs text-gray-700 w-20 shrink-0">{d.label}</span>
               <div className="flex-1 h-2.5 bg-gray-100 rounded-full overflow-hidden">
-                <div className={`h-full rounded-full ${d.color || "bg-blue-500"}`} style={{ width: `${d.pct || 0}%` }} />
+                <div className={`h-full rounded-full ${d.color || "bg-red-600"}`} style={{ width: `${d.pct || 0}%` }} />
               </div>
               <span className="text-xs font-bold text-gray-700 w-8 text-right">{d.pct || 0}%</span>
             </div>

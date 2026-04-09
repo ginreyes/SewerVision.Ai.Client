@@ -115,8 +115,7 @@ export default function ProjectTemplates() {
     );
   }, [form, createTemplate, showAlert]);
 
-  return (<GridSkeleton count={6} />)
-
+  if (isLoading) return (<GridSkeleton count={6} />)
   return (
     <div className="max-w-6xl mx-auto px-6 py-6">
       {/* Header */}

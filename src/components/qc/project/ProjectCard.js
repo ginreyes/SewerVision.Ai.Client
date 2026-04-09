@@ -48,7 +48,7 @@ const ProjectCard = ({ project, isSelected, onClick, onStartReview }) => {
         </div>
         <div className="text-center p-2 bg-gray-50 rounded-lg">
           <div className="flex items-center justify-center gap-1 mb-0.5">
-            <CheckCircle className={`w-3.5 h-3.5 ${project.progress === 100 ? 'text-green-500' : 'text-blue-500'}`} />
+            <CheckCircle className={`w-3.5 h-3.5 ${project.progress === 100 ? 'text-green-500' : 'text-amber-600'}`} />
           </div>
           <p className="text-xs font-medium text-gray-900">{project.progress || 0}%</p>
           <p className="text-[10px] text-gray-500">Reviewed</p>

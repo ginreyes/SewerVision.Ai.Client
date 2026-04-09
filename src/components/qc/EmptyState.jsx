@@ -72,8 +72,8 @@ const variantConfig = {
   },
   folder: {
     icon: FolderOpen,
-    iconColor: 'text-blue-400',
-    bgColor: 'bg-blue-50',
+    iconColor: 'text-red-700',
+    bgColor: 'bg-red-50',
     defaultTitle: 'Empty Folder',
     defaultMessage: 'This folder is empty. Add some items to get started.'
   }

@@ -16,6 +16,7 @@ import { useRouter, useSearchParams, usePathname } from "next/navigation";
 import { useOperatorProjects, useOperatorProject } from "@/hooks/useQueryHooks";
 import ProjectDetail from "@/components/operator/project/ProjectDetail";
 import ProjectCard from "@/components/operator/project/ProjectCard";
+import EmptyState from "@/components/shared/EmptyState";
 
 const OperatorModulePage = () => {
   const { userId } = useUser();
@@ -315,19 +316,41 @@ const OperatorModulePage = () => {
             {viewMode === "tracker" ? (
               <ProjectLiveTrackerView projects={projects} isLoading={false} theme="blue" />
             ) : viewMode === "grid" ? (
-              <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-                {projects.map((project) => (
-                  <ProjectCard
-                    key={project._id}
-                    project={project}
-                    setSelectedProject={setSelectedProject}
-                    getStatusColor={getStatusColor}
-                    getPriorityColor={getPriorityColor}
-                    loadData={projects}
-                    hideActions
-                  />
-                ))}
-              </div>
+              projects.length === 0 ? (
+                <EmptyState
+                  image="/background_pictures/no-projects.jpg"
+                  title="No projects found"
+                  description={
+                    debouncedSearch || statusFilter !== "all"
+                      ? `No results${debouncedSearch ? ` for "${debouncedSearch}"` : ""}. Try adjusting your filters.`
+                      : "No projects have been assigned to you yet."
+                  }
+                  actionLabel={debouncedSearch || statusFilter !== "all" ? "Clear Filters" : undefined}
+                  onAction={
+                    debouncedSearch || statusFilter !== "all"
+                      ? () => {
+                          setSearchTerm("");
+                          setDebouncedSearch("");
+                          setStatusFilter("all");
+                        }
+                      : undefined
+                  }
+                />
+              ) : (
+                <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+                  {projects.map((project) => (
+                    <ProjectCard
+                      key={project._id}
+                      project={project}
+                      setSelectedProject={setSelectedProject}
+                      getStatusColor={getStatusColor}
+                      getPriorityColor={getPriorityColor}
+                      loadData={projects}
+                      hideActions
+                    />
+                  ))}
+                </div>
+              )
             ) : (
               <SewerTable
                 data={projectTableData}

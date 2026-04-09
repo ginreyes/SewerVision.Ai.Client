@@ -30,19 +30,20 @@ import {
   Monitor,
   RotateCcw,
   AlertTriangle,
-  FileText,
-  Save,
 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
-import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from '@/components/ui/dialog';
-import { Input } from '@/components/ui/input';
-import { Label } from '@/components/ui/label';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
 import { Badge } from '@/components/ui/badge';
 import AddObservation from './AddObersavation';
 import ObservationsPanel from './ObservationsPanel';
 import ObservationDetailPanel from '@/components/shared/ObservationDetailPanel';
+import {
+  AddCustomMetadataDialog,
+  EditMetadataDialog,
+  DeleteVideoDialog,
+  UploadProgressDialog,
+} from '@/components/shared/project-dialogs';
 import { AiProcessingModal } from '@/components/project/AiProcessingModal';
 import { ReprocessModal } from '@/components/project/ReprocessModal';
 import { useUser } from '@/components/providers/UserContext';
@@ -1227,22 +1228,50 @@ const ProjectDetail = ({ project, setSelectedProject, onBack }) => {
                     </div>
                   )}
 
+                  {/* Mark Defect floating button */}
+                  <button
+                    type="button"
+                    onClick={(e) => {
+                      e.stopPropagation();
+                      if (videoRef.current) videoRef.current.pause();
+                      setIsPlaying(false);
+                      observationOpen();
+                    }}
+                    className="absolute bottom-16 right-4 z-30 flex items-center gap-1.5 px-3 py-2 bg-red-600 hover:bg-red-700 text-white text-xs font-medium rounded-lg shadow-lg transition-all opacity-80 hover:opacity-100"
+                    title="Mark defect at current timestamp (or Shift+click for quick mark)"
+                  >
+                    <AlertTriangle className="w-3.5 h-3.5" />
+                    Mark Defect
+                  </button>
+
                   {/* Custom Controls */}
                   <div className="absolute bottom-2 left-0 right-0 px-4 flex items-center space-x-4 bg-black bg-opacity-50 py-2 rounded z-20" onClick={(e) => e.stopPropagation()}>
                     <button type="button" onClick={togglePlay} className="text-white hover:text-blue-400 transition-colors">
                       {isPlaying ? <Pause className="w-6 h-6" /> : <Play className="w-6 h-6" />}
                     </button>
 
-                    {/* Progress bar */}
+                    {/* Progress bar with observation markers */}
                     <div
-                      className="flex-1 h-1 bg-gray-600 rounded cursor-pointer"
+                      className="flex-1 h-1 bg-gray-600 rounded cursor-pointer relative"
                       onClick={onSeek}
-                      style={{ position: 'relative' }}
                     >
                       <div
                         className="h-1 bg-blue-600 rounded"
                         style={{ width: `${(currentTime / duration) * 100}%` }}
                       />
+                      {/* Observation dots on progress bar */}
+                      {duration > 0 && observations.map((obs, i) => {
+                        const parts = String(obs.time || '').split(':').map(Number);
+                        const sec = (parts[0] || 0) * 3600 + (parts[1] || 0) * 60 + (parts[2] || 0);
+                        const pct = (sec / duration) * 100;
+                        if (pct < 0 || pct > 100) return null;
+                        return (
+                          <div key={i} className="absolute top-1/2 -translate-y-1/2 w-2 h-2 rounded-full bg-red-500 border border-white/50 z-10"
+                            style={{ left: `${pct}%`, transform: 'translate(-50%, -50%)' }}
+                            title={`${obs.pacpCode || 'Defect'} at ${obs.time}`}
+                          />
+                        );
+                      })}
                     </div>
 
                     {/* Time display */}
@@ -1589,192 +1618,36 @@ const ProjectDetail = ({ project, setSelectedProject, onBack }) => {
             theme="blue"
           />
 
-          {/* Add Custom Metadata Dialog */}
-          <Dialog open={isAddMetadataOpen} onOpenChange={setIsAddMetadataOpen}>
-            <DialogContent className="sm:max-w-md">
-              <DialogHeader>
-                <DialogTitle className="flex items-center gap-2 text-base"><Plus className="h-4 w-4 text-blue-600" /> Add Custom Field</DialogTitle>
-                <DialogDescription className="text-xs">Add a custom metadata field to this project.</DialogDescription>
-              </DialogHeader>
-              <div className="space-y-4 py-3">
-                <div className="space-y-1.5">
-                  <Label htmlFor="metadataKey" className="text-xs font-medium">Field Name</Label>
-                  <Input id="metadataKey" placeholder="e.g., Inspection Type, Weather..." value={newMetadataKey} onChange={(e) => setNewMetadataKey(e.target.value)} className="h-9 text-sm" />
-                </div>
-                <div className="space-y-1.5">
-                  <Label htmlFor="metadataValue" className="text-xs font-medium">Value</Label>
-                  <Input id="metadataValue" placeholder="e.g., Routine Inspection" value={newMetadataValue} onChange={(e) => setNewMetadataValue(e.target.value)} className="h-9 text-sm" />
-                </div>
-                {newMetadataKey && newMetadataValue && (
-                  <div className="flex items-center justify-between p-2.5 bg-blue-50 rounded-lg border border-blue-100 text-xs">
-                    <span className="text-gray-500 font-medium">{newMetadataKey}:</span>
-                    <span className="text-gray-800 font-semibold">{newMetadataValue}</span>
-                  </div>
-                )}
-              </div>
-              <DialogFooter className="gap-2">
-                <Button variant="outline" size="sm" className="text-xs" onClick={() => setIsAddMetadataOpen(false)}>Cancel</Button>
-                <Button size="sm" className="text-xs" onClick={handleAddMetadata} disabled={!newMetadataKey || !newMetadataValue}>Add Field</Button>
-              </DialogFooter>
-            </DialogContent>
-          </Dialog>
+          <AddCustomMetadataDialog
+            open={isAddMetadataOpen}
+            onOpenChange={setIsAddMetadataOpen}
+            keyValue={newMetadataKey}
+            setKeyValue={setNewMetadataKey}
+            value={newMetadataValue}
+            setValue={setNewMetadataValue}
+            onSubmit={handleAddMetadata}
+            accent="blue"
+          />
 
-          {/* Edit Metadata Dialog */}
-          <Dialog open={isEditMetadataOpen} onOpenChange={setIsEditMetadataOpen}>
-            <DialogContent className="sm:max-w-lg max-h-[80vh] overflow-hidden flex flex-col">
-              <DialogHeader>
-                <DialogTitle className="flex items-center gap-2 text-base"><Edit3 className="h-4 w-4 text-blue-600" /> Edit Recording Information</DialogTitle>
-                <DialogDescription className="text-xs">Update the project metadata fields.</DialogDescription>
-              </DialogHeader>
-              <div className="flex-1 overflow-y-auto py-2 -mx-1 px-1">
-                {Object.keys(editingMetadata).length === 0 ? (
-                  <div className="flex flex-col items-center justify-center py-10 text-gray-400">
-                    <FileText className="h-10 w-10 mb-2 opacity-40" />
-                    <p className="text-sm">No metadata fields</p>
-                  </div>
-                ) : (
-                  <div className="space-y-3">
-                    {Object.entries(editingMetadata).map(([key, value]) => (
-                      <div key={key} className="flex items-center gap-3">
-                        <div className="w-32 flex-shrink-0">
-                          <Label htmlFor={`metadata-${key}`} className="text-xs font-medium text-gray-500 capitalize truncate block">{key.replace(/([A-Z])/g, ' $1').trim()}</Label>
-                        </div>
-                        <Input id={`metadata-${key}`} value={value || ''} onChange={(e) => setEditingMetadata({ ...editingMetadata, [key]: e.target.value })} className="h-9 text-sm flex-1" />
-                      </div>
-                    ))}
-                  </div>
-                )}
-              </div>
-              <DialogFooter className="gap-2 border-t pt-4">
-                <Button variant="outline" size="sm" className="text-xs" onClick={() => setIsEditMetadataOpen(false)}>Cancel</Button>
-                <Button size="sm" className="text-xs" onClick={handleEditMetadata}><Save className="h-3 w-3 mr-1" /> Save Changes
-                </Button>
-              </DialogFooter>
-            </DialogContent>
-          </Dialog>
+          <EditMetadataDialog
+            open={isEditMetadataOpen}
+            onOpenChange={setIsEditMetadataOpen}
+            metadata={editingMetadata}
+            setMetadata={setEditingMetadata}
+            onSubmit={handleEditMetadata}
+            accent="blue"
+          />
 
-          {/* Delete Video Confirmation Dialog */}
-          <Dialog open={isDeleteVideoOpen} onOpenChange={setIsDeleteVideoOpen}>
-            <DialogContent>
-              <DialogHeader>
-                <DialogTitle className="text-red-600">Delete Video</DialogTitle>
-                <DialogDescription>
-                  Are you sure you want to delete this video? This action cannot be undone.
-                </DialogDescription>
-              </DialogHeader>
-              {videoToDelete && (
-                <div className="py-4">
-                  <div className="bg-gray-50 rounded-lg p-3 space-y-2">
-                    <p className="font-medium text-gray-900">{videoToDelete.originalName || videoToDelete.filename}</p>
-                    <p className="text-sm text-gray-500">Size: {formatFileSize(videoToDelete.fileSize)}</p>
-                    <p className="text-sm text-gray-500">
-                      Uploaded: {new Date(videoToDelete.uploadedAt).toLocaleString()}
-                    </p>
-                  </div>
-                </div>
-              )}
-              <DialogFooter>
-                <Button
-                  variant="outline"
-                  onClick={() => {
-                    setIsDeleteVideoOpen(false);
-                    setVideoToDelete(null);
-                  }}
-                  disabled={deletingVideo}
-                >
-                  Cancel
-                </Button>
-                <Button
-                  variant="destructive"
-                  onClick={handleDeleteVideo}
-                  disabled={deletingVideo}
-                >
-                  {deletingVideo ? (
-                    <>
-                      <Loader2 className="w-4 h-4 mr-2 animate-spin" />
-                      Deleting...
-                    </>
-                  ) : (
-                    <>
-                      <Trash2 className="w-4 h-4 mr-2" />
-                      Delete Video
-                    </>
-                  )}
-                </Button>
-              </DialogFooter>
-            </DialogContent>
-          </Dialog>
+          <DeleteVideoDialog
+            open={isDeleteVideoOpen}
+            onOpenChange={setIsDeleteVideoOpen}
+            video={videoToDelete}
+            onConfirm={handleDeleteVideo}
+            onCancel={() => setVideoToDelete(null)}
+            loading={deletingVideo}
+          />
 
-          {/* Upload Progress Modal */}
-          <Dialog open={isUploading} onOpenChange={() => { }}>
-            <DialogContent className="max-w-md" onPointerDownOutside={(e) => e.preventDefault()}>
-              <DialogHeader>
-                <DialogTitle className="flex items-center gap-2">
-                  <Upload className="w-5 h-5 text-blue-600" />
-                  Uploading Video
-                </DialogTitle>
-                <DialogDescription>
-                  Please wait while your video is being uploaded...
-                </DialogDescription>
-              </DialogHeader>
-
-              <div className="py-6">
-                {/* Progress Circle */}
-                <div className="flex flex-col items-center justify-center mb-6">
-                  <div className="relative w-24 h-24">
-                    <svg className="w-24 h-24 transform -rotate-90">
-                      <circle
-                        cx="48"
-                        cy="48"
-                        r="40"
-                        stroke="currentColor"
-                        strokeWidth="8"
-                        fill="transparent"
-                        className="text-gray-200"
-                      />
-                      <circle
-                        cx="48"
-                        cy="48"
-                        r="40"
-                        stroke="currentColor"
-                        strokeWidth="8"
-                        fill="transparent"
-                        strokeDasharray={251.2}
-                        strokeDashoffset={251.2 - (251.2 * uploadProgress) / 100}
-                        className="text-blue-600 transition-all duration-300"
-                        strokeLinecap="round"
-                      />
-                    </svg>
-                    <div className="absolute inset-0 flex items-center justify-center">
-                      <span className="text-2xl font-bold text-gray-800">{uploadProgress}%</span>
-                    </div>
-                  </div>
-                </div>
-
-                {/* Progress Bar */}
-                <div className="space-y-2">
-                  <div className="w-full bg-gray-200 rounded-full h-3 overflow-hidden">
-                    <div
-                      className="h-3 rounded-full bg-gradient-to-r from-blue-500 via-blue-600 to-indigo-600 transition-all duration-300 ease-out"
-                      style={{ width: `${uploadProgress}%` }}
-                    />
-                  </div>
-                  <div className="flex justify-between text-sm text-gray-500">
-                    <span>Uploading...</span>
-                    <span>{uploadProgress}% complete</span>
-                  </div>
-                </div>
-
-                {/* Processing indicator */}
-                {uploadProgress === 100 && (
-                  <div className="flex items-center justify-center gap-2 mt-4 text-green-600">
-                    <CheckCircle2 className="w-5 h-5" />
-                    <span className="font-medium">Processing video...</span>
-                  </div>
-                )}
-              </div>
-            </DialogContent>
-          </Dialog>
+          <UploadProgressDialog open={isUploading} progress={uploadProgress} accent="blue" />
         </div>
       </div>
 

@@ -328,7 +328,7 @@ Verification URL: ${cert.verificationUrl || 'N/A'}
           icon={FileCheck}
           value={stats.total}
           label="Total"
-          gradient="from-blue-500 to-blue-600"
+          gradient="from-red-700 to-amber-500"
           onClick={() => setFilter('all')}
           isActive={filter === 'all'}
         />

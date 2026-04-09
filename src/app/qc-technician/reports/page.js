@@ -657,13 +657,6 @@ const QualityReportPage = () => {
             </div>
           </div>
           <div className="flex gap-2">
-            <Button
-              variant="outline"
-              onClick={() => router.push('/qc-technician/reports/detailed')}
-            >
-              <FileText className="h-4 w-4 mr-2" />
-              Detailed Report
-            </Button>
             <Button onClick={() => setIsNewReportModalOpen(true)}>
               <Plus className="h-4 w-4 mr-2" />
               New Report
@@ -1513,7 +1506,7 @@ const QualityReportPage = () => {
                       </CardTitle>
                     </CardHeader>
                     <CardContent>
-                      <p className="text-sm font-medium text-rose-900 mb-2">
+                      <p className="text-sm font-medium text-red-800 mb-2">
                         {selectedTemplate.sections.length} sections included:
                       </p>
                       <div className="space-y-1">
@@ -1983,7 +1976,7 @@ const QualityReportPage = () => {
                       <div className="flex items-center gap-3">
                         <Award className="h-5 w-5 text-red-700" />
                         <div>
-                          <p className="text-sm font-medium text-rose-900">
+                          <p className="text-sm font-medium text-red-800">
                             {newTemplateForm.sections.length} section{newTemplateForm.sections.length !== 1 ? 's' : ''}, {' '}
                             {newTemplateForm.sections.reduce((acc, s) => acc + s.fields.length, 0)} total fields
                           </p>
