@@ -88,7 +88,7 @@ export default function CustomerLayout({ children }) {
       <CustomerReactTour shouldOpen={shouldOpen} onOpened={handleTourOpened}>
         <div className="flex">
           <div
-            className={`fixed top-0 left-0 h-full transition-all duration-300 border-2  ${openSidebar ? "w-[270px]" : "w-[90px] hidden lg:block"
+            className={`fixed top-0 left-0 h-full transition-all duration-300 border-r bg-gray-100 dark:bg-gray-900 dark:border-gray-800 ${openSidebar ? "w-[270px]" : "w-[90px] hidden lg:block"
               }`}
           >
             <UnifiedSidebar isOpen={openSidebar} role="customer" displayName={null} />

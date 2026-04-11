@@ -1,5 +1,5 @@
 'use client'
-import React, { useState, useEffect, useCallback, useMemo, useRef } from 'react';
+import React, { Suspense, useState, useEffect, useCallback, useMemo, useRef } from 'react';
 import {
   CheckCircle,
   XCircle,
@@ -1120,4 +1120,16 @@ const QualityControlPage = () => {
   );
 };
 
-export default QualityControlPage;
+// Wrap in Suspense because useWorkspaceUrlState calls useSearchParams(),
+// which Next.js App Router requires to be inside a Suspense boundary.
+export default function QualityControlPageWithSuspense() {
+  return (
+    <Suspense fallback={
+      <div className="h-[calc(100vh-7rem)] flex items-center justify-center">
+        <Loader2 className="w-8 h-8 animate-spin text-red-600" />
+      </div>
+    }>
+      <QualityControlPage />
+    </Suspense>
+  );
+}

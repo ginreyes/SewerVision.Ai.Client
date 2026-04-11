@@ -82,7 +82,7 @@ export default function AdminLayout({ children }) {
 
         {/* Sidebar — hidden on mobile, overlay when toggled */}
         <div
-          className={`fixed top-0 left-0 h-full transition-all duration-300 border-r bg-gray-100 z-50
+          className={`fixed top-0 left-0 h-full transition-all duration-300 border-r bg-gray-100 dark:bg-gray-900 dark:border-gray-800 z-50
             ${openSidebar ? "w-[270px]" : "w-[90px] hidden lg:block"}
             ${openSidebar ? "block" : ""}
           `}

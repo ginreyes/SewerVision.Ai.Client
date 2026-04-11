@@ -16,6 +16,7 @@ import { api } from '@/lib/helper';
 import { getRoleTheme } from '@/lib/roleThemes';
 import { NotificationBell } from '../NotificationPanel';
 import { useUser } from '@/components/providers/UserContext';
+import ThemeToggle from '@/components/ui/ThemeToggle';
 
 // Search categories for icons and styling
 const searchCategories = {
@@ -305,7 +306,7 @@ const Navbar = (props) => {
 
 
   return (
-    <nav className="border-b p-4 ">
+    <nav className="border-b p-4 bg-white dark:bg-gray-900 dark:border-gray-800 transition-colors">
       <div className="flex justify-between items-center">
         {/* Left: Menu & Search */}
         <div className="flex items-center space-x-4 flex-1">
@@ -478,9 +479,11 @@ const Navbar = (props) => {
             <Image src="/Setting.png" alt="System Settings" width={22} height={22} className="object-contain" />
           </button>
 
+          <ThemeToggle />
+
           <NotificationBell className="focus:outline-none" />
 
-          <span className="text-gray-300">|</span>
+          <span className="text-gray-300 dark:text-gray-600">|</span>
 
           <Popover open={open} onOpenChange={setOpen}>
             <PopoverTrigger asChild>

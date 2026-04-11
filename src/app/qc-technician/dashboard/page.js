@@ -202,8 +202,8 @@ const QCTechnicianDashboard = () => {
             {
               label: 'Reviewed',
               data: weeklyQCStats.map(d => Number(d.reviewed) || 0),
-              borderColor: '#3B82F6',
-              backgroundColor: 'rgba(59, 130, 246, 0.1)',
+              borderColor: '#b91c1c',
+              backgroundColor: 'rgba(185, 28, 28, 0.1)',
               tension: 0.4,
               fill: true,
               borderWidth: 2
@@ -252,7 +252,7 @@ const QCTechnicianDashboard = () => {
           datasets: [{
             label: 'Total Detections',
             data: detectionTypes.map(d => d.count || 0),
-            backgroundColor: '#3B82F6',
+            backgroundColor: '#b91c1c',
             borderRadius: 4
           }]
         },

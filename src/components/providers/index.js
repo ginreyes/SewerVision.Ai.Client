@@ -8,6 +8,7 @@ import { useRouter, usePathname } from "next/navigation";
 import NotificationProvider from "./NotificationProvider";
 import { QueryProvider } from "./QueryProvider";
 import { SocketProvider } from "./SocketProvider";
+import { ThemeProvider } from "./ThemeProvider";
 import { getCookie } from "@/lib/helper";
 import { useKeyboardShortcuts } from "@/hooks/useKeyboardShortcuts";
 
@@ -30,20 +31,22 @@ export function AppProviders({ children }) {
   }, [router, pathname])
 
   return (
-    <QueryProvider>
-      <UserProvider>
-        <SocketProvider>
-        <NotificationProvider>
-          <AlertProvider>
-            <DialogProvider>
+    <ThemeProvider>
+      <QueryProvider>
+        <UserProvider>
+          <SocketProvider>
+          <NotificationProvider>
+            <AlertProvider>
+              <DialogProvider>
 
-              {children}
+                {children}
 
-            </DialogProvider>
-          </AlertProvider>
-        </NotificationProvider>
-        </SocketProvider>
-      </UserProvider>
-    </QueryProvider>
+              </DialogProvider>
+            </AlertProvider>
+          </NotificationProvider>
+          </SocketProvider>
+        </UserProvider>
+      </QueryProvider>
+    </ThemeProvider>
   );
 }
