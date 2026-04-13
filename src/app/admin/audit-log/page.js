@@ -1,6 +1,7 @@
 "use client";
 
-import React, { useState, useEffect, useCallback } from "react";
+import React, { useState, useEffect } from "react";
+import { useQuery } from "@tanstack/react-query";
 import {
   Shield, Search, Download, User, Settings, Trash2,
   LogIn, LogOut, Edit, Plus, AlertTriangle, Clock,
@@ -63,40 +64,33 @@ export default function AuditLogPage() {
   const [search, setSearch] = useState("");
   const [actionFilter, setActionFilter] = useState("all");
   const [severityFilter, setSeverityFilter] = useState("all");
-  const [logs, setLogs] = useState([]);
-  const [loading, setLoading] = useState(true);
   const [page, setPage] = useState(1);
-  const [totalPages, setTotalPages] = useState(1);
-  const [total, setTotal] = useState(0);
-  const [stats, setStats] = useState({ total: 0, today: 0, critical: 0, high: 0 });
 
-  const fetchLogs = useCallback(async () => {
-    setLoading(true);
-    try {
-      const params = new URLSearchParams();
-      params.append("page", String(page));
-      params.append("limit", "50");
-      if (actionFilter !== "all") params.append("action", actionFilter);
-      if (severityFilter !== "all") params.append("severity", severityFilter);
-      if (search) params.append("search", search);
+  const buildParams = () => {
+    const params = new URLSearchParams();
+    params.append("page", String(page));
+    params.append("limit", "50");
+    if (actionFilter !== "all") params.append("action", actionFilter);
+    if (severityFilter !== "all") params.append("severity", severityFilter);
+    if (search) params.append("search", search);
+    return params.toString();
+  };
 
-      const res = await api(`/api/audit/all?${params}`, "GET");
-      if (res.ok) {
-        setLogs(res.data?.logs || []);
-        setTotal(res.data?.pagination?.total || 0);
-        setTotalPages(res.data?.pagination?.totalPages || 1);
-        if (res.data?.stats) {
-          setStats(res.data.stats);
-        }
-      }
-    } catch (err) {
-      console.error("Failed to fetch audit logs:", err);
-    } finally {
-      setLoading(false);
-    }
-  }, [page, actionFilter, severityFilter, search]);
+  const { data: auditData, isLoading: loading } = useQuery({
+    queryKey: ["admin", "audit-logs", { page, actionFilter, severityFilter, search }],
+    queryFn: async () => {
+      const res = await api(`/api/audit/all?${buildParams()}`, "GET");
+      if (!res.ok) throw new Error("Failed to fetch audit logs");
+      return res.data;
+    },
+    staleTime: 1000 * 60,
+    keepPreviousData: true,
+  });
 
-  useEffect(() => { fetchLogs(); }, [fetchLogs]);
+  const logs = auditData?.logs || [];
+  const total = auditData?.pagination?.total || 0;
+  const totalPages = auditData?.pagination?.totalPages || 1;
+  const stats = auditData?.stats || { total: 0, today: 0, critical: 0, high: 0 };
 
   // Reset page when filters change
   useEffect(() => { setPage(1); }, [actionFilter, severityFilter, search]);

@@ -2,12 +2,12 @@
 import { Button } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
 import { Calendar as ShadcnCalendar } from "@/components/ui/calendar";
-import React, { useState, useRef, useEffect } from "react";
+import React, { useState, useRef } from "react";
 import EventFilters from "@/components/admin/calendar/FilterComponent";
 import { ArrowLeft, ArrowRight } from "lucide-react";
 import EventModal from "@/components/admin/calendar/AddEventModal";
 import { useUser } from "@/components/providers/UserContext";
-import { api } from "@/lib/helper";
+import { useAdminCalendarEvents } from "@/hooks/useQueryHooks";
 
 import MonthViewCalendar from "@/components/admin/calendar/MonthView";
 import WeekView from "@/components/admin/calendar/WeekView";
@@ -76,7 +76,6 @@ const Calendar = () => {
   const [viewMode, setViewMode] = useState("month");
   const [drawerOpen, setDrawerOpen] = useState(false);
   const [selectedDate, setSelectedDate] = useState(null);
-  const [event_list, setEventList] = useState([]);
   const [selectedEvent, setSelectedEvent] = useState(null);
   const { monthNames } = generateCalendarGrid();
 
@@ -90,16 +89,7 @@ const Calendar = () => {
   });
 
   const { userId } = useUser();
-
-  const handleFetchListEvents = async () => {
-    try {
-      const result = await api("/api/calendar/get-event", "GET");
-      const { data } = result;
-      setEventList(data);
-    } catch (error) {
-      console.error("Failed to fetch events:", error.message || error);
-    }
-  };
+  const { data: event_list = [], isLoading: eventsLoading, refetch: refetchEvents } = useAdminCalendarEvents();
 
   const AddEvent = (date) => {
     setSelectedDate(date);
@@ -176,10 +166,6 @@ const Calendar = () => {
     }
   };
 
-  useEffect(() => {
-    handleFetchListEvents();
-  }, []);
-
   const handleAddOrEditEvent = (data) => {
     if (data instanceof Date) {
       setSelectedDate(data);
@@ -194,8 +180,8 @@ const Calendar = () => {
   return (
     <>
       <div className="max-w-7xl mx-auto ">
-        <Card className="flex auto w-full flex-row overflow-hidden">
-          <div className="w-[309px] border-r flex flex-col p-4 bg-gray-50">
+        <Card className="flex auto w-full flex-row overflow-hidden dark:bg-[#1f2937] dark:border-[#374151]">
+          <div className="w-[309px] border-r dark:border-[#374151] flex flex-col p-4 bg-gray-50 dark:bg-[#111827]">
             {/* Add Event Button - Centered */}
             <div className="flex justify-center mb-6">
               <Button
@@ -220,8 +206,8 @@ const Calendar = () => {
             </div>
           </div>
 
-          <div className="flex-1 p-6">
-            <div className="flex justify-between border-b pb-5">
+          <div className="flex-1 p-6 dark:bg-[#1f2937]">
+            <div className="flex justify-between border-b dark:border-[#374151] pb-5">
               <div className="flex space-x-4 justify-start ">
                 <Button
                   onClick={handlePrevious}
@@ -237,7 +223,7 @@ const Calendar = () => {
                 >
                   <ArrowRight />
                 </Button>
-                <h1 className="text-3xl font-bold text-gray-800 select-none">
+                <h1 className="text-3xl font-bold text-gray-800 dark:text-white select-none">
                   {handleChangeHeader()}
                 </h1>
               </div>
@@ -298,7 +284,7 @@ const Calendar = () => {
               date={selectedDate}
               selectedDate={selectedDate}
               userId={userId}
-              onEventSaved={handleFetchListEvents}
+              onEventSaved={refetchEvents}
               eventData={selectedEvent}
             />
           </div>

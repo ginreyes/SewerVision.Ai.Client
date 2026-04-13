@@ -52,8 +52,9 @@ import { api, getCookie } from '@/lib/helper';
 import { useUploadLimits } from '@/hooks/useUploadLimits';
 import { useRouter } from 'next/navigation';
 import { getVideoUrl } from '@/lib/getVideoUrl';
+import ProjectSwitcher from '@/components/shared/ProjectSwitcher';
 
-const ProjectDetail = ({ project, setSelectedProject, onBack }) => {
+const ProjectDetail = ({ project, setSelectedProject, onBack, allProjects = [] }) => {
   const [isRecordingInfoExpanded, setIsRecordingInfoExpanded] = useState(true);
   const [isSnapshotsExpanded, setIsSnapshotsExpanded] = useState(true);
   const [isVideosExpanded, setIsVideosExpanded] = useState(true);
@@ -585,6 +586,10 @@ const ProjectDetail = ({ project, setSelectedProject, onBack }) => {
 
   useEffect(() => {
     if (project?._id) {
+      // Reset stale data from previous project before fetching new
+      setSelectedVideo(null);
+      setProjectVideos([]);
+      setSnapshots([]);
       fetchSnapshots();
       fetchProjectMetadata();
       fetchProjectVideos();
@@ -966,7 +971,14 @@ const ProjectDetail = ({ project, setSelectedProject, onBack }) => {
 
               <div className="flex items-center space-x-3">
                 <h1 className="text-lg font-bold text-gray-900">Project Console</h1>
-                <ChevronDown className="h-4 w-4 text-gray-400" />
+                <ProjectSwitcher
+                  projects={allProjects}
+                  currentId={project?._id}
+                  onSelect={(p) => {
+                    router.push(`?selectedProject=${p._id}`, { scroll: false });
+                    setSelectedProject(p);
+                  }}
+                />
                 <span className="font-semibold text-gray-700">{project?.name || 'Untitled Project'}</span>
 
                 {/* Status Badge - Dynamic based on status */}
@@ -1067,9 +1079,9 @@ const ProjectDetail = ({ project, setSelectedProject, onBack }) => {
           </div>
         )}
 
-        <div className="flex gap-6">
+        <div className="flex gap-6 overflow-hidden">
           {/* Main Content */}
-          <div className="flex-1">
+          <div className="flex-1 min-w-0">
             {/* Project Info Banner */}
             {project && (
               <div className={`border rounded-2xl p-6 mb-6 transition-all duration-300 shadow-sm backdrop-blur-sm ${isReprocessing
@@ -1294,76 +1306,42 @@ const ProjectDetail = ({ project, setSelectedProject, onBack }) => {
               )}
             </div>
 
-            {/* Progress bar (project progress) */}
-            <div className="bg-white border-t border-gray-200 p-4">
-              <div className="flex items-center justify-between mb-3">
-                <div className="text-sm font-medium text-gray-700">{formatTime(currentTime)}</div>
-                <div className="flex items-center space-x-2">
-                  <button className="p-1 hover:bg-gray-100 rounded">
-                    <Rewind className="h-4 w-4" />
-                  </button>
-                  <button className="p-1 hover:bg-gray-100 rounded">
-                    <SkipBack className="h-4 w-4" />
-                  </button>
-                  <button onClick={togglePlay} className="p-1 hover:bg-gray-100 rounded">
-                    {isPlaying ? <Pause className="h-4 w-4" /> : <Play className="h-4 w-4" />}
-                  </button>
-                  <button className="p-1 hover:bg-gray-100 rounded">
-                    <SkipForward className="h-4 w-4" />
-                  </button>
-                  <button className="p-1 hover:bg-gray-100 rounded">
-                    <FastForward className="h-4 w-4" />
-                  </button>
-                  <span className="text-sm text-gray-500 mx-2">2X</span>
-                  <button className="p-1 hover:bg-gray-100 rounded">
-                    <Maximize className="h-4 w-4" />
-                  </button>
-                </div>
-              </div>
-
-              {/* Progress bar (project progress) */}
-              <div className="w-full bg-gray-200 rounded-full h-2">
-                <div
-                  className="bg-blue-600 h-2 rounded-full"
-                  style={{ width: `${project?.progress || 0}%` }}
-                />
-              </div>
-            </div>
-
             {/* Observations Section */}
-            <ObservationsPanel
-              observations={observations}
-              onAddObservation={observationOpen}
-              theme="blue"
-              pacpCodes={pacpCodes}
-              projectId={project._id}
-              page={obsPage}
-              pageSize={obsPageSize}
-              total={obsTotal}
-              onPageChange={(nextPage) => {
-                if (nextPage < 1) return;
-                fetchObservations(nextPage);
-              }}
-              onGoToTime={(obs) => {
-                if (!videoRef.current || !obs?.time) return;
-                const parts = String(obs.time).split(':').map((p) => parseInt(p, 10) || 0);
-                const seconds = parts[0] * 3600 + parts[1] * 60 + parts[2];
-                videoRef.current.currentTime = seconds;
-                setIsPlaying(true);
-                videoRef.current.play().catch(() => {});
-              }}
-              onViewDetail={(obs) => setDetailObs(obs)}
-              onDeleteObservation={(id) => {
-                setObservations((prev) => prev.filter((o) => o._id !== id));
-                setObsTotal((prev) => Math.max(0, prev - 1));
-              }}
-            />
+            <div className="mt-6">
+              <ObservationsPanel
+                observations={observations}
+                onAddObservation={observationOpen}
+                theme="blue"
+                pacpCodes={pacpCodes}
+                projectId={project._id}
+                page={obsPage}
+                pageSize={obsPageSize}
+                total={obsTotal}
+                onPageChange={(nextPage) => {
+                  if (nextPage < 1) return;
+                  fetchObservations(nextPage);
+                }}
+                onGoToTime={(obs) => {
+                  if (!videoRef.current || !obs?.time) return;
+                  const parts = String(obs.time).split(':').map((p) => parseInt(p, 10) || 0);
+                  const seconds = parts[0] * 3600 + parts[1] * 60 + parts[2];
+                  videoRef.current.currentTime = seconds;
+                  setIsPlaying(true);
+                  videoRef.current.play().catch(() => {});
+                }}
+                onViewDetail={(obs) => setDetailObs(obs)}
+                onDeleteObservation={(id) => {
+                  setObservations((prev) => prev.filter((o) => o._id !== id));
+                  setObsTotal((prev) => Math.max(0, prev - 1));
+                }}
+              />
+            </div>
           </div>
 
           {/* Right Sidebar - Enhanced */}
-          <div className="w-80 bg-white/80 backdrop-blur-sm border border-gray-200/50 rounded-2xl p-5 space-y-5 shadow-sm h-fit">
+          <div className="w-80 shrink-0 bg-white/80 dark:bg-[#0c0c0e]/80 backdrop-blur-sm border border-gray-200/50 rounded-2xl p-5 space-y-5 shadow-sm h-fit">
             {/* Project Videos Section */}
-            <div className="bg-gradient-to-br from-blue-50/50 to-indigo-50/50 rounded-xl p-4 border border-blue-100/50">
+            <div className="bg-gradient-to-br from-blue-50/50 to-indigo-50/50 dark:from-blue-500/5 dark:to-indigo-500/5 rounded-xl p-4 border border-blue-100/50 dark:border-blue-500/15">
               <div className="flex items-center justify-between mb-4">
                 <div className="flex items-center space-x-2">
                   <button

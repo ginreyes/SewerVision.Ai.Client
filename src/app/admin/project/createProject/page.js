@@ -1,6 +1,6 @@
 'use client'
 
-import { useState, useCallback, useEffect } from "react";
+import { useState, useCallback, useMemo } from "react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -36,6 +36,7 @@ import { useUser } from "@/components/providers/UserContext";
 import { InputField } from "@/components/admin/project";
 import Breadcrumb from '@/components/shared/Breadcrumb';
 import { useUploadLimits } from '@/hooks/useUploadLimits';
+import { useAllUsers, useCustomers, useDevices, useCreateProject } from '@/hooks/useQueryHooks';
 
 const steps = [
   {
@@ -87,14 +88,47 @@ export default function CreateProjectPage({ backUrl = "/admin/project", returnTo
   const { userId, userData } = useUser() || {}
   const redirectAfterCreate = returnTo ?? (userData?.role === "user" ? "/user/project" : "/admin/project");
 
-  // User data states (operators & QC for user role; leads = users with role "user" for admin)
-  const [operators, setOperators] = useState([]);
-  const [qcTechnicians, setQcTechnicians] = useState([]);
-  const [leads, setLeads] = useState([]);
-  const [loadingUsers, setLoadingUsers] = useState(false);
+  // TanStack Query hooks for data fetching
+  const { data: allUsersData, isLoading: loadingUsers, refetch: refetchUsers } = useAllUsers();
+  const { data: customersData, isLoading: loadingCustomers } = useCustomers();
+  const { data: devicesData = [] } = useDevices();
+  const createProjectMutation = useCreateProject();
+
+  // Derive filtered user lists from allUsersData
+  const operators = useMemo(() => {
+    const users = allUsersData?.users || [];
+    let operatorUsers = users.filter((u) => u.role === "operator");
+    if (userData?.role === "user" && Array.isArray(userData.managedMembers) && userData.managedMembers.length > 0) {
+      const managedIds = new Set(userData.managedMembers.map((id) => String(id)));
+      operatorUsers = operatorUsers.filter((u) => u._id && managedIds.has(String(u._id)));
+    }
+    return operatorUsers;
+  }, [allUsersData, userData?.role, userData?.managedMembers]);
+
+  const qcTechnicians = useMemo(() => {
+    const users = allUsersData?.users || [];
+    let qcUsers = users.filter((u) => u.role === "qc-technician");
+    if (userData?.role === "user" && Array.isArray(userData.managedMembers) && userData.managedMembers.length > 0) {
+      const managedIds = new Set(userData.managedMembers.map((id) => String(id)));
+      qcUsers = qcUsers.filter((u) => u._id && managedIds.has(String(u._id)));
+    }
+    return qcUsers;
+  }, [allUsersData, userData?.role, userData?.managedMembers]);
+
+  const leads = useMemo(() => {
+    const users = allUsersData?.users || [];
+    return users.filter((u) => u.role === "user" || u.role === "User");
+  }, [allUsersData]);
+
+  const customers = useMemo(() => {
+    return customersData?.customers || [];
+  }, [customersData]);
+
+  const devices = useMemo(() => {
+    return Array.isArray(devicesData) ? devicesData : [];
+  }, [devicesData]);
+
   const [leadUserId, setLeadUserId] = useState("");
-  const [customers, setCustomers] = useState([]);
-  const [loadingCustomers, setLoadingCustomers] = useState(false);
   const [customerId, setCustomerId] = useState("");
 
   // Project Details - Step 1
@@ -117,7 +151,6 @@ export default function CreateProjectPage({ backUrl = "/admin/project", returnTo
   const [qcUserId, setQcUserId] = useState("");
   const [qcName, setQcName] = useState("");
   const [qcEmail, setQcEmail] = useState("");
-  const [devices, setDevices] = useState([]);
   const [assignedDeviceId, setAssignedDeviceId] = useState("");
 
   // Inspection Data - Step 4
@@ -127,68 +160,6 @@ export default function CreateProjectPage({ backUrl = "/admin/project", returnTo
   const [metadataMaterial, setMetadataMaterial] = useState("");
   const [metadataShape, setMetadataShape] = useState("");
   const [remarks, setRemarks] = useState("");
-
-  // Fetch users with specific roles; when current user is "user" role, restrict to managedMembers
-  const fetchUsers = useCallback(async () => {
-    try {
-      setLoadingUsers(true);
-      const { ok, data } = await api("/api/users/get-all-user", "GET");
-
-      if (ok && data?.users) {
-        let operatorUsers = data.users.filter((u) => u.role === "operator");
-        let qcUsers = data.users.filter((u) => u.role === "qc-technician");
-        const leadUsers = data.users.filter((u) => u.role === "user" || u.role === "User");
-
-        if (userData?.role === "user" && Array.isArray(userData.managedMembers) && userData.managedMembers.length > 0) {
-          const managedIds = new Set(userData.managedMembers.map((id) => String(id)));
-          operatorUsers = operatorUsers.filter((u) => u._id && managedIds.has(String(u._id)));
-          qcUsers = qcUsers.filter((u) => u._id && managedIds.has(String(u._id)));
-        }
-
-        setOperators(operatorUsers);
-        setQcTechnicians(qcUsers);
-        setLeads(leadUsers);
-      }
-    } catch (error) {
-      showAlert("Failed to fetch users", "error");
-      console.error("Error fetching users:", error);
-    } finally {
-      setLoadingUsers(false);
-    }
-  }, [showAlert, userData?.role, userData?.managedMembers]);
-
-  const fetchCustomers = useCallback(async () => {
-    try {
-      setLoadingCustomers(true);
-      const response = await api("/api/users/get-customers", "GET");
-      const data = response.data.data.customers
-      setCustomers(data)
-    }
-    catch (error) {
-      showAlert("Failed to fetch customers", "error");
-      console.error("Error fetching customers:", error);
-    }
-    finally {
-      setLoadingCustomers(false);
-    }
-  }, [showAlert]);
-
-  const fetchDevices = useCallback(async () => {
-    try {
-      const { ok, data } = await api("/api/devices/get-all-devices", "GET");
-      const list = data?.data ?? (Array.isArray(data) ? data : []);
-      setDevices(Array.isArray(list) ? list : []);
-    } catch (e) {
-      console.error("Fetch devices:", e);
-      setDevices([]);
-    }
-  }, []);
-
-  useEffect(() => {
-    fetchUsers();
-    fetchCustomers();
-    fetchDevices();
-  }, [fetchUsers, fetchCustomers, fetchDevices]);
 
   const handleOperatorSelect = useCallback((userId) => {
     const selectedOperator = operators.find(op => op.user_id === userId);
@@ -395,35 +366,25 @@ export default function CreateProjectPage({ backUrl = "/admin/project", returnTo
         projectFields.status = "uploading";
       }
 
-      // Step 1: Create project (without video for fast creation)
+      // Build the FormData payload for the mutation
       const form = new FormData();
       form.append("userId", userId);
       form.append("projectData", JSON.stringify(projectFields));
 
-      // If no video, just create normally
+      // Create project via TanStack mutation
+      const result = await createProjectMutation.mutateAsync(form);
+
       if (!videoFile) {
-        const { ok, data } = await api("/api/projects/create-project", "POST", form);
-        if (!ok) {
-          showAlert(data?.message || data?.error || "Project creation failed", "error");
-          return;
-        }
         showAlert("Project created successfully", "success");
         router.push(redirectAfterCreate);
         return;
       }
 
-      // Step 1: Create project without video
-      const { ok, data } = await api("/api/projects/create-project", "POST", form);
-      if (!ok) {
-        showAlert(data?.message || data?.error || "Project creation failed", "error");
-        return;
-      }
-
-      const createdProjectId = data?.data?._id || data?.data?.id;
+      const createdProjectId = result?.data?._id || result?.data?.id;
       showAlert("Project created! Video is uploading in the background...", "success");
       router.push(redirectAfterCreate);
 
-      // Step 2: Upload video in the background (non-blocking)
+      // Step 2: Upload video in the background via XHR (non-blocking, needs progress tracking)
       if (createdProjectId) {
         const videoForm = new FormData();
         videoForm.append("video", videoFile);
@@ -467,7 +428,7 @@ export default function CreateProjectPage({ backUrl = "/admin/project", returnTo
     } finally {
       setLoading(false);
     }
-  }, [currentStep, getFormData, showAlert, validateStep, videoFile, router, redirectAfterCreate, uploadLimits]);
+  }, [currentStep, getFormData, showAlert, validateStep, videoFile, router, redirectAfterCreate, uploadLimits, createProjectMutation]);
 
 
   const renderStepContent = () => {
@@ -961,7 +922,7 @@ export default function CreateProjectPage({ backUrl = "/admin/project", returnTo
             <div className="flex justify-center pt-4">
               <Button
                 variant="outline"
-                onClick={fetchUsers}
+                onClick={() => refetchUsers()}
                 disabled={loadingUsers}
                 className="flex items-center gap-2 h-10 px-6"
               >
@@ -1217,7 +1178,7 @@ export default function CreateProjectPage({ backUrl = "/admin/project", returnTo
               {currentStep < steps.length ? (
                 <Button
                   onClick={nextStep}
-                  className="flex items-center gap-2 h-10 px-6 bg-rose-600 hover:bg-rose-700"
+                  className="flex items-center gap-2 h-10 px-6 bg-rose-600 hover:bg-rose-700 text-white"
                 >
                   Next Step
                   <ChevronRight className="h-4 w-4" />
@@ -1226,7 +1187,7 @@ export default function CreateProjectPage({ backUrl = "/admin/project", returnTo
                 <Button
                   onClick={handleSubmit}
                   disabled={loading}
-                  className="flex items-center gap-2 h-10 px-6 bg-green-600 hover:bg-green-700"
+                  className="flex items-center gap-2 h-10 px-6 bg-green-600 hover:bg-green-700 text-white"
                 >
                   {loading ? (
                     <>

@@ -34,7 +34,7 @@ const options = [
   {
     key: "system",
     label: "System",
-    description: "Follows your operating system preference",
+    description: "Follows your OS preference (light or dark)",
     icon: Monitor,
     preview: "bg-gradient-to-r from-white to-gray-900 border-gray-400",
     previewInner: "bg-gradient-to-r from-gray-100 to-gray-800",

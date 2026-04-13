@@ -27,8 +27,10 @@ import { Skeleton } from "@/components/ui/skeleton";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { useAlert } from "@/components/providers/AlertProvider";
 import { permissionLevelApi } from "@/data/permissionLevelApi";
+import { usePermissionModules, usePermissionLevels } from "@/hooks/useQueryHooks";
 import DynamicIcon from "@/components/ui/DynamicIcon";
 import { getAllRoleThemes } from "@/lib/roleThemes";
+import { AlertTriangle, RefreshCw } from "lucide-react";
 
 const ROLES = Object.values(getAllRoleThemes())
   .filter((t) => t.key !== "admin")
@@ -52,22 +54,29 @@ export default function PermissionLevelForm({ mode = "create", initialData = nul
   const [selectedModules, setSelectedModules] = useState([]);
   const [isDefault, setIsDefault] = useState(false);
 
-  const [modules, setModules] = useState([]);
-  const [loadingModules, setLoadingModules] = useState(false);
   const [expandedGroups, setExpandedGroups] = useState({});
-  const [existingLevels, setExistingLevels] = useState([]);
 
-  // Fetch existing levels for name uniqueness check
+  // TanStack Query — fetch existing permission levels for name uniqueness check
+  const { data: existingLevels = [] } = usePermissionLevels(null, {
+    select: (data) => (Array.isArray(data) ? data : []),
+  });
+
+  // TanStack Query — fetch modules for the selected role
+  const {
+    data: modules = [],
+    isLoading: loadingModules,
+    error: modulesError,
+    refetch: refetchModules,
+  } = usePermissionModules(role);
+
+  // Expand all groups when modules load
   useEffect(() => {
-    const fetchExisting = async () => {
-      try {
-        const res = await permissionLevelApi.getAll();
-        const raw = res?.data?.data ?? res?.data ?? res;
-        setExistingLevels(Array.isArray(raw) ? raw : []);
-      } catch (e) { /* ignore */ }
-    };
-    fetchExisting();
-  }, []);
+    if (modules.length > 0) {
+      const groups = {};
+      modules.forEach((m) => { groups[m.group] = true; });
+      setExpandedGroups(groups);
+    }
+  }, [modules]);
 
   useEffect(() => {
     if (initialData) {
@@ -78,29 +87,6 @@ export default function PermissionLevelForm({ mode = "create", initialData = nul
       setIsDefault(initialData.isDefault || false);
     }
   }, [initialData]);
-
-  useEffect(() => {
-    if (!role) { setModules([]); return; }
-    const fetchModules = async () => {
-      setLoadingModules(true);
-      try {
-        const res = await permissionLevelApi.getModulesForRole(role);
-        if (res?.ok) {
-          const raw = res.data?.data ?? res.data;
-          const mods = Array.isArray(raw) ? raw : [];
-          setModules(mods);
-          const groups = {};
-          mods.forEach((m) => { groups[m.group] = true; });
-          setExpandedGroups(groups);
-        }
-      } catch (e) {
-        console.error("Failed to load modules:", e);
-      } finally {
-        setLoadingModules(false);
-      }
-    };
-    fetchModules();
-  }, [role]);
 
   const groupedModules = useMemo(() => {
     const groups = {};
@@ -257,6 +243,36 @@ export default function PermissionLevelForm({ mode = "create", initialData = nul
               </div>
             </div>
           ))}
+        </div>
+      ) : modulesError ? (
+        <div className="flex flex-col items-center justify-center py-12 text-center">
+          <div className="w-12 h-12 rounded-xl bg-amber-100 dark:bg-amber-500/15 flex items-center justify-center mb-4">
+            <AlertTriangle className="w-6 h-6 text-amber-500" />
+          </div>
+          <p className="text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">Failed to load modules</p>
+          <p className="text-xs text-gray-500 dark:text-gray-400 mb-4 max-w-sm">
+            {modulesError.message?.includes('expired') || modulesError.message?.includes('token')
+              ? 'Your session may have expired. Try logging in again.'
+              : modulesError.message || 'An unexpected error occurred while loading the module list.'}
+          </p>
+          <Button variant="outline" size="sm" onClick={() => refetchModules()} className="flex items-center gap-2">
+            <RefreshCw className="w-3.5 h-3.5" />
+            Retry
+          </Button>
+        </div>
+      ) : modules.length === 0 ? (
+        <div className="flex flex-col items-center justify-center py-12 text-center">
+          <div className="w-12 h-12 rounded-xl bg-gray-100 dark:bg-gray-800 flex items-center justify-center mb-4">
+            <Settings className="w-6 h-6 text-gray-400" />
+          </div>
+          <p className="text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">No modules found for this role</p>
+          <p className="text-xs text-gray-500 dark:text-gray-400 mb-4">
+            The selected role has no security modules configured. Run the module seed first.
+          </p>
+          <Button variant="outline" size="sm" onClick={() => refetchModules()} className="flex items-center gap-2">
+            <RefreshCw className="w-3.5 h-3.5" />
+            Refresh
+          </Button>
         </div>
       ) : (
         <div className="space-y-3 mx-auto">

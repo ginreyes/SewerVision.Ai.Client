@@ -306,7 +306,7 @@ const Navbar = (props) => {
 
 
   return (
-    <nav className="border-b p-4 bg-white dark:bg-gray-900 dark:border-gray-800 transition-colors">
+    <nav className="border-b p-4 dark:bg-[#09090b] dark:border-[#27272a] transition-colors">
       <div className="flex justify-between items-center">
         {/* Left: Menu & Search */}
         <div className="flex items-center space-x-4 flex-1">
@@ -315,7 +315,7 @@ const Navbar = (props) => {
           </button>
 
           <div ref={searchContainerRef} className="relative flex-1 max-w-md">
-            <div className="relative flex items-center w-full rounded-lg border border-gray-300 dark:border-gray-600 dark:bg-gray-800" style={{ '--tw-ring-color': 'var(--role-accent, #3b82f6)' }}>
+            <div className="relative flex items-center w-full rounded-lg border border-gray-300 dark:border-[#27272a] dark:bg-[#18181b]" style={{ '--tw-ring-color': 'var(--role-accent, #3b82f6)' }}>
               <span className="px-3">
                 <FiSearch className="w-5 h-5 text-gray-400" />
               </span>
@@ -334,7 +334,7 @@ const Navbar = (props) => {
 
             {/* Search Dropdown */}
             {searchOpen && (
-              <div className="absolute top-full left-0 right-0 mt-1 bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700 rounded-lg shadow-lg z-50 max-h-96 overflow-y-auto">
+              <div className="absolute top-full left-0 right-0 mt-1 bg-white dark:bg-[#18181b] border border-gray-200 dark:border-[#27272a] rounded-lg shadow-lg z-50 max-h-96 overflow-y-auto">
                 {/* Autocomplete Results - grouped by category */}
                 {searchQuery.length > 1 && (
                   <div className="p-2">
@@ -367,7 +367,7 @@ const Navbar = (props) => {
                               return (
                                 <div
                                   key={result.id}
-                                  className="flex items-start space-x-3 p-2 hover:bg-gray-50 dark:hover:bg-gray-700 rounded cursor-pointer ml-2"
+                                  className="flex items-start space-x-3 p-2 hover:bg-gray-50 dark:hover:bg-[#27272a] rounded cursor-pointer ml-2"
                                   onClick={() => handleResultClick(result)}
                                 >
                                   {result.imageUrl ? (
@@ -425,7 +425,7 @@ const Navbar = (props) => {
                         return (
                           <div
                             key={item.label}
-                            className="flex items-center space-x-2 p-2 hover:bg-gray-50 dark:hover:bg-gray-700 rounded-lg cursor-pointer transition-colors"
+                            className="flex items-center space-x-2 p-2 hover:bg-gray-50 dark:hover:bg-[#27272a] rounded-lg cursor-pointer transition-colors"
                             onClick={() => {
                               router.push(item.path);
                               setSearchOpen(false);
@@ -459,7 +459,7 @@ const Navbar = (props) => {
                     {recentSearches.map((search, index) => (
                       <div
                         key={index}
-                        className="flex items-center space-x-2 p-2 hover:bg-gray-50 dark:hover:bg-gray-700 rounded cursor-pointer"
+                        className="flex items-center space-x-2 p-2 hover:bg-gray-50 dark:hover:bg-[#27272a] rounded cursor-pointer"
                         onClick={() => handleRecentSearchClick(search)}
                       >
                         <FiClock className="w-3 h-3 text-gray-400" />
@@ -528,9 +528,9 @@ const Navbar = (props) => {
               </div>
 
               {/* Menu Items */}
-              <div className="p-2 bg-white dark:bg-gray-800">
+              <div className="p-2 bg-white dark:bg-[#18181b]">
                 <Link href={userRole ? `/${userRole}/settings` : '/admin/settings'}>
-                  <Button variant="ghost" className="w-full justify-start p-3 h-auto rounded-lg hover:bg-gray-50 dark:hover:bg-gray-700 group">
+                  <Button variant="ghost" className="w-full justify-start p-3 h-auto rounded-lg hover:bg-gray-50 dark:hover:bg-[#27272a] group">
                     <RxAvatar className="w-5 h-5 mr-3 text-gray-500 transition-colors" style={{ '--hover-color': 'var(--role-accent, #f43f5e)' }} />
                     <div className="text-left">
                       <p className="font-medium text-gray-700 dark:text-gray-200">Profile</p>
@@ -540,7 +540,7 @@ const Navbar = (props) => {
                 </Link>
 
                 <Link href={userRole ? `/${userRole}/settings?tab=preferences` : '/admin/settings?tab=preferences'}>
-                  <Button variant="ghost" className="w-full justify-start p-3 h-auto rounded-lg hover:bg-gray-50 dark:hover:bg-gray-700 group">
+                  <Button variant="ghost" className="w-full justify-start p-3 h-auto rounded-lg hover:bg-gray-50 dark:hover:bg-[#27272a] group">
                     <FiSettings className="w-5 h-5 mr-3 text-gray-500 group-hover:text-blue-500 transition-colors" />
                     <div className="text-left">
                       <p className="font-medium text-gray-700 dark:text-gray-200">Settings</p>
@@ -553,7 +553,7 @@ const Navbar = (props) => {
 
                 <Button
                   variant="ghost"
-                  className="w-full justify-start p-3 h-auto rounded-lg hover:bg-gray-50 dark:hover:bg-gray-700 group"
+                  className="w-full justify-start p-3 h-auto rounded-lg hover:bg-gray-50 dark:hover:bg-[#27272a] group"
                   onClick={() => {
                     setOpen(false);
                     // Dispatch custom event to trigger tour

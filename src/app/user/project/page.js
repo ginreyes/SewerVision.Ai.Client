@@ -236,6 +236,7 @@ const UserProjectModuleContent = () => {
             <ProjectDetail
               project={selectedProject}
               setSelectedProject={setSelectedProject}
+              allProjects={projects}
             />
           </div>
         ) : (

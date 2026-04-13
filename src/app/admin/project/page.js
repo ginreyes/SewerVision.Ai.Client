@@ -1,10 +1,11 @@
 "use client";
 import React, { useState, useEffect, useRef, Suspense } from "react";
-import { Search, Plus, Loader2, LayoutGrid, Rows, MoreVertical, Eye, Pencil, MapPin } from "lucide-react";
+import { Search, Plus, Loader2, LayoutGrid, Rows, MoreVertical, Eye, Pencil, MapPin, GitCompare } from "lucide-react";
 import dynamic from "next/dynamic";
 import StatusLegend from "@/components/shared/StatusLegend";
 
 const ProjectLiveTrackerView = dynamic(() => import("@/components/shared/ProjectLiveTrackerView"), { ssr: false });
+const ProjectCompare = dynamic(() => import("@/components/admin/project/ProjectCompare"), { ssr: false });
 import { Button } from "@/components/ui/button";
 import ExportButton from '@/components/shared/ExportButton';
 import EmptyState from '@/components/shared/EmptyState';
@@ -21,12 +22,11 @@ import ProjectCard from "@/components/admin/project/ProjectCard";
 import ProjectDetail from "@/components/admin/project/ProjectDetail";
 import { api } from "@/lib/helper";
 import { useAlert } from "@/components/providers/AlertProvider";
-import debounce from "lodash/debounce";
 import { useDebouncedValue } from '@/hooks/useDebouncedValue';
 import { useRouter, useSearchParams, usePathname } from "next/navigation";
+import { useAdminProjects } from '@/hooks/useQueryHooks';
 
 const SewerVisionInspectionModuleContent = () => {
-  const [projects, setProjects] = useState([]);
   const [selectedProject, setSelectedProject] = useState(null);
   const [searchTerm, setSearchTerm] = useState("");
   const debouncedSearchValue = useDebouncedValue(searchTerm, 300);
@@ -43,53 +43,27 @@ const SewerVisionInspectionModuleContent = () => {
   const isOperatorRoute = pathname?.startsWith('/operator');
 
   const [page, setPage] = useState(1);
-  const [limit] = useState(6);
-  const [totalPages, setTotalPages] = useState(1);
+  const limit = 6;
 
   const { showAlert } = useAlert();
 
-  const handleLoadData = async (
-    search = "",
-    status = "all",
-    pageNumber = 1
-  ) => {
-    try {
-      const query = new URLSearchParams({
-        page: pageNumber.toString(),
-        limit: limit.toString(),
-        search,
-        status: status === "all" ? "" : status,
-      });
+  const { data: projectsData, isLoading, refetch } = useAdminProjects({
+    page,
+    limit,
+    search: debouncedSearchValue,
+    status: statusFilter === "all" ? "" : statusFilter,
+  });
 
-      const response = await api(
-        `/api/projects/get-all-projects?${query}`,
-        "GET"
-      );
-      const { data, totalPages } = response.data;
-
-      setProjects(data);
-      setTotalPages(totalPages);
-    } catch (error) {
-      console.error(`Error Fetching: ${error.message}`);
-      showAlert(`Error Fetching Data: ${error.message}`, "error");
-    }
-  };
-
-  const debouncedSearch = debounce((value, status, page) => {
-    handleLoadData(value, status, page);
-  }, 400);
+  const projects = projectsData?.data || [];
+  const totalPages = projectsData?.totalPages || 1;
 
   const handleSearchChange = (e) => {
-    const value = e.target.value;
-    setSearchTerm(value);
-    debouncedSearch(value, statusFilter, 1);
+    setSearchTerm(e.target.value);
     setPage(1);
   };
 
   const handleStatusChange = (e) => {
-    const value = e.target.value;
-    setStatusFilter(value);
-    debouncedSearch(searchTerm, value, 1);
+    setStatusFilter(e.target.value);
     setPage(1);
   };
 
@@ -118,11 +92,6 @@ const SewerVisionInspectionModuleContent = () => {
   const AddProject = () => {
     router.push("/admin/project/createProject");
   };
-
-  useEffect(() => {
-    handleLoadData(searchTerm, statusFilter, page);
-  }, [page]);
-
 
   useEffect(() => {
     if (navigatingBackRef.current) {
@@ -180,87 +149,69 @@ const SewerVisionInspectionModuleContent = () => {
                 setSelectedProject={setSelectedProject}
                 onBack={handleBackToProjects}
                 initialSeekTime={initialTime}
+                allProjects={projects}
               />
             </div>
           </>
         ) : (
           <>
-            <div className="mb-8">
-              <div className="flex items-center justify-between">
-                <div>
-                  <h1 className="text-3xl font-bold text-gray-900">
-                    SewerVision.ai Inspection Projects
-                  </h1>
-                  <p className="text-gray-600 mt-2">
-                    AI-powered pipeline inspection with PACP certified workflow
-                  </p>
+            {/* Header — title + actions on one compact row */}
+            <div className="mb-6 flex items-center justify-between gap-4 flex-wrap">
+              <h1 className="text-2xl font-bold text-gray-900 shrink-0">Project Management</h1>
+
+              <div className="flex items-center gap-2 flex-wrap">
+                {/* View mode toggle — icon-only on sm, icon+label on md+ */}
+                <div className="inline-flex items-center rounded-lg border border-gray-200 dark:border-[#27272a] bg-white dark:bg-[#0c0c0e] overflow-hidden">
+                  {[
+                    { key: "grid", icon: LayoutGrid, label: "Grid" },
+                    { key: "table", icon: Rows, label: "Table" },
+                    { key: "tracker", icon: MapPin, label: "Tracker" },
+                    ...(!isOperatorRoute ? [{ key: "compare", icon: GitCompare, label: "Compare" }] : []),
+                  ].map((tab, i) => (
+                    <button
+                      key={tab.key}
+                      type="button"
+                      onClick={() => setViewMode(tab.key)}
+                      className={`flex items-center gap-1.5 px-2.5 py-1.5 text-[11px] font-medium transition-colors ${
+                        i > 0 ? "border-l border-gray-200 dark:border-[#27272a]" : ""
+                      } ${
+                        viewMode === tab.key
+                          ? "bg-rose-50 text-rose-600 dark:bg-rose-500/15 dark:text-rose-400"
+                          : "text-gray-500 hover:bg-gray-50 dark:text-[#a1a1aa] dark:hover:bg-[#18181b]"
+                      }`}
+                      title={tab.label}
+                    >
+                      <tab.icon className="w-3.5 h-3.5" />
+                      <span className="hidden sm:inline">{tab.label}</span>
+                    </button>
+                  ))}
                 </div>
-                <div className="flex items-center gap-3">
-                  {/* View mode toggle */}
-                  <div className="inline-flex items-center rounded-lg border border-gray-200 bg-white shadow-sm overflow-hidden">
-                    <button
-                      type="button"
-                      onClick={() => setViewMode("grid")}
-                      className={`flex items-center gap-1 px-3 py-1.5 text-xs font-medium ${
-                        viewMode === "grid"
-                          ? "bg-rose-50 text-rose-600"
-                          : "text-gray-600 hover:bg-gray-50"
-                      }`}
-                    >
-                      <LayoutGrid className="w-4 h-4" />
-                      <span>Grid</span>
-                    </button>
-                    <button
-                      type="button"
-                      onClick={() => setViewMode("table")}
-                      className={`flex items-center gap-1 px-3 py-1.5 text-xs font-medium border-l border-gray-200 ${
-                        viewMode === "table"
-                          ? "bg-rose-50 text-rose-600"
-                          : "text-gray-600 hover:bg-gray-50"
-                      }`}
-                    >
-                      <Rows className="w-4 h-4" />
-                      <span>Table</span>
-                    </button>
-                    <button
-                      type="button"
-                      onClick={() => setViewMode("tracker")}
-                      className={`flex items-center gap-1 px-3 py-1.5 text-xs font-medium border-l border-gray-200 ${
-                        viewMode === "tracker"
-                          ? "bg-rose-50 text-rose-600"
-                          : "text-gray-600 hover:bg-gray-50"
-                      }`}
-                    >
-                      <MapPin className="w-4 h-4" />
-                      <span>Live Tracker</span>
-                    </button>
-                  </div>
 
-                  <StatusLegend />
+                <StatusLegend />
 
-                  <ExportButton
-                    data={projects}
-                    columns={[
-                      { key: "name", label: "Name" },
-                      { key: "status", label: "Status" },
-                      { key: "location", label: "Location" },
-                      { key: "progress", label: "Progress" },
-                      { key: "workOrder", label: "Work Order" },
-                      { key: "client", label: "Client" },
-                    ]}
-                    filename="projects"
-                  />
+                <ExportButton
+                  data={projects}
+                  columns={[
+                    { key: "name", label: "Name" },
+                    { key: "status", label: "Status" },
+                    { key: "location", label: "Location" },
+                    { key: "progress", label: "Progress" },
+                    { key: "workOrder", label: "Work Order" },
+                    { key: "client", label: "Client" },
+                  ]}
+                  filename="projects"
+                />
 
-                  {!isOperatorRoute && (
-                    <Button
-                      onClick={AddProject}
-                      className="bg-gradient-to-r from-rose-500 to-rose-700 text-white hover:from-rose-600 hover:to-rose-800 transition-all duration-300 flex items-center gap-2 font-medium"
-                    >
-                      <Plus size={20} />
-                      New Project
-                    </Button>
-                  )}
-                </div>
+                {!isOperatorRoute && (
+                  <Button
+                    onClick={AddProject}
+                    size="sm"
+                    className="bg-gradient-to-r from-rose-500 to-rose-700 text-white hover:from-rose-600 hover:to-rose-800 flex items-center gap-1.5 h-8 text-xs font-medium"
+                  >
+                    <Plus size={14} />
+                    New Project
+                  </Button>
+                )}
               </div>
             </div>
 
@@ -292,7 +243,11 @@ const SewerVisionInspectionModuleContent = () => {
               </select>
             </div>
 
-            {viewMode === "tracker" ? (
+            {viewMode === "compare" ? (
+              <Suspense fallback={<div className="flex justify-center py-20"><Loader2 className="w-6 h-6 animate-spin" /></div>}>
+                <ProjectCompare projects={projects} />
+              </Suspense>
+            ) : viewMode === "tracker" ? (
               <ProjectLiveTrackerView projects={projects} theme="rose" />
             ) : viewMode === "grid" ? (
               projects.length === 0 ? (
@@ -312,7 +267,7 @@ const SewerVisionInspectionModuleContent = () => {
                     setSelectedProject={setSelectedProject}
                     getStatusColor={getStatusColor}
                     getPriorityColor={getPriorityColor}
-                    loadData={handleLoadData}
+                    loadData={refetch}
                   />
                 ))}
               </div>

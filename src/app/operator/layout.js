@@ -74,7 +74,7 @@ export default function OperatorLayout({ children }) {
       <>
         <div className="flex">
           <div
-            className={`fixed top-0 left-0 h-full transition-all duration-300 border-r bg-gray-100 dark:bg-gray-900 dark:border-gray-800 z-50 ${openSidebar ? "w-[270px]" : "w-[90px] hidden lg:block"
+            className={`fixed top-0 left-0 h-full transition-all duration-300 border-r bg-gray-100 dark:bg-[#0c0c0e] dark:border-[#27272a] z-50 ${openSidebar ? "w-[270px]" : "w-[90px] hidden lg:block"
               }`}
           >
             <UnifiedSidebar isOpen={openSidebar} role={role} />
@@ -85,7 +85,7 @@ export default function OperatorLayout({ children }) {
               }`}
           >
             <Navbar openSideBar={handleToggleSidebar} role="operator" />
-            <main className="p-3 sm:p-4 dark:bg-gray-950 min-h-screen transition-colors"><AnnouncementBanner role="operator" />{children}</main>
+            <main className="p-3 sm:p-4 dark:bg-[#09090b] min-h-screen transition-colors"><AnnouncementBanner role="operator" />{children}</main>
           </div>
         </div>
 

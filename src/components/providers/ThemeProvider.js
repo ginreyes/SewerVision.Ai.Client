@@ -34,11 +34,11 @@ function getSystemPreference() {
 }
 
 function getStoredTheme() {
-  if (typeof window === "undefined") return "system";
+  if (typeof window === "undefined") return "light";
   try {
-    return localStorage.getItem(STORAGE_KEY) || "system";
+    return localStorage.getItem(STORAGE_KEY) || "light";
   } catch {
-    return "system";
+    return "light";
   }
 }
 

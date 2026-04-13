@@ -203,7 +203,7 @@ const EquipmentPage = () => {
     return 'text-gray-400'
   }
 
-  if (isLoading) return (<GridSkeleton count={6} />)
+  if (loading) return (<GridSkeleton count={6} />)
   return (
     <div className="p-6 space-y-6 max-w-7xl mx-auto">
       {/* Header */}

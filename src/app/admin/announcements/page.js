@@ -1,6 +1,7 @@
 "use client";
 
-import React, { useState, useEffect, useCallback } from "react";
+import React, { useState } from "react";
+import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { Megaphone, Plus, Send, Eye, Loader2 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
@@ -16,30 +17,26 @@ const EMPTY_FORM = { title: "", body: "", type: "general", roles: [...ALL_ROLES]
 export default function Announcements() {
   const { showAlert } = useAlert();
   const { userId } = useUser();
-  const [announcements, setAnnouncements] = useState([]);
-  const [stats, setStats] = useState({ total: 0, sent: 0, totalViews: 0 });
-  const [loading, setLoading] = useState(true);
+  const queryClient = useQueryClient();
   const [showForm, setShowForm] = useState(false);
   const [editing, setEditing] = useState(null);
   const [form, setForm] = useState(EMPTY_FORM);
-  const [saving, setSaving] = useState(false);
   const [sending, setSending] = useState(null);
 
-  const fetchAnnouncements = useCallback(async () => {
-    try {
-      const res = await api("/api/announcements/all", "GET");
-      if (res.ok) {
-        setAnnouncements(res.data?.data || []);
-        if (res.data?.stats) setStats(res.data.stats);
-      }
-    } catch (err) {
-      console.error("Failed to fetch announcements:", err);
-    } finally {
-      setLoading(false);
-    }
-  }, []);
+  const ANNOUNCEMENTS_KEY = ["admin", "announcements"];
 
-  useEffect(() => { fetchAnnouncements(); }, [fetchAnnouncements]);
+  const { data: announcementsData, isLoading: loading } = useQuery({
+    queryKey: ANNOUNCEMENTS_KEY,
+    queryFn: async () => {
+      const res = await api("/api/announcements/all", "GET");
+      if (!res.ok) throw new Error("Failed to fetch announcements");
+      return res.data;
+    },
+    staleTime: 1000 * 60,
+  });
+
+  const announcements = announcementsData?.data || [];
+  const stats = announcementsData?.stats || { total: 0, sent: 0, totalViews: 0 };
 
   function openCreate() {
     setEditing(null);
@@ -53,39 +50,53 @@ export default function Announcements() {
     setShowForm(true);
   }
 
-  const handleSave = async () => {
-    if (!form.title.trim() || !form.body.trim()) { showAlert("Title and content required", "error"); return; }
-    if (form.roles.length === 0) { showAlert("Select at least one role", "error"); return; }
-    setSaving(true);
-    try {
-      const res = editing
-        ? await api(`/api/announcements/update/${editing}`, "PUT", form)
-        : await api("/api/announcements/create", "POST", { ...form, createdBy: userId });
+  const saveMutation = useMutation({
+    mutationFn: async () => {
+      return editing
+        ? api(`/api/announcements/update/${editing}`, "PUT", form)
+        : api("/api/announcements/create", "POST", { ...form, createdBy: userId });
+    },
+    onSuccess: (res) => {
       if (res.ok) {
         showAlert(editing ? "Announcement updated" : "Announcement saved as draft", "success");
         setShowForm(false);
-        fetchAnnouncements();
+        queryClient.invalidateQueries({ queryKey: ANNOUNCEMENTS_KEY });
       } else {
         showAlert(res.data?.message || "Failed", "error");
       }
-    } catch { showAlert("Something went wrong", "error"); }
-    finally { setSaving(false); }
-  }
+    },
+    onError: () => showAlert("Something went wrong", "error"),
+  });
+
+  const handleSave = () => {
+    if (!form.title.trim() || !form.body.trim()) { showAlert("Title and content required", "error"); return; }
+    if (form.roles.length === 0) { showAlert("Select at least one role", "error"); return; }
+    saveMutation.mutate();
+  };
+
+  const saving = saveMutation.isPending;
 
   const handleSend = async (id) => {
     setSending(id);
     try {
       const res = await api(`/api/announcements/send/${id}`, "PUT");
-      if (res.ok) { showAlert("Announcement sent", "success"); fetchAnnouncements(); }
-      else showAlert(res.data?.message || "Failed to send", "error");
+      if (res.ok) {
+        showAlert("Announcement sent", "success");
+        queryClient.invalidateQueries({ queryKey: ANNOUNCEMENTS_KEY });
+      } else {
+        showAlert(res.data?.message || "Failed to send", "error");
+      }
     } catch { showAlert("Failed to send", "error"); }
     finally { setSending(null); }
-  }
+  };
 
   async function handleDelete(id) {
     try {
       const res = await api(`/api/announcements/delete/${id}`, "DELETE");
-      if (res.ok) { showAlert("Announcement deleted", "success"); fetchAnnouncements(); }
+      if (res.ok) {
+        showAlert("Announcement deleted", "success");
+        queryClient.invalidateQueries({ queryKey: ANNOUNCEMENTS_KEY });
+      }
     } catch { showAlert("Failed to delete", "error"); }
   }
 

@@ -29,13 +29,15 @@ export default function MonthViewCalendar({ currentYear, currentMonth, today, ev
     etc: 'bg-[#03C3EC]/10 text-[#03C3EC] border-[#03C3EC]',
   }
 
+  const isToday = (day) => day === today.getDate() && currentMonth === today.getMonth() && currentYear === today.getFullYear()
+
   return (
     <div className="w-full">
       <div className="h-[600px] w-full overflow-y-auto">
         {/* Header */}
-        <div className="grid grid-cols-7 border-b border-gray-300 sticky top-0 bg-white z-10">
+        <div className="grid grid-cols-7 border-b border-gray-200 dark:border-[#374151] sticky top-0 bg-gray-50 dark:bg-[#111827] z-10">
           {daysOfWeek.map((day) => (
-            <div key={day} className="p-4 text-center font-semibold text-gray-600 border-r border-gray-300 last:border-r-0">
+            <div key={day} className="p-3 text-center text-xs font-semibold uppercase tracking-wider text-gray-500 dark:text-gray-400 border-r border-gray-200 dark:border-[#374151] last:border-r-0">
               {day}
             </div>
           ))}
@@ -59,22 +61,34 @@ export default function MonthViewCalendar({ currentYear, currentMonth, today, ev
               <div
                 key={index}
                 onClick={day ? () => AddEvent(clickedDate) : undefined}
-                className={`h-32 p-2 border-r border-b border-gray-300 last:border-r-0 
-                  ${day ? 'hover:bg-gray-50 cursor-pointer' : 'bg-gray-50'} 
-                  ${day && day === today.getDate() && currentMonth === today.getMonth() ? 'bg-blue-50 border-blue-200' : ''}`}
+                className={cn(
+                  'h-32 p-2 border-r border-b border-gray-100 dark:border-[#374151] last:border-r-0 transition-colors',
+                  day ? 'hover:bg-gray-50 dark:hover:bg-[#374151] cursor-pointer' : 'bg-gray-50/50 dark:bg-[#111827]',
+                  isToday(day) && 'bg-blue-50/50 dark:bg-blue-500/10 border-blue-200 dark:border-blue-500/30'
+                )}
               >
                 {day && (
                   <>
-                    <div className={`text-lg font-medium ${day === today.getDate() && currentMonth === today.getMonth() ? 'text-blue-600' : 'text-gray-800'}`}>
-                      {day}
+                    <div className={cn(
+                      'text-sm font-semibold mb-1',
+                      isToday(day) ? 'text-blue-600 dark:text-blue-400' : 'text-gray-800 dark:text-gray-200'
+                    )}>
+                      {isToday(day) ? (
+                        <span className="inline-flex items-center justify-center w-7 h-7 rounded-full bg-blue-600 text-white text-xs font-bold">
+                          {day}
+                        </span>
+                      ) : day}
                     </div>
 
-                    {/* Show up to 3 events */}
+                    {/* Events */}
                     {shownEvents.map((event, i) => (
                       <div
                         key={i}
                         title={event.title}
-                        className={`mt-1 text-xs rounded px-1 py-0.5 truncate border cursor-pointer hover:opacity-90 ${categoryColorMap[event.category] || 'bg-gray-200 text-gray-800 border-gray-300'}`}
+                        className={cn(
+                          'mt-0.5 text-[11px] rounded px-1.5 py-0.5 truncate border cursor-pointer hover:opacity-80 transition-opacity',
+                          categoryColorMap[event.category] || 'bg-gray-100 dark:bg-[#374151] text-gray-700 dark:text-gray-300 border-gray-200 dark:border-[#4b5563]'
+                        )}
                         onClick={(e) => {
                           e.stopPropagation()
                           AddEvent(event)
@@ -84,60 +98,62 @@ export default function MonthViewCalendar({ currentYear, currentMonth, today, ev
                       </div>
                     ))}
 
-                    {/* If more than 3, show "+N more" popover */}
+                    {/* More events popover */}
                     {remainingCount > 0 && (
                       <Popover open={openPopoverIndex === index} onOpenChange={(open) => setOpenPopoverIndex(open ? index : null)}>
-                      <PopoverTrigger asChild>
-                        <div
-                          onClick={(e) => {
-                            e.stopPropagation()
-                            setOpenPopoverIndex(index) // open the specific popover
-                          }}
-                          className="mt-1 text-xs text-blue-500 underline cursor-pointer"
-                        >
-                          +{remainingCount} more
-                        </div>
-                      </PopoverTrigger>
-                    
-                      <PopoverContent
-                        side="bottom"
-                        className="w-64 p-3 rounded-lg shadow-md border bg-white space-y-2"
-                        onClick={(e) => e.stopPropagation()}
-                      >
-                        <div className="flex items-center justify-between">
-                          <div className="font-semibold text-sm text-gray-700">
-                            {clickedDate?.toLocaleDateString("en-US", {
-                              year: "numeric",
-                              month: "long",
-                              day: "numeric",
-                            })}
-                          </div>
-                          <button
-                            className="text-gray-400 hover:text-gray-600 text-sm"
-                            onClick={() => setOpenPopoverIndex(null)} // <-- Close popover here
-                          >
-                            ×
-                          </button>
-                        </div>
-                    
-                        {events.map((event, i) => (
+                        <PopoverTrigger asChild>
                           <div
-                            key={i}
-                            className={cn(
-                              'text-xs font-medium px-2 py-1 rounded cursor-pointer truncate',
-                              categoryColorMap[event.category] || 'bg-gray-100 text-gray-800'
-                            )}
-                            title={event.title}
                             onClick={(e) => {
                               e.stopPropagation()
-                              AddEvent(event)
-                              setOpenPopoverIndex(null) // also close popover when selecting event
+                              setOpenPopoverIndex(index)
                             }}
+                            className="mt-0.5 text-[11px] text-blue-500 dark:text-blue-300 hover:underline cursor-pointer"
                           >
-                            {event.title}
+                            +{remainingCount} more
                           </div>
-                        ))}
-                      </PopoverContent>
+                        </PopoverTrigger>
+
+                        <PopoverContent
+                          side="bottom"
+                          className="w-64 p-3 rounded-xl shadow-lg"
+                          onClick={(e) => e.stopPropagation()}
+                        >
+                          <div className="flex items-center justify-between mb-2">
+                            <div className="font-semibold text-sm">
+                              {clickedDate?.toLocaleDateString("en-US", {
+                                year: "numeric",
+                                month: "long",
+                                day: "numeric",
+                              })}
+                            </div>
+                            <button
+                              className="text-muted-foreground hover:text-foreground text-sm"
+                              onClick={() => setOpenPopoverIndex(null)}
+                            >
+                              ×
+                            </button>
+                          </div>
+
+                          <div className="space-y-1">
+                            {events.map((event, i) => (
+                              <div
+                                key={i}
+                                className={cn(
+                                  'text-xs font-medium px-2 py-1.5 rounded-lg cursor-pointer truncate',
+                                  categoryColorMap[event.category] || 'bg-muted text-muted-foreground'
+                                )}
+                                title={event.title}
+                                onClick={(e) => {
+                                  e.stopPropagation()
+                                  AddEvent(event)
+                                  setOpenPopoverIndex(null)
+                                }}
+                              >
+                                {event.title}
+                              </div>
+                            ))}
+                          </div>
+                        </PopoverContent>
                       </Popover>
                     )}
 

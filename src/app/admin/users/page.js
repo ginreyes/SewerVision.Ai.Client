@@ -1,11 +1,12 @@
 "use client";
-import React, { useState, useEffect } from "react";
+import React, { useState, useEffect, useMemo } from "react";
 import AddUserModal from "@/components/admin/users/user-management/AddUserModal";
 import SendEmailModal from "@/components/admin/users/user-management/SendEmailModal";
 import ChangePasswordModal from "@/components/admin/users/user-management/ChangePasswordModal";
 import { api, getCookie } from "@/lib/helper";
 import { useAlert } from "@/components/providers/AlertProvider";
 import { useDialog } from "@/components/providers/DialogProvider";
+import { useAllUsers } from "@/hooks/useQueryHooks";
 import SewerTable from "@/components/ui/SewerTable";
 import { useRouter } from "next/navigation";
 import CardList from "@/components/admin/users/user-management/CardList";
@@ -71,9 +72,7 @@ function formatRelativeTime(dateStr) {
 }
 
 const UserPage = () => {
-  const [users, setUsers] = useState([]);
   const [search, setSearch] = useState("");
-  const [loading, setLoading] = useState(true);
   const [filters, setFilters] = useState({ role: "", status: "" });
   const { showAlert } = useAlert();
   const { showDelete } = useDialog();
@@ -81,42 +80,21 @@ const UserPage = () => {
 
   const [page, setPage] = useState(1);
   const [limit] = useState(50);
-  const [totalPages, setTotalPages] = useState(1);
-  const [totalUsers, setTotalUsers] = useState(0);
 
-  useEffect(() => {
-    fetchUsers();
-  }, [page, search, filters]);
+  // Build filter object for the TanStack Query hook
+  const queryFilters = useMemo(() => ({
+    page,
+    limit,
+    ...(search && { search }),
+    ...(filters.role && filters.role !== "all" && { role: filters.role }),
+    ...(filters.status && filters.status !== "all" && { status: filters.status }),
+  }), [page, limit, search, filters]);
 
-  const fetchUsers = async () => {
-    try {
-      setLoading(true);
-      const queryParams = new URLSearchParams({
-        page: page.toString(),
-        limit: limit.toString(),
-        ...(search && { search }),
-        ...(filters.role && filters.role !== "all" && { role: filters.role }),
-        ...(filters.status && filters.status !== "all" && { status: filters.status }),
-      });
+  const { data: usersData, isLoading: loading, refetch } = useAllUsers(queryFilters);
 
-      const { ok, data } = await api(`/api/users/get-all-user?${queryParams}`, "GET");
-
-      if (ok && Array.isArray(data.users)) {
-        setUsers(data.users);
-        setTotalPages(data.pagination?.totalPages || 1);
-        setTotalUsers(data.pagination?.total || 0);
-      } 
-      else {
-        console.error("Failed to fetch users or users is not an array");
-        setUsers([]);
-      }
-    } catch (error) {
-      console.error("Fetch users error:", error);
-      setUsers([]);
-    } finally {
-      setLoading(false);
-    }
-  };
+  const users = usersData?.users || [];
+  const totalPages = usersData?.pagination?.totalPages || 1;
+  const totalUsers = usersData?.pagination?.total || 0;
 
   const handleDelete = async (user_id) => {
     showDelete({
@@ -132,9 +110,8 @@ const UserPage = () => {
             actorUsername,
             actorRole,
           });
-          setUsers((prev) => prev.filter((u) => u._id !== user_id));
           showAlert("User deleted", "success");
-          fetchUsers();
+          refetch();
         } catch (error) {
           showAlert("Failed to delete user", "error");
         }
@@ -203,15 +180,8 @@ const UserPage = () => {
       });
 
       if (ok) {
-        setUsers((prev) =>
-          prev.map((u) => {
-            if (u._id === userId || u.user_id === userId) {
-              return { ...u, active: newActive, status: newActive ? "Active" : "Inactive" };
-            }
-            return u;
-          })
-        );
         showAlert(newActive ? "User enabled" : "User disabled", "success");
+        refetch();
       } else {
         showAlert("Failed to update status", "error");
       }
@@ -364,7 +334,7 @@ const UserPage = () => {
           await Promise.all(selectedUsers.map((userId) => api("/api/users/change-info", "PUT", { user_id: userId, active: false })));
           showAlert(`Successfully disabled ${selectedUsers.length} user(s)`, "success");
           setSelectedUsers([]);
-          fetchUsers();
+          refetch();
         } catch (err) {
           showAlert("Failed to disable users", "error");
         }
@@ -383,7 +353,7 @@ const UserPage = () => {
           await Promise.all(selectedUsers.map((userId) => api("/api/users/delete-account", "DELETE", { user_id: userId })));
           showAlert(`Successfully deleted ${selectedUsers.length} user(s)`, "success");
           setSelectedUsers([]);
-          fetchUsers();
+          refetch();
         } catch (err) {
           showAlert("Failed to delete users", "error");
         }
@@ -621,7 +591,7 @@ const UserPage = () => {
             </div>
             {activeTab === "users" && (
               <div className="flex items-center gap-3">
-                <AddUserModal fetchUser={fetchUsers} />
+                <AddUserModal fetchUser={refetch} />
               </div>
             )}
             {activeTab === "audit" && (

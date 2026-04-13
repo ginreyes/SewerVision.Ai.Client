@@ -19,6 +19,7 @@ import cannedResponseApi from '@/data/cannedResponseApi';
 import complaintApi from '@/data/complaintApi';
 import { knowledgeBaseApi } from '@/data/knowledgeBaseApi';
 import { surveyApi } from '@/data/surveyApi';
+import { api } from '@/lib/helper';
 
 /**
  * Query Keys - Centralized key management for cache invalidation
@@ -217,6 +218,23 @@ export const queryKeys = {
     surveyInvite: (token) => ['survey', 'invite', token],
     pendingSurveys: (customerId) => ['survey', 'pending', customerId],
     surveyInvites: (filters) => ['survey', 'invites', filters ?? {}],
+
+    // Admin — Users
+    allUsers: (filters) => ['admin', 'users', filters ?? {}],
+    customers: ['admin', 'customers'],
+
+    // Admin — Permission Levels
+    permissionLevels: (role) => ['admin', 'permission-levels', role ?? 'all'],
+    permissionModules: (role) => ['admin', 'permission-modules', role],
+
+    // Admin — Calendar
+    calendarEvents: ['admin', 'calendar-events'],
+
+    // Admin — Announcements
+    announcements: (filters) => ['admin', 'announcements', filters ?? {}],
+
+    // Admin — Projects (admin-specific list)
+    adminProjects: (filters) => ['admin', 'projects', filters ?? {}],
 };
 
 /**
@@ -1066,6 +1084,209 @@ export function useAdminReport(reportId, options = {}) {
         queryFn: () => reportsApi.getReportById(reportId),
         enabled: !!reportId,
         ...options,
+    });
+}
+
+/**
+ * ============ ADMIN — USERS, PERMISSIONS, CALENDAR, PROJECTS ============
+ */
+
+/**
+ * Fetch all users. Backend returns { users: [...], pagination: {...}, stats?: {...} }.
+ * This hook returns the FULL response object so callers can access .users, .pagination, .stats.
+ */
+export function useAllUsers(filters = {}, options = {}) {
+    return useQuery({
+        queryKey: queryKeys.allUsers(filters),
+        queryFn: async () => {
+            const params = new URLSearchParams();
+            if (filters.page) params.set('page', filters.page);
+            if (filters.limit) params.set('limit', filters.limit || '999');
+            if (filters.search) params.set('search', filters.search);
+            if (filters.role) params.set('role', filters.role);
+            if (filters.status) params.set('status', filters.status);
+            const qs = params.toString();
+            const { data } = await api(`/api/users/get-all-user${qs ? '?' + qs : '?limit=999'}`);
+            // Backend returns { users: [...], pagination, stats }
+            return data || { users: [] };
+        },
+        staleTime: 1000 * 60 * 2,
+        ...options,
+    });
+}
+
+export function useCustomers(options = {}) {
+    return useQuery({
+        queryKey: queryKeys.customers,
+        queryFn: async () => {
+            const { data } = await api('/api/users/get-customers');
+            return data?.data || data || [];
+        },
+        staleTime: 1000 * 60 * 5,
+        ...options,
+    });
+}
+
+export function usePermissionLevels(role, options = {}) {
+    return useQuery({
+        queryKey: queryKeys.permissionLevels(role),
+        queryFn: async () => {
+            const params = role ? `?role=${role}` : '';
+            const { data } = await api(`/api/permission-levels${params}`);
+            const raw = data?.data || data;
+            return Array.isArray(raw) ? raw : [];
+        },
+        staleTime: 1000 * 60 * 2,
+        ...options,
+    });
+}
+
+export function usePermissionModules(role, options = {}) {
+    return useQuery({
+        queryKey: queryKeys.permissionModules(role),
+        queryFn: async () => {
+            const res = await api(`/api/permission-levels/modules/${role}`);
+            if (!res.ok) {
+                const msg = res.data?.message || res.data?.error || `HTTP ${res.status}`;
+                throw new Error(msg);
+            }
+            const raw = res.data?.data ?? res.data;
+            // Guarantee array — the component iterates this directly
+            return Array.isArray(raw) ? raw : [];
+        },
+        enabled: !!role,
+        staleTime: 1000 * 60 * 5,
+        retry: 1,
+        ...options,
+    });
+}
+
+export function useCreatePermissionLevel() {
+    const queryClient = useQueryClient();
+    return useMutation({
+        mutationFn: async (data) => {
+            const res = await api('/api/permission-levels', 'POST', data);
+            if (!res.ok) throw new Error(res.data?.message || 'Failed to create permission level');
+            return res.data;
+        },
+        onSuccess: () => {
+            queryClient.invalidateQueries({ queryKey: ['admin', 'permission-levels'] });
+        },
+    });
+}
+
+export function useUpdatePermissionLevel() {
+    const queryClient = useQueryClient();
+    return useMutation({
+        mutationFn: async ({ id, data }) => {
+            const res = await api(`/api/permission-levels/${id}`, 'PUT', data);
+            if (!res.ok) throw new Error(res.data?.message || 'Failed to update permission level');
+            return res.data;
+        },
+        onSuccess: () => {
+            queryClient.invalidateQueries({ queryKey: ['admin', 'permission-levels'] });
+        },
+    });
+}
+
+export function useDeletePermissionLevel() {
+    const queryClient = useQueryClient();
+    return useMutation({
+        mutationFn: async (id) => {
+            const res = await api(`/api/permission-levels/${id}`, 'DELETE');
+            if (!res.ok) throw new Error(res.data?.message || 'Failed to delete permission level');
+            return res.data;
+        },
+        onSuccess: () => {
+            queryClient.invalidateQueries({ queryKey: ['admin', 'permission-levels'] });
+        },
+    });
+}
+
+export function useAdminCalendarEvents(options = {}) {
+    return useQuery({
+        queryKey: queryKeys.calendarEvents,
+        queryFn: async () => {
+            const { data } = await api('/api/calendar/get-event');
+            return Array.isArray(data) ? data : data?.data || [];
+        },
+        staleTime: 1000 * 60,
+        ...options,
+    });
+}
+
+export function useCreateCalendarEvent() {
+    const queryClient = useQueryClient();
+    return useMutation({
+        mutationFn: async (eventData) => {
+            const res = await api('/api/calendar/create-event', 'POST', eventData);
+            if (!res.ok) throw new Error(res.data?.message || 'Failed to create event');
+            return res.data;
+        },
+        onSuccess: () => {
+            queryClient.invalidateQueries({ queryKey: queryKeys.calendarEvents });
+        },
+    });
+}
+
+export function useUpdateCalendarEvent() {
+    const queryClient = useQueryClient();
+    return useMutation({
+        mutationFn: async ({ id, data }) => {
+            const res = await api(`/api/calendar/update-event/${id}`, 'PATCH', data);
+            if (!res.ok) throw new Error(res.data?.message || 'Failed to update event');
+            return res.data;
+        },
+        onSuccess: () => {
+            queryClient.invalidateQueries({ queryKey: queryKeys.calendarEvents });
+        },
+    });
+}
+
+export function useDeleteCalendarEvent() {
+    const queryClient = useQueryClient();
+    return useMutation({
+        mutationFn: async (id) => {
+            const res = await api(`/api/calendar/delete-event/${id}`, 'DELETE');
+            if (!res.ok) throw new Error(res.data?.message || 'Failed to delete event');
+            return res.data;
+        },
+        onSuccess: () => {
+            queryClient.invalidateQueries({ queryKey: queryKeys.calendarEvents });
+        },
+    });
+}
+
+export function useAdminProjects(filters = {}, options = {}) {
+    return useQuery({
+        queryKey: queryKeys.adminProjects(filters),
+        queryFn: async () => {
+            const params = new URLSearchParams();
+            if (filters.page) params.set('page', filters.page);
+            if (filters.limit) params.set('limit', filters.limit);
+            if (filters.search) params.set('search', filters.search);
+            if (filters.status) params.set('status', filters.status);
+            const qs = params.toString();
+            const { data } = await api(`/api/projects/get-all-projects${qs ? '?' + qs : ''}`);
+            return data || {};
+        },
+        staleTime: 1000 * 60,
+        ...options,
+    });
+}
+
+export function useCreateProject() {
+    const queryClient = useQueryClient();
+    return useMutation({
+        mutationFn: async (projectData) => {
+            const res = await api('/api/projects/create-project', 'POST', projectData);
+            if (!res.ok) throw new Error(res.data?.message || 'Failed to create project');
+            return res.data;
+        },
+        onSuccess: () => {
+            queryClient.invalidateQueries({ queryKey: ['admin', 'projects'] });
+            queryClient.invalidateQueries({ queryKey: ['projects'] });
+        },
     });
 }
 
@@ -3287,4 +3508,18 @@ export default {
     useUserMemberMetrics,
     useUserTeamSummary,
     useCreatePerformanceMetrics,
+    // Admin — Users, Permissions, Calendar, Projects
+    useAllUsers,
+    useCustomers,
+    usePermissionLevels,
+    usePermissionModules,
+    useCreatePermissionLevel,
+    useUpdatePermissionLevel,
+    useDeletePermissionLevel,
+    useAdminCalendarEvents,
+    useCreateCalendarEvent,
+    useUpdateCalendarEvent,
+    useDeleteCalendarEvent,
+    useAdminProjects,
+    useCreateProject,
 };

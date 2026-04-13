@@ -79,7 +79,7 @@ const AdminDashboard = () => {
   })
 
   return (
-    <div className="max-w-7xl mx-auto bg-gray-100">
+    <div className="max-w-7xl mx-auto bg-white dark:bg-[#0c0c0e] rounded-lg shadow-sm border border-gray-200 dark:border-[#27272a]">
       {/* Header */}
       <header className="bg-white shadow-sm border-b border-gray-200">
         <div className="px-6 py-4">

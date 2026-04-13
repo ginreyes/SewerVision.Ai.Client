@@ -71,7 +71,7 @@ export default function CustomerRepLayout({ children }) {
     <RoleThemeProvider role="customer-rep">
       <div className="flex">
         <div
-          className={`fixed top-0 left-0 h-full transition-all duration-300 border-r bg-gray-100 dark:bg-gray-900 dark:border-gray-800 z-50 ${openSidebar ? "w-[270px]" : "w-[90px] hidden lg:block"}`}
+          className={`fixed top-0 left-0 h-full transition-all duration-300 border-r bg-gray-100 dark:bg-[#0c0c0e] dark:border-[#27272a] z-50 ${openSidebar ? "w-[270px]" : "w-[90px] hidden lg:block"}`}
         >
           <UnifiedSidebar isOpen={openSidebar} role={role} />
         </div>
@@ -80,7 +80,7 @@ export default function CustomerRepLayout({ children }) {
           className={`flex-1 transition-all duration-300 ${openSidebar ? "lg:ml-[270px]" : "lg:ml-[90px]"}`}
         >
           <Navbar openSideBar={handleToggleSidebar} role="customer-rep" />
-          <main className="p-3 sm:p-4 dark:bg-gray-950 min-h-screen transition-colors"><AnnouncementBanner role="customer-rep" />{children}</main>
+          <main className="p-3 sm:p-4 dark:bg-[#09090b] min-h-screen transition-colors"><AnnouncementBanner role="customer-rep" />{children}</main>
         </div>
 
         {/* Tour Guide Modal */}

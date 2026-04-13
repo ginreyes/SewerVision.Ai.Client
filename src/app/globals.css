@@ -46,7 +46,7 @@
 :root {
   --radius: 0.625rem;
   --background: #e5e7eb;
-  --foreground: oklch(0.145 0 0);
+  --foreground: oklch(0% 0 0);
   --card: oklch(1 0 0);
   --card-foreground: oklch(0.145 0 0);
   --popover: oklch(1 0 0);
@@ -79,37 +79,37 @@
 }
 
 .dark {
-  --background: oklch(0.145 0 0);
-  --foreground: oklch(0.985 0 0);
-  --card: oklch(0.205 0 0);
-  --card-foreground: oklch(0.985 0 0);
-  --popover: oklch(0.205 0 0);
-  --popover-foreground: oklch(0.985 0 0);
-  --primary: oklch(0.922 0 0);
-  --primary-foreground: oklch(0.205 0 0);
-  --secondary: oklch(0.269 0 0);
-  --secondary-foreground: oklch(0.985 0 0);
-  --muted: oklch(0.269 0 0);
-  --muted-foreground: oklch(0.708 0 0);
-  --accent: oklch(0.269 0 0);
-  --accent-foreground: oklch(0.985 0 0);
-  --destructive: oklch(0.704 0.191 22.216);
-  --border: oklch(1 0 0 / 10%);
-  --input: oklch(1 0 0 / 15%);
-  --ring: oklch(0.556 0 0);
-  --chart-1: oklch(0.488 0.243 264.376);
-  --chart-2: oklch(0.696 0.17 162.48);
-  --chart-3: oklch(0.769 0.188 70.08);
-  --chart-4: oklch(0.627 0.265 303.9);
-  --chart-5: oklch(0.645 0.246 16.439);
-  --sidebar: oklch(0.205 0 0);
-  --sidebar-foreground: oklch(0.985 0 0);
-  --sidebar-primary: oklch(0.488 0.243 264.376);
-  --sidebar-primary-foreground: oklch(0.985 0 0);
-  --sidebar-accent: oklch(0.269 0 0);
-  --sidebar-accent-foreground: oklch(0.985 0 0);
-  --sidebar-border: oklch(1 0 0 / 10%);
-  --sidebar-ring: oklch(0.556 0 0);
+  --background: #09090b;
+  --foreground: #f3f4f6;
+  --card: #2b2a33;
+  --card-foreground: #f3f4f6;
+  --popover: #2b2a33;
+  --popover-foreground: #f3f4f6;
+  --primary: #e5e7eb;
+  --primary-foreground: #2b2a33;
+  --secondary: #3a3944;
+  --secondary-foreground: #f3f4f6;
+  --muted: #3a3944;
+  --muted-foreground: #9ca3af;
+  --accent: #3a3944;
+  --accent-foreground: #f3f4f6;
+  --destructive: #ef4444;
+  --border: rgba(255, 255, 255, 0.1);
+  --input: rgba(255, 255, 255, 0.12);
+  --ring: #4b5563;
+  --chart-1: #3b82f6;
+  --chart-2: #10b981;
+  --chart-3: #f59e0b;
+  --chart-4: #8b5cf6;
+  --chart-5: #ef4444;
+  --sidebar: #0c0c0e;
+  --sidebar-foreground: #f3f4f6;
+  --sidebar-primary: #3b82f6;
+  --sidebar-primary-foreground: #f3f4f6;
+  --sidebar-accent: #1e1d26;
+  --sidebar-accent-foreground: #f3f4f6;
+  --sidebar-border: rgba(255, 255, 255, 0.08);
+  --sidebar-ring: #4b5563;
 }
 
 @layer base {
@@ -125,27 +125,230 @@
    These rules handle the most common inline Tailwind patterns so
    individual pages don't need 1:1 dark: overrides on every element.
    They target the class selectors Tailwind generates and only apply
-   inside .dark, so there is zero impact on light mode. */
-.dark .bg-white { background-color: oklch(0.205 0 0) !important; }
-.dark .bg-gray-50 { background-color: oklch(0.175 0 0) !important; }
-.dark .bg-gray-100 { background-color: oklch(0.195 0 0) !important; }
-.dark .text-gray-900 { color: oklch(0.95 0 0) !important; }
-.dark .text-gray-800 { color: oklch(0.88 0 0) !important; }
-.dark .text-gray-700 { color: oklch(0.8 0 0) !important; }
-.dark .text-gray-600 { color: oklch(0.72 0 0) !important; }
-.dark .text-gray-500 { color: oklch(0.62 0 0) !important; }
-.dark .border-gray-200 { border-color: oklch(1 0 0 / 10%) !important; }
-.dark .border-gray-100 { border-color: oklch(1 0 0 / 7%) !important; }
-.dark .border-gray-300 { border-color: oklch(1 0 0 / 15%) !important; }
-.dark .shadow-sm { box-shadow: 0 1px 2px 0 rgb(0 0 0 / 0.2) !important; }
-.dark .shadow-md { box-shadow: 0 4px 6px -1px rgb(0 0 0 / 0.3), 0 2px 4px -2px rgb(0 0 0 / 0.2) !important; }
-.dark .shadow-lg { box-shadow: 0 10px 15px -3px rgb(0 0 0 / 0.3), 0 4px 6px -4px rgb(0 0 0 / 0.2) !important; }
-.dark .shadow-xl { box-shadow: 0 20px 25px -5px rgb(0 0 0 / 0.3), 0 8px 10px -6px rgb(0 0 0 / 0.2) !important; }
-/* Glassmorphism in dark mode */
+   inside .dark, so there is zero impact on light mode.
+
+   shadcn/ui zinc palette — true dark, minimal noise, high contrast.
+
+   Hierarchy:
+     Page bg:    #09090b  (zinc-950) — deepest surface
+     Card bg:    #0c0c0e             — barely lifted surface
+     Surface:    #18181b  (zinc-900) — input fields, tabs, elevated panels
+     Muted:      #27272a  (zinc-800) — hover, active tabs, inactive chips
+     Border:     #27272a             — consistent with shadcn
+     Text:       #fafafa / #a1a1aa   — primary / muted
+*/
+
+/* ── Backgrounds ──
+   User-specified gray: #2b2a33 for cards/panels.
+   Page bg: #09090b, Sidebar: #0c0c0e, Cards: #2b2a33 */
+.dark .bg-white { background-color: #1e1d22 !important; }
+.dark .bg-gray-50 { background-color: #1e1d26 !important; }
+.dark .bg-gray-100 { background-color: #1f1e20 !important; }
+.dark .bg-gray-200 { background-color: #242429 !important; }
+
+/* Colored tint backgrounds — subtle glow on dark */
+.dark .bg-blue-50 { background-color: rgba(59, 130, 246, 0.12) !important; }
+.dark .bg-green-50 { background-color: rgba(16, 185, 129, 0.12) !important; }
+.dark .bg-emerald-50 { background-color: rgba(16, 185, 129, 0.12) !important; }
+.dark .bg-red-50 { background-color: rgba(239, 68, 68, 0.12) !important; }
+.dark .bg-amber-50 { background-color: rgba(245, 158, 11, 0.12) !important; }
+.dark .bg-yellow-50 { background-color: rgba(234, 179, 8, 0.12) !important; }
+.dark .bg-purple-50 { background-color: rgba(168, 85, 247, 0.12) !important; }
+.dark .bg-indigo-50 { background-color: rgba(99, 102, 241, 0.12) !important; }
+.dark .bg-orange-50 { background-color: rgba(249, 115, 22, 0.12) !important; }
+.dark .bg-pink-50 { background-color: rgba(236, 72, 153, 0.12) !important; }
+.dark .bg-teal-50 { background-color: rgba(20, 184, 166, 0.12) !important; }
+.dark .bg-cyan-50 { background-color: rgba(6, 182, 212, 0.12) !important; }
+.dark .bg-rose-50 { background-color: rgba(244, 63, 94, 0.12) !important; }
+.dark .bg-slate-50 { background-color: rgba(100, 116, 139, 0.12) !important; }
+.dark .bg-violet-50 { background-color: rgba(139, 92, 246, 0.12) !important; }
+.dark .bg-sky-50 { background-color: rgba(14, 165, 233, 0.12) !important; }
+
+/* -100 level colored backgrounds — status badges, icon boxes, info cards.
+   These are a notch more visible than -50 so we use 0.15 opacity. */
+.dark .bg-red-100 { background-color: rgba(239, 68, 68, 0.15) !important; }
+.dark .bg-blue-100 { background-color: rgba(59, 130, 246, 0.15) !important; }
+.dark .bg-green-100 { background-color: rgba(16, 185, 129, 0.15) !important; }
+.dark .bg-emerald-100 { background-color: rgba(16, 185, 129, 0.15) !important; }
+.dark .bg-amber-100 { background-color: rgba(245, 158, 11, 0.15) !important; }
+.dark .bg-yellow-100 { background-color: rgba(234, 179, 8, 0.15) !important; }
+.dark .bg-purple-100 { background-color: rgba(168, 85, 247, 0.15) !important; }
+.dark .bg-indigo-100 { background-color: rgba(99, 102, 241, 0.15) !important; }
+.dark .bg-orange-100 { background-color: rgba(249, 115, 22, 0.15) !important; }
+.dark .bg-pink-100 { background-color: rgba(236, 72, 153, 0.15) !important; }
+.dark .bg-teal-100 { background-color: rgba(20, 184, 166, 0.15) !important; }
+.dark .bg-cyan-100 { background-color: rgba(6, 182, 212, 0.15) !important; }
+.dark .bg-rose-100 { background-color: rgba(244, 63, 94, 0.15) !important; }
+.dark .bg-violet-100 { background-color: rgba(139, 92, 246, 0.15) !important; }
+.dark .bg-sky-100 { background-color: rgba(14, 165, 233, 0.15) !important; }
+.dark .bg-slate-100 { background-color: rgba(100, 116, 139, 0.15) !important; }
+
+/* -200 level colored backgrounds — slightly more prominent badges/containers */
+.dark .bg-red-200 { background-color: rgba(239, 68, 68, 0.18) !important; }
+.dark .bg-blue-200 { background-color: rgba(59, 130, 246, 0.18) !important; }
+.dark .bg-green-200 { background-color: rgba(16, 185, 129, 0.18) !important; }
+.dark .bg-purple-200 { background-color: rgba(168, 85, 247, 0.18) !important; }
+.dark .bg-amber-200 { background-color: rgba(245, 158, 11, 0.18) !important; }
+.dark .bg-orange-200 { background-color: rgba(249, 115, 22, 0.18) !important; }
+
+/* ── Text — zinc scale ── */
+.dark .text-gray-900 { color: #fafafa !important; }
+.dark .text-gray-800 { color: #e4e4e7 !important; }
+.dark .text-gray-700 { color: #d4d4d8 !important; }
+.dark .text-gray-600 { color: #a1a1aa !important; }
+.dark .text-gray-500 { color: #71717a !important; }
+.dark .text-gray-400 { color: #71717a !important; }
+
+/* ── Borders — solid zinc, not rgba ── */
+.dark .border-gray-100 { border-color: #1e1e22 !important; }
+.dark .border-gray-200 { border-color: #27272a !important; }
+.dark .border-gray-200\/50 { border-color: rgba(39, 39, 42, 0.3) !important; }
+.dark .border-gray-300 { border-color: #3f3f46 !important; }
+/* Colored borders used on alerts/banners */
+.dark .border-red-200 { border-color: rgba(239, 68, 68, 0.2) !important; }
+.dark .border-orange-300 { border-color: rgba(249, 115, 22, 0.25) !important; }
+.dark .border-green-200 { border-color: rgba(16, 185, 129, 0.2) !important; }
+.dark .border-blue-200 { border-color: rgba(59, 130, 246, 0.2) !important; }
+.dark .border-purple-200 { border-color: rgba(168, 85, 247, 0.2) !important; }
+.dark .border-amber-200 { border-color: rgba(245, 158, 11, 0.2) !important; }
+.dark .divide-gray-100 > :not(:last-child) { border-color: #1e1e22 !important; }
+.dark .divide-gray-200 > :not(:last-child) { border-color: #27272a !important; }
+
+/* ── Shadows — nearly invisible on true dark ── */
+.dark .shadow-sm { box-shadow: 0 1px 2px 0 rgb(0 0 0 / 0.5) !important; }
+.dark .shadow-md { box-shadow: 0 4px 6px -1px rgb(0 0 0 / 0.5) !important; }
+.dark .shadow-lg { box-shadow: 0 10px 15px -3px rgb(0 0 0 / 0.5) !important; }
+.dark .shadow-xl { box-shadow: 0 20px 25px -5px rgb(0 0 0 / 0.5) !important; }
+
+/* ── Tables ── */
+.dark table { background-color: #0c0c0e !important; }
+.dark thead { background-color: #18181b !important; }
+.dark thead tr { background-color: #18181b !important; }
+.dark th { color: #a1a1aa !important; border-color: #27272a !important; }
+.dark td { border-color: #1e1e22 !important; color: #d4d4d8; }
+.dark tbody tr { background-color: #0c0c0e !important; }
+.dark tbody tr:hover { background-color: #18181b !important; }
+.dark .even\:bg-gray-50:nth-child(even) { background-color: #111113 !important; }
+/* Opacity-modified bg-gray classes used on table headers */
+.dark .bg-gray-50\/80 { background-color: #18181b !important; }
+.dark .bg-gray-50\/50 { background-color: #18181b !important; }
+.dark .bg-white\/80 { background-color: rgba(12, 12, 14, 0.9) !important; }
+.dark .bg-white\/60 { background-color: rgba(12, 12, 14, 0.8) !important; }
+.dark .bg-white\/50 { background-color: rgba(12, 12, 14, 0.7) !important; }
+/* Colored -100/50 opacity combos used in sidebar sections */
+.dark .border-blue-100\/50 { border-color: rgba(59, 130, 246, 0.12) !important; }
+.dark .border-green-100\/50 { border-color: rgba(16, 185, 129, 0.12) !important; }
+.dark .border-purple-100\/50 { border-color: rgba(168, 85, 247, 0.12) !important; }
+
+/* ── Hover states ── */
+.dark .hover\:bg-gray-50:hover { background-color: #18181b !important; }
+.dark .hover\:bg-gray-100:hover { background-color: #27272a !important; }
+
+/* ── Ring / Focus ── */
+.dark .ring-gray-200 { --tw-ring-color: #27272a !important; }
+.dark .ring-gray-300 { --tw-ring-color: #3f3f46 !important; }
+
+/* ── Gradient overrides ──
+   Map all light -50 gradient stops to their dark equivalents.
+   ProjectDetail banners use patterns like `from-rose-50 via-pink-50 to-rose-50`
+   which must become near-black with a subtle color tint. */
+.dark .from-gray-50 { --tw-gradient-from: #18181b !important; }
+.dark .to-gray-50 { --tw-gradient-to: #18181b !important; }
+.dark .via-gray-50 { --tw-gradient-via: #18181b !important; }
+.dark .from-white { --tw-gradient-from: #0c0c0e !important; }
+.dark .to-white { --tw-gradient-to: #0c0c0e !important; }
+.dark .from-slate-50 { --tw-gradient-from: rgba(100, 116, 139, 0.08) !important; }
+.dark .to-slate-50 { --tw-gradient-to: rgba(100, 116, 139, 0.08) !important; }
+.dark .via-slate-50 { --tw-gradient-via: rgba(100, 116, 139, 0.06) !important; }
+.dark .from-blue-50 { --tw-gradient-from: rgba(59, 130, 246, 0.08) !important; }
+.dark .to-blue-50 { --tw-gradient-to: rgba(59, 130, 246, 0.08) !important; }
+.dark .via-blue-50 { --tw-gradient-via: rgba(59, 130, 246, 0.06) !important; }
+.dark .from-indigo-50 { --tw-gradient-from: rgba(99, 102, 241, 0.08) !important; }
+.dark .to-indigo-50 { --tw-gradient-to: rgba(99, 102, 241, 0.08) !important; }
+.dark .via-indigo-50 { --tw-gradient-via: rgba(99, 102, 241, 0.06) !important; }
+.dark .from-purple-50 { --tw-gradient-from: rgba(168, 85, 247, 0.08) !important; }
+.dark .to-purple-50 { --tw-gradient-to: rgba(168, 85, 247, 0.08) !important; }
+.dark .via-purple-50 { --tw-gradient-via: rgba(168, 85, 247, 0.06) !important; }
+.dark .from-violet-50 { --tw-gradient-from: rgba(139, 92, 246, 0.08) !important; }
+.dark .to-violet-50 { --tw-gradient-to: rgba(139, 92, 246, 0.08) !important; }
+.dark .via-violet-50 { --tw-gradient-via: rgba(139, 92, 246, 0.06) !important; }
+.dark .from-pink-50 { --tw-gradient-from: rgba(236, 72, 153, 0.08) !important; }
+.dark .to-pink-50 { --tw-gradient-to: rgba(236, 72, 153, 0.08) !important; }
+.dark .via-pink-50 { --tw-gradient-via: rgba(236, 72, 153, 0.06) !important; }
+.dark .from-rose-50 { --tw-gradient-from: rgba(244, 63, 94, 0.08) !important; }
+.dark .to-rose-50 { --tw-gradient-to: rgba(244, 63, 94, 0.08) !important; }
+.dark .via-rose-50 { --tw-gradient-via: rgba(244, 63, 94, 0.06) !important; }
+.dark .from-red-50 { --tw-gradient-from: rgba(239, 68, 68, 0.08) !important; }
+.dark .to-red-50 { --tw-gradient-to: rgba(239, 68, 68, 0.08) !important; }
+.dark .via-red-50 { --tw-gradient-via: rgba(239, 68, 68, 0.06) !important; }
+.dark .from-green-50 { --tw-gradient-from: rgba(16, 185, 129, 0.08) !important; }
+.dark .to-green-50 { --tw-gradient-to: rgba(16, 185, 129, 0.08) !important; }
+.dark .via-green-50 { --tw-gradient-via: rgba(16, 185, 129, 0.06) !important; }
+.dark .from-emerald-50 { --tw-gradient-from: rgba(16, 185, 129, 0.08) !important; }
+.dark .to-emerald-50 { --tw-gradient-to: rgba(16, 185, 129, 0.08) !important; }
+.dark .via-emerald-50 { --tw-gradient-via: rgba(16, 185, 129, 0.06) !important; }
+.dark .from-amber-50 { --tw-gradient-from: rgba(245, 158, 11, 0.08) !important; }
+.dark .to-amber-50 { --tw-gradient-to: rgba(245, 158, 11, 0.08) !important; }
+.dark .via-amber-50 { --tw-gradient-via: rgba(245, 158, 11, 0.06) !important; }
+.dark .from-yellow-50 { --tw-gradient-from: rgba(234, 179, 8, 0.08) !important; }
+.dark .to-yellow-50 { --tw-gradient-to: rgba(234, 179, 8, 0.08) !important; }
+.dark .via-yellow-50 { --tw-gradient-via: rgba(234, 179, 8, 0.06) !important; }
+.dark .from-orange-50 { --tw-gradient-from: rgba(249, 115, 22, 0.08) !important; }
+.dark .to-orange-50 { --tw-gradient-to: rgba(249, 115, 22, 0.08) !important; }
+.dark .via-orange-50 { --tw-gradient-via: rgba(249, 115, 22, 0.06) !important; }
+.dark .from-cyan-50 { --tw-gradient-from: rgba(6, 182, 212, 0.08) !important; }
+.dark .to-cyan-50 { --tw-gradient-to: rgba(6, 182, 212, 0.08) !important; }
+.dark .via-cyan-50 { --tw-gradient-via: rgba(6, 182, 212, 0.06) !important; }
+.dark .from-sky-50 { --tw-gradient-from: rgba(14, 165, 233, 0.08) !important; }
+.dark .to-sky-50 { --tw-gradient-to: rgba(14, 165, 233, 0.08) !important; }
+.dark .via-sky-50 { --tw-gradient-via: rgba(14, 165, 233, 0.06) !important; }
+.dark .from-teal-50 { --tw-gradient-from: rgba(20, 184, 166, 0.08) !important; }
+.dark .to-teal-50 { --tw-gradient-to: rgba(20, 184, 166, 0.08) !important; }
+.dark .via-teal-50 { --tw-gradient-via: rgba(20, 184, 166, 0.06) !important; }
+
+/* Hover states on colored -50 backgrounds */
+.dark .hover\:bg-green-100:hover { background-color: rgba(16, 185, 129, 0.2) !important; }
+.dark .hover\:bg-blue-100:hover { background-color: rgba(59, 130, 246, 0.2) !important; }
+.dark .hover\:bg-red-100:hover { background-color: rgba(239, 68, 68, 0.2) !important; }
+.dark .hover\:bg-orange-50:hover { background-color: rgba(249, 115, 22, 0.15) !important; }
+.dark .hover\:bg-purple-100:hover { background-color: rgba(168, 85, 247, 0.2) !important; }
+
+/* Gray-100 gradient stops (for from-gray-100, from-slate-100 etc) */
+.dark .from-gray-100 { --tw-gradient-from: #27272a !important; }
+.dark .to-gray-100 { --tw-gradient-to: #27272a !important; }
+
+/* ── Colored shadow overrides (glow effects look too bright on dark) ── */
+.dark .shadow-violet-200 { --tw-shadow-color: rgba(139, 92, 246, 0.15) !important; }
+.dark .shadow-blue-200 { --tw-shadow-color: rgba(59, 130, 246, 0.15) !important; }
+.dark .shadow-green-200 { --tw-shadow-color: rgba(16, 185, 129, 0.15) !important; }
+.dark .shadow-amber-200 { --tw-shadow-color: rgba(245, 158, 11, 0.15) !important; }
+.dark .shadow-rose-200 { --tw-shadow-color: rgba(244, 63, 94, 0.15) !important; }
+
+/* ── Toast / Alert notifications ── */
+.toast-main-container {
+  background: rgba(255, 255, 255, 0.95);
+}
+.dark .toast-main-container {
+  background: rgba(24, 24, 27, 0.95) !important;
+  box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.3), 0 0 0 1px rgba(255, 255, 255, 0.06) !important;
+}
+/* Confirm dialog */
+.dark .confirm-dialog {
+  background-color: #18181b !important;
+}
+
+/* ── Glassmorphism ── */
 .dark .glass {
-  background: rgba(30, 30, 30, 0.5);
-  box-shadow: 0 8px 32px 0 rgba(0, 0, 0, 0.37);
-  border: 1px solid rgba(255, 255, 255, 0.08);
+  background: rgba(12, 12, 14, 0.7);
+  box-shadow: 0 8px 32px 0 rgba(0, 0, 0, 0.5);
+  border: 1px solid #27272a;
+}
+
+/* ── Backdrop blur panels ── */
+.dark .backdrop-blur-sm,
+.dark .backdrop-blur-md,
+.dark .backdrop-blur-lg {
+  background-color: rgba(9, 9, 11, 0.85);
 }
 
 @keyframes slide-in {

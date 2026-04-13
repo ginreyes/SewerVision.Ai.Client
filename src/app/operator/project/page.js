@@ -227,6 +227,7 @@ const OperatorModulePage = () => {
                 project={selectedProject}
                 setSelectedProject={setSelectedProject}
                 onBack={handleBackToProjects}
+                allProjects={projects}
               />
             </div>
           </>

@@ -82,7 +82,7 @@ export default function AdminLayout({ children }) {
 
         {/* Sidebar — hidden on mobile, overlay when toggled */}
         <div
-          className={`fixed top-0 left-0 h-full transition-all duration-300 border-r bg-gray-100 dark:bg-gray-900 dark:border-gray-800 z-50
+          className={`fixed top-0 left-0 h-full transition-all duration-300 border-r bg-gray-100 dark:bg-[#0c0c0e] dark:border-[#27272a] z-50
             ${openSidebar ? "w-[270px]" : "w-[90px] hidden lg:block"}
             ${openSidebar ? "block" : ""}
           `}
@@ -94,7 +94,7 @@ export default function AdminLayout({ children }) {
           className={`flex-1 transition-all duration-300 ${openSidebar ? "lg:ml-[270px]" : "lg:ml-[90px]"}`}
         >
           <Navbar openSideBar={handleToggleSidebar} role="admin" />
-          <main className="p-3 sm:p-4 dark:bg-gray-950 min-h-screen transition-colors">
+          <main className="p-3 sm:p-4 dark:bg-[#09090b] min-h-screen transition-colors">
             <AnnouncementBanner role="admin" />
             {children}
           </main>

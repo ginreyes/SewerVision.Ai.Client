@@ -509,15 +509,15 @@ const UnifiedSidebar = ({ isOpen, role, displayName }) => {
       <nav
         className={cn(
           'h-full flex flex-col',
-          'border-r border-gray-200/50 dark:border-gray-700/50',
-          'bg-gray-200 dark:bg-gray-900',
+          'border-r border-gray-200/50 dark:border-[#27272a]',
+          'bg-gray-200 dark:bg-[#0c0c0e]',
           'transition-all duration-300'
         )}
       >
         {/* Header */}
         <div className={cn(
           'flex items-center gap-3 px-4 py-5',
-          'border-b border-gray-200/50 dark:border-gray-700/50',
+          'border-b border-gray-200/50 dark:border-[#27272a]',
           'transition-all duration-300',
           isOpen ? 'justify-start' : 'justify-center'
         )}>
@@ -544,7 +544,7 @@ const UnifiedSidebar = ({ isOpen, role, displayName }) => {
             <div key={group.label} className="space-y-1.5">
               {isOpen && (
                 <div className="px-3 py-1">
-                  <span className="text-[11px] font-semibold text-gray-400 dark:text-gray-500 uppercase tracking-wider">
+                  <span className="text-[11px] font-semibold text-gray-400 dark:text-[#52525b] uppercase tracking-wider">
                     {group.label}
                   </span>
                 </div>
@@ -567,7 +567,7 @@ const UnifiedSidebar = ({ isOpen, role, displayName }) => {
                           'cursor-pointer select-none',
                           itemActive
                             ? `bg-gradient-to-r ${theme.activeBg} ${theme.activeText} font-semibold shadow-sm`
-                            : 'text-gray-700 dark:text-gray-300 hover:bg-gray-100/80 dark:hover:bg-gray-800/80 hover:text-gray-900 dark:hover:text-white',
+                            : 'text-gray-700 dark:text-gray-400 hover:bg-gray-100/80 dark:hover:bg-[#18181b] hover:text-gray-900 dark:hover:text-white',
                           isItemLoading && 'pointer-events-none opacity-60',
                           !isOpen && 'justify-center'
                         )}
@@ -596,7 +596,7 @@ const UnifiedSidebar = ({ isOpen, role, displayName }) => {
                               strokeWidth={itemActive ? 2.5 : 1.5}
                               className={cn(
                                 'transition-colors duration-200',
-                                itemActive ? theme.activeIcon : 'text-gray-500 dark:text-gray-400 group-hover:text-gray-700 dark:group-hover:text-gray-200'
+                                itemActive ? theme.activeIcon : 'text-gray-500 dark:text-[#71717a] group-hover:text-gray-700 dark:group-hover:text-white'
                               )}
                             />
                           )}
@@ -607,7 +607,7 @@ const UnifiedSidebar = ({ isOpen, role, displayName }) => {
                           <>
                             <span className={cn(
                               'flex-1 text-sm font-medium transition-colors duration-200',
-                              itemActive ? theme.activeText : 'text-gray-700 dark:text-gray-300 group-hover:text-gray-900 dark:group-hover:text-white'
+                              itemActive ? theme.activeText : 'text-gray-700 dark:text-[#a1a1aa] group-hover:text-gray-900 dark:group-hover:text-white'
                             )}>
                               {item.label}
                             </span>

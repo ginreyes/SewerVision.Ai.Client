@@ -192,14 +192,14 @@ const LocationPicker = memo(function LocationPicker({
 
         {/* Suggestions dropdown */}
         {suggestions.length > 0 && (
-          <div className="absolute top-full left-0 right-0 mt-1 bg-white border border-gray-200 rounded-xl shadow-xl z-20 max-h-48 overflow-y-auto">
+          <div className="absolute top-full left-0 right-0 mt-1 bg-white dark:bg-[#18181b] border border-gray-200 dark:border-[#27272a] rounded-xl shadow-xl z-20 max-h-48 overflow-y-auto">
             {suggestions.map((s, i) => (
               <button key={i} type="button" onClick={() => handleSelectSuggestion(s)}
-                className="w-full text-left px-3 py-2.5 text-sm hover:bg-indigo-50 transition-colors flex items-start gap-2 border-b border-gray-50 last:border-0">
+                className="w-full text-left px-3 py-2.5 text-sm hover:bg-indigo-50 dark:hover:bg-[#27272a] transition-colors flex items-start gap-2 border-b border-gray-50 dark:border-[#1e1e22] last:border-0">
                 <MapPin className="w-3.5 h-3.5 text-indigo-500 shrink-0 mt-0.5" />
                 <div className="min-w-0">
-                  <p className="text-xs font-medium text-gray-900 truncate">{s.short}</p>
-                  <p className="text-[10px] text-gray-400 truncate">{s.display}</p>
+                  <p className="text-xs font-medium text-gray-900 dark:text-[#fafafa] truncate">{s.short}</p>
+                  <p className="text-[10px] text-gray-400 dark:text-[#71717a] truncate">{s.display}</p>
                 </div>
               </button>
             ))}

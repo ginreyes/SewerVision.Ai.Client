@@ -265,10 +265,9 @@ function Toast({ message, type, duration, onClose, index }) {
       role="alert"
     >
       {/* Main container */}
-      <div 
-        className="relative overflow-hidden rounded-2xl"
+      <div
+        className="relative overflow-hidden rounded-2xl toast-main-container"
         style={{
-          background: 'rgba(255, 255, 255, 0.95)',
           backdropFilter: 'blur(20px) saturate(180%)',
           boxShadow: `
             0 4px 6px -1px rgba(0, 0, 0, 0.1),
@@ -320,7 +319,7 @@ function Toast({ message, type, duration, onClose, index }) {
             >
               {config.label}
             </p>
-            <p className="text-sm font-medium text-gray-800 leading-relaxed">
+            <p className="text-sm font-medium text-gray-800 dark:text-gray-200 leading-relaxed">
               {message}
             </p>
           </div>
@@ -328,7 +327,7 @@ function Toast({ message, type, duration, onClose, index }) {
           {/* Close button */}
           <button
             onClick={handleClose}
-            className="flex-shrink-0 p-1.5 rounded-lg text-gray-400 hover:text-gray-600 hover:bg-gray-100/80 transition-all duration-200 hover:scale-110 active:scale-95"
+            className="flex-shrink-0 p-1.5 rounded-lg text-gray-400 hover:text-gray-600 dark:text-gray-500 dark:hover:text-gray-300 hover:bg-gray-100/80 dark:hover:bg-white/10 transition-all duration-200 hover:scale-110 active:scale-95"
             aria-label="Close notification"
           >
             <X className="w-4 h-4" />
@@ -336,7 +335,7 @@ function Toast({ message, type, duration, onClose, index }) {
         </div>
 
         {/* Progress bar */}
-        <div className="h-1 bg-gray-100">
+        <div className="h-1 bg-gray-100 dark:bg-white/10">
           <div 
             className="toast-progress h-full rounded-full"
             style={{ 

@@ -30,7 +30,7 @@ export default function ThemeToggle({ className = "" }) {
     <button
       type="button"
       onClick={cycle}
-      className={`p-2 rounded-lg transition-colors hover:bg-gray-100 dark:hover:bg-gray-800 text-gray-500 dark:text-gray-400 ${className}`}
+      className={`p-2 rounded-lg transition-colors hover:bg-gray-100 dark:hover:bg-[#27272a] text-gray-500 dark:text-[#a1a1aa] ${className}`}
       title={label}
       aria-label={label}
     >

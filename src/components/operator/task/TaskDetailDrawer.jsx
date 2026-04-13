@@ -82,7 +82,7 @@ export default function TaskDetailDrawer({ open, onOpenChange, task }) {
   if (!task) {
     return (
       <Sheet open={open} onOpenChange={onOpenChange}>
-        <SheetContent side="right" className="w-full sm:max-w-lg overflow-y-auto">
+        <SheetContent side="right" className="w-full sm:max-w-lg overflow-y-auto top-14 h-[calc(100vh-3.5rem)]">
           <SheetHeader>
             <SheetTitle>Task Details</SheetTitle>
             <SheetDescription>No task selected</SheetDescription>

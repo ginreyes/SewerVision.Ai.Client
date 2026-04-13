@@ -102,9 +102,9 @@ const NotificationItem = ({
   return (
     <div
       className={`
-        group relative p-4 border-b border-gray-100 transition-all duration-200
-        hover:bg-gray-50/80 cursor-pointer
-        ${!notification.read ? 'bg-gradient-to-r from-blue-50/50 to-transparent' : ''}
+        group relative p-4 border-b border-gray-100 dark:border-[#1e1e22] transition-all duration-200
+        hover:bg-gray-50/80 dark:hover:bg-[#18181b] cursor-pointer
+        ${!notification.read ? 'bg-gradient-to-r from-blue-50/50 dark:from-blue-500/10 to-transparent' : ''}
       `}
       onClick={handleClick}
     >
@@ -164,8 +164,8 @@ const NotificationItem = ({
                   e.stopPropagation();
                   onMarkAsRead(notification._id);
                 }}
-                className="inline-flex items-center px-2 py-1 text-xs font-medium text-blue-600 
-                         hover:text-blue-800 hover:bg-blue-50 rounded-md transition-colors"
+                className="inline-flex items-center px-2 py-1 text-xs font-medium text-blue-600 dark:text-blue-400
+                         hover:text-blue-800 dark:hover:text-blue-300 hover:bg-blue-50 dark:hover:bg-blue-500/10 rounded-md transition-colors"
               >
                 <Check className="w-3 h-3 mr-1" />
                 Mark read
@@ -176,8 +176,8 @@ const NotificationItem = ({
                 e.stopPropagation();
                 onDelete(notification._id);
               }}
-              className="inline-flex items-center px-2 py-1 text-xs font-medium text-gray-500 
-                       hover:text-red-600 hover:bg-red-50 rounded-md transition-colors"
+              className="inline-flex items-center px-2 py-1 text-xs font-medium text-gray-500 dark:text-gray-400
+                       hover:text-red-600 dark:hover:text-red-400 hover:bg-red-50 dark:hover:bg-red-500/10 rounded-md transition-colors"
             >
               <Trash2 className="w-3 h-3 mr-1" />
               Delete
@@ -393,9 +393,9 @@ const NotificationPanel = ({ onClose }) => {
   };
 
   return (
-    <div className="bg-white rounded-2xl">
+    <div className="bg-white dark:bg-[#0c0c0e] rounded-2xl">
       {/* Header */}
-      <div className="p-4 border-b border-gray-100 bg-gradient-to-r from-gray-50 to-white">
+      <div className="p-4 border-b border-gray-100 dark:border-[#27272a] bg-gradient-to-r from-gray-50 to-white dark:from-[#18181b] dark:to-[#0c0c0e]">
         <div className="flex items-center justify-between">
           <div>
             <h3 className="text-lg font-semibold text-gray-900">Notifications</h3>
@@ -419,10 +419,18 @@ const NotificationPanel = ({ onClose }) => {
               variant="ghost"
               size="icon"
               onClick={() => {
+                onClose?.();
                 const basePath = pathname.split('/').slice(0, 2).join('/');
-                router.push(`${basePath}/notifications`);
+                // Customer settings doesn't have a notifications tab —
+                // route to the notifications page instead.
+                if (basePath.includes('/customer/') && !basePath.includes('/customer-rep')) {
+                  router.push(`${basePath}/notifications`);
+                } else {
+                  router.push(`${basePath}/settings?tab=notifications`);
+                }
               }}
-              className="h-8 w-8 text-gray-500 hover:text-gray-700"
+              className="h-8 w-8 text-gray-500 hover:text-gray-700 dark:text-gray-400 dark:hover:text-gray-200"
+              title="Notification settings"
             >
               <Settings className="h-4 w-4" />
             </Button>
@@ -519,10 +527,10 @@ const NotificationPanel = ({ onClose }) => {
 
       {/* Footer */}
       {combinedNotifications.length > 0 && (
-        <div className="p-3 border-t border-gray-100 bg-gray-50/50">
+        <div className="p-3 border-t border-gray-100 dark:border-[#27272a] bg-gray-50/50 dark:bg-[#18181b]/50">
           <Button
             variant="ghost"
-            className="w-full text-sm font-medium text-gray-600 hover:text-gray-900 hover:bg-white"
+            className="w-full text-sm font-medium text-gray-600 dark:text-gray-400 hover:text-gray-900 dark:hover:text-white hover:bg-white dark:hover:bg-[#27272a]"
             onClick={() => {
               onClose?.();
               const basePath = pathname.split('/').slice(0, 2).join('/');

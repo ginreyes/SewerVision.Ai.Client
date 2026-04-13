@@ -106,7 +106,7 @@ export default function RoutePlanner() {
           <div className="w-80 shrink-0 space-y-2">
             {sites.map((site, i) => (
               <SiteCard
-                key={site.id}
+                key={site.id || site._id || `site-${i}`}
                 site={site}
                 index={i}
                 isSelected={(selected || sites[0]?.id) === site.id}

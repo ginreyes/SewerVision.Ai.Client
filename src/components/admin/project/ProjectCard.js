@@ -238,7 +238,7 @@ const ProjectCard = memo((props) => {
 
   return (
     <Card
-      className={`flex flex-col h-full overflow-hidden transition-all duration-300 hover:shadow-xl hover:-translate-y-1 p-0 cursor-pointer border-0 shadow-md ${isPendingDelete ? "bg-gray-50" : ""}`}
+      className={`flex flex-col h-full overflow-hidden transition-all duration-300 hover:shadow-xl hover:-translate-y-1 p-0 cursor-pointer border-0 shadow-md ${isPendingDelete ? "bg-gray-100 dark:bg-[#27272a]" : ""}`}
       onClick={() => {
         router.push(`?selectedProject=${project._id}`, { scroll: false });
         setSelectedProject(project);
