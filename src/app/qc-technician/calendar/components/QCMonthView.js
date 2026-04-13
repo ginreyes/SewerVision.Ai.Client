@@ -36,9 +36,9 @@ export default function QCMonthViewCalendar({ currentYear, currentMonth, today, 
     <div className="w-full">
       <div className="h-[600px] w-full overflow-y-auto">
         {/* Header */}
-        <div className="grid grid-cols-7 border-b border-gray-300 sticky top-0 bg-white z-10">
+        <div className="grid grid-cols-7 border-b border-gray-300 dark:border-[#374151] sticky top-0 bg-white dark:bg-[#2b2a33] z-10">
           {daysOfWeek.map((day) => (
-            <div key={day} className="p-4 text-center font-semibold text-gray-600 border-r border-gray-300 last:border-r-0">
+            <div key={day} className="p-4 text-center font-semibold text-gray-600 dark:text-gray-400 border-r border-gray-300 dark:border-[#374151] last:border-r-0">
               {day}
             </div>
           ))}
@@ -70,13 +70,13 @@ export default function QCMonthViewCalendar({ currentYear, currentMonth, today, 
               <div
                 key={index}
                 onClick={day ? () => AddEvent(clickedDate) : undefined}
-                className={`h-32 p-2 border-r border-b border-gray-300 last:border-r-0 
-                  ${day ? 'hover:bg-gray-50 cursor-pointer' : 'bg-gray-50'} 
-                  ${day && day === today.getDate() && currentMonth === today.getMonth() && currentYear === today.getFullYear() ? 'bg-amber-50 border-amber-200' : ''}`}
+                className={`h-32 p-2 border-r border-b border-gray-300 dark:border-[#374151] last:border-r-0
+                  ${day ? 'hover:bg-gray-50 dark:hover:bg-[#374151] cursor-pointer' : 'bg-gray-50 dark:bg-[#23222b]'}
+                  ${day && day === today.getDate() && currentMonth === today.getMonth() && currentYear === today.getFullYear() ? 'bg-amber-50 dark:bg-amber-900/20 border-amber-200 dark:border-amber-700' : ''}`}
               >
                 {day && (
                   <>
-                    <div className={`text-lg font-medium ${day === today.getDate() && currentMonth === today.getMonth() && currentYear === today.getFullYear() ? 'text-red-700' : 'text-gray-800'}`}>
+                    <div className={`text-lg font-medium ${day === today.getDate() && currentMonth === today.getMonth() && currentYear === today.getFullYear() ? 'text-red-700 dark:text-red-400' : 'text-gray-800 dark:text-gray-200'}`}>
                       {day}
                     </div>
 
@@ -85,7 +85,7 @@ export default function QCMonthViewCalendar({ currentYear, currentMonth, today, 
                       <div
                         key={i}
                         title={event.title}
-                        className={`mt-1 text-xs rounded px-1 py-0.5 truncate border cursor-pointer hover:opacity-90 ${categoryColorMap[event.category] || 'bg-gray-200 text-gray-800 border-gray-300'}`}
+                        className={`mt-1 text-xs rounded px-1 py-0.5 truncate border cursor-pointer hover:opacity-90 ${categoryColorMap[event.category] || 'bg-gray-200 dark:bg-gray-700 text-gray-800 dark:text-gray-200 border-gray-300 dark:border-gray-600'}`}
                         onClick={(e) => {
                           e.stopPropagation()
                           AddEvent(event)
@@ -104,7 +104,7 @@ export default function QCMonthViewCalendar({ currentYear, currentMonth, today, 
                             e.stopPropagation()
                             setOpenPopoverIndex(index)
                           }}
-                          className="mt-1 text-xs text-red-600 underline cursor-pointer"
+                          className="mt-1 text-xs text-red-600 dark:text-red-400 underline cursor-pointer"
                         >
                           +{remainingCount} more
                         </div>
@@ -112,11 +112,11 @@ export default function QCMonthViewCalendar({ currentYear, currentMonth, today, 
                     
                       <PopoverContent
                         side="bottom"
-                        className="w-64 p-3 rounded-lg shadow-md border bg-white space-y-2"
+                        className="w-64 p-3 rounded-lg shadow-md border dark:border-[#374151] bg-white dark:bg-[#2b2a33] space-y-2"
                         onClick={(e) => e.stopPropagation()}
                       >
                         <div className="flex items-center justify-between">
-                          <div className="font-semibold text-sm text-gray-700">
+                          <div className="font-semibold text-sm text-gray-700 dark:text-gray-200">
                             {clickedDate?.toLocaleDateString("en-US", {
                               year: "numeric",
                               month: "long",
@@ -124,7 +124,7 @@ export default function QCMonthViewCalendar({ currentYear, currentMonth, today, 
                             })}
                           </div>
                           <button
-                            className="text-gray-400 hover:text-gray-600 text-sm"
+                            className="text-gray-400 hover:text-gray-600 dark:hover:text-gray-300 text-sm"
                             onClick={() => setOpenPopoverIndex(null)}
                           >
                             ×
@@ -136,7 +136,7 @@ export default function QCMonthViewCalendar({ currentYear, currentMonth, today, 
                             key={i}
                             className={cn(
                               'text-xs font-medium px-2 py-1 rounded cursor-pointer truncate',
-                              categoryColorMap[event.category] || 'bg-gray-100 text-gray-800'
+                              categoryColorMap[event.category] || 'bg-gray-100 dark:bg-gray-700 text-gray-800 dark:text-gray-200'
                             )}
                             title={event.title}
                             onClick={(e) => {

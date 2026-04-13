@@ -1,6 +1,7 @@
 "use client";
 import React, { useState, useEffect, useRef, useMemo, Suspense } from "react";
-import { Search, Plus, Loader2, LayoutGrid, Rows, MapPin, Video } from "lucide-react";
+import { Search, Plus, Loader2, LayoutGrid, Rows, MapPin, Video, GitCompare } from "lucide-react";
+const ProjectCompare = dynamic(() => import("@/components/admin/project/ProjectCompare"), { ssr: false });
 import dynamic from "next/dynamic";
 const ProjectLiveTrackerView = dynamic(() => import("@/components/shared/ProjectLiveTrackerView"), { ssr: false });
 import StatusLegend from "@/components/shared/StatusLegend";
@@ -267,7 +268,26 @@ const OperatorModulePage = () => {
                       <Rows className="w-4 h-4" />
                       <span>Table</span>
                     </Button>
-                    
+                    <Button
+                      type="button"
+                      variant={viewMode === "tracker" ? "secondary" : "ghost"}
+                      size="sm"
+                      onClick={() => setViewMode("tracker")}
+                      className="rounded-none border-l border-gray-200 gap-1"
+                    >
+                      <MapPin className="w-4 h-4" />
+                      <span>Tracker</span>
+                    </Button>
+                    <Button
+                      type="button"
+                      variant={viewMode === "compare" ? "secondary" : "ghost"}
+                      size="sm"
+                      onClick={() => setViewMode("compare")}
+                      className="rounded-none border-l border-gray-200 gap-1"
+                    >
+                      <GitCompare className="w-4 h-4" />
+                      <span>Compare</span>
+                    </Button>
                   </div>
 
                   <StatusLegend />
@@ -314,7 +334,9 @@ const OperatorModulePage = () => {
               </Select>
             </div>
 
-            {viewMode === "tracker" ? (
+            {viewMode === "compare" ? (
+              <ProjectCompare projects={projects} />
+            ) : viewMode === "tracker" ? (
               <ProjectLiveTrackerView projects={projects} isLoading={false} theme="blue" />
             ) : viewMode === "grid" ? (
               projects.length === 0 ? (

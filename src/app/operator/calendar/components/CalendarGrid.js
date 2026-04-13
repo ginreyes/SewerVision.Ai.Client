@@ -90,7 +90,7 @@ export default function CalendarGrid({ events, onEventClick, onDateClick, onCrea
   }
 
   return (
-    <div className="bg-white rounded-xl shadow-md border-0 overflow-hidden">
+    <div className="bg-white dark:bg-[#2b2a33] rounded-xl shadow-md border-0 overflow-hidden">
       {/* Calendar Header */}
       <div className="bg-gradient-to-r from-blue-500 to-blue-600 p-4">
         <div className="flex items-center justify-between">
@@ -133,11 +133,11 @@ export default function CalendarGrid({ events, onEventClick, onDateClick, onCrea
       {/* Calendar Grid */}
       <div className="overflow-auto max-h-[600px]">
         {/* Day Headers */}
-        <div className="grid grid-cols-7 border-b border-gray-200 bg-gray-50 sticky top-0 z-10">
+        <div className="grid grid-cols-7 border-b border-gray-200 dark:border-[#374151] bg-gray-50 dark:bg-[#23222b] sticky top-0 z-10">
           {daysOfWeek.map((day) => (
             <div
               key={day}
-              className="p-3 text-center text-sm font-semibold text-gray-600 border-r border-gray-200 last:border-r-0"
+              className="p-3 text-center text-sm font-semibold text-gray-600 dark:text-gray-400 border-r border-gray-200 dark:border-[#374151] last:border-r-0"
             >
               {day}
             </div>
@@ -164,13 +164,13 @@ export default function CalendarGrid({ events, onEventClick, onDateClick, onCrea
               <div
                 key={index}
                 onClick={day ? () => onDateClick?.(clickedDate) : undefined}
-                className={`min-h-[120px] p-2 border-r border-b border-gray-200 last:border-r-0 transition-all ${
-                  day 
-                    ? 'hover:bg-blue-50 cursor-pointer' 
-                    : 'bg-gray-50/50'
+                className={`min-h-[120px] p-2 border-r border-b border-gray-200 dark:border-[#374151] last:border-r-0 transition-all ${
+                  day
+                    ? 'hover:bg-blue-50 dark:hover:bg-[#374151] cursor-pointer'
+                    : 'bg-gray-50/50 dark:bg-[#23222b]/50'
                 } ${
-                  isToday 
-                    ? 'bg-blue-50 border-blue-300 ring-2 ring-blue-200 ring-inset' 
+                  isToday
+                    ? 'bg-blue-50 dark:bg-blue-900/20 border-blue-300 dark:border-blue-700 ring-2 ring-blue-200 dark:ring-blue-800 ring-inset'
                     : ''
                 }`}
               >
@@ -182,7 +182,7 @@ export default function CalendarGrid({ events, onEventClick, onDateClick, onCrea
                         className={`text-sm font-semibold ${
                           isToday
                             ? 'bg-blue-600 text-white w-7 h-7 rounded-full flex items-center justify-center'
-                            : 'text-gray-700'
+                            : 'text-gray-700 dark:text-gray-200'
                         }`}
                       >
                         {day}
@@ -232,14 +232,14 @@ export default function CalendarGrid({ events, onEventClick, onDateClick, onCrea
                                 e.stopPropagation()
                                 setOpenPopoverIndex(index)
                               }}
-                              className="text-xs text-blue-600 hover:text-blue-700 font-medium cursor-pointer px-2 py-1 hover:bg-blue-50 rounded transition-colors"
+                              className="text-xs text-blue-600 dark:text-blue-400 hover:text-blue-700 dark:hover:text-blue-300 font-medium cursor-pointer px-2 py-1 hover:bg-blue-50 dark:hover:bg-blue-900/20 rounded transition-colors"
                             >
                               +{remainingCount} more event{remainingCount > 1 ? 's' : ''}
                             </div>
                           </PopoverTrigger>
-                          <PopoverContent className="w-80 p-3">
+                          <PopoverContent className="w-80 p-3 dark:bg-[#2b2a33] dark:border-[#374151]">
                             <div className="space-y-2 max-h-60 overflow-y-auto">
-                              <p className="text-sm font-semibold text-gray-700 mb-2">
+                              <p className="text-sm font-semibold text-gray-700 dark:text-gray-200 mb-2">
                                 All Events for {monthNames[currentMonth]} {day}
                               </p>
                               {dayEvents.map((event, i) => {
@@ -265,11 +265,11 @@ export default function CalendarGrid({ events, onEventClick, onDateClick, onCrea
                                         <p className={`text-sm font-medium ${config.textColor} truncate`}>
                                           {event.title}
                                         </p>
-                                        <p className="text-xs text-gray-600 mt-0.5">
+                                        <p className="text-xs text-gray-600 dark:text-gray-400 mt-0.5">
                                           {eventTime}
                                         </p>
                                         {event.location && (
-                                          <p className="text-xs text-gray-500 mt-0.5 truncate">
+                                          <p className="text-xs text-gray-500 dark:text-gray-400 mt-0.5 truncate">
                                             📍 {event.location}
                                           </p>
                                         )}
@@ -293,7 +293,7 @@ export default function CalendarGrid({ events, onEventClick, onDateClick, onCrea
                           onCreateEvent?.(clickedDate)
                         }}
                       >
-                        <div className="flex items-center justify-center gap-1 text-xs text-gray-500 hover:text-blue-600 cursor-pointer">
+                        <div className="flex items-center justify-center gap-1 text-xs text-gray-500 dark:text-gray-400 hover:text-blue-600 dark:hover:text-blue-400 cursor-pointer">
                           <Plus className="w-3 h-3" />
                           <span>Add event</span>
                         </div>
@@ -308,7 +308,7 @@ export default function CalendarGrid({ events, onEventClick, onDateClick, onCrea
       </div>
 
       {/* Calendar Footer */}
-      <div className="bg-gray-50 border-t border-gray-200 p-3">
+      <div className="bg-gray-50 dark:bg-[#23222b] border-t border-gray-200 dark:border-[#374151] p-3">
         <div className="flex items-center justify-between text-xs">
           <div className="flex items-center gap-4">
             {Object.entries(eventTypeConfig).map(([key, config]) => {
@@ -318,12 +318,12 @@ export default function CalendarGrid({ events, onEventClick, onDateClick, onCrea
                   <div className={`w-3 h-3 rounded border ${config.bgColor} ${config.borderColor}`}>
                     <Icon className={`w-2 h-2 ${config.textColor} m-0.5`} />
                   </div>
-                  <span className="text-gray-600 capitalize">{key}</span>
+                  <span className="text-gray-600 dark:text-gray-400 capitalize">{key}</span>
                 </div>
               )
             })}
           </div>
-          <div className="text-gray-500">
+          <div className="text-gray-500 dark:text-gray-400">
             Click a date to create event
           </div>
         </div>

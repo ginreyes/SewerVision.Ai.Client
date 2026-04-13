@@ -1,7 +1,7 @@
 "use client";
 
 import React, { useState, useEffect, Suspense, useCallback, useMemo } from "react";
-import { Search, Plus, Loader2, FolderOpen, LayoutGrid, Rows, MapPin, Video } from "lucide-react";
+import { Search, Plus, Loader2, FolderOpen, LayoutGrid, Rows, MapPin, Video, GitCompare } from "lucide-react";
 import dynamic from "next/dynamic";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -18,6 +18,7 @@ import SewerTable from "@/components/ui/SewerTable";
 import { Badge } from "@/components/ui/badge";
 
 const ProjectLiveTrackerView = dynamic(() => import("@/components/shared/ProjectLiveTrackerView"), { ssr: false });
+const ProjectCompare = dynamic(() => import("@/components/admin/project/ProjectCompare"), { ssr: false });
 import StatusLegend from "@/components/shared/StatusLegend";
 import ExportButton from '@/components/shared/ExportButton';
 import EmptyState from '@/components/shared/EmptyState';
@@ -295,6 +296,18 @@ const UserProjectModuleContent = () => {
                       <MapPin className="w-4 h-4" />
                       <span>Live Tracker</span>
                     </button>
+                    <button
+                      type="button"
+                      onClick={() => setViewMode("compare")}
+                      className={`flex items-center gap-1 px-3 py-1.5 text-xs font-medium border-l border-gray-200 ${
+                        viewMode === "compare"
+                          ? "bg-indigo-50 text-indigo-600"
+                          : "text-gray-600 hover:bg-gray-50"
+                      }`}
+                    >
+                      <GitCompare className="w-4 h-4" />
+                      <span>Compare</span>
+                    </button>
                   </div>
 
                   <StatusLegend />
@@ -355,7 +368,9 @@ const UserProjectModuleContent = () => {
               </div>
             ) : (
               <>
-                {viewMode === "tracker" ? (
+                {viewMode === "compare" ? (
+                  <ProjectCompare projects={projects} />
+                ) : viewMode === "tracker" ? (
                   <ProjectLiveTrackerView projects={projects} isLoading={loading} theme="indigo" />
                 ) : viewMode === "grid" ? (
                   projects.length === 0 ? (

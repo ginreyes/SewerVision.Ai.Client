@@ -226,11 +226,11 @@ const QCCalendarPage = () => {
       <div className="max-w-7xl mx-auto p-6">
         <div className="mb-6">
           <h1 className="text-3xl font-bold mb-2">QC Calendar</h1>
-          <p className="text-gray-600">Manage your QC reviews, deadlines, and schedule</p>
+          <p className="text-gray-600 dark:text-gray-400">Manage your QC reviews, deadlines, and schedule</p>
         </div>
 
         <Card className="flex auto w-full flex-row overflow-hidden">
-          <div className="w-[309px] border-r flex flex-col p-4 bg-gray-50">
+          <div className="w-[309px] border-r dark:border-[#374151] flex flex-col p-4 bg-gray-50 dark:bg-[#23222b]">
             {/* Add Event Button - Centered */}
             <div className="flex justify-center mb-6">
               <Button
@@ -262,14 +262,14 @@ const QCCalendarPage = () => {
 
             {/* QC Assignments Summary */}
             {qcAssignments.length > 0 && (
-              <div className="mt-4 p-3 bg-amber-50 rounded-lg border border-amber-200">
-                <div className="text-sm font-semibold text-red-900 mb-2">
+              <div className="mt-4 p-3 bg-amber-50 dark:bg-amber-900/20 rounded-lg border border-amber-200 dark:border-amber-700">
+                <div className="text-sm font-semibold text-red-900 dark:text-red-300 mb-2">
                   QC Assignments
                 </div>
-                <div className="text-xs text-red-700">
+                <div className="text-xs text-red-700 dark:text-red-400">
                   {qcAssignments.filter(a => a.status === 'assigned' || a.status === 'in-progress').length} active
                 </div>
-                <div className="text-xs text-gray-600 mt-1">
+                <div className="text-xs text-gray-600 dark:text-gray-400 mt-1">
                   {qcAssignments.length} total assigned
                 </div>
               </div>
@@ -293,7 +293,7 @@ const QCCalendarPage = () => {
                 >
                   <ArrowRight />
                 </Button>
-                <h1 className="text-3xl font-bold text-gray-800 select-none">
+                <h1 className="text-3xl font-bold text-gray-800 dark:text-gray-200 select-none">
                   {handleChangeHeader()}
                 </h1>
               </div>

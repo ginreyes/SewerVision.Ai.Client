@@ -4,15 +4,15 @@ import { Button } from '@/components/ui/button';
 import { Card } from '@/components/ui/card';
 import { Calendar as ShadcnCalendar } from '@/components/ui/calendar';
 import React, { useState } from 'react';
-import EventFilters from '@/app/user/calendar/components/FilterComponent';
+import EventFilters from '@/components/shared/calendar/FilterComponent';
 import { ArrowLeft, ArrowRight } from 'lucide-react';
-import EventModal from '@/app/user/calendar/components/AddEventModal';
+import EventModal from '@/components/shared/calendar/AddEventModal';
 import { useUser } from '@/components/providers/UserContext';
 import { useUserEvents } from '@/hooks/useQueryHooks';
-import MonthViewCalendar from '@/app/user/calendar/components/MonthView';
-import ListViewCalendar from '@/app/user/calendar/components/ListViewCalendar';
-import WeekView from '@/app/user/calendar/components/WeekView';
-import DayView from '@/app/user/calendar/components/DayView';
+import MonthViewCalendar from '@/components/shared/calendar/MonthView';
+import ListViewCalendar from '@/components/shared/calendar/ListViewCalendar';
+import WeekView from '@/components/shared/calendar/WeekView';
+import DayView from '@/components/shared/calendar/DayView';
 
 const generateCalendarGrid = (selectedMonth, selectedYear) => {
   const today = new Date();

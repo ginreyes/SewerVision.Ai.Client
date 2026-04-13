@@ -382,6 +382,7 @@ const FALLBACK_MENUS = {
   'customer-rep': [
     { label: 'Main', items: [
       { label: 'Dashboard', icon: 'LayoutDashboard', path: '/customer-rep/dashboard', key: 'dashboard', locked: true },
+      { label: 'Projects', icon: 'FolderOpen', path: '/customer-rep/projects', key: 'projects' },
       { label: 'Inbox', icon: 'Inbox', path: '/customer-rep/inbox', key: 'inbox' },
     ]},
     { label: 'Support', items: [
