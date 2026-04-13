@@ -19,7 +19,8 @@ import {
   Upload,
   CheckCircle2,
   Pencil,
-  X
+  X,
+  Monitor
 } from 'lucide-react';
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
@@ -36,6 +37,7 @@ import { useAlert } from '@/components/providers/AlertProvider';
 import { api, getCookie } from '@/lib/helper';
 import SectionHeader from '@/components/user/settings/SectionHeader';
 import ToggleSetting from '@/components/user/settings/ToggleSetting';
+import AppearanceSettings from '@/components/shared/AppearanceSettings';
 
 function UserSettingsContent() {
   const router = useRouter();
@@ -317,7 +319,8 @@ function UserSettingsContent() {
               {[
                 { id: 'profile', label: 'Profile', icon: User },
                 { id: 'notifications', label: 'Notifications', icon: Bell },
-                { id: 'preferences', label: 'Preferences', icon: Globe }         
+                { id: 'preferences', label: 'Preferences', icon: Globe },
+                { id: 'appearance', label: 'Appearance', icon: Monitor },
               ].map((item) => (
                 <button
                   key={item.id}
@@ -656,6 +659,14 @@ function UserSettingsContent() {
                       </SelectContent>
                     </Select>
                   </div>
+                </CardContent>
+              </Card>
+            </TabsContent>
+
+            <TabsContent value="appearance" className="space-y-6 mt-0">
+              <Card className="border-0 shadow-sm">
+                <CardContent className="pt-6">
+                  <AppearanceSettings />
                 </CardContent>
               </Card>
             </TabsContent>

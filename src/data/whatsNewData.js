@@ -1,10 +1,119 @@
 
 export const whatsNewData = [
     {
+        id: "v2.2.0",
+        date: "April 9 – 13, 2026",
+        label: "QC Review Workspace + Dark Mode + Redis Caching",
+        isNew: true,
+        updates: {
+            admin: [
+                {
+                    type: 'feature',
+                    title: 'Dark Mode',
+                    description: 'Full dark mode across all 6 roles with system-aware defaults. Toggle via the navbar icon or Settings > Appearance.',
+                    details: [
+                        'Light / Dark / System toggle with OS preference detection',
+                        'Auto-adaptation layer — all pages adapt without per-page overrides',
+                        'Chart.js global dark theme for all dashboards',
+                        'Appearance settings section in every role\'s settings page',
+                        'Smooth CSS transitions on toggle'
+                    ]
+                },
+                {
+                    type: 'improvement',
+                    title: 'Redis Caching Layer',
+                    description: 'Server-side Redis caching for hot endpoints. Falls back to in-memory when Redis is unavailable.',
+                    details: [
+                        'Security modules cached 10 minutes (sidebar loads on every page)',
+                        'QC assignments cached 30 seconds (matches polling interval)',
+                        'Project detections cached 15 seconds with automatic invalidation on review',
+                        'Redis-backed rate limiter with atomic INCR',
+                        'Socket.IO Redis adapter for multi-instance scaling'
+                    ]
+                },
+                {
+                    type: 'improvement',
+                    title: 'Response Compression',
+                    description: 'Gzip/deflate compression middleware reduces JSON payload sizes by 60-80% across all API endpoints.',
+                }
+            ],
+            'qc-technician': [
+                {
+                    type: 'feature',
+                    title: 'Review Workspace',
+                    description: 'Projects, quality control, and the video player merged into one unified workspace.',
+                    details: [
+                        'Three view modes: Detail / Comparison / Video — all sharing the same selection',
+                        'Video player seeks to detection timestamp on click',
+                        'Project Info drawer with device, operator, pipeline metadata',
+                        'Manual detection form anchored to current video playback time',
+                        'URL state preserves project, detection, and view mode on refresh',
+                        'Old /project and /project/[id] routes redirect to the workspace'
+                    ]
+                },
+                {
+                    type: 'improvement',
+                    title: 'Instant Approve / Reject',
+                    description: 'Optimistic updates make approve/reject feel instant — detection vanishes from queue and project counts update immediately.',
+                    details: [
+                        'TanStack Query migration with 2-minute assignment caching',
+                        'Optimistic mutation patches both detection list and assignment counts',
+                        'Automatic rollback on server error',
+                        'Targeted cache invalidation instead of full refetch'
+                    ]
+                },
+                {
+                    type: 'fix',
+                    title: 'Data Accuracy Fixes',
+                    description: 'The detection detail card now shows real AI data instead of placeholder text.',
+                    details: [
+                        'Analysis Notes synthesized from confidence, severity, bounding box, PACP code, model version',
+                        'Provenance block showing reviewer name, source video, timestamps',
+                        'Severity filter fixed (was matching zero detections)',
+                        'Frame #0 and Distance N/A placeholder bugs fixed'
+                    ]
+                },
+                {
+                    type: 'feature',
+                    title: 'Dark Mode',
+                    description: 'Full dark mode support. Toggle via the navbar icon or Settings > Appearance.',
+                }
+            ],
+            operator: [
+                {
+                    type: 'feature',
+                    title: 'Dark Mode',
+                    description: 'Full dark mode across sidebar, navbar, and all pages. Toggle via navbar icon or Settings > Appearance.',
+                }
+            ],
+            user: [
+                {
+                    type: 'feature',
+                    title: 'Dark Mode',
+                    description: 'Full dark mode support with system preference detection. Settings > Appearance.',
+                }
+            ],
+            customer: [
+                {
+                    type: 'feature',
+                    title: 'Dark Mode',
+                    description: 'Dark mode available via navbar toggle or Settings > Appearance.',
+                }
+            ],
+            'customer-rep': [
+                {
+                    type: 'feature',
+                    title: 'Dark Mode',
+                    description: 'Dark mode support across all pages. Toggle via navbar or Settings > Appearance.',
+                }
+            ],
+        }
+    },
+    {
         id: "v2.1.0",
         date: "April 6 – 8, 2026",
         label: "AI Pipeline Overhaul + LMS Training System",
-        isNew: true,
+        isNew: false,
         updates: {
             admin: [
                 {

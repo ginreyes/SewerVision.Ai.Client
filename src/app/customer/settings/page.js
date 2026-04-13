@@ -26,7 +26,8 @@ import {
   Receipt,
   CreditCard,
   ImagePlus,
-  Trash2
+  Trash2,
+  Monitor
 } from 'lucide-react';
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
@@ -39,6 +40,7 @@ import { Select, SelectTrigger, SelectValue, SelectContent, SelectItem } from '@
 import { useUser } from '@/components/providers/UserContext';
 import { useAlert } from '@/components/providers/AlertProvider';
 import { api, getCookie } from '@/lib/helper';
+import AppearanceSettings from '@/components/shared/AppearanceSettings';
 
 function CustomerSettingsContent() {
   const router = useRouter();
@@ -321,6 +323,7 @@ function CustomerSettingsContent() {
     { id: 'profile', label: 'Profile', icon: User },
     { id: 'company', label: 'Company', icon: Building2 },
     { id: 'security', label: 'Security', icon: Shield },
+    { id: 'appearance', label: 'Appearance', icon: Monitor },
   ];
 
   return (
@@ -829,6 +832,15 @@ function CustomerSettingsContent() {
                     Update Password
                   </Button>
                 </form>
+              </CardContent>
+            </Card>
+          )}
+
+          {/* ── Appearance Section ── */}
+          {activeSection === 'appearance' && (
+            <Card className="border-0 shadow-sm">
+              <CardContent className="pt-6">
+                <AppearanceSettings />
               </CardContent>
             </Card>
           )}

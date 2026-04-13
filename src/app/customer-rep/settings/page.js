@@ -1,7 +1,7 @@
 "use client";
 
 import React, { useState, useEffect } from "react";
-import { Settings, User, Lock, Bell } from "lucide-react";
+import { Settings, User, Lock, Bell, Monitor } from "lucide-react";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { useUser } from "@/components/providers/UserContext";
 import { useAlert } from "@/components/providers/AlertProvider";
@@ -12,6 +12,7 @@ import AvatarCard from "@/components/customer-rep/settings/AvatarCard";
 import ProfileForm from "@/components/customer-rep/settings/ProfileForm";
 import SecurityForm from "@/components/customer-rep/settings/SecurityForm";
 import NotificationPrefs from "@/components/customer-rep/settings/NotificationPrefs";
+import AppearanceSettings from "@/components/shared/AppearanceSettings";
 
 export default function CustomerRepSettings() {
   const { userId, userData, refreshUserData } = useUser();
@@ -107,10 +108,11 @@ export default function CustomerRepSettings() {
         </div>
 
         <Tabs value={activeTab} onValueChange={setActiveTab}>
-          <TabsList className="grid w-fit grid-cols-3 mb-6">
+          <TabsList className="grid w-fit grid-cols-4 mb-6">
             <TabsTrigger value="profile"><User className="w-4 h-4 mr-1.5" /> Profile</TabsTrigger>
             <TabsTrigger value="security"><Lock className="w-4 h-4 mr-1.5" /> Security</TabsTrigger>
             <TabsTrigger value="notifications"><Bell className="w-4 h-4 mr-1.5" /> Notifications</TabsTrigger>
+            <TabsTrigger value="appearance"><Monitor className="w-4 h-4 mr-1.5" /> Appearance</TabsTrigger>
           </TabsList>
 
           <TabsContent value="profile" className="space-y-6">
@@ -126,6 +128,10 @@ export default function CustomerRepSettings() {
 
           <TabsContent value="notifications" className="space-y-6">
             <NotificationPrefs notifications={notifications} onChange={setNotifications} />
+          </TabsContent>
+
+          <TabsContent value="appearance" className="space-y-6">
+            <AppearanceSettings />
           </TabsContent>
         </Tabs>
       </div>

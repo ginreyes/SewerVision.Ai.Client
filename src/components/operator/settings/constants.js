@@ -1,4 +1,4 @@
-import { User, HardDrive, Camera, Bell, Globe } from 'lucide-react';
+import { User, HardDrive, Camera, Bell, Globe, Monitor } from 'lucide-react';
 
 export const SETTINGS_TABS = [
   { id: 'profile', label: 'Profile', icon: User },
@@ -6,6 +6,7 @@ export const SETTINGS_TABS = [
   { id: 'video', label: 'Video & AI', icon: Camera },
   { id: 'notifications', label: 'Notifications', icon: Bell },
   { id: 'preferences', label: 'Preferences', icon: Globe },
+  { id: 'appearance', label: 'Appearance', icon: Monitor },
 ];
 
 export const DEFAULT_PROFILE = {

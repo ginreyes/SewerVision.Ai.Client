@@ -29,7 +29,8 @@ import {
   ClipboardCheck,
   BarChart,
   History,
-  Sparkles
+  Sparkles,
+  Monitor
 } from 'lucide-react';
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
@@ -48,6 +49,7 @@ import { useQuery } from '@tanstack/react-query';
 import { qcApi } from '@/data/qcApi';
 import { api, getCookie } from '@/lib/helper';
 import { ProfileStats, SectionHeader } from '@/components/qc/settings';
+import AppearanceSettings from '@/components/shared/AppearanceSettings';
 
 const ToggleSetting = ({ label, description, checked, onCheckedChange }) => (
   <div className="flex items-center justify-between py-4">
@@ -404,6 +406,7 @@ function QCSettingsContent() {
                 { id: 'video', label: 'Video & Playback', icon: FileCheck },
                 { id: 'notifications', label: 'Notifications', icon: Bell },
                 { id: 'preferences', label: 'Preferences', icon: Globe },
+                { id: 'appearance', label: 'Appearance', icon: Monitor },
               ].map((item) => (
                 <button
                   key={item.id}
@@ -877,6 +880,15 @@ function QCSettingsContent() {
                       ))}
                     </div>
                   </div>
+                </CardContent>
+              </Card>
+            </TabsContent>
+
+            {/* --- Appearance Tab --- */}
+            <TabsContent value="appearance" className="space-y-6 mt-0">
+              <Card className="border-0 shadow-sm">
+                <CardContent className="pt-6">
+                  <AppearanceSettings />
                 </CardContent>
               </Card>
             </TabsContent>

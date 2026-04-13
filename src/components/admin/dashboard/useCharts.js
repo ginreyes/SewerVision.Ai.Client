@@ -8,6 +8,7 @@ import {
   getDefectTrendChartConfigFixed,
   getAiPerformanceChartConfig,
 } from './chartConfigs'
+import { useChartTheme } from '@/lib/chartTheme'
 
 const loadChart = async () => {
   const chartModule = await import('chart.js/auto')
@@ -17,6 +18,7 @@ const loadChart = async () => {
 const CHART_KEYS = ['pie', 'workflow', 'productivity', 'accuracy', 'defectTrend', 'aiPerformance']
 
 export function useCharts({ activeTab, aiDetections, workflowData, productivityData, defectTrendData, aiPerformanceData }) {
+  useChartTheme(); // Apply dark/light defaults to Chart.js globally
   const [chartLoaded, setChartLoaded] = useState(false)
 
   // One ref per chart for canvas, one for instance

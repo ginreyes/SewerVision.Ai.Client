@@ -25,6 +25,8 @@ import {
 } from 'lucide-react'
 
 import Chart from 'chart.js/auto'
+import { applyChartTheme } from '@/lib/chartTheme'
+import { useTheme } from '@/components/providers/ThemeProvider'
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
 import { Button } from '@/components/ui/button'
 import { Badge } from '@/components/ui/badge'
@@ -50,6 +52,8 @@ import {
 export default function OperatorDashboardContent() {
   const router = useRouter()
   const { userId, userData } = useUser()
+  const { isDark } = useTheme()
+  useEffect(() => { applyChartTheme(isDark) }, [isDark])
 
   // Modal state
   const [selectedEquipment, setSelectedEquipment] = useState(null)

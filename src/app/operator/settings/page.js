@@ -19,6 +19,7 @@ import {
   ProfileTab, DataSyncTab, VideoAITab, NotificationsTab, PreferencesTab,
   SETTINGS_TABS, DEFAULT_PROFILE, DEFAULT_PASSWORD, DEFAULT_SETTINGS,
 } from '@/components/operator/settings';
+import AppearanceSettings from '@/components/shared/AppearanceSettings';
 
 const OperatorSettingsContent = () => {
   const router = useRouter();
@@ -189,6 +190,13 @@ const OperatorSettingsContent = () => {
             </TabsContent>
             <TabsContent value="preferences" className="mt-0">
               <PreferencesTab settings={settings} updateSetting={updateSetting} />
+            </TabsContent>
+            <TabsContent value="appearance" className="mt-0">
+              <Card className="border-0 shadow-sm">
+                <CardContent className="pt-6">
+                  <AppearanceSettings />
+                </CardContent>
+              </Card>
             </TabsContent>
           </Tabs>
         </div>

@@ -20,6 +20,8 @@ import {
 } from 'lucide-react'
 
 import Chart from 'chart.js/auto'
+import { applyChartTheme } from '@/lib/chartTheme'
+import { useTheme } from '@/components/providers/ThemeProvider'
 import { qcApi } from '@/data/qcApi'
 import { useUser } from '@/components/providers/UserContext'
 import { useRouter } from 'next/navigation'
@@ -34,6 +36,8 @@ import { StatCard, QuickAction } from '@/components/qc/dashboard'
 const QCTechnicianDashboard = () => {
   const { userId, userData } = useUser()
   const router = useRouter()
+  const { isDark } = useTheme()
+  useEffect(() => { applyChartTheme(isDark) }, [isDark])
   const [refreshing, setRefreshing] = useState(false)
   const { data: onboarding } = useOnboardingProgress(userId)
 

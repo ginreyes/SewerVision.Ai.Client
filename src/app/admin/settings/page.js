@@ -48,6 +48,7 @@ import { api, getCookie } from '@/lib/helper';
 import settingsApi from '@/data/settingsApi';
 import { SectionHeader, ToggleSetting, SettingsPageLoading } from '@/components/admin/settings';
 import { invalidateLoadingModuleCache } from '@/hooks/useLoadingModuleSettings';
+import AppearanceSettings from '@/components/shared/AppearanceSettings';
 
 function SettingsPageContent() {
   const router = useRouter();
@@ -577,6 +578,7 @@ function SettingsPageContent() {
                 { id: 'ai-learning', label: 'AI Learning', icon: Cpu },
                 { id: 'aws-config', label: 'Storage Config', icon: Server },
                 { id: 'system-admin', label: 'System Admin', icon: SettingsIcon },
+                { id: 'appearance', label: 'Appearance', icon: Monitor },
               ].map((item) => (
                 <button
                   key={item.id}
@@ -990,6 +992,15 @@ function SettingsPageContent() {
                 </CardContent>
               </Card>
 
+            </TabsContent>
+
+            {/* --- Appearance Tab --- */}
+            <TabsContent value="appearance" className="space-y-6 mt-0">
+              <Card className="border-0 shadow-sm">
+                <CardContent className="pt-6">
+                  <AppearanceSettings />
+                </CardContent>
+              </Card>
             </TabsContent>
 
           </Tabs>

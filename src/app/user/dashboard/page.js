@@ -22,6 +22,8 @@ import TeamMemberList from '@/components/user/dashboard/TeamMemberList';
 import UserDashboardDetail from '@/components/user/dashboard/UserDashboardDetail';
 import { useUserDashboard, useUserTeamMemberDashboard } from '@/hooks/useQueryHooks';
 import { CHART_COLORS } from '@/components/user/constants';
+import { applyChartTheme } from '@/lib/chartTheme';
+import { useTheme } from '@/components/providers/ThemeProvider';
 
 const loadChart = async () => {
   const chartModule = await import('chart.js/auto');
@@ -30,6 +32,8 @@ const loadChart = async () => {
 
 export default function UserDashboardPage() {
   const { userId, userData } = useUser() || {};
+  const { isDark } = useTheme();
+  useEffect(() => { applyChartTheme(isDark); }, [isDark]);
   const [chartReady, setChartReady] = useState(false);
   const [activeTab, setActiveTab] = useState('overview');
   const [selectedTeamUser, setSelectedTeamUser] = useState(null);
