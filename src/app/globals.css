@@ -121,6 +121,33 @@
   }
 }
 
+/* ── Dark mode auto-adaptation layer ──────────────────────────
+   These rules handle the most common inline Tailwind patterns so
+   individual pages don't need 1:1 dark: overrides on every element.
+   They target the class selectors Tailwind generates and only apply
+   inside .dark, so there is zero impact on light mode. */
+.dark .bg-white { background-color: oklch(0.205 0 0) !important; }
+.dark .bg-gray-50 { background-color: oklch(0.175 0 0) !important; }
+.dark .bg-gray-100 { background-color: oklch(0.195 0 0) !important; }
+.dark .text-gray-900 { color: oklch(0.95 0 0) !important; }
+.dark .text-gray-800 { color: oklch(0.88 0 0) !important; }
+.dark .text-gray-700 { color: oklch(0.8 0 0) !important; }
+.dark .text-gray-600 { color: oklch(0.72 0 0) !important; }
+.dark .text-gray-500 { color: oklch(0.62 0 0) !important; }
+.dark .border-gray-200 { border-color: oklch(1 0 0 / 10%) !important; }
+.dark .border-gray-100 { border-color: oklch(1 0 0 / 7%) !important; }
+.dark .border-gray-300 { border-color: oklch(1 0 0 / 15%) !important; }
+.dark .shadow-sm { box-shadow: 0 1px 2px 0 rgb(0 0 0 / 0.2) !important; }
+.dark .shadow-md { box-shadow: 0 4px 6px -1px rgb(0 0 0 / 0.3), 0 2px 4px -2px rgb(0 0 0 / 0.2) !important; }
+.dark .shadow-lg { box-shadow: 0 10px 15px -3px rgb(0 0 0 / 0.3), 0 4px 6px -4px rgb(0 0 0 / 0.2) !important; }
+.dark .shadow-xl { box-shadow: 0 20px 25px -5px rgb(0 0 0 / 0.3), 0 8px 10px -6px rgb(0 0 0 / 0.2) !important; }
+/* Glassmorphism in dark mode */
+.dark .glass {
+  background: rgba(30, 30, 30, 0.5);
+  box-shadow: 0 8px 32px 0 rgba(0, 0, 0, 0.37);
+  border: 1px solid rgba(255, 255, 255, 0.08);
+}
+
 @keyframes slide-in {
   from {
     opacity: 0;

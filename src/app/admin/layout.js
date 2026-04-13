@@ -94,7 +94,7 @@ export default function AdminLayout({ children }) {
           className={`flex-1 transition-all duration-300 ${openSidebar ? "lg:ml-[270px]" : "lg:ml-[90px]"}`}
         >
           <Navbar openSideBar={handleToggleSidebar} role="admin" />
-          <main className="p-3 sm:p-4">
+          <main className="p-3 sm:p-4 dark:bg-gray-950 min-h-screen transition-colors">
             <AnnouncementBanner role="admin" />
             {children}
           </main>

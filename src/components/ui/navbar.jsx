@@ -315,7 +315,7 @@ const Navbar = (props) => {
           </button>
 
           <div ref={searchContainerRef} className="relative flex-1 max-w-md">
-            <div className="relative flex items-center w-full rounded-lg border border-gray-300" style={{ '--tw-ring-color': 'var(--role-accent, #3b82f6)' }}>
+            <div className="relative flex items-center w-full rounded-lg border border-gray-300 dark:border-gray-600 dark:bg-gray-800" style={{ '--tw-ring-color': 'var(--role-accent, #3b82f6)' }}>
               <span className="px-3">
                 <FiSearch className="w-5 h-5 text-gray-400" />
               </span>
@@ -323,7 +323,7 @@ const Navbar = (props) => {
                 ref={searchInputRef}
                 type="text"
                 placeholder={currentSearchConfig.placeholder}
-                className="w-full bg-transparent border-none focus-visible:ring-0 text-gray-700 pr-4"
+                className="w-full bg-transparent border-none focus-visible:ring-0 text-gray-700 dark:text-gray-200 dark:placeholder-gray-500 pr-4"
                 data-search-input="true"
                 value={searchQuery}
                 onChange={handleSearchChange}
@@ -334,12 +334,12 @@ const Navbar = (props) => {
 
             {/* Search Dropdown */}
             {searchOpen && (
-              <div className="absolute top-full left-0 right-0 mt-1 bg-white border border-gray-200 rounded-lg shadow-lg z-50 max-h-96 overflow-y-auto">
+              <div className="absolute top-full left-0 right-0 mt-1 bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700 rounded-lg shadow-lg z-50 max-h-96 overflow-y-auto">
                 {/* Autocomplete Results - grouped by category */}
                 {searchQuery.length > 1 && (
                   <div className="p-2">
                     <div className="flex items-center justify-between mb-2">
-                      <h3 className="text-sm font-semibold text-gray-700">Results</h3>
+                      <h3 className="text-sm font-semibold text-gray-700 dark:text-gray-300">Results</h3>
                       {loading && (
                         <div className="w-4 h-4 border-2 border-t-transparent rounded-full animate-spin" style={{ borderColor: 'var(--role-accent, #3b82f6)', borderTopColor: 'transparent' }}></div>
                       )}
@@ -367,7 +367,7 @@ const Navbar = (props) => {
                               return (
                                 <div
                                   key={result.id}
-                                  className="flex items-start space-x-3 p-2 hover:bg-gray-50 rounded cursor-pointer ml-2"
+                                  className="flex items-start space-x-3 p-2 hover:bg-gray-50 dark:hover:bg-gray-700 rounded cursor-pointer ml-2"
                                   onClick={() => handleResultClick(result)}
                                 >
                                   {result.imageUrl ? (
@@ -379,7 +379,7 @@ const Navbar = (props) => {
                                     <CategoryIcon className={`w-4 h-4 mt-0.5 ${categoryColor}`} />
                                   )}
                                   <div className="flex-1 min-w-0">
-                                    <p className="text-sm font-medium text-gray-900 truncate">
+                                    <p className="text-sm font-medium text-gray-900 dark:text-gray-100 truncate">
                                       {highlightMatch(result.title, searchQuery)}
                                     </p>
                                     {result.description && (
@@ -403,10 +403,10 @@ const Navbar = (props) => {
                     {/* Full search hint */}
                     {searchResults.length > 0 && (
                       <div
-                        className="mt-1 p-2 text-xs text-center text-gray-400 border-t border-gray-100 cursor-pointer hover:text-gray-600"
+                        className="mt-1 p-2 text-xs text-center text-gray-400 border-t border-gray-100 dark:border-gray-700 cursor-pointer hover:text-gray-600"
                         onClick={() => handleSearchSubmit()}
                       >
-                        Press <kbd className="px-1 py-0.5 bg-gray-100 rounded text-gray-500 text-[10px]">Enter</kbd> to see all results
+                        Press <kbd className="px-1 py-0.5 bg-gray-100 dark:bg-gray-700 rounded text-gray-500 dark:text-gray-400 text-[10px]">Enter</kbd> to see all results
                       </div>
                     )}
                   </div>
@@ -415,7 +415,7 @@ const Navbar = (props) => {
                 {/* Quick Suggestions (role-specific) */}
                 {searchQuery.length <= 1 && (
                   <div className="p-2">
-                    <h3 className="text-sm font-semibold text-gray-700 mb-2 flex items-center">
+                    <h3 className="text-sm font-semibold text-gray-700 dark:text-gray-300 mb-2 flex items-center">
                       <FiSearch className="w-4 h-4 mr-1.5" style={{ color: 'var(--role-accent, #6b7280)' }} />
                       Quick Access
                     </h3>
@@ -425,7 +425,7 @@ const Navbar = (props) => {
                         return (
                           <div
                             key={item.label}
-                            className="flex items-center space-x-2 p-2 hover:bg-gray-50 rounded-lg cursor-pointer transition-colors"
+                            className="flex items-center space-x-2 p-2 hover:bg-gray-50 dark:hover:bg-gray-700 rounded-lg cursor-pointer transition-colors"
                             onClick={() => {
                               router.push(item.path);
                               setSearchOpen(false);
@@ -433,7 +433,7 @@ const Navbar = (props) => {
                             }}
                           >
                             <SuggIcon className={`w-4 h-4 ${item.color}`} />
-                            <span className="text-sm text-gray-700 truncate">{item.label}</span>
+                            <span className="text-sm text-gray-700 dark:text-gray-300 truncate">{item.label}</span>
                           </div>
                         );
                       })}
@@ -443,9 +443,9 @@ const Navbar = (props) => {
 
                 {/* Recent Searches */}
                 {recentSearches.length > 0 && searchQuery.length <= 1 && (
-                  <div className="p-2 border-t border-gray-100">
+                  <div className="p-2 border-t border-gray-100 dark:border-gray-700">
                     <div className="flex items-center justify-between mb-2">
-                      <h3 className="text-sm font-semibold text-gray-700 flex items-center">
+                      <h3 className="text-sm font-semibold text-gray-700 dark:text-gray-300 flex items-center">
                         <FiClock className="w-4 h-4 mr-1" />
                         Recent
                       </h3>
@@ -459,11 +459,11 @@ const Navbar = (props) => {
                     {recentSearches.map((search, index) => (
                       <div
                         key={index}
-                        className="flex items-center space-x-2 p-2 hover:bg-gray-50 rounded cursor-pointer"
+                        className="flex items-center space-x-2 p-2 hover:bg-gray-50 dark:hover:bg-gray-700 rounded cursor-pointer"
                         onClick={() => handleRecentSearchClick(search)}
                       >
                         <FiClock className="w-3 h-3 text-gray-400" />
-                        <span className="text-sm text-gray-700">{search}</span>
+                        <span className="text-sm text-gray-700 dark:text-gray-300">{search}</span>
                       </div>
                     ))}
                   </div>
@@ -528,22 +528,22 @@ const Navbar = (props) => {
               </div>
 
               {/* Menu Items */}
-              <div className="p-2 bg-white">
+              <div className="p-2 bg-white dark:bg-gray-800">
                 <Link href={userRole ? `/${userRole}/settings` : '/admin/settings'}>
-                  <Button variant="ghost" className="w-full justify-start p-3 h-auto rounded-lg hover:bg-gray-50 group">
+                  <Button variant="ghost" className="w-full justify-start p-3 h-auto rounded-lg hover:bg-gray-50 dark:hover:bg-gray-700 group">
                     <RxAvatar className="w-5 h-5 mr-3 text-gray-500 transition-colors" style={{ '--hover-color': 'var(--role-accent, #f43f5e)' }} />
                     <div className="text-left">
-                      <p className="font-medium text-gray-700">Profile</p>
+                      <p className="font-medium text-gray-700 dark:text-gray-200">Profile</p>
                       <p className="text-xs text-gray-400">View and edit your profile</p>
                     </div>
                   </Button>
                 </Link>
 
                 <Link href={userRole ? `/${userRole}/settings?tab=preferences` : '/admin/settings?tab=preferences'}>
-                  <Button variant="ghost" className="w-full justify-start p-3 h-auto rounded-lg hover:bg-gray-50 group">
+                  <Button variant="ghost" className="w-full justify-start p-3 h-auto rounded-lg hover:bg-gray-50 dark:hover:bg-gray-700 group">
                     <FiSettings className="w-5 h-5 mr-3 text-gray-500 group-hover:text-blue-500 transition-colors" />
                     <div className="text-left">
-                      <p className="font-medium text-gray-700">Settings</p>
+                      <p className="font-medium text-gray-700 dark:text-gray-200">Settings</p>
                       <p className="text-xs text-gray-400">Manage your preferences</p>
                     </div>
                   </Button>
@@ -553,7 +553,7 @@ const Navbar = (props) => {
 
                 <Button
                   variant="ghost"
-                  className="w-full justify-start p-3 h-auto rounded-lg hover:bg-gray-50 group"
+                  className="w-full justify-start p-3 h-auto rounded-lg hover:bg-gray-50 dark:hover:bg-gray-700 group"
                   onClick={() => {
                     setOpen(false);
                     // Dispatch custom event to trigger tour
@@ -564,12 +564,12 @@ const Navbar = (props) => {
                     <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9.663 17h4.673M12 3v1m6.364 1.636l-.707.707M21 12h-1M4 12H3m3.343-5.657l-.707-.707m2.828 9.9a5 5 0 117.072 0l-.548.547A3.374 3.374 0 0014 18.469V19a2 2 0 11-4 0v-.531c0-.895-.356-1.754-.988-2.386l-.548-.547z" />
                   </svg>
                   <div className="text-left">
-                    <p className="font-medium text-gray-700">Tour Guide</p>
+                    <p className="font-medium text-gray-700 dark:text-gray-200">Tour Guide</p>
                     <p className="text-xs text-gray-400">Learn how to use the app</p>
                   </div>
                 </Button>
 
-                <div className="border-t border-gray-100 my-2"></div>
+                <div className="border-t border-gray-100 dark:border-gray-700 my-2"></div>
 
                 <Button
                   variant="ghost"

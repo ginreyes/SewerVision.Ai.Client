@@ -85,7 +85,7 @@ export default function OperatorLayout({ children }) {
               }`}
           >
             <Navbar openSideBar={handleToggleSidebar} role="operator" />
-            <main className="p-3 sm:p-4"><AnnouncementBanner role="operator" />{children}</main>
+            <main className="p-3 sm:p-4 dark:bg-gray-950 min-h-screen transition-colors"><AnnouncementBanner role="operator" />{children}</main>
           </div>
         </div>
 

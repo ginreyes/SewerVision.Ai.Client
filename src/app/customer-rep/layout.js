@@ -80,7 +80,7 @@ export default function CustomerRepLayout({ children }) {
           className={`flex-1 transition-all duration-300 ${openSidebar ? "lg:ml-[270px]" : "lg:ml-[90px]"}`}
         >
           <Navbar openSideBar={handleToggleSidebar} role="customer-rep" />
-          <main className="p-3 sm:p-4"><AnnouncementBanner role="customer-rep" />{children}</main>
+          <main className="p-3 sm:p-4 dark:bg-gray-950 min-h-screen transition-colors"><AnnouncementBanner role="customer-rep" />{children}</main>
         </div>
 
         {/* Tour Guide Modal */}

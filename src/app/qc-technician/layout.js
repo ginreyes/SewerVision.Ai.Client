@@ -86,7 +86,7 @@ export default function QcTechLayout({ children }) {
               }`}
           >
             <Navbar openSideBar={handleToggleSidebar} role="qc-technician" />
-            <main className="p-3 sm:p-4"><AnnouncementBanner role="qc-technician" />{children}</main>
+            <main className="p-3 sm:p-4 dark:bg-gray-950 min-h-screen transition-colors"><AnnouncementBanner role="qc-technician" />{children}</main>
           </div>
         </div>
 
