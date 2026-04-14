@@ -36,7 +36,7 @@ export default function ProjectSwitcher({ projects = [], currentId, onSelect }) 
         </button>
       </DropdownMenuTrigger>
 
-      <DropdownMenuContent align="start" className="w-80 max-h-80 overflow-y-auto">
+      <DropdownMenuContent align="start" className="w-[90vw] sm:w-80 max-h-80 overflow-y-auto">
         <DropdownMenuLabel className="text-[10px] uppercase tracking-wider text-gray-400 dark:text-[#71717a]">
           Switch Project
         </DropdownMenuLabel>

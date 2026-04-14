@@ -1,44 +1,22 @@
 'use client';
 
 import { useEffect, useState } from 'react';
-import {
-  Bell,
-  Check,
-  Clock,
-  AlertCircle,
-  Mail,
-  Info,
-  FileText,
-  Loader2,
-  Trash2,
-} from 'lucide-react';
+import { Mail } from 'lucide-react';
 
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
-import { Badge } from '@/components/ui/badge';
-import { Button } from '@/components/ui/button';
 import { Switch } from '@/components/ui/switch';
 import { Label } from '@/components/ui/label';
 import { useUser } from '@/components/providers/UserContext';
 import { useNotifications } from '@/components/providers/NotificationProvider';
 import { useAlert } from '@/components/providers/AlertProvider';
 import { api } from '@/lib/helper';
-import { FileTextIcon, BotIcon, UpdateIcon } from '@/components/qc/notifications';
+import NotificationCenter from '@/components/shared/NotificationCenter';
 
 const NotificationPageQCTechnician = () => {
   const { userId } = useUser();
   const { showAlert } = useAlert();
-  const {
-    notifications,
-    unreadCount,
-    isLoading,
-    markAsRead,
-    markAllAsRead,
-    deleteNotification,
-    deleteAllNotifications,
-    fetchNotifications,
-  } = useNotifications();
-  const [deletingAll, setDeletingAll] = useState(false);
-  
+  const { fetchNotifications } = useNotifications();
+
   const [preferences, setPreferences] = useState({
     email: true,
     push: true,
@@ -49,11 +27,10 @@ const NotificationPageQCTechnician = () => {
     defectFound: true,
   });
 
-  // Load notifications and preferences on mount
+  // Load preferences on mount
   useEffect(() => {
     if (userId) {
       fetchNotifications(true);
-      // Load notification preferences from backend
       const loadPreferences = async () => {
         try {
           const response = await api(`/api/notifications/preferences/${userId}`, 'GET');
@@ -77,51 +54,6 @@ const NotificationPageQCTechnician = () => {
     }
   }, [userId, fetchNotifications]);
 
-  const handleMarkAsRead = async (notificationId) => {
-    try {
-      await markAsRead(notificationId);
-      showAlert('Notification marked as read', 'success');
-    } catch (err) {
-      console.error('Error marking as read:', err);
-      showAlert('Failed to mark notification as read', 'error');
-    }
-  };
-
-  const handleMarkAllAsRead = async () => {
-    try {
-      await markAllAsRead();
-      showAlert('All notifications marked as read', 'success');
-    } catch (err) {
-      console.error('Error marking all as read:', err);
-      showAlert('Failed to mark notifications as read', 'error');
-    }
-  };
-
-  const handleDelete = async (notificationId) => {
-    try {
-      await deleteNotification(notificationId);
-      showAlert('Notification deleted', 'success');
-    } catch (err) {
-      console.error('Error deleting notification:', err);
-      showAlert('Failed to delete notification', 'error');
-    }
-  };
-
-  const handleDeleteAll = async () => {
-    if (notifications.length === 0) return;
-    if (typeof window !== 'undefined' && !window.confirm('Delete all notifications? This cannot be undone.')) return;
-    try {
-      setDeletingAll(true);
-      await deleteAllNotifications();
-      showAlert('All notifications deleted', 'success');
-    } catch (err) {
-      console.error('Error deleting all notifications:', err);
-      showAlert('Failed to delete all notifications', 'error');
-    } finally {
-      setDeletingAll(false);
-    }
-  };
-
   const togglePreference = async (key) => {
     const newPreferences = {
       ...preferences,
@@ -144,232 +76,108 @@ const NotificationPageQCTechnician = () => {
     }
   };
 
-  const getNotificationIcon = (type) => {
-    switch (type) {
-      case 'report_ready':
-        return <FileTextIcon />;
-      case 'ai_complete':
-      case 'defect_found':
-        return <BotIcon />;
-      case 'status_update':
-      case 'qc_review':
-        return <UpdateIcon />;
-      default:
-        return <Info className="h-4 w-4" />;
-    }
-  };
-
-  const formatDate = (dateString) => {
-    const date = new Date(dateString);
-    const now = new Date();
-    const diffInHours = Math.floor((now - date) / (1000 * 60 * 60));
-
-    if (diffInHours < 1) return 'Just now';
-    if (diffInHours < 24) return `${diffInHours}h ago`;
-    if (diffInHours < 48) return 'Yesterday';
-    return date.toLocaleDateString();
-  };
-
   return (
-    <div className="space-y-6 p-4 md:p-6">
-      {/* Header */}
-      <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
-        <div>
-          <h1 className="text-3xl font-bold flex items-center gap-2">
-            Notifications
-            {unreadCount > 0 && (
-              <Badge variant="destructive" className="ml-2">
-                {unreadCount}
-              </Badge>
-            )}
-          </h1>
-          <p className="text-muted-foreground">Manage alerts and view recent updates</p>
-        </div>
-        <div className="flex items-center gap-2">
-          <Button variant="outline" size="sm" onClick={handleMarkAllAsRead} disabled={unreadCount === 0}>
-            <Check className="h-4 w-4 mr-2" />
-            Mark All as Read
-          </Button>
-          <Button
-            variant="outline"
-            size="sm"
-            onClick={handleDeleteAll}
-            disabled={notifications.length === 0 || deletingAll}
-            className="text-destructive hover:text-destructive hover:bg-destructive/10"
-          >
-            {deletingAll ? <Loader2 className="h-4 w-4 mr-2 animate-spin" /> : <Trash2 className="h-4 w-4 mr-2" />}
-            Delete All
-          </Button>
-        </div>
-      </div>
-
-      <div className="grid gap-6 md:grid-cols-3">
-        {/* Notifications List */}
-        <div className="md:col-span-2 space-y-4">
-          <Card>
-            <CardHeader>
-              <CardTitle className="flex items-center gap-2">
-                <Bell className="h-5 w-5" />
-                Recent Notifications
-              </CardTitle>
-            </CardHeader>
-            <CardContent className="space-y-4">
-              {isLoading ? (
-                <div className="flex items-center justify-center py-8">
-                  <Loader2 className="h-6 w-6 animate-spin text-primary" />
-                  <span className="ml-3 text-muted-foreground">Loading notifications...</span>
-                </div>
-              ) : notifications.length === 0 ? (
-                <p className="text-muted-foreground text-center py-8">No notifications yet</p>
-              ) : (
-                notifications.map((notification) => (
-                  <div
-                    key={notification._id}
-                    className={`flex items-start gap-3 p-3 rounded-md border transition-colors ${
-                      !notification.read ? 'bg-accent/30 border-primary/20' : 'border-transparent hover:bg-accent/10'
-                    }`}
-                  >
-                    <div className="mt-1">
-                      {getNotificationIcon(notification.type)}
-                    </div>
-                    <div className="flex-1 min-w-0">
-                      <h4 className="font-medium">{notification.title}</h4>
-                      <p className="text-sm text-muted-foreground mt-1">{notification.message}</p>
-                      <div className="flex items-center justify-between mt-2">
-                        <span className="text-xs text-muted-foreground">
-                          {formatDate(notification.createdAt)}
-                        </span>
-                        <div className="flex items-center gap-2">
-                          {!notification.read && (
-                            <Button
-                              variant="ghost"
-                              size="sm"
-                              className="h-auto p-1"
-                              onClick={() => handleMarkAsRead(notification._id)}
-                            >
-                              <Check className="h-3 w-3" />
-                            </Button>
-                          )}
-                          <Button
-                            variant="ghost"
-                            size="sm"
-                            className="h-auto p-1 text-destructive hover:text-destructive"
-                            onClick={() => handleDelete(notification._id)}
-                          >
-                            <Trash2 className="h-3 w-3" />
-                          </Button>
-                        </div>
-                      </div>
-                    </div>
-                  </div>
-                ))
-              )}
-            </CardContent>
-          </Card>
-        </div>
-
+    <div className="p-4 md:p-6">
+      <NotificationCenter role="qc-technician">
         {/* Notification Preferences */}
-        <div className="space-y-6">
-          <Card>
-            <CardHeader>
-              <CardTitle className="flex items-center gap-2">
-                <Mail className="h-5 w-5" />
-                Notification Settings
-              </CardTitle>
-            </CardHeader>
-            <CardContent className="space-y-4">
-              <div className="flex items-center justify-between">
-                <Label htmlFor="email" className="flex flex-col">
-                  <span>Email Notifications</span>
-                  <span className="text-xs text-muted-foreground">Receive emails for alerts</span>
-                </Label>
-                <Switch
-                  id="email"
-                  checked={preferences.email}
-                  onCheckedChange={() => togglePreference('email')}
-                />
-              </div>
+        <Card>
+          <CardHeader>
+            <CardTitle className="flex items-center gap-2">
+              <Mail className="h-5 w-5" />
+              Notification Settings
+            </CardTitle>
+          </CardHeader>
+          <CardContent className="space-y-4">
+            <div className="flex items-center justify-between">
+              <Label htmlFor="email" className="flex flex-col">
+                <span>Email Notifications</span>
+                <span className="text-xs text-muted-foreground">Receive emails for alerts</span>
+              </Label>
+              <Switch
+                id="email"
+                checked={preferences.email}
+                onCheckedChange={() => togglePreference('email')}
+              />
+            </div>
 
-              <div className="flex items-center justify-between">
-                <Label htmlFor="push" className="flex flex-col">
-                  <span>Push Notifications</span>
-                  <span className="text-xs text-muted-foreground">Browser notifications</span>
-                </Label>
-                <Switch
-                  id="push"
-                  checked={preferences.push}
-                  onCheckedChange={() => togglePreference('push')}
-                />
-              </div>
-            </CardContent>
-          </Card>
+            <div className="flex items-center justify-between">
+              <Label htmlFor="push" className="flex flex-col">
+                <span>Push Notifications</span>
+                <span className="text-xs text-muted-foreground">Browser notifications</span>
+              </Label>
+              <Switch
+                id="push"
+                checked={preferences.push}
+                onCheckedChange={() => togglePreference('push')}
+              />
+            </div>
+          </CardContent>
+        </Card>
 
-          <Card>
-            <CardHeader>
-              <CardTitle>Alert Types</CardTitle>
-            </CardHeader>
-            <CardContent className="space-y-4">
-              <div className="flex items-center justify-between">
-                <Label htmlFor="report-ready" className="text-sm">
-                  New Reports Ready
-                </Label>
-                <Switch
-                  id="report-ready"
-                  checked={preferences.reportReady}
-                  onCheckedChange={() => togglePreference('reportReady')}
-                />
-              </div>
+        <Card>
+          <CardHeader>
+            <CardTitle>Alert Types</CardTitle>
+          </CardHeader>
+          <CardContent className="space-y-4">
+            <div className="flex items-center justify-between">
+              <Label htmlFor="report-ready" className="text-sm">
+                New Reports Ready
+              </Label>
+              <Switch
+                id="report-ready"
+                checked={preferences.reportReady}
+                onCheckedChange={() => togglePreference('reportReady')}
+              />
+            </div>
 
-              <div className="flex items-center justify-between">
-                <Label htmlFor="ai-complete" className="text-sm">
-                  AI Processing Complete
-                </Label>
-                <Switch
-                  id="ai-complete"
-                  checked={preferences.aiComplete}
-                  onCheckedChange={() => togglePreference('aiComplete')}
-                />
-              </div>
+            <div className="flex items-center justify-between">
+              <Label htmlFor="ai-complete" className="text-sm">
+                AI Processing Complete
+              </Label>
+              <Switch
+                id="ai-complete"
+                checked={preferences.aiComplete}
+                onCheckedChange={() => togglePreference('aiComplete')}
+              />
+            </div>
 
-              <div className="flex items-center justify-between">
-                <Label htmlFor="status-update" className="text-sm">
-                  Project Status Updates
-                </Label>
-                <Switch
-                  id="status-update"
-                  checked={preferences.statusUpdate}
-                  onCheckedChange={() => togglePreference('statusUpdate')}
-                />
-              </div>
+            <div className="flex items-center justify-between">
+              <Label htmlFor="status-update" className="text-sm">
+                Project Status Updates
+              </Label>
+              <Switch
+                id="status-update"
+                checked={preferences.statusUpdate}
+                onCheckedChange={() => togglePreference('statusUpdate')}
+              />
+            </div>
 
-              <div className="flex items-center justify-between">
-                <Label htmlFor="qc-review" className="text-sm">
-                  QC Review Updates
-                </Label>
-                <Switch
-                  id="qc-review"
-                  checked={preferences.qcReview}
-                  onCheckedChange={() => togglePreference('qcReview')}
-                />
-              </div>
+            <div className="flex items-center justify-between">
+              <Label htmlFor="qc-review" className="text-sm">
+                QC Review Updates
+              </Label>
+              <Switch
+                id="qc-review"
+                checked={preferences.qcReview}
+                onCheckedChange={() => togglePreference('qcReview')}
+              />
+            </div>
 
-              <div className="flex items-center justify-between">
-                <Label htmlFor="defect-found" className="text-sm">
-                  Defect Alerts
-                </Label>
-                <Switch
-                  id="defect-found"
-                  checked={preferences.defectFound}
-                  onCheckedChange={() => togglePreference('defectFound')}
-                />
-              </div>
-            </CardContent>
-          </Card>
-        </div>
-      </div>
+            <div className="flex items-center justify-between">
+              <Label htmlFor="defect-found" className="text-sm">
+                Defect Alerts
+              </Label>
+              <Switch
+                id="defect-found"
+                checked={preferences.defectFound}
+                onCheckedChange={() => togglePreference('defectFound')}
+              />
+            </div>
+          </CardContent>
+        </Card>
+      </NotificationCenter>
     </div>
   );
 };
 
 export default NotificationPageQCTechnician;
-

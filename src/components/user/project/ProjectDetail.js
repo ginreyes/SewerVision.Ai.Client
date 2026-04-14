@@ -1,4 +1,14 @@
 import React, { useState, useEffect, useCallback, useRef, useMemo } from 'react';
+import { useQueryClient } from '@tanstack/react-query';
+import {
+  useProjectVideos,
+  useProjectObservations,
+  useProjectSnapshots,
+  useProjectMetadata,
+  usePacpCodes,
+  useProjectDetections,
+  queryKeys,
+} from '@/hooks/useQueryHooks';
 import {
   ChevronUp,
   ChevronDown,
@@ -57,7 +67,7 @@ import { useAlert } from '@/components/providers/AlertProvider';
 import { api } from '@/lib/helper';
 import { useUploadLimits } from '@/hooks/useUploadLimits';
 import { useRouter } from 'next/navigation';
-import { getVideoUrl } from '@/lib/getVideoUrl';
+import { getVideoUrl, getSnapshotUrl } from '@/lib/getVideoUrl';
 import ProjectSwitcher from '@/components/shared/ProjectSwitcher';
 import { AiProcessingModal } from '@/components/project/AiProcessingModal';
 import ReprocessModal from '@/components/project/ReprocessModal';
@@ -73,13 +83,8 @@ const ProjectDetail = ({ project, setSelectedProject, allProjects = [] }) => {
   const [duration, setDuration] = useState(0);
   const [isObservationOpen, setIsObservationOpen] = useState(false);
   const [detailObs, setDetailObs] = useState(null);
-  const [pacpCodes, setPacpCodes] = useState([]);
-  const [snapshots, setSnapshots] = useState([]);
-  const [projectMetadata, setProjectMetadata] = useState(null);
-  const [observations, setObservations] = useState([]);
   const [obsPage, setObsPage] = useState(1);
   const obsPageSize = 10;
-  const [obsTotal, setObsTotal] = useState(0);
   const [isAddMetadataOpen, setIsAddMetadataOpen] = useState(false);
   const [isEditMetadataOpen, setIsEditMetadataOpen] = useState(false);
   const [newMetadataKey, setNewMetadataKey] = useState('');
@@ -93,9 +98,7 @@ const ProjectDetail = ({ project, setSelectedProject, allProjects = [] }) => {
   const [isNotifying, setIsNotifying] = useState(false);
 
   // Video list state
-  const [projectVideos, setProjectVideos] = useState([]);
   const [selectedVideo, setSelectedVideo] = useState(null);
-  const [loadingVideos, setLoadingVideos] = useState(false);
   const [isDeleteVideoOpen, setIsDeleteVideoOpen] = useState(false);
   const [videoToDelete, setVideoToDelete] = useState(null);
   const [deletingVideo, setDeletingVideo] = useState(false);
@@ -114,6 +117,85 @@ const ProjectDetail = ({ project, setSelectedProject, allProjects = [] }) => {
 
   const user_id = userId;
   const isAdmin = userData?.role === 'admin';
+  const queryClient = useQueryClient();
+
+  const getSnapshotColor = useCallback((label) => {
+    if (!label) return 'bg-gray-400';
+    const colorMap = {
+      MWL: 'bg-purple-500',
+      TFA: 'bg-orange-500',
+      CM: 'bg-yellow-500',
+      SAM: 'bg-purple-400',
+      CRK: 'bg-red-500',
+      RIN: 'bg-green-500',
+      DEF: 'bg-blue-500',
+      OBS: 'bg-gray-500',
+    };
+    const labelUpper = label.toUpperCase();
+    for (const [key, color] of Object.entries(colorMap)) {
+      if (labelUpper.includes(key)) {
+        return color;
+      }
+    }
+    return 'bg-gray-400';
+  }, []);
+
+  // ── TanStack Query hooks ──────────────────────────────────────────
+  const { data: pacpCodes = [] } = usePacpCodes();
+
+  const {
+    data: videosData = [],
+    isLoading: loadingVideos,
+  } = useProjectVideos(project?._id);
+  const projectVideos = videosData;
+
+  const {
+    data: obsData,
+  } = useProjectObservations(project?._id, obsPage, obsPageSize);
+  const observations = obsData?.observations ?? [];
+  const obsTotal = obsData?.total ?? 0;
+
+  const { data: rawSnapshots = [] } = useProjectSnapshots(project?._id);
+  const { data: detectionsRaw = [] } = useProjectDetections(project?._id);
+
+  const { data: fetchedMetadata } = useProjectMetadata(project?._id);
+  const projectMetadata = fetchedMetadata ?? project?.metadata ?? null;
+
+  // Auto-select first video when videos arrive and none selected
+  useEffect(() => {
+    if (projectVideos.length > 0 && !selectedVideo) {
+      setSelectedVideo(projectVideos[0]);
+    }
+  }, [projectVideos, selectedVideo]);
+
+  // Merge manual snapshots with AI detection snapshots
+  const snapshots = useMemo(() => {
+    const manualSnapshots = rawSnapshots.map((snapshot) => ({
+      id: snapshot._id || snapshot.id,
+      distance: snapshot.distance || 'N/A',
+      label: snapshot.label || 'Unlabeled',
+      timestamp: snapshot.timestamp || snapshot.created_at || snapshot.createdAt,
+      color: snapshot.color || getSnapshotColor(snapshot.label),
+      imageUrl: snapshot.imageUrl,
+    }));
+
+    // AI detection snapshots (detections that have images)
+    const detectionSnapshots = (Array.isArray(detectionsRaw) ? detectionsRaw : [])
+      .filter((d) => d.images && d.images.length > 0 && d.images[0].url)
+      .map((d) => ({
+        id: d._id,
+        distance: d.location?.distance != null ? String(d.location.distance) : `Frame ${d.frameNumber || 0}`,
+        label: d.type || 'AI Detection',
+        timestamp: d.detectedAt || d.createdAt,
+        color: getSnapshotColor(d.type || ''),
+        imageUrl: getSnapshotUrl(d.images[0].url),
+        confidence: d.confidence,
+        severity: d.severity,
+        isAiDetection: true,
+      }));
+
+    return [...manualSnapshots, ...detectionSnapshots];
+  }, [rawSnapshots, detectionsRaw, getSnapshotColor]);
 
   // Status-based gradient colors
   const statusGradient = useMemo(() => {
@@ -199,228 +281,6 @@ const ProjectDetail = ({ project, setSelectedProject, allProjects = [] }) => {
     }
   };
 
-  const fetchpacpCodes = useCallback(async () => {
-    try {
-      const { ok, data } = await api('/api/pacpcodes/get-all-pacpcodes', 'GET');
-
-      if (!ok) {
-        showAlert('Failed to load pacpcodes', 'error');
-      } else {
-        setPacpCodes(data.codes);
-      }
-    } catch (error) {
-      console.error(`error fetching pacpcodes: ${error.message}`, 'error');
-    }
-  }, [showAlert]);
-
-  useEffect(() => {
-    fetchpacpCodes();
-  }, [fetchpacpCodes]);
-
-  const getSnapshotColor = useCallback((label) => {
-    if (!label) return 'bg-gray-400';
-    const colorMap = {
-      MWL: 'bg-purple-500',
-      TFA: 'bg-orange-500',
-      CM: 'bg-yellow-500',
-      SAM: 'bg-purple-400',
-      CRK: 'bg-red-500',
-      RIN: 'bg-green-500',
-      DEF: 'bg-blue-500',
-      OBS: 'bg-gray-500',
-    };
-    // Check if label contains any of the keys
-    const labelUpper = label.toUpperCase();
-    for (const [key, color] of Object.entries(colorMap)) {
-      if (labelUpper.includes(key)) {
-        return color;
-      }
-    }
-    return 'bg-gray-400';
-  }, []);
-
-  const fetchSnapshots = useCallback(async () => {
-    if (!project?._id) return;
-    const backendUrl = process.env.NEXT_PUBLIC_BACKEND_URL || 'http://localhost:5000';
-    try {
-      // Fetch manual snapshots
-      let manualSnapshots = [];
-      const { ok, data } = await api(`/api/snapshots/get-all-snapshots?projectId=${project._id}`, 'GET');
-      if (ok && data && Array.isArray(data)) {
-        manualSnapshots = data.map((snapshot) => ({
-          id: snapshot._id || snapshot.id,
-          distance: snapshot.distance || 'N/A',
-          label: snapshot.label || 'Unlabeled',
-          timestamp: snapshot.timestamp || snapshot.created_at || snapshot.createdAt,
-          color: snapshot.color || getSnapshotColor(snapshot.label),
-          imageUrl: snapshot.imageUrl,
-        }));
-      } else if (project?.snapshots && Array.isArray(project.snapshots)) {
-        manualSnapshots = project.snapshots.map((snapshot) => ({
-          id: snapshot._id || snapshot.id,
-          distance: snapshot.distance || 'N/A',
-          label: snapshot.label || 'Unlabeled',
-          timestamp: snapshot.timestamp || snapshot.created_at || snapshot.createdAt,
-          color: snapshot.color || getSnapshotColor(snapshot.label),
-          imageUrl: snapshot.imageUrl,
-        }));
-      }
-
-      // Fetch AI detection snapshots (detections that have images)
-      let detectionSnapshots = [];
-      try {
-        const detRes = await api(`/api/qc-technicians/projects/${project._id}/detections`, 'GET');
-        if (detRes.ok && detRes.data?.data && Array.isArray(detRes.data.data)) {
-          detectionSnapshots = detRes.data.data
-            .filter((d) => d.images && d.images.length > 0 && d.images[0].url)
-            .map((d) => ({
-              id: d._id,
-              distance: d.location?.distance != null ? String(d.location.distance) : `Frame ${d.frameNumber || 0}`,
-              label: d.type || 'AI Detection',
-              timestamp: d.detectedAt || d.createdAt,
-              color: getSnapshotColor(d.type || ''),
-              imageUrl: `${backendUrl}/api/videos/snapshot/${d.images[0].url}`,
-              confidence: d.confidence,
-              severity: d.severity,
-              isAiDetection: true,
-            }));
-        }
-      } catch (detErr) {
-        console.warn('Could not fetch detection snapshots:', detErr.message);
-      }
-
-      // Merge manual + AI detection snapshots
-      const allSnapshots = [...manualSnapshots, ...detectionSnapshots];
-      setSnapshots(allSnapshots);
-    } catch (error) {
-      console.error('Error fetching snapshots:', error);
-      if (project?.snapshots && Array.isArray(project.snapshots)) {
-        const formattedSnapshots = project.snapshots.map((snapshot) => ({
-          id: snapshot._id || snapshot.id,
-          distance: snapshot.distance || 'N/A',
-          label: snapshot.label || 'Unlabeled',
-          timestamp: snapshot.timestamp || snapshot.created_at || snapshot.createdAt,
-          color: snapshot.color || getSnapshotColor(snapshot.label),
-          imageUrl: snapshot.imageUrl,
-        }));
-        setSnapshots(formattedSnapshots);
-      }
-    }
-  }, [project?._id, project?.snapshots, getSnapshotColor]);
-
-  const fetchProjectMetadata = useCallback(async () => {
-    // First, initialize from project prop if available
-    if (project?.metadata && typeof project.metadata === 'object') {
-      setProjectMetadata(project.metadata);
-    }
-
-    if (!project?._id) {
-      return;
-    }
-
-    try {
-      const { ok, data } = await api(`/api/projects/get-project/${project._id}`, 'GET');
-      if (ok && data?.data) {
-        const metadata = data.data.metadata || {};
-        setProjectMetadata(metadata);
-      } else if (project?.metadata && typeof project.metadata === 'object') {
-        // Fallback to project metadata if API fails
-        setProjectMetadata(project.metadata);
-      }
-    } catch (error) {
-      console.error('Error fetching project metadata:', error);
-      // Fallback to project metadata if available
-      if (project?.metadata && typeof project.metadata === 'object') {
-        setProjectMetadata(project.metadata);
-      }
-    }
-  }, [project?._id, project?.metadata]);
-
-  // Fetch project videos
-  const fetchProjectVideos = useCallback(async () => {
-    if (!project?._id) return;
-
-    setLoadingVideos(true);
-    try {
-      const { ok, data } = await api(`/api/videos/project/${project._id}`, 'GET');
-      if (ok && data?.data) {
-        setProjectVideos(data.data);
-        // Auto-select first video if none selected
-        if (data.data.length > 0 && !selectedVideo) {
-          setSelectedVideo(data.data[0]);
-        }
-      }
-    } catch (error) {
-      console.error('Error fetching project videos:', error);
-    } finally {
-      setLoadingVideos(false);
-    }
-  }, [project?._id, selectedVideo]);
-
-  // Fetch observations with pagination + fallback to AI detections
-  const fetchObservations = useCallback(async (page = 1) => {
-    if (!project?._id) return;
-    try {
-      const { ok, data } = await api(
-        `/api/observations/get-all-observations?projectId=${project._id}&page=${page}&limit=${obsPageSize}`,
-        'GET'
-      );
-      let list = [];
-      let total = 0;
-
-      if (ok && data?.data) {
-        list = Array.isArray(data.data) ? data.data : [];
-        total = data.pagination?.total ?? list.length;
-      } else if (Array.isArray(data)) {
-        list = data;
-        total = list.length;
-      }
-
-      if (!list.length) {
-        const detRes = await api(`/api/qc-technicians/projects/${project._id}/detections`, 'GET');
-        if (detRes.ok && detRes.data?.data && Array.isArray(detRes.data.data)) {
-          const dets = detRes.data.data;
-          list = dets.map((d) => {
-            const frameNumber = d.frameNumber || 0;
-            const seconds = Math.max(0, frameNumber - 1);
-            const hh = String(Math.floor(seconds / 3600)).padStart(2, '0');
-            const mm = String(Math.floor((seconds % 3600) / 60)).padStart(2, '0');
-            const ss = String(seconds % 60).padStart(2, '0');
-            const time = `${hh}:${mm}:${ss}`;
-
-            const label = d.type || 'AI detection';
-            const remarks =
-              d.severity || d.qcStatus
-                ? `${(d.severity || d.qcStatus).toString()} • ${(d.confidence ?? 0)}%`
-                : '';
-
-            return {
-              _id: d._id,
-              distance:
-                d.location && d.location.distance != null
-                  ? String(d.location.distance)
-                  : '0.0',
-              pacpCode:
-                d.pacpCode || (label || 'AI_DEFECT').toString().toUpperCase(),
-              observation: label,
-              time,
-              remarks,
-              snapshot: false,
-            };
-          });
-          total = list.length;
-        }
-      }
-
-      setObservations(list);
-      setObsTotal(total);
-      setObsPage(page);
-    } catch (error) {
-      console.error('Error fetching observations for project:', error);
-      setObservations([]);
-      setObsTotal(0);
-    }
-  }, [project?._id, obsPageSize]);
 
   // Handle video deletion (admin only)
   const handleDeleteVideo = async () => {
@@ -431,12 +291,12 @@ const ProjectDetail = ({ project, setSelectedProject, allProjects = [] }) => {
       const { ok } = await api(`/api/videos/${videoToDelete._id}`, 'DELETE');
       if (ok) {
         showAlert('Video deleted successfully', 'success');
-        setProjectVideos(prev => prev.filter(v => v._id !== videoToDelete._id));
         if (selectedVideo?._id === videoToDelete._id) {
           setSelectedVideo(projectVideos.length > 1 ? projectVideos.find(v => v._id !== videoToDelete._id) : null);
         }
         setIsDeleteVideoOpen(false);
         setVideoToDelete(null);
+        queryClient.invalidateQueries({ queryKey: queryKeys.projectVideos(project?._id) });
       } else {
         showAlert('Failed to delete video', 'error');
       }
@@ -496,7 +356,7 @@ const ProjectDetail = ({ project, setSelectedProject, allProjects = [] }) => {
         if (xhr.status >= 200 && xhr.status < 300) {
           showAlert('Video uploaded successfully!', 'success');
           // Refresh video list
-          fetchProjectVideos();
+          queryClient.invalidateQueries({ queryKey: queryKeys.projectVideos(project?._id) });
         } else {
           // Try to parse error response, fallback to generic message
           try {
@@ -544,17 +404,12 @@ const ProjectDetail = ({ project, setSelectedProject, allProjects = [] }) => {
     fileInputRef.current?.click();
   };
 
+  // Reset selected video when project changes
   useEffect(() => {
     if (project?._id) {
       setSelectedVideo(null);
-      setProjectVideos([]);
-      setSnapshots([]);
-      fetchSnapshots();
-      fetchProjectMetadata();
-      fetchProjectVideos();
-      fetchObservations(1);
     }
-  }, [project?._id, fetchSnapshots, fetchProjectMetadata, fetchProjectVideos, fetchObservations]);
+  }, [project?._id]);
 
   // Real-time polling for processing updates
   useEffect(() => {
@@ -577,15 +432,13 @@ const ProjectDetail = ({ project, setSelectedProject, allProjects = [] }) => {
     // Poll every 3 seconds for faster updates
     const intervalId = setInterval(() => {
       // Refresh videos to get latest AI status
-      fetchProjectVideos();
+      queryClient.invalidateQueries({ queryKey: queryKeys.projectVideos(project?._id) });
 
       // Refresh project to get latest overall status
       if (setSelectedProject) {
         api(`/api/projects/get-project/${project._id}`, 'GET')
           .then(({ data }) => {
             if (data?.data) {
-              // Only update if something changed (React will handle deep equality or ref check, 
-              // but passing new object is fine for now to ensure UI sync)
               setSelectedProject(data.data);
             }
           })
@@ -599,7 +452,7 @@ const ProjectDetail = ({ project, setSelectedProject, allProjects = [] }) => {
     project?.status,
     projectVideos,
     isReprocessing,
-    fetchProjectVideos,
+    queryClient,
     setSelectedProject
   ]);
 
@@ -628,7 +481,6 @@ const ProjectDetail = ({ project, setSelectedProject, allProjects = [] }) => {
 
       if (response.ok) {
         showAlert('Custom metadata added successfully', 'success');
-        setProjectMetadata(updatedMetadata);
         setNewMetadataKey('');
         setNewMetadataValue('');
         setIsAddMetadataOpen(false);
@@ -640,7 +492,7 @@ const ProjectDetail = ({ project, setSelectedProject, allProjects = [] }) => {
           }
         }
         // Also refresh local metadata
-        fetchProjectMetadata();
+        queryClient.invalidateQueries({ queryKey: ['project', project._id, 'metadata'] });
       } else {
         const errorMessage = response.data?.message || response.data?.error || 'Failed to add metadata';
         showAlert(errorMessage, 'error');
@@ -665,7 +517,6 @@ const ProjectDetail = ({ project, setSelectedProject, allProjects = [] }) => {
 
       if (response.ok) {
         showAlert('Metadata updated successfully', 'success');
-        setProjectMetadata(editingMetadata);
         setIsEditMetadataOpen(false);
         // Refresh project data
         if (setSelectedProject) {
@@ -675,7 +526,7 @@ const ProjectDetail = ({ project, setSelectedProject, allProjects = [] }) => {
           }
         }
         // Also refresh local metadata
-        fetchProjectMetadata();
+        queryClient.invalidateQueries({ queryKey: ['project', project._id, 'metadata'] });
       } else {
         const errorMessage = response.data?.message || response.data?.error || 'Failed to update metadata';
         showAlert(errorMessage, 'error');
@@ -791,7 +642,10 @@ const ProjectDetail = ({ project, setSelectedProject, allProjects = [] }) => {
       if (ok) {
         showAlert(`AI data reset — ${data?.data?.deletedDetections || 0} detections cleared`, 'success');
         setShowAiModal(false);
-        fetchProjectVideos(); fetchObservations(1); fetchSnapshots();
+        queryClient.invalidateQueries({ queryKey: queryKeys.projectVideos(project?._id) });
+        queryClient.invalidateQueries({ queryKey: ['project', project._id, 'observations'] });
+        queryClient.invalidateQueries({ queryKey: ['project', project._id, 'snapshots'] });
+        setObsPage(1);
         const { data: refreshed } = await api(`/api/projects/get-project/${project._id}`, 'GET');
         if (refreshed?.data && setSelectedProject) setSelectedProject(refreshed.data);
       } else showAlert('Failed to reset AI data', 'error');
@@ -1282,7 +1136,7 @@ const ProjectDetail = ({ project, setSelectedProject, allProjects = [] }) => {
               total={obsTotal}
               onPageChange={(nextPage) => {
                 if (nextPage < 1) return;
-                fetchObservations(nextPage);
+                setObsPage(nextPage);
               }}
               onGoToTime={(obs) => {
                 if (!videoRef.current || !obs?.time) return;
@@ -1293,9 +1147,8 @@ const ProjectDetail = ({ project, setSelectedProject, allProjects = [] }) => {
                 videoRef.current.play().catch(() => {});
               }}
               onViewDetail={(obs) => setDetailObs(obs)}
-              onDeleteObservation={(id) => {
-                setObservations((prev) => prev.filter((o) => o._id !== id));
-                setObsTotal((prev) => Math.max(0, prev - 1));
+              onDeleteObservation={() => {
+                queryClient.invalidateQueries({ queryKey: ['project', project?._id, 'observations'] });
               }}
             />
           </div>
@@ -1614,8 +1467,8 @@ const ProjectDetail = ({ project, setSelectedProject, allProjects = [] }) => {
         observation={detailObs}
         projectId={project?._id}
         videoRef={videoRef}
-        onDelete={(id) => { setObservations((p) => p.filter((o) => o._id !== id)); setObsTotal((p) => Math.max(0, p - 1)); setDetailObs(null); }}
-        onUpdate={(u) => { setObservations((p) => p.map((o) => o._id === u._id ? { ...o, ...u } : o)); }}
+        onDelete={() => { queryClient.invalidateQueries({ queryKey: ['project', project?._id, 'observations'] }); setDetailObs(null); }}
+        onUpdate={() => { queryClient.invalidateQueries({ queryKey: ['project', project?._id, 'observations'] }); }}
         onGoToTime={(obs) => { if (!videoRef.current || !obs?.time) return; const pts = String(obs.time).split(':').map((p) => parseInt(p, 10) || 0); videoRef.current.currentTime = pts[0] * 3600 + pts[1] * 60 + pts[2]; setIsPlaying(true); videoRef.current.play().catch(() => {}); }}
       />
     </div>

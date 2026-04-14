@@ -324,6 +324,95 @@
 .dark .shadow-amber-200 { --tw-shadow-color: rgba(245, 158, 11, 0.15) !important; }
 .dark .shadow-rose-200 { --tw-shadow-color: rgba(244, 63, 94, 0.15) !important; }
 
+/* ── User detail / form / card header dark mode ──
+   Fixes the hardcoded colored section headers, input bg, badge bg,
+   and dashed border patterns across admin user detail + role-specific panels. */
+
+/* Section header gradients (General Info, Support Profile, etc.) */
+.dark .bg-blue-50\/40 { background-color: rgba(59, 130, 246, 0.08) !important; }
+.dark .bg-emerald-50\/40 { background-color: rgba(16, 185, 129, 0.08) !important; }
+.dark .bg-rose-50\/40 { background-color: rgba(244, 63, 94, 0.08) !important; }
+
+/* Input fields in dark mode — make them clearly visible */
+.dark input:not([type="checkbox"]):not([type="radio"]):not([role="switch"]),
+.dark textarea,
+.dark select {
+  background-color: #1e1d26 !important;
+  border-color: #3a3944 !important;
+  color: #e5e7eb !important;
+}
+.dark input::placeholder,
+.dark textarea::placeholder {
+  color: #6b7280 !important;
+}
+.dark input:focus,
+.dark textarea:focus,
+.dark select:focus {
+  border-color: var(--role-accent, #3b82f6) !important;
+  box-shadow: 0 0 0 2px rgba(var(--role-primary, 59 130 246) / 0.15) !important;
+}
+
+/* Select trigger (shadcn) */
+.dark [data-slot="select-trigger"] {
+  background-color: #1e1d26 !important;
+  border-color: #3a3944 !important;
+}
+
+/* Card sections with colored borders */
+.dark .border-blue-100 { border-color: rgba(59, 130, 246, 0.15) !important; }
+.dark .border-emerald-100 { border-color: rgba(16, 185, 129, 0.15) !important; }
+.dark .border-rose-100 { border-color: rgba(244, 63, 94, 0.15) !important; }
+.dark .border-indigo-100 { border-color: rgba(99, 102, 241, 0.15) !important; }
+.dark .border-purple-100 { border-color: rgba(168, 85, 247, 0.15) !important; }
+.dark .border-teal-100 { border-color: rgba(20, 184, 166, 0.15) !important; }
+.dark .border-amber-100 { border-color: rgba(245, 158, 11, 0.15) !important; }
+
+/* Opacity-modified colored backgrounds used on section headers */
+.dark .bg-teal-50\/30 { background-color: rgba(20, 184, 166, 0.06) !important; }
+.dark .bg-blue-50\/30 { background-color: rgba(59, 130, 246, 0.06) !important; }
+.dark .bg-purple-50\/30 { background-color: rgba(168, 85, 247, 0.06) !important; }
+.dark .bg-indigo-50\/30 { background-color: rgba(99, 102, 241, 0.06) !important; }
+.dark .bg-rose-50\/30 { background-color: rgba(244, 63, 94, 0.06) !important; }
+.dark .bg-emerald-50\/30 { background-color: rgba(16, 185, 129, 0.06) !important; }
+.dark .bg-amber-50\/30 { background-color: rgba(245, 158, 11, 0.06) !important; }
+/* Colored border-50 variants used on card header borders */
+.dark .border-teal-50 { border-color: rgba(20, 184, 166, 0.1) !important; }
+.dark .border-blue-50 { border-color: rgba(59, 130, 246, 0.1) !important; }
+.dark .border-purple-50 { border-color: rgba(168, 85, 247, 0.1) !important; }
+.dark .border-indigo-50 { border-color: rgba(99, 102, 241, 0.1) !important; }
+.dark .border-rose-50 { border-color: rgba(244, 63, 94, 0.1) !important; }
+
+/* Dashed borders */
+.dark .border-dashed { border-color: #3a3944 !important; }
+
+/* Colored text-800 variants used on badges/labels — hard to read on dark */
+.dark .text-red-800 { color: #fca5a5 !important; }
+.dark .text-emerald-800 { color: #6ee7b7 !important; }
+.dark .text-purple-800 { color: #c4b5fd !important; }
+.dark .text-orange-800 { color: #fdba74 !important; }
+.dark .text-teal-800 { color: #5eead4 !important; }
+.dark .text-blue-800 { color: #93c5fd !important; }
+.dark .text-indigo-800 { color: #a5b4fc !important; }
+.dark .text-amber-800 { color: #fcd34d !important; }
+.dark .text-rose-800 { color: #fda4af !important; }
+
+/* Avatar fallback */
+.dark [data-slot="avatar-fallback"] {
+  background-color: #3a3944 !important;
+  color: #e5e7eb !important;
+}
+
+/* ── Tabs / Switch / Toggle dark mode ── */
+.dark .bg-gray-100\/80 { background-color: #1e1d26 !important; }
+/* shadcn Switch track — make it visible in dark mode */
+.dark [data-state="unchecked"][role="switch"] {
+  background-color: #3a3944 !important;
+}
+/* TabsTrigger active state data attribute */
+.dark [data-state="active"][role="tab"] {
+  color: inherit;
+}
+
 /* ── Toast / Alert notifications ── */
 .toast-main-container {
   background: rgba(255, 255, 255, 0.95);

@@ -556,7 +556,7 @@ function SettingsPageContent() {
             <RefreshCcw className="w-4 h-4" /> Refresh
           </Button>
           {activeTab !== 'profile' && isSectionDirty(activeTab) && (
-            <Button onClick={() => saveSettings(activeTab)} disabled={saving} className="bg-blue-600 hover:bg-blue-700">
+            <Button onClick={() => saveSettings(activeTab)} disabled={saving} className="bg-rose-600 hover:bg-rose-700 text-white">
               {saving ? <Loader2 className="w-4 h-4 mr-2 animate-spin" /> : <Save className="w-4 h-4 mr-2" />}
               Save Changes
             </Button>
@@ -584,11 +584,11 @@ function SettingsPageContent() {
                   key={item.id}
                   onClick={() => handleTabChange(item.id)}
                   className={`flex items-center w-full px-3 py-2 text-sm font-medium rounded-lg transition-colors ${activeTab === item.id
-                    ? 'bg-blue-50 text-blue-700'
-                    : 'text-gray-600 hover:bg-gray-50 hover:text-gray-900'
+                    ? 'bg-rose-50 text-rose-700 dark:bg-rose-500/15 dark:text-rose-400'
+                    : 'text-gray-600 dark:text-gray-400 hover:bg-gray-50 dark:hover:bg-[#2b2a33] hover:text-gray-900 dark:hover:text-white'
                     }`}
                 >
-                  <item.icon className={`w-4 h-4 mr-3 ${activeTab === item.id ? 'text-blue-600' : 'text-gray-400'
+                  <item.icon className={`w-4 h-4 mr-3 ${activeTab === item.id ? 'text-rose-600 dark:text-rose-400' : 'text-gray-400'
                     }`} />
                   {item.label}
                 </button>
@@ -841,11 +841,11 @@ function SettingsPageContent() {
                   <SectionHeader icon={Cpu} title="AI Learning Loop" description="Configure continuous learning parameters" />
                 </CardHeader>
                 <CardContent className="space-y-6">
-                  <div className="flex items-start gap-3 p-3 bg-blue-50 border border-blue-200 rounded-lg text-sm text-blue-800">
-                    <BrainCircuit className="w-4 h-4 mt-0.5 shrink-0 text-blue-600" />
+                  <div className="flex items-start gap-3 p-3 bg-blue-50 dark:bg-blue-500/10 border border-blue-200 dark:border-blue-500/20 rounded-lg text-sm text-blue-800 dark:text-blue-300">
+                    <BrainCircuit className="w-4 h-4 mt-0.5 shrink-0 text-blue-600 dark:text-blue-400" />
                     <div>
                       <p className="font-medium">Powered by Roboflow</p>
-                      <p className="text-blue-700 text-xs mt-0.5">AI inference is handled by Roboflow (configured via environment variables). These settings control how QC feedback is collected — actual model retraining is managed in your Roboflow workspace.</p>
+                      <p className="text-blue-700 dark:text-blue-400/80 text-xs mt-0.5">AI inference is handled by Roboflow (configured via environment variables). These settings control how QC feedback is collected — actual model retraining is managed in your Roboflow workspace.</p>
                     </div>
                   </div>
                   <ToggleSetting label="Feedback Loop" description="Enable automated training from QC data" checked={feedbackLoopEnabled} onCheckedChange={setFeedbackLoopEnabled} />
@@ -860,9 +860,9 @@ function SettingsPageContent() {
                       </SelectContent>
                     </Select>
                   </div>
-                  <div className="bg-green-50 p-4 rounded-lg">
-                    <h4 className="font-semibold text-green-800 mb-2">Metrics</h4>
-                    <ul className="text-sm text-green-700 space-y-1">
+                  <div className="bg-green-50 dark:bg-green-500/10 border border-green-200 dark:border-green-500/20 p-4 rounded-lg">
+                    <h4 className="font-semibold text-green-800 dark:text-green-300 mb-2">Metrics</h4>
+                    <ul className="text-sm text-green-700 dark:text-green-400 space-y-1">
                       <li>Accuracy: {performanceMetrics.accuracy}%</li>
                       <li>FPR: {performanceMetrics.falsePositiveRate}%</li>
                     </ul>

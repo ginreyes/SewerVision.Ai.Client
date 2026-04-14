@@ -7,7 +7,7 @@ import {
   CardHeader,
   CardTitle,
 } from "@/components/ui/card";
-import { UserCheck, Users, UserPlus, UserMinus, UserCog, Shield, ShieldCheck, ShieldX } from "lucide-react";
+import { UserCheck, Users, UserPlus, UserMinus, UserCog, Shield, ShieldCheck, ShieldX, Clock, Timer, TrendingUp } from "lucide-react";
 import { FaUserClock } from "react-icons/fa";
 import { api } from "@/lib/helper";
 
@@ -26,7 +26,7 @@ const SkeletonCard = () => (
   </Card>
 );
 
-const CardList = ({ activeTab = "users", auditStats = {}, permissionStats = {} }) => {
+const CardList = ({ activeTab = "users", auditStats = {}, permissionStats = {}, attendanceStats = {} }) => {
   const [userStats, setUserStats] = useState({
     total: 0,
     active: 0,
@@ -149,7 +149,31 @@ const CardList = ({ activeTab = "users", auditStats = {}, permissionStats = {} }
     },
   ];
 
-  const stats = activeTab === "permissions" ? permissionCards : activeTab === "audit" ? auditCards : userCards;
+  const attendanceCards = [
+    {
+      label: "Clocked In Today",
+      value: attendanceStats.todayCount || 0,
+      icon: <Clock className="text-emerald-600 w-6 h-6" />,
+      color: "text-emerald-600",
+      description: "Employees clocked in today.",
+    },
+    {
+      label: "Total Hours",
+      value: `${attendanceStats.totalHours || 0}h`,
+      icon: <Timer className="text-blue-600 w-6 h-6" />,
+      color: "text-blue-600",
+      description: "Total hours logged this period.",
+    },
+    {
+      label: "Avg Hours/Entry",
+      value: `${attendanceStats.avgHours || 0}h`,
+      icon: <TrendingUp className="text-rose-600 w-6 h-6" />,
+      color: "text-rose-600",
+      description: "Average hours per time entry.",
+    },
+  ];
+
+  const stats = activeTab === "attendance" ? attendanceCards : activeTab === "permissions" ? permissionCards : activeTab === "audit" ? auditCards : userCards;
 
   if (loading) {
     return (

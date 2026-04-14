@@ -1,14 +1,7 @@
 'use client'
 
 import React from "react";
-
-const categoryColorMap = {
-  personal: 'bg-[#FF3D1C]/10 text-[#FF3D1C] border-[#FF3D1C]',
-  business: 'bg-[#696CFF]/10 text-[#696CFF] border-[#696CFF]',
-  family: 'bg-[#FFAB00]/10 text-[#FFAB00] border-[#FFAB00]',
-  holiday: 'bg-[#71DD37]/10 text-[#71DD37] border-[#71DD37]',
-  etc: 'bg-[#03C3EC]/10 text-[#03C3EC] border-[#03C3EC]',
-};
+import { getCalendarCategoryClass } from '@/lib/statusConfig';
 
 const WeekView = ({ date, AddEvent, event_list }) => {
   const allDayEvents = event_list.filter(event => {
@@ -61,7 +54,7 @@ const WeekView = ({ date, AddEvent, event_list }) => {
                 <div
                   key={i}
                   onClick={() => AddEvent(event)}
-                  className={`absolute left-1 top-1 right-1 px-2 py-0.5 text-xs truncate rounded border cursor-pointer ${categoryColorMap[event.category] || 'bg-green-100 text-green-700 border-green-300'}`}
+                  className={`absolute left-1 top-1 right-1 px-2 py-0.5 text-xs truncate rounded border cursor-pointer ${getCalendarCategoryClass(event.category)}`}
                 >
                   {event.title}
                 </div>
@@ -113,7 +106,7 @@ const WeekView = ({ date, AddEvent, event_list }) => {
                         AddEvent(event);
                       }}
                       style={{ height }}
-                      className={`absolute left-1 right-1 top-1 px-2 py-0.5 text-xs truncate rounded border shadow-sm ${categoryColorMap[event.category] || 'bg-blue-100 text-blue-800 border-blue-300'}`}
+                      className={`absolute left-1 right-1 top-1 px-2 py-0.5 text-xs truncate rounded border shadow-sm ${getCalendarCategoryClass(event.category)}`}
                     >
                       {start.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })} - {end.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}<br />
                       {event.title}

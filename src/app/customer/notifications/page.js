@@ -4,21 +4,16 @@ import { useState, useMemo, useEffect, useRef } from 'react';
 import {
   Bell,
   Check,
-  Clock,
-  AlertCircle,
-  Info,
-  FileText,
   Loader2,
   MessageCircle,
   Send,
   ArrowLeft,
-  Paperclip,
   Smile,
   MoreHorizontal,
   Trash2,
 } from 'lucide-react';
 
-import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
+import { Card, CardContent } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
@@ -35,17 +30,12 @@ import {
 import { api } from '@/lib/helper';
 import { avatarSrc, getAvatarColor, getInitials } from '@/components/admin/constants';
 
-import NotificationItem from '@/components/customer/notifications/NotificationItem';
 import NotificationPreferences from '@/components/customer/notifications/NotificationPreferences';
 import ChatMessage, { ChatDateSeparator } from '@/components/shared/ChatMessage';
 import EmojiPicker from '@/components/shared/EmojiPicker';
 import AttachmentMenu from '@/components/shared/AttachmentMenu';
 import { useRealtimeChat } from '@/hooks/useRealtimeChat';
-
-// Helper Icons
-const FileTextIcon = () => <FileText className="h-4 w-4 text-blue-500" />;
-const BotIcon = () => <AlertCircle className="h-4 w-4 text-green-500" />;
-const UpdateIcon = () => <Clock className="h-4 w-4 text-orange-500" />;
+import NotificationCenter from '@/components/shared/NotificationCenter';
 
 const NotificationPageCustomer = () => {
   const { userId } = useUser();
@@ -121,32 +111,6 @@ const NotificationPageCustomer = () => {
     }
   };
 
-  const getNotificationIcon = (type) => {
-    switch (type) {
-      case 'report_ready':
-        return <FileTextIcon />;
-      case 'ai_complete':
-      case 'defect_found':
-        return <BotIcon />;
-      case 'status_update':
-      case 'qc_review':
-        return <UpdateIcon />;
-      default:
-        return <Info className="h-4 w-4" />;
-    }
-  };
-
-  const formatDate = (dateString) => {
-    const date = new Date(dateString);
-    const now = new Date();
-    const diffInHours = Math.floor((now - date) / (1000 * 60 * 60));
-
-    if (diffInHours < 1) return 'Just now';
-    if (diffInHours < 24) return `${diffInHours}h ago`;
-    if (diffInHours < 48) return 'Yesterday';
-    return date.toLocaleDateString();
-  };
-
   // ─── Messages State ───
   const [convos, setConvos] = useState([]);
   const [msgUnread, setMsgUnread] = useState(0);
@@ -166,6 +130,17 @@ const NotificationPageCustomer = () => {
     };
     fetchConvos();
   }, [userId]);
+
+  const formatDate = (dateString) => {
+    const date = new Date(dateString);
+    const now = new Date();
+    const diffInHours = Math.floor((now - date) / (1000 * 60 * 60));
+
+    if (diffInHours < 1) return 'Just now';
+    if (diffInHours < 24) return `${diffInHours}h ago`;
+    if (diffInHours < 48) return 'Yesterday';
+    return date.toLocaleDateString();
+  };
 
   return (
     <div className="space-y-6 p-4 md:p-6" data-tour="customer-notifications">
@@ -202,48 +177,25 @@ const NotificationPageCustomer = () => {
           </TabsTrigger>
         </TabsList>
 
-        {/* ─── Notifications Tab ─── */}
+        {/* Notifications Tab */}
         <TabsContent value="notifications" className="mt-0">
-          <div className="grid gap-6 md:grid-cols-3">
-            <div className="md:col-span-2 space-y-4">
-              <Card>
-                <CardHeader>
-                  <CardTitle className="flex items-center gap-2">
-                    <Bell className="h-5 w-5" />
-                    Recent Notifications
-                  </CardTitle>
-                </CardHeader>
-                <CardContent className="space-y-4">
-                  {loading ? (
-                    <div className="flex items-center justify-center py-8">
-                      <Loader2 className="h-6 w-6 animate-spin text-primary" />
-                      <span className="ml-3 text-muted-foreground">Loading notifications...</span>
-                    </div>
-                  ) : notifications.length === 0 ? (
-                    <p className="text-muted-foreground text-center py-8">No notifications yet</p>
-                  ) : (
-                    notifications.map((notification) => (
-                      <NotificationItem
-                        key={notification._id}
-                        notification={notification}
-                        onMarkRead={markAsRead}
-                        onDelete={deleteNotification}
-                        getIcon={getNotificationIcon}
-                        formatDate={formatDate}
-                      />
-                    ))
-                  )}
-                </CardContent>
-              </Card>
-            </div>
+          <NotificationCenter
+            role="customer"
+            notifications={notifications}
+            unreadCount={unreadCount}
+            isLoading={loading}
+            onMarkAsRead={markAsRead}
+            onMarkAllAsRead={markAllAsRead}
+            onDelete={deleteNotification}
+          >
             <NotificationPreferences
               preferences={preferences}
               onToggle={togglePreference}
             />
-          </div>
+          </NotificationCenter>
         </TabsContent>
 
-        {/* ─── Messages Tab (Full Messenger-style) ─── */}
+        {/* Messages Tab (Full Messenger-style) */}
         <TabsContent value="messages" className="mt-0">
           <MessengerInbox userId={userId} convos={convos} setConvos={setConvos} convosLoading={convosLoading} msgUnread={msgUnread} setMsgUnread={setMsgUnread} formatDate={formatDate} />
         </TabsContent>
@@ -260,9 +212,8 @@ function MessengerInbox({ userId, convos, setConvos, convosLoading, msgUnread, s
   const [input, setInput] = useState('');
   const [sending, setSending] = useState(false);
   const [showEmoji, setShowEmoji] = useState(false);
-  const [convoMenu, setConvoMenu] = useState(null); // conversationId for context menu
+  const [convoMenu, setConvoMenu] = useState(null);
   const endRef = useRef(null);
-  const fileInputRef = useRef(null);
 
   const selected = convos.find(c => c._id === selectedConvo);
   const selectedName = selected?.createdBy?.first_name ? `${selected.createdBy.first_name} ${selected.createdBy.last_name || ''}`.trim() : 'Team Leader';
@@ -315,7 +266,7 @@ function MessengerInbox({ userId, convos, setConvos, convosLoading, msgUnread, s
         const res = await api(`/api/client-conversations/${selectedConvo}/messages?limit=100`, 'GET');
         if (res.ok) setMessages(res.data?.data || []);
       } catch { /* silent */ }
-    }, 30000); // 30s fallback instead of 8s
+    }, 30000);
     return () => clearInterval(iv);
   }, [selectedConvo]);
 
@@ -352,23 +303,6 @@ function MessengerInbox({ userId, convos, setConvos, convosLoading, msgUnread, s
       if (selectedConvo === convoId) { setSelectedConvo(null); setMessages([]); }
       setConvoMenu(null);
     } catch { /* silent */ }
-  };
-
-  // Handle file upload
-  const handleFileSelect = async (e) => {
-    const file = e.target.files?.[0];
-    if (!file || !selectedConvo) return;
-    // For now send as text with file name indicator — full B2 upload can be added later
-    setSending(true);
-    try {
-      const res = await api(`/api/client-conversations/${selectedConvo}/messages`, 'POST', {
-        from: 'customer', sender: userId, text: `📎 ${file.name} (${(file.size / 1024).toFixed(0)}KB)`,
-      });
-      const sent = res.ok ? res.data?.data : null;
-      setMessages(prev => [...prev, sent || { _id: Date.now(), from: 'customer', sender: { _id: userId }, text: `📎 ${file.name}`, createdAt: new Date().toISOString() }]);
-    } catch { /* silent */ }
-    finally { setSending(false); }
-    e.target.value = '';
   };
 
   // Group messages by date + sender

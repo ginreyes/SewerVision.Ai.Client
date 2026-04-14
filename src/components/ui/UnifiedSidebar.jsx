@@ -163,8 +163,6 @@ const ADMIN_MENU_GROUPS = [
     ],
   },
 ];
-
-// ── Role-based theme colors ──
 const ROLE_THEMES = {
   admin: {
     gradient: 'from-rose-600 via-red-500 to-rose-700',
@@ -271,7 +269,6 @@ const ROLE_THEMES = {
   },
 };
 
-// ── Hardcoded fallback menus per role (used when DB has no SecurityModules seeded) ──
 const FALLBACK_MENUS = {
   operator: [
     { label: 'Main', items: [
@@ -297,6 +294,7 @@ const FALLBACK_MENUS = {
       { label: 'Reports', icon: 'BarChart2', path: '/operator/reports', key: 'reports' },
       { label: 'Incidents', icon: 'AlertTriangle', path: '/operator/incidents', key: 'incidents' },
       { label: 'Time Tracking', icon: 'Clock', path: '/operator/time-tracking', key: 'time-tracking' },
+      { label: 'Analytics', icon: 'BarChart2', path: '/operator/analytics', key: 'analytics' },
     ]},
     { label: 'Account', items: [
       { label: 'Notifications', icon: 'Bell', path: '/operator/notifications', key: 'notifications', locked: true },
@@ -310,9 +308,6 @@ const FALLBACK_MENUS = {
     ]},
     { label: 'Work', items: [
       { label: 'Tasks', icon: 'ClipboardList', path: '/qc-technician/task', key: 'tasks' },
-      // Review Workspace replaces the old separate "Projects" + "Quality Control"
-      // menu entries. The workspace handles project selection, detection review,
-      // the video player, and manual detection entry in a single page.
       { label: 'Review Workspace', icon: 'ClipboardCheck', path: '/qc-technician/quality-control', key: 'quality-control' },
       { label: 'Review Templates', icon: 'FileText', path: '/qc-technician/review-templates', key: 'review-templates' },
       { label: 'Devices', icon: 'Monitor', path: '/qc-technician/devices', key: 'devices' },
@@ -354,6 +349,7 @@ const FALLBACK_MENUS = {
     { label: 'Tools & Settings', items: [
       { label: 'Training Center', icon: 'GraduationCap', path: '/user/training', key: 'training' },
       { label: 'Reports', icon: 'BarChart2', path: '/user/reports', key: 'reports' },
+      { label: 'Notes', icon: 'StickyNote', path: '/user/notes', key: 'notes' },
       { label: 'Calendar', icon: 'Calendar', path: '/user/calendar', key: 'calendar' },
       { label: 'Time Tracking', icon: 'Clock', path: '/user/time-tracking', key: 'time-tracking' },
       { label: 'Settings', icon: 'Settings', path: '/user/settings', key: 'settings', locked: true },
@@ -427,21 +423,20 @@ const UnifiedSidebar = ({ isOpen, role, displayName }) => {
   const [activeItem, setActiveItem] = useState('Dashboard');
   const [loadingItem, setLoadingItem] = useState(null);
   const showLoading = useLoadingModuleSetting(LOADING_KEYS[role] || 'admin');
+  const [dbModules, setDbModules] = useState(null);
   const pathname = usePathname();
   const { hasAccess } = useModulePermissions();
 
-  // Fetch modules from SecurityModule API for non-admin roles
-  const [dbModules, setDbModules] = useState(null); // null = not loaded yet
   useEffect(() => {
-    if (role === 'admin' || role === 'customer') return; // These use hardcoded menus
+    if (role === 'admin' || role === 'customer') return; 
     const fetchModules = async () => {
       try {
         const response = await api(`/api/security-modules/by-role/${role}`, 'GET');
         const raw = response?.data?.data ?? response?.data;
         if (response?.ok && Array.isArray(raw) && raw.length > 0) {
           setDbModules(raw);
-        } else {
-          // DB empty or error — use hardcoded fallback
+        } 
+        else {
           setDbModules(FALLBACK_MENUS[role] || []);
         }
       } catch (e) {
@@ -459,10 +454,8 @@ const UnifiedSidebar = ({ isOpen, role, displayName }) => {
     setTimeout(() => setLoadingItem(null), 5000);
   };
 
-  // Sync active item with URL
   useEffect(() => {
     if (!pathname) return;
-    // Find which item matches current path
     const allItems = role === 'admin'
       ? ADMIN_MENU_GROUPS.flatMap((g) => g.items)
       : role === 'customer'
@@ -478,22 +471,16 @@ const UnifiedSidebar = ({ isOpen, role, displayName }) => {
     }
   }, [pathname, role, dbModules]);
 
-  // Build menu groups
   const menuGroups = useMemo(() => {
-    // Admin & customer: hardcoded, no permission filtering
     if (role === 'admin') return ADMIN_MENU_GROUPS;
     if (role === 'customer') return FALLBACK_MENUS.customer || [];
-
-    // Other roles: use DB modules, filter by permissions
-    if (!dbModules) return []; // Still loading
+    if (!dbModules) return []; 
 
     return dbModules
       .map((group) => ({
         ...group,
         items: (group.items || []).filter((item) => {
-          // Locked modules always show
           if (item.locked) return true;
-          // Check permission
           return hasAccess(item.key || item.module);
         }),
       }))

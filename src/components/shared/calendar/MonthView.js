@@ -7,6 +7,7 @@ import {
   PopoverContent,
 } from '@/components/ui/popover'
 import { cn } from '@/lib/utils'
+import { getCalendarCategoryClass } from '@/lib/statusConfig'
 
 const daysOfWeek = ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat']
 
@@ -20,14 +21,6 @@ export default function MonthViewCalendar({ currentYear, currentMonth, today, ev
     const dayNumber = i - firstDayOfMonth + 1
     return dayNumber > 0 && dayNumber <= daysInMonth ? dayNumber : null
   })
-
-  const categoryColorMap = {
-    personal: 'bg-[#FF3D1C]/10 text-[#FF3D1C] border-[#FF3D1C]',
-    business: 'bg-[#696CFF]/10 text-[#696CFF] border-[#696CFF]',
-    family: 'bg-[#FFAB00]/10 text-[#FFAB00] border-[#FFAB00]',
-    holiday: 'bg-[#71DD37]/10 text-[#71DD37] border-[#71DD37]',
-    etc: 'bg-[#03C3EC]/10 text-[#03C3EC] border-[#03C3EC]',
-  }
 
   const isToday = (day) => day === today.getDate() && currentMonth === today.getMonth() && currentYear === today.getFullYear()
 
@@ -87,7 +80,7 @@ export default function MonthViewCalendar({ currentYear, currentMonth, today, ev
                         title={event.title}
                         className={cn(
                           'mt-0.5 text-[11px] rounded px-1.5 py-0.5 truncate border cursor-pointer hover:opacity-80 transition-opacity',
-                          categoryColorMap[event.category] || 'bg-gray-100 dark:bg-[#374151] text-gray-700 dark:text-gray-300 border-gray-200 dark:border-[#4b5563]'
+                          getCalendarCategoryClass(event.category) || 'bg-gray-100 dark:bg-[#374151] text-gray-700 dark:text-gray-300 border-gray-200 dark:border-[#4b5563]'
                         )}
                         onClick={(e) => {
                           e.stopPropagation()
@@ -140,7 +133,7 @@ export default function MonthViewCalendar({ currentYear, currentMonth, today, ev
                                 key={i}
                                 className={cn(
                                   'text-xs font-medium px-2 py-1.5 rounded-lg cursor-pointer truncate',
-                                  categoryColorMap[event.category] || 'bg-muted text-muted-foreground'
+                                  getCalendarCategoryClass(event.category) || 'bg-muted text-muted-foreground'
                                 )}
                                 title={event.title}
                                 onClick={(e) => {

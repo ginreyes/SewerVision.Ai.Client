@@ -127,14 +127,14 @@ const LoginForm = ({ className }) => {
     };
 
     return (
-        <Card className={`w-full max-w-md bg-white border-0 shadow-xl rounded-2xl overflow-hidden ${className}`}>
+        <Card className={`w-full max-w-md bg-white dark:bg-[#2b2a33] border-0 shadow-xl rounded-2xl overflow-hidden ${className}`}>
 
             {/* Gradient Top Border */}
             <div className="h-1.5 bg-gradient-to-r from-rose-500 to-purple-600"></div>
 
             <CardHeader className="text-center pb-2 pt-8">
-                <h2 className="text-2xl font-bold text-gray-900">Sign In</h2>
-                <CardDescription className="text-gray-500">
+                <h2 className="text-2xl font-bold text-gray-900 dark:text-white">Sign In</h2>
+                <CardDescription className="text-gray-500 dark:text-zinc-400">
                     Access your SewerVision portal
                 </CardDescription>
             </CardHeader>
@@ -144,7 +144,7 @@ const LoginForm = ({ className }) => {
 
                     {/* Username Input */}
                     <div className="space-y-2 group">
-                        <Label htmlFor="usernameOrEmail" className="text-sm font-semibold text-gray-700">Username or Email</Label>
+                        <Label htmlFor="usernameOrEmail" className="text-sm font-semibold text-gray-700 dark:text-zinc-300">Username or Email</Label>
                         <div className="relative">
                             <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
                                 <FaUser className="h-4 w-4 text-gray-400 group-focus-within:text-rose-500 transition-colors" />
@@ -153,7 +153,7 @@ const LoginForm = ({ className }) => {
                                 type="text"
                                 id="usernameOrEmail"
                                 placeholder="username@example.com"
-                                className="pl-10 h-11 bg-gray-50 border-gray-200 focus:bg-white focus:border-rose-500 focus:ring-rose-500/20 rounded-lg transition-all"
+                                className="pl-10 h-11 bg-gray-50 dark:bg-zinc-700 border-gray-200 dark:border-zinc-600 focus:bg-white dark:focus:bg-zinc-600 focus:border-rose-500 focus:ring-rose-500/20 rounded-lg transition-all dark:text-white dark:placeholder:text-zinc-400"
                                 {...register("usernameOrEmail", { required: "Required" })}
                             />
                         </div>
@@ -163,7 +163,7 @@ const LoginForm = ({ className }) => {
                     {/* Password Input */}
                     <div className="space-y-2 group">
                         <div className="flex justify-between items-center">
-                            <Label htmlFor="password" className="text-sm font-semibold text-gray-700">Password</Label>
+                            <Label htmlFor="password" className="text-sm font-semibold text-gray-700 dark:text-zinc-300">Password</Label>
                             <Link href="/forgotPassword" className="text-xs text-rose-600 hover:text-rose-700 font-medium">Forgot?</Link>
                         </div>
                         <div className="relative">
@@ -174,7 +174,7 @@ const LoginForm = ({ className }) => {
                                 type={passwordVisible ? "text" : "password"}
                                 id="password"
                                 placeholder="••••••••"
-                                className="pl-10 pr-10 h-11 bg-gray-50 border-gray-200 focus:bg-white focus:border-rose-500 focus:ring-rose-500/20 rounded-lg transition-all"
+                                className="pl-10 pr-10 h-11 bg-gray-50 dark:bg-zinc-700 border-gray-200 dark:border-zinc-600 focus:bg-white dark:focus:bg-zinc-600 focus:border-rose-500 focus:ring-rose-500/20 rounded-lg transition-all dark:text-white dark:placeholder:text-zinc-400"
                                 {...register("password", { required: "Required" })}
                             />
                             <button
@@ -196,7 +196,7 @@ const LoginForm = ({ className }) => {
                             onCheckedChange={setRemember}
                             className="border-gray-300 data-[state=checked]:bg-rose-500 data-[state=checked]:border-rose-500 w-4 h-4 rounded"
                         />
-                        <Label htmlFor="remember" className="ml-2 text-xs text-gray-600 cursor-pointer select-none">Remember me</Label>
+                        <Label htmlFor="remember" className="ml-2 text-xs text-gray-600 dark:text-zinc-400 cursor-pointer select-none">Remember me</Label>
                     </div>
 
                     {/* Submit Button */}
@@ -216,12 +216,12 @@ const LoginForm = ({ className }) => {
                     </Button>
 
                     <div className="relative my-6">
-                        <div className="absolute inset-0 flex items-center"><div className="w-full border-t border-gray-100"></div></div>
-                        <div className="relative flex justify-center text-xs"><span className="px-2 bg-white text-gray-400">or</span></div>
+                        <div className="absolute inset-0 flex items-center"><div className="w-full border-t border-gray-100 dark:border-zinc-700"></div></div>
+                        <div className="relative flex justify-center text-xs"><span className="px-2 bg-white dark:bg-[#2b2a33] text-gray-400 dark:text-zinc-500">or</span></div>
                     </div>
 
                     <div className="text-center">
-                        <Link href="/register" className="text-sm text-gray-600 hover:text-rose-600 font-medium transition-colors">
+                        <Link href="/register" className="text-sm text-gray-600 dark:text-zinc-400 hover:text-rose-600 font-medium transition-colors">
                             Create an Account
                         </Link>
                     </div>

@@ -1,14 +1,13 @@
 "use client";
 
-import React, { useState, useCallback, useEffect, useMemo } from "react";
+import React, { useState, useCallback, useMemo } from "react";
 import { CloudUpload } from "lucide-react";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { useUser } from "@/components/providers/UserContext";
 import { useAlert } from "@/components/providers/AlertProvider";
 import { useSearchParams } from "next/navigation";
 import uploadsApi from "@/data/uploadsApi";
-import { api } from "@/lib/helper";
-import { useOperatorProjects, useOperatorDevices } from "@/hooks/useQueryHooks";
+import { useOperatorProjects, useOperatorDevices, useOperatorUploads } from "@/hooks/useQueryHooks";
 import ExportButton from "@/components/shared/ExportButton";
 import {
   ProjectSelector,
@@ -58,29 +57,12 @@ export default function OperatorUploadsPage() {
   }, [devicesRaw]);
 
   // Fetch operator's uploads
-  const [uploads, setUploads] = useState([]);
-  const [uploadsLoading, setUploadsLoading] = useState(false);
+  const { data: uploadsData, isLoading: uploadsLoading, refetch: refetchUploads } = useOperatorUploads(100);
+  const uploads = useMemo(() => {
+    const list = uploadsData?.data ?? uploadsData ?? [];
+    return Array.isArray(list) ? list : [];
+  }, [uploadsData]);
   const [searchQuery, setSearchQuery] = useState("");
-
-  const fetchUploads = useCallback(async () => {
-    if (!userId) return;
-    setUploadsLoading(true);
-    try {
-      const response = await api("/api/uploads/operator", "GET");
-      if (response?.ok) {
-        const list = response.data?.data ?? response.data ?? [];
-        setUploads(Array.isArray(list) ? list : []);
-      }
-    } catch (e) {
-      console.error("Failed to fetch uploads:", e);
-    } finally {
-      setUploadsLoading(false);
-    }
-  }, [userId]);
-
-  useEffect(() => {
-    if (activeTab === "history") fetchUploads();
-  }, [activeTab, fetchUploads]);
 
   // File handling
   const addFiles = useCallback((newFiles) => {
@@ -279,7 +261,7 @@ export default function OperatorUploadsPage() {
               loading={uploadsLoading}
               search={searchQuery}
               onSearch={setSearchQuery}
-              onRefresh={fetchUploads}
+              onRefresh={refetchUploads}
             />
           </TabsContent>
         </Tabs>

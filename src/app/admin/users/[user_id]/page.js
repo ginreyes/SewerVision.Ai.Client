@@ -30,6 +30,10 @@ import OperatorDetailed, { OperatorWorkspaceOverview } from "@/components/admin/
 import CustomerRepresentativeDetailed from "@/components/admin/users/user-management/CustomerRepresentativeDetailed"
 import PermissionsTab from "@/components/admin/users/permissions/PermissionsTab"
 import Breadcrumb from '@/components/shared/Breadcrumb';
+import AttendanceInfo from '@/components/shared/AttendanceInfo';
+
+// Roles that clock in — show attendance for these
+const TIME_TRACKING_ROLES = new Set(['operator', 'qc-technician', 'user', 'customer-rep']);
 
 const roleOptions = [
   {
@@ -117,7 +121,12 @@ const UserProfile = () => {
     const fetchUser = async () => {
       try {
         const response = await api(`/api/users/get-user-details/${user_id}`, "GET");
-        const u = response.data.user;
+        const u = response.data?.user;
+
+        if (!u) {
+          showAlert("User not found or access denied", "error");
+          return;
+        }
 
         setUser(u);
         setManagedMembers(Array.isArray(u.managedMembers) ? u.managedMembers : []);
@@ -337,9 +346,9 @@ const UserProfile = () => {
             </div>
             <CardContent className="relative pt-0 px-6 pb-6 text-center">
               <div className="relative -mt-16 mb-4 inline-block">
-                <Avatar className="h-32 w-32 border-4 border-white shadow-xl">
+                <Avatar className="h-32 w-32 border-4 border-white dark:border-[#2b2a33] shadow-xl">
                   <AvatarImage src={form.avatar} />
-                  <AvatarFallback className="text-3xl bg-gray-100 font-bold text-gray-400">
+                  <AvatarFallback className="text-3xl bg-gray-100 dark:bg-[#3a3944] font-bold text-gray-400 dark:text-gray-300">
                     {user.first_name?.[0]}{user.last_name?.[0]}
                   </AvatarFallback>
                 </Avatar>
@@ -577,6 +586,11 @@ const UserProfile = () => {
               selectedMemberId={selectedMemberId}
               setSelectedMemberId={setSelectedMemberId}
             />
+          )}
+
+          {/* Attendance Information — for roles that clock in */}
+          {TIME_TRACKING_ROLES.has(normalizedRole) && user?._id && (
+            <AttendanceInfo userId={user._id} accent="rose" />
           )}
 
           {/* Module Permissions */}

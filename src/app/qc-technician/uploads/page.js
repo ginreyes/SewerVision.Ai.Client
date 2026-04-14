@@ -1,70 +1,38 @@
 "use client";
-import React, { useState, useEffect } from "react";
+import React, { useMemo } from "react";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Eye, Download, FileVideo } from "lucide-react";
-import { api } from "@/lib/helper";
 import { useUser } from "@/components/providers/UserContext";
-import { useAlert } from "@/components/providers/AlertProvider";
-import qcApi from "@/data/qcApi";
+import { useQCUploads, useQCAssignments } from "@/hooks/useQueryHooks";
 
 const QCUploadsPage = () => {
-  const [uploads, setUploads] = useState([]);
-  const [loading, setLoading] = useState(true);
   const { userId } = useUser();
-  const { showAlert } = useAlert();
 
-  useEffect(() => {
-    if (userId) {
-      fetchUploads();
-    }
-  }, [userId]);
+  const { data: allUploads = [], isLoading: uploadsLoading } = useQCUploads();
+  const { data: assignments = [], isLoading: assignmentsLoading } = useQCAssignments(userId);
 
-  const fetchUploads = async () => {
-    try {
-      setLoading(true);
-      // Get assignments to find related uploads
-      const assignments = await qcApi.getAssignments(userId);
-      
-      // Fetch uploads for projects assigned to this QC technician
-      const projectIds = assignments.map(a => a.projectId?._id || a.projectId).filter(Boolean);
-      
-      if (projectIds.length === 0) {
-        setUploads([]);
-        return;
-      }
+  const loading = uploadsLoading || assignmentsLoading;
 
-      const result = await api("/api/uploads/get-all-uploads", "GET");
-      if (result.ok) {
-        // Response shape: { data: { uploads: [...], pagination: {...} } }
-        // Also tolerate a bare array in case the backend changes.
-        const raw = result.data?.data;
-        const list = Array.isArray(raw)
-          ? raw
-          : Array.isArray(raw?.uploads)
-          ? raw.uploads
-          : [];
+  // Filter uploads to only show those related to assigned projects
+  const uploads = useMemo(() => {
+    const projectIds = assignments
+      .map((a) => a.projectId?._id || a.projectId)
+      .filter(Boolean);
 
-        // Filter uploads to only show those related to assigned projects
-        const filtered = list.filter((upload) =>
-          projectIds.some((id) => {
-            const projId =
-              upload.projectId?._id?.toString() ||
-              upload.projectId?.toString() ||
-              upload.project?._id?.toString() ||
-              upload.project?.toString();
-            return projId === id.toString();
-          })
-        );
-        setUploads(filtered);
-      }
-    } catch (error) {
-      console.error("Error fetching uploads:", error);
-      showAlert("Failed to load uploads", "error");
-    } finally {
-      setLoading(false);
-    }
-  };
+    if (projectIds.length === 0) return [];
+
+    return allUploads.filter((upload) =>
+      projectIds.some((id) => {
+        const projId =
+          upload.projectId?._id?.toString() ||
+          upload.projectId?.toString() ||
+          upload.project?._id?.toString() ||
+          upload.project?.toString();
+        return projId === id.toString();
+      })
+    );
+  }, [allUploads, assignments]);
 
   const formatFileSize = (bytes) => {
     if (!bytes) return "N/A";

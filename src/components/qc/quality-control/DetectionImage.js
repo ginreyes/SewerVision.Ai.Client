@@ -2,16 +2,16 @@
 
 import React, { memo } from "react";
 import { Eye, Image as ImageIcon } from "lucide-react";
+import { getSnapshotUrl } from "@/lib/getVideoUrl";
 
 const DetectionImage = memo(({ detection, label, colorClass, showOverlay = true }) => {
-  const backendUrl = process.env.NEXT_PUBLIC_BACKEND_URL || "http://localhost:5000";
   // Prefer a frame explicitly tagged as 'original'/'raw' if the backend ever stores one;
   // otherwise fall back to the single stored snapshot.
   const rawImage = showOverlay
     ? (detection?.images?.find(i => i?.type === "annotated") || detection?.images?.[0])
     : (detection?.images?.find(i => i?.type === "original" || i?.type === "raw") || detection?.images?.[0]);
   const imageUrl = rawImage?.url
-    ? `${backendUrl}/api/videos/snapshot/${rawImage.url}`
+    ? getSnapshotUrl(rawImage.url)
     : null;
 
   // Bounding box is only drawn on the AI Detection side.

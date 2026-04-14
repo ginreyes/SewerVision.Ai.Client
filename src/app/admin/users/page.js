@@ -7,8 +7,10 @@ import { api, getCookie } from "@/lib/helper";
 import { useAlert } from "@/components/providers/AlertProvider";
 import { useDialog } from "@/components/providers/DialogProvider";
 import { useAllUsers } from "@/hooks/useQueryHooks";
+import { useQuery } from "@tanstack/react-query";
 import SewerTable from "@/components/ui/SewerTable";
-import { useRouter } from "next/navigation";
+import ExportButton from "@/components/shared/ExportButton";
+import { useRouter, useSearchParams } from "next/navigation";
 import CardList from "@/components/admin/users/user-management/CardList";
 import PermissionLevelsTab from "@/components/admin/users/permissions/PermissionLevelsTab";
 import permissionLevelApi from "@/data/permissionLevelApi";
@@ -24,7 +26,10 @@ import {
   Activity,
   RefreshCw,
   Plus,
+  Clock,
 } from "lucide-react";
+import dynamic from "next/dynamic";
+const AttendanceTab = dynamic(() => import("@/components/admin/users/attendance/AttendanceTab"), { ssr: false });
 
 /* ─── action badge config (for audit logs) ─── */
 const ACTION_BADGE = {
@@ -136,7 +141,8 @@ const UserPage = () => {
   const [passwordModalOpen, setPasswordModalOpen] = useState(false);
   const [selectedUserForPassword, setSelectedUserForPassword] = useState(null);
   const [selectedUsers, setSelectedUsers] = useState([]);
-  const [activeTab, setActiveTab] = useState("users");
+  const searchParams = useSearchParams();
+  const [activeTab, setActiveTab] = useState(searchParams?.get("tab") || "users");
 
   // Permission levels count (fetched independently for accurate stats)
   const [permissionLevelCount, setPermissionLevelCount] = useState(0);
@@ -556,11 +562,29 @@ const UserPage = () => {
     unassigned: users.filter((u) => !u.permissionLevel && u.role !== 'admin').length,
   };
 
+  /* ─── attendance stats (computed from the AttendanceTab's own query) ─── */
+  const { data: attendanceData } = useQuery({
+    queryKey: ["admin", "attendance-stats"],
+    queryFn: async () => {
+      const { data } = await api("/api/time-entries?limit=100");
+      const entries = Array.isArray(data?.data) ? data.data : [];
+      const today = new Date().toDateString();
+      const todayCount = entries.filter(e => new Date(e.clockIn || e.createdAt).toDateString() === today).length;
+      const totalHours = entries.reduce((s, e) => s + (e.hoursWorked || e.hours || 0), 0);
+      const avgHours = entries.length > 0 ? totalHours / entries.length : 0;
+      return { todayCount, totalHours: Math.round(totalHours * 10) / 10, avgHours: Math.round(avgHours * 10) / 10 };
+    },
+    staleTime: 1000 * 60 * 2,
+    enabled: activeTab === "attendance",
+  });
+  const attendanceStats = attendanceData || { todayCount: 0, totalHours: 0, avgHours: 0 };
+
   /* ─── dynamic page title ─── */
   const pageTitles = {
     users: { title: "User Management", desc: "Manage users, roles, and permissions across your organization" },
     audit: { title: "Audit Logs", desc: "Track all user management actions across your organization" },
     permissions: { title: "Permission Levels", desc: "Create and manage module access levels for each role" },
+    attendance: { title: "Attendance", desc: "Company-wide time tracking and attendance records" },
   };
 
   const pageTitle = pageTitles[activeTab]?.title || "User Management";
@@ -574,12 +598,14 @@ const UserPage = () => {
           <div className="flex items-center justify-between">
             <div className="flex items-center gap-4">
               <div className={`w-12 h-12 rounded-xl flex items-center justify-center ${
-                activeTab === "audit" ? "bg-blue-100" : activeTab === "permissions" ? "bg-amber-100" : "bg-rose-100"
+                activeTab === "audit" ? "bg-blue-100 dark:bg-blue-500/15" : activeTab === "permissions" ? "bg-amber-100 dark:bg-amber-500/15" : activeTab === "attendance" ? "bg-emerald-100 dark:bg-emerald-500/15" : "bg-rose-100 dark:bg-rose-500/15"
               }`}>
                 {activeTab === "audit" ? (
                   <Activity className="w-6 h-6 text-blue-600" />
                 ) : activeTab === "permissions" ? (
                   <Shield className="w-6 h-6 text-amber-600" />
+                ) : activeTab === "attendance" ? (
+                  <Clock className="w-6 h-6 text-emerald-600" />
                 ) : (
                   <Users className="w-6 h-6 text-rose-600" />
                 )}
@@ -591,6 +617,17 @@ const UserPage = () => {
             </div>
             {activeTab === "users" && (
               <div className="flex items-center gap-3">
+                <ExportButton
+                  data={users}
+                  columns={[
+                    { key: "name", label: "Name" },
+                    { key: "email", label: "Email" },
+                    { key: "role", label: "Role" },
+                    { key: "status", label: "Status" },
+                    { key: "username", label: "Username" },
+                  ]}
+                  filename="users"
+                />
                 <AddUserModal fetchUser={refetch} />
               </div>
             )}
@@ -619,7 +656,7 @@ const UserPage = () => {
 
       {/* Dynamic Stats Cards */}
       <div className="max-w-7xl mx-auto px-6 py-6">
-        <CardList activeTab={activeTab} auditStats={auditStats} permissionStats={permissionStats} />
+        <CardList activeTab={activeTab} auditStats={auditStats} permissionStats={permissionStats} attendanceStats={attendanceStats} />
       </div>
 
       {/* Main Content with Tabs */}
@@ -627,18 +664,22 @@ const UserPage = () => {
         <div className="bg-white rounded-xl shadow-sm border border-gray-100">
           <Tabs value={activeTab} onValueChange={setActiveTab} className="w-full">
             <div className="border-b border-gray-100 px-6 pt-4">
-              <TabsList className="bg-gray-50/50 p-1">
-                <TabsTrigger value="users" className="gap-2 data-[state=active]:bg-white data-[state=active]:text-rose-600">
+              <TabsList className="bg-gray-50/50 dark:bg-[#1e1d26] p-1">
+                <TabsTrigger value="users" className="gap-2 data-[state=active]:bg-white dark:data-[state=active]:bg-[#2b2a33] data-[state=active]:text-rose-600 dark:data-[state=active]:text-rose-400">
                   <Users className="w-4 h-4" />
                   User Management
                 </TabsTrigger>
-                <TabsTrigger value="audit" className="gap-2 data-[state=active]:bg-white data-[state=active]:text-rose-600">
+                <TabsTrigger value="audit" className="gap-2 data-[state=active]:bg-white dark:data-[state=active]:bg-[#2b2a33] data-[state=active]:text-rose-600 dark:data-[state=active]:text-rose-400">
                   <Activity className="w-4 h-4" />
                   Audit Logs
                 </TabsTrigger>
-                <TabsTrigger value="permissions" className="gap-2 data-[state=active]:bg-white data-[state=active]:text-rose-600">
+                <TabsTrigger value="permissions" className="gap-2 data-[state=active]:bg-white dark:data-[state=active]:bg-[#2b2a33] data-[state=active]:text-rose-600 dark:data-[state=active]:text-rose-400">
                   <Shield className="w-4 h-4" />
                   Permission Levels
+                </TabsTrigger>
+                <TabsTrigger value="attendance" className="gap-2 data-[state=active]:bg-white dark:data-[state=active]:bg-[#2b2a33] data-[state=active]:text-rose-600 dark:data-[state=active]:text-rose-400">
+                  <Clock className="w-4 h-4" />
+                  Attendance
                 </TabsTrigger>
               </TabsList>
             </div>
@@ -741,6 +782,10 @@ const UserPage = () => {
             {/* Permission Levels Tab */}
             <TabsContent value="permissions" className="p-6 m-0">
               <PermissionLevelsTab />
+            </TabsContent>
+
+            <TabsContent value="attendance" className="p-0 m-0">
+              <AttendanceTab />
             </TabsContent>
           </Tabs>
         </div>

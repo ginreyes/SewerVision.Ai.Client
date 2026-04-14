@@ -10,7 +10,6 @@ import {
   Star,
   Eye,
 } from "lucide-react";
-import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { useAlert } from "@/components/providers/AlertProvider";
 import { useDialog } from "@/components/providers/DialogProvider";
@@ -29,7 +28,6 @@ export default function PermissionLevelsTab() {
     setLoading(true);
     try {
       const response = await permissionLevelApi.getAll();
-      // response shape: { ok, data } or { ok, data: { ok, data } }
       const raw = response?.data?.data ?? response?.data ?? response;
       const list = Array.isArray(raw) ? raw : [];
       setLevels(list);

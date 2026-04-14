@@ -92,17 +92,17 @@ export default function SystemManagement() {
       </div>
 
       <Tabs defaultValue="health" className="w-full">
-        <TabsList className="mb-5 bg-gray-100/80 p-1 rounded-xl h-auto">
-          <TabsTrigger value="health" className="flex items-center gap-1.5 text-gray-600 data-[state=active]:bg-white data-[state=active]:text-rose-700 data-[state=active]:shadow-sm rounded-lg px-5 py-2.5">
+        <TabsList className="mb-5 bg-gray-100/80 dark:bg-[#1e1d26] p-1 rounded-xl h-auto">
+          <TabsTrigger value="health" className="flex items-center gap-1.5 text-gray-600 dark:text-gray-400 data-[state=active]:bg-white dark:data-[state=active]:bg-[#2b2a33] data-[state=active]:text-rose-700 dark:data-[state=active]:text-rose-400 data-[state=active]:shadow-sm rounded-lg px-5 py-2.5">
             <Activity className="w-4 h-4 shrink-0" /><span className="text-sm font-medium">System Health</span>
           </TabsTrigger>
-          <TabsTrigger value="database" className="flex items-center gap-1.5 text-gray-600 data-[state=active]:bg-white data-[state=active]:text-rose-700 data-[state=active]:shadow-sm rounded-lg px-5 py-2.5">
+          <TabsTrigger value="database" className="flex items-center gap-1.5 text-gray-600 dark:text-gray-400 data-[state=active]:bg-white dark:data-[state=active]:bg-[#2b2a33] data-[state=active]:text-rose-700 dark:data-[state=active]:text-rose-400 data-[state=active]:shadow-sm rounded-lg px-5 py-2.5">
             <Database className="w-4 h-4 shrink-0" /><span className="text-sm font-medium">Database</span>
           </TabsTrigger>
-          <TabsTrigger value="storage" className="flex items-center gap-1.5 text-gray-600 data-[state=active]:bg-white data-[state=active]:text-rose-700 data-[state=active]:shadow-sm rounded-lg px-5 py-2.5">
+          <TabsTrigger value="storage" className="flex items-center gap-1.5 text-gray-600 dark:text-gray-400 data-[state=active]:bg-white dark:data-[state=active]:bg-[#2b2a33] data-[state=active]:text-rose-700 dark:data-[state=active]:text-rose-400 data-[state=active]:shadow-sm rounded-lg px-5 py-2.5">
             <HardDrive className="w-4 h-4 shrink-0" /><span className="text-sm font-medium">Storage</span>
           </TabsTrigger>
-          <TabsTrigger value="ai" className="flex items-center gap-1.5 text-gray-600 data-[state=active]:bg-white data-[state=active]:text-rose-700 data-[state=active]:shadow-sm rounded-lg px-5 py-2.5">
+          <TabsTrigger value="ai" className="flex items-center gap-1.5 text-gray-600 dark:text-gray-400 data-[state=active]:bg-white dark:data-[state=active]:bg-[#2b2a33] data-[state=active]:text-rose-700 dark:data-[state=active]:text-rose-400 data-[state=active]:shadow-sm rounded-lg px-5 py-2.5">
             <Brain className="w-4 h-4 shrink-0" /><span className="text-sm font-medium">AI Models</span>
           </TabsTrigger>
         </TabsList>

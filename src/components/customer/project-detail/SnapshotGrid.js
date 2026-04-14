@@ -5,14 +5,14 @@ import { ImageIcon, Play, Zap } from 'lucide-react';
 import { Card, CardContent } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
-
-const backendUrl = process.env.NEXT_PUBLIC_BACKEND_URL || 'http://localhost:5000';
+import { BACKEND_URL as backendUrl } from '@/lib/config';
+import { getSnapshotUrl } from '@/lib/getVideoUrl';
 
 const buildImageSrc = (rawUrl) => {
   if (!rawUrl) return '';
-  // base64 or full URL → use as-is; otherwise prefix with backend snapshot route
-  if (rawUrl.startsWith('data:') || rawUrl.startsWith('http')) return rawUrl;
-  return `${backendUrl}/api/videos/snapshot/${rawUrl}`;
+  // base64 → use as-is; otherwise delegate to shared helper
+  if (rawUrl.startsWith('data:')) return rawUrl;
+  return getSnapshotUrl(rawUrl);
 };
 
 const SnapshotGrid = ({ project, snapshots, detections = [], observations, videos = [], onOpenVideo }) => {

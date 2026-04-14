@@ -2,8 +2,7 @@
 
 import React, { memo, useCallback, useState } from 'react'
 import { AlertTriangle, CheckCircle, XCircle, ChevronDown, ChevronRight, Video, Clock, MapPin, Camera, X, ZoomIn } from 'lucide-react'
-
-const API_URL = process.env.NEXT_PUBLIC_BACKEND_URL || 'http://localhost:5000'
+import { getSnapshotUrl } from '@/lib/getVideoUrl'
 
 /**
  * @typedef {Object} Detection
@@ -122,7 +121,7 @@ const DetectionCard = memo(({
 
   // Build snapshot URL from detection images
   const snapshotUrl = detection.images?.[0]?.url
-    ? `${API_URL}/api/videos/snapshot/${detection.images[0].url}`
+    ? getSnapshotUrl(detection.images[0].url)
     : null
   // Handle card click
   const handleClick = useCallback(() => {
