@@ -15,6 +15,7 @@ import {
   useMarkConversationRead, useUserProjects,
 } from "@/hooks/useQueryHooks";
 import { api } from "@/lib/helper";
+import { BACKEND_URL } from "@/lib/config";
 import { avatarSrc, getAvatarColor, getInitials } from "@/components/admin/constants";
 import ChatMessage, { ChatDateSeparator } from "@/components/shared/ChatMessage";
 import EmojiPicker from "@/components/shared/EmojiPicker";
@@ -144,7 +145,6 @@ export default function ClientHub() {
     const fileList = Array.isArray(filesOrFile) ? filesOrFile : [filesOrFile];
     if (fileList.length === 0 || !selected) return;
     try {
-      const backendUrl = process.env.NEXT_PUBLIC_BACKEND_URL || 'http://localhost:5000';
       const token = document.cookie.split('authToken=')[1]?.split(';')[0] || '';
 
       // Upload ALL files in parallel
@@ -152,7 +152,7 @@ export default function ClientHub() {
         const formData = new FormData();
         formData.append('file', file);
         try {
-          const res = await fetch(`${backendUrl}/api/client-conversations/${selected}/upload`, {
+          const res = await fetch(`${BACKEND_URL}/api/client-conversations/${selected}/upload`, {
             method: 'POST',
             headers: { 'Authorization': `Bearer ${token}` },
             body: formData,

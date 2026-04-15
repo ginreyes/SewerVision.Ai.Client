@@ -65,6 +65,7 @@ import {
 import { useUser } from '@/components/providers/UserContext';
 import { useAlert } from '@/components/providers/AlertProvider';
 import { api } from '@/lib/helper';
+import { BACKEND_URL } from '@/lib/config';
 import { useUploadLimits } from '@/hooks/useUploadLimits';
 import { useRouter } from 'next/navigation';
 import { getVideoUrl, getSnapshotUrl } from '@/lib/getVideoUrl';
@@ -378,9 +379,8 @@ const ProjectDetail = ({ project, setSelectedProject, allProjects = [] }) => {
 
       // Get auth token
       const token = typeof window !== 'undefined' ? localStorage.getItem('authToken') : null;
-      const apiUrl = process.env.NEXT_PUBLIC_BACKEND_URL || 'http://localhost:5000';
 
-      xhr.open('POST', `${apiUrl}/api/videos/upload`);
+      xhr.open('POST', `${BACKEND_URL}/api/videos/upload`);
       if (token) {
         xhr.setRequestHeader('Authorization', `Bearer ${token}`);
       }

@@ -1,4 +1,4 @@
-const API = process.env.NEXT_PUBLIC_BACKEND_URL || "http://localhost:5000";
+import { BACKEND_URL as API } from "./config";
 
 // Simple cookie helpers (client-side only)
 export const getCookie = (name) => {

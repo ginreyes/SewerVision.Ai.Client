@@ -8,6 +8,7 @@ import {
 import { useUser } from '@/components/providers/UserContext';
 import { customerApi } from '@/data/customerApi';
 import { api } from '@/lib/helper';
+import { BACKEND_URL } from '@/lib/config';
 import { avatarSrc, getAvatarColor, getInitials } from '@/components/admin/constants';
 import EmojiPicker from '@/components/shared/EmojiPicker';
 import AttachmentMenu from '@/components/shared/AttachmentMenu';
@@ -345,7 +346,6 @@ export default function ChatBubble() {
       }
       if (!convId) { setSending(false); return; }
 
-      const backendUrl = process.env.NEXT_PUBLIC_BACKEND_URL || 'http://localhost:5000';
       const token = document.cookie.split('authToken=')[1]?.split(';')[0] || '';
 
       // Upload ALL files to B2 in parallel
@@ -353,7 +353,7 @@ export default function ChatBubble() {
         const formData = new FormData();
         formData.append('file', file);
         try {
-          const res = await fetch(`${backendUrl}/api/client-conversations/${convId}/upload`, {
+          const res = await fetch(`${BACKEND_URL}/api/client-conversations/${convId}/upload`, {
             method: 'POST',
             headers: { 'Authorization': `Bearer ${token}` },
             body: formData,

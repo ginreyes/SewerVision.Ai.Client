@@ -9,6 +9,7 @@ import {
 } from "@/components/ui/dialog";
 import { cn } from "@/lib/utils";
 import { getCookie } from "@/lib/helper";
+import { BACKEND_URL } from "@/lib/config";
 
 const DEFAULT_PIPELINE_STEPS = [
   "Video is segmented into frames and stabilized.",
@@ -30,9 +31,8 @@ function useAiProcessingLogs(projectId, isProcessing) {
   useEffect(() => {
     if (!projectId || !isProcessing) return;
 
-    const backendUrl = process.env.NEXT_PUBLIC_BACKEND_URL || 'http://localhost:5000';
     const token = getCookie('authToken');
-    const url = `${backendUrl}/api/ai/logs/${projectId}/stream?token=${token}`;
+    const url = `${BACKEND_URL}/api/ai/logs/${projectId}/stream?token=${token}`;
 
     // Use EventSource for SSE
     // Note: EventSource doesn't support Authorization header natively,

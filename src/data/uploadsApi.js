@@ -1,6 +1,7 @@
 "use client";
 
 import { api, getCookie } from "@/lib/helper";
+import { BACKEND_URL } from "@/lib/config";
 
 /**
  * Uploads API functions
@@ -117,10 +118,9 @@ export const uploadsApi = {
    * Download file
    */
   async downloadFile(uploadId, filename) {
-    const API = process.env.NEXT_PUBLIC_BACKEND_URL || "http://localhost:5000";
     const authToken = getCookie("authToken");
-    
-    const response = await fetch(`${API}/api/uploads/download/${uploadId}`, {
+
+    const response = await fetch(`${BACKEND_URL}/api/uploads/download/${uploadId}`, {
       method: 'GET',
       headers: {
         ...(authToken ? { "Authorization": `Bearer ${authToken}` } : {}),
@@ -157,10 +157,9 @@ export const uploadsApi = {
       throw new Error('Upload ID is required');
     }
 
-    const API = process.env.NEXT_PUBLIC_BACKEND_URL || "http://localhost:5000";
     const authToken = getCookie("authToken");
-    
-    const url = `${API}/api/uploads/view/${uploadId}`;
+
+    const url = `${BACKEND_URL}/api/uploads/view/${uploadId}`;
     
     // Fetch file with authentication
     try {

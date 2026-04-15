@@ -1,6 +1,6 @@
 "use client";
 import React, { useState, useEffect, useRef, Suspense } from "react";
-import { Search, Plus, Loader2, LayoutGrid, Rows, MoreVertical, Eye, Pencil, MapPin, GitCompare } from "lucide-react";
+import { Search, Plus, Loader2, LayoutGrid, Rows, MoreVertical, Eye, Pencil, MapPin, GitCompare, Columns3 } from "lucide-react";
 import dynamic from "next/dynamic";
 import StatusLegend from "@/components/shared/StatusLegend";
 
@@ -25,13 +25,18 @@ import { useAlert } from "@/components/providers/AlertProvider";
 import { useDebouncedValue } from '@/hooks/useDebouncedValue';
 import { useRouter, useSearchParams, usePathname } from "next/navigation";
 import { useAdminProjects } from '@/hooks/useQueryHooks';
+import { PipelineBoard } from '@/components/shared/ProjectPipeline';
+import PipelineAnalyticsStrip from '@/components/admin/project/PipelineAnalyticsStrip';
+import BulkActionsToolbar from '@/components/admin/project/BulkActionsToolbar';
+import { usePipeline } from '@/data/pipelineApi';
 
 const SewerVisionInspectionModuleContent = () => {
   const [selectedProject, setSelectedProject] = useState(null);
   const [searchTerm, setSearchTerm] = useState("");
   const debouncedSearchValue = useDebouncedValue(searchTerm, 300);
   const [statusFilter, setStatusFilter] = useState("all");
-  const [viewMode, setViewMode] = useState("grid"); // 'grid' | 'table'
+  const [viewMode, setViewMode] = useState("grid"); // 'grid' | 'table' | 'tracker' | 'compare' | 'pipeline'
+  const [selectedIds, setSelectedIds] = useState([]);
   const navigatingBackRef = useRef(false);
 
   const searchParams = useSearchParams();
@@ -56,6 +61,8 @@ const SewerVisionInspectionModuleContent = () => {
 
   const projects = projectsData?.data || [];
   const totalPages = projectsData?.totalPages || 1;
+
+  const { data: pipelineData, isLoading: pipelineLoading } = usePipeline({});
 
   const handleSearchChange = (e) => {
     setSearchTerm(e.target.value);
@@ -167,6 +174,7 @@ const SewerVisionInspectionModuleContent = () => {
                     { key: "table", icon: Rows, label: "Table" },
                     { key: "tracker", icon: MapPin, label: "Tracker" },
                     ...(!isOperatorRoute ? [{ key: "compare", icon: GitCompare, label: "Compare" }] : []),
+                    ...(!isOperatorRoute ? [{ key: "pipeline", icon: Columns3, label: "Pipeline" }] : []),
                   ].map((tab, i) => (
                     <button
                       key={tab.key}
@@ -243,7 +251,26 @@ const SewerVisionInspectionModuleContent = () => {
               </select>
             </div>
 
-            {viewMode === "compare" ? (
+            {viewMode === "pipeline" ? (
+              <>
+                <PipelineAnalyticsStrip />
+                <BulkActionsToolbar selectedIds={selectedIds} onClear={() => setSelectedIds([])} />
+                <PipelineBoard
+                  columns={pipelineData?.data?.columns || {}}
+                  counts={pipelineData?.data?.counts || {}}
+                  isLoading={pipelineLoading}
+                  showSLA
+                  accentColor="rose"
+                  enableBulkSelect
+                  selectedIds={selectedIds}
+                  onSelectionChange={setSelectedIds}
+                  quickActionsFactory={(project) => [
+                    { label: 'View', icon: Eye, onClick: () => { router.push(`?selectedProject=${project._id}`, { scroll: false }); setSelectedProject(project); } },
+                  ]}
+                  onProjectClick={(project) => { router.push(`?selectedProject=${project._id}`, { scroll: false }); setSelectedProject(project); }}
+                />
+              </>
+            ) : viewMode === "compare" ? (
               <Suspense fallback={<div className="flex justify-center py-20"><Loader2 className="w-6 h-6 animate-spin" /></div>}>
                 <ProjectCompare projects={projects} />
               </Suspense>

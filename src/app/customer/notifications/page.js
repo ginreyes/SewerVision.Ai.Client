@@ -28,6 +28,7 @@ import {
   useUpdateCustomerNotificationPreferences,
 } from '@/hooks/useQueryHooks';
 import { api } from '@/lib/helper';
+import { BACKEND_URL } from '@/lib/config';
 import { avatarSrc, getAvatarColor, getInitials } from '@/components/admin/constants';
 
 import NotificationPreferences from '@/components/customer/notifications/NotificationPreferences';
@@ -467,12 +468,11 @@ function MessengerInbox({ userId, convos, setConvos, convosLoading, msgUnread, s
                     if (fileList.length === 0 || !selectedConvo) return;
                     setSending(true);
                     try {
-                      const backendUrl = process.env.NEXT_PUBLIC_BACKEND_URL || 'http://localhost:5000';
                       const token = document.cookie.split('authToken=')[1]?.split(';')[0] || '';
                       const results = await Promise.all(fileList.map(async (file) => {
                         const fd = new FormData(); fd.append('file', file);
                         try {
-                          const r = await fetch(`${backendUrl}/api/client-conversations/${selectedConvo}/upload`, { method: 'POST', headers: { 'Authorization': `Bearer ${token}` }, body: fd });
+                          const r = await fetch(`${BACKEND_URL}/api/client-conversations/${selectedConvo}/upload`, { method: 'POST', headers: { 'Authorization': `Bearer ${token}` }, body: fd });
                           const d = await r.json();
                           if (d.status === 'success' && d.data?.url) return { url: d.data.url, filename: d.data.filename, mimetype: d.data.mimetype, size: d.data.size };
                         } catch {} return null;

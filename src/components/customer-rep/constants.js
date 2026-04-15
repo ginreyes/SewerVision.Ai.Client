@@ -1,4 +1,23 @@
-/** Shared constants for the customer-rep role modules */
+/** Shared constants for the customer-rep role modules
+ *
+ * Role-specific STATUS_COLORS/PRIORITY_COLORS below use single-string
+ * Tailwind class shapes. For the centralized
+ * {bg, text, border, hex, dark} shape used across the app, re-exported
+ * from @/lib/statusConfig.
+ */
+
+// Re-exports from centralized status config (aliased to avoid collisions)
+export {
+  ROLE_COLORS,
+  getRoleColor,
+  CALENDAR_CATEGORY_COLORS,
+  getCalendarCategoryClass,
+  TICKET_STATUS_COLORS as CENTRAL_TICKET_STATUS_COLORS,
+  PRIORITY_COLORS as CENTRAL_PRIORITY_COLORS,
+  SEVERITY_COLORS as CENTRAL_SEVERITY_COLORS,
+  getPriorityColor as getCentralPriorityColor,
+  getSeverityColor as getCentralSeverityColor,
+} from "@/lib/statusConfig";
 
 export const STATUS_COLORS = {
   open: "bg-amber-100 text-amber-700 border-amber-200",

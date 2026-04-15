@@ -1,6 +1,7 @@
 "use client";
 
-import React, { useState, useEffect, useCallback, useRef } from "react";
+import React from "react";
+import { useQuery } from "@tanstack/react-query";
 import {
   Settings2, Database, HardDrive, Activity, Brain,
   Loader2, RefreshCw, CheckCircle2, AlertTriangle,
@@ -12,44 +13,27 @@ import { api } from "@/lib/helper";
 import { DatabaseTab, StorageTab, AiModelTab } from "@/components/admin/system-management";
 import { ServiceCard, MetricGauge, ServerInfoCard } from "@/components/admin/system-health";
 
+const HEALTH_KEY = ["admin", "system-health"];
+
 export default function SystemManagement() {
-  // System Health state
-  const [healthData, setHealthData] = useState(null);
-  const [healthLoading, setHealthLoading] = useState(true);
-  const [refreshing, setRefreshing] = useState(false);
-  const [lastRefresh, setLastRefresh] = useState(new Date());
-
-  // Database state
-  const [dbData, setDbData] = useState(null);
-  const [dbLoading, setDbLoading] = useState(false);
-
-  // Storage state
-  const [storageData, setStorageData] = useState(null);
-  const [storageLoading, setStorageLoading] = useState(false);
-
-  const fetchHealth = useCallback(async (isRefresh = false) => {
-    if (isRefresh) setRefreshing(true); else setHealthLoading(true);
-    try {
+  const {
+    data: healthData,
+    isLoading: healthLoading,
+    isFetching: refreshing,
+    dataUpdatedAt,
+    refetch,
+  } = useQuery({
+    queryKey: HEALTH_KEY,
+    queryFn: async () => {
       const res = await api("/api/system-health/status", "GET");
-      if (res.ok && res.data?.data) {
-        setHealthData(res.data.data);
-        setLastRefresh(new Date());
-      }
-    } catch (err) {
-      console.error("Failed to fetch health:", err);
-    } finally {
-      setHealthLoading(false);
-      setRefreshing(false);
-    }
-  }, []);
+      if (!res.ok || !res.data?.data) throw new Error("Failed to fetch health");
+      return res.data.data;
+    },
+    refetchInterval: 30000,
+    staleTime: 1000 * 15,
+  });
 
-  useEffect(() => { fetchHealth(); }, [fetchHealth]);
-
-  // Auto-refresh health every 30s
-  useEffect(() => {
-    const iv = setInterval(() => fetchHealth(true), 30000);
-    return () => clearInterval(iv);
-  }, [fetchHealth]);
+  const lastRefresh = dataUpdatedAt ? new Date(dataUpdatedAt) : new Date();
 
   const services = healthData?.services || [];
   const resources = healthData?.resources || {};
@@ -76,7 +60,7 @@ export default function SystemManagement() {
         </div>
         <div className="flex items-center gap-2 text-xs text-gray-400">
           <span>Updated {lastRefresh.toLocaleTimeString()}</span>
-          <Button variant="outline" size="sm" onClick={() => fetchHealth(true)} disabled={refreshing}>
+          <Button variant="outline" size="sm" onClick={() => refetch()} disabled={refreshing}>
             <RefreshCw className={`w-3.5 h-3.5 mr-1.5 ${refreshing ? "animate-spin" : ""}`} />Refresh
           </Button>
         </div>

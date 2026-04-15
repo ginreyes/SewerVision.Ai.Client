@@ -48,8 +48,10 @@ import { useAlert } from '@/components/providers/AlertProvider';
 import { useQuery } from '@tanstack/react-query';
 import { qcApi } from '@/data/qcApi';
 import { api, getCookie } from '@/lib/helper';
+import { BACKEND_URL } from '@/lib/config';
 import { ProfileStats, SectionHeader } from '@/components/qc/settings';
 import AppearanceSettings from '@/components/shared/AppearanceSettings';
+import SettingsPageShell from '@/components/shared/SettingsPageShell';
 
 const ToggleSetting = ({ label, description, checked, onCheckedChange }) => (
   <div className="flex items-center justify-between py-4">
@@ -271,10 +273,9 @@ function QCSettingsContent() {
       if (username) formData.append('username', username);
 
       const token = getCookie('authToken');
-      const backendUrl = process.env.NEXT_PUBLIC_BACKEND_URL || 'http://localhost:5000';
       const uploadUrl = userId
-        ? `${backendUrl}/api/users/upload-avatar/${userId}`
-        : `${backendUrl}/api/users/upload-avatar`;
+        ? `${BACKEND_URL}/api/users/upload-avatar/${userId}`
+        : `${BACKEND_URL}/api/users/upload-avatar`;
 
       const res = await fetch(uploadUrl, {
         method: 'POST',
@@ -376,66 +377,27 @@ function QCSettingsContent() {
   }
 
 
+  const qcSettingsTabs = [
+    { id: 'profile', label: 'Profile', icon: User },
+    { id: 'workflow', label: 'Review Workflow', icon: ClipboardCheck },
+    { id: 'video', label: 'Video & Playback', icon: FileCheck },
+    { id: 'notifications', label: 'Notifications', icon: Bell },
+    { id: 'preferences', label: 'Preferences', icon: Globe },
+    { id: 'appearance', label: 'Appearance', icon: Monitor },
+  ];
+
   return (
-    <div className="max-w-7xl mx-auto p-6 space-y-8">
-      {/* Header */}
-      <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">
-        <div>
-          <h1 className="text-2xl font-bold text-gray-900">QC Settings</h1>
-          <p className="text-gray-500 mt-1">Manage your account preferences and review configurations</p>
-        </div>
-        <div className="flex items-center gap-3">
-          <Button variant="outline" className="text-gray-600" onClick={() => router.back()}>
-            Cancel
-          </Button>
-          <Button onClick={handleSaveSettings} disabled={saving} className="bg-red-700 hover:bg-red-800">
-            {saving ? <Loader2 className="w-4 h-4 mr-2 animate-spin" /> : <Save className="w-4 h-4 mr-2" />}
-            Save Changes
-          </Button>
-        </div>
-      </div>
-
-      <div className="flex flex-col lg:flex-row gap-8">
-        {/* Sidebar Navigation */}
-        <Card className="lg:w-64 h-fit border-0 shadow-sm bg-white">
-          <CardContent className="p-4">
-            <nav className="space-y-1">
-              {[
-                { id: 'profile', label: 'Profile', icon: User },
-                { id: 'workflow', label: 'Review Workflow', icon: ClipboardCheck },
-                { id: 'video', label: 'Video & Playback', icon: FileCheck },
-                { id: 'notifications', label: 'Notifications', icon: Bell },
-                { id: 'preferences', label: 'Preferences', icon: Globe },
-                { id: 'appearance', label: 'Appearance', icon: Monitor },
-              ].map((item) => (
-                <button
-                  key={item.id}
-                  onClick={() => handleTabChange(item.id)}
-                  className={`flex items-center w-full px-3 py-2 text-sm font-medium rounded-lg transition-colors ${activeTab === item.id
-                    ? 'bg-amber-50 text-red-800'
-                    : 'text-gray-600 hover:bg-gray-50 hover:text-gray-900'
-                    }`}
-                >
-                  <item.icon className={`w-4 h-4 mr-3 ${activeTab === item.id ? 'text-red-700' : 'text-gray-400'
-                    }`} />
-                  {item.label}
-                </button>
-              ))}
-              <Separator className="my-4" />
-              <button
-                onClick={logout}
-                className="flex items-center w-full px-3 py-2 text-sm font-medium text-red-600 rounded-lg hover:bg-red-50 transition-colors"
-              >
-                <LogOut className="w-4 h-4 mr-3" />
-                Sign Out
-              </button>
-            </nav>
-          </CardContent>
-        </Card>
-
-        {/* Main Content Area */}
-        <div className="flex-1">
-          <Tabs value={activeTab} onValueChange={handleTabChange} className="space-y-6">
+    <SettingsPageShell
+      title="QC Settings"
+      subtitle="Manage your account preferences and review configurations"
+      accentColor="rose"
+      tabs={qcSettingsTabs}
+      activeTab={activeTab}
+      onTabChange={handleTabChange}
+      saving={saving}
+      onSave={handleSaveSettings}
+      onLogout={logout}
+    >
 
             {/* --- Profile Tab --- */}
             <TabsContent value="profile" className="space-y-6 mt-0">
@@ -884,19 +846,15 @@ function QCSettingsContent() {
               </Card>
             </TabsContent>
 
-            {/* --- Appearance Tab --- */}
-            <TabsContent value="appearance" className="space-y-6 mt-0">
-              <Card className="border-0 shadow-sm">
-                <CardContent className="pt-6">
-                  <AppearanceSettings />
-                </CardContent>
-              </Card>
-            </TabsContent>
-
-          </Tabs>
-        </div>
-      </div>
-    </div>
+      {/* --- Appearance Tab --- */}
+      <TabsContent value="appearance" className="space-y-6 mt-0">
+        <Card className="border-0 shadow-sm">
+          <CardContent className="pt-6">
+            <AppearanceSettings />
+          </CardContent>
+        </Card>
+      </TabsContent>
+    </SettingsPageShell>
   );
 }
 

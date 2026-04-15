@@ -1,11 +1,11 @@
 "use client";
 
 import React, { useState, useCallback } from "react";
+import { BACKEND_URL } from "@/lib/config";
 
-const BACKEND = process.env.NEXT_PUBLIC_BACKEND_URL || "http://localhost:5000";
 function fileProxyUrl(filename) {
   if (!filename) return "";
-  return `${BACKEND}/api/complaints/file?file=${encodeURIComponent(filename)}`;
+  return `${BACKEND_URL}/api/complaints/file?file=${encodeURIComponent(filename)}`;
 }
 import {
   ArrowLeft,

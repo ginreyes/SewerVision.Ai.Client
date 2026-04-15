@@ -1,6 +1,22 @@
 /**
  * Operator Role Constants
+ *
+ * Role-specific color configs live in this file (custom shapes like
+ * {color, label}). For the centralized {bg, text, border, hex, dark} shape
+ * used across the app, re-exported below from @/lib/statusConfig.
  */
+
+// Re-exports from centralized status config
+export {
+    ROLE_COLORS,
+    getRoleColor,
+    CALENDAR_CATEGORY_COLORS,
+    getCalendarCategoryClass,
+    PRIORITY_COLORS as CENTRAL_PRIORITY_COLORS,
+    SEVERITY_COLORS as CENTRAL_SEVERITY_COLORS,
+    getPriorityColor as getCentralPriorityColor,
+    getSeverityColor as getCentralSeverityColor,
+} from '@/lib/statusConfig';
 
 export const POLL_INTERVAL = 30000;
 

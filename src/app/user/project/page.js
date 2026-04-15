@@ -1,7 +1,7 @@
 "use client";
 
 import React, { useState, useEffect, Suspense, useCallback, useMemo } from "react";
-import { Search, Plus, Loader2, FolderOpen, LayoutGrid, Rows, MapPin, Video, GitCompare } from "lucide-react";
+import { Search, Plus, Loader2, FolderOpen, LayoutGrid, Rows, MapPin, Video, GitCompare, Columns3 } from "lucide-react";
 import dynamic from "next/dynamic";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -22,6 +22,10 @@ const ProjectCompare = dynamic(() => import("@/components/admin/project/ProjectC
 import StatusLegend from "@/components/shared/StatusLegend";
 import ExportButton from '@/components/shared/ExportButton';
 import EmptyState from '@/components/shared/EmptyState';
+import { PipelineBoard } from '@/components/shared/ProjectPipeline';
+import PipelineSummaryBar from '@/components/user/project/PipelineSummaryBar';
+import TeamWorkloadGrid from '@/components/user/project/TeamWorkloadGrid';
+import { usePipeline } from '@/data/pipelineApi';
 
 const UserProjectModuleContent = () => {
   const { userId } = useUser();
@@ -30,6 +34,7 @@ const UserProjectModuleContent = () => {
   const debouncedSearchValue = useDebouncedValue(searchTerm, 300);
   const [statusFilter, setStatusFilter] = useState("all");
   const [viewMode, setViewMode] = useState("grid");
+  const [pipelineFilter, setPipelineFilter] = useState(null);
 
   const searchParams = useSearchParams();
   const selectedProjectId = searchParams.get("selectedProject");
@@ -46,6 +51,8 @@ const UserProjectModuleContent = () => {
     isLoading: loading,
     refetch,
   } = useUserProjects(userId, { page, limit, search: searchTerm, status: statusFilter });
+
+  const { data: pipelineData, isLoading: pipelineLoading } = usePipeline({ managerId: userId });
 
   const projects = projectsData?.data ?? [];
   const totalPages = projectsData?.totalPages ?? 1;
@@ -308,6 +315,18 @@ const UserProjectModuleContent = () => {
                       <GitCompare className="w-4 h-4" />
                       <span>Compare</span>
                     </button>
+                    <button
+                      type="button"
+                      onClick={() => setViewMode("pipeline")}
+                      className={`flex items-center gap-1 px-3 py-1.5 text-xs font-medium border-l border-gray-200 ${
+                        viewMode === "pipeline"
+                          ? "bg-indigo-50 text-indigo-600"
+                          : "text-gray-600 hover:bg-gray-50"
+                      }`}
+                    >
+                      <Columns3 className="w-4 h-4" />
+                      <span>Pipeline</span>
+                    </button>
                   </div>
 
                   <StatusLegend />
@@ -368,7 +387,29 @@ const UserProjectModuleContent = () => {
               </div>
             ) : (
               <>
-                {viewMode === "compare" ? (
+                {viewMode === "pipeline" ? (
+                  <>
+                    <PipelineSummaryBar
+                      counts={pipelineData?.data?.counts || {}}
+                      activeFilter={pipelineFilter}
+                      onFilterChange={setPipelineFilter}
+                    />
+                    <TeamWorkloadGrid managerId={userId} />
+                    <PipelineBoard
+                      columns={pipelineData?.data?.columns || {}}
+                      counts={pipelineData?.data?.counts || {}}
+                      isLoading={pipelineLoading}
+                      showSLA
+                      accentColor="indigo"
+                      onProjectClick={(project) => {
+                        router.push(`?selectedProject=${project._id}`, { scroll: false });
+                        const found = projects.find((p) => p._id === project._id);
+                        setSelectedProject(found || project);
+                      }}
+                      quickActionsFactory={(project) => []}
+                    />
+                  </>
+                ) : viewMode === "compare" ? (
                   <ProjectCompare projects={projects} />
                 ) : viewMode === "tracker" ? (
                   <ProjectLiveTrackerView projects={projects} isLoading={loading} theme="indigo" />

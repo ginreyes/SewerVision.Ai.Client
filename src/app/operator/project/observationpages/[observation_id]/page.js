@@ -17,6 +17,7 @@ import {
   X,
 } from "lucide-react";
 import { api } from "@/lib/helper";
+import { BACKEND_URL } from "@/lib/config";
 import { Button } from "@/components/ui/button";
 import { Textarea } from "@/components/ui/textarea";
 import { Input } from "@/components/ui/input";
@@ -699,12 +700,11 @@ const ObservationDetailsPageContent = () => {
 
             {/* Snapshot Section */}
             {observation.snapshot && (() => {
-              const backendUrl = process.env.NEXT_PUBLIC_BACKEND_URL || 'http://localhost:5000';
               const rawUrl = observation.snapshotUrl || '';
               const snapshotSrc = rawUrl.startsWith('http')
                 ? rawUrl
                 : rawUrl
-                  ? `${backendUrl}/api/videos/snapshot/${rawUrl}`
+                  ? `${BACKEND_URL}/api/videos/snapshot/${rawUrl}`
                   : '';
               return (
                 <div className="bg-white rounded-lg shadow-sm p-6">

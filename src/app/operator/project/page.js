@@ -1,6 +1,6 @@
 "use client";
 import React, { useState, useEffect, useRef, useMemo, Suspense } from "react";
-import { Search, Plus, Loader2, LayoutGrid, Rows, MapPin, Video, GitCompare } from "lucide-react";
+import { Search, Plus, Loader2, LayoutGrid, Rows, MapPin, Video, GitCompare, Columns3 } from "lucide-react";
 const ProjectCompare = dynamic(() => import("@/components/admin/project/ProjectCompare"), { ssr: false });
 import dynamic from "next/dynamic";
 const ProjectLiveTrackerView = dynamic(() => import("@/components/shared/ProjectLiveTrackerView"), { ssr: false });
@@ -18,6 +18,8 @@ import { useOperatorProjects, useOperatorProject } from "@/hooks/useQueryHooks";
 import ProjectDetail from "@/components/operator/project/ProjectDetail";
 import ProjectCard from "@/components/operator/project/ProjectCard";
 import EmptyState from "@/components/shared/EmptyState";
+import { PipelineBoard } from '@/components/shared/ProjectPipeline';
+import { usePipeline } from '@/data/pipelineApi';
 
 const OperatorModulePage = () => {
   const { userId } = useUser();
@@ -26,7 +28,7 @@ const OperatorModulePage = () => {
   const [searchTerm, setSearchTerm] = useState("");
   const [debouncedSearch, setDebouncedSearch] = useState("");
   const [statusFilter, setStatusFilter] = useState("all");
-  const [viewMode, setViewMode] = useState("grid"); // 'grid' | 'table'
+  const [viewMode, setViewMode] = useState("grid"); // 'grid' | 'table' | 'pipeline'
   const navigatingBackRef = useRef(false);
 
   const searchParams = useSearchParams();
@@ -39,6 +41,8 @@ const OperatorModulePage = () => {
   const [page, setPage] = useState(1);
   const [limit] = useState(6);
 
+  // ── Pipeline data ──
+  const { data: pipelineData, isLoading: pipelineLoading } = usePipeline({});
 
   // ── Data fetching via TanStack Query ──
   const { data: projectsData } = useOperatorProjects(
@@ -280,6 +284,16 @@ const OperatorModulePage = () => {
                     </Button>
                     <Button
                       type="button"
+                      variant={viewMode === "pipeline" ? "secondary" : "ghost"}
+                      size="sm"
+                      onClick={() => setViewMode("pipeline")}
+                      className="rounded-none border-l border-gray-200 gap-1"
+                    >
+                      <Columns3 className="w-4 h-4" />
+                      <span>Pipeline</span>
+                    </Button>
+                    <Button
+                      type="button"
                       variant={viewMode === "compare" ? "secondary" : "ghost"}
                       size="sm"
                       onClick={() => setViewMode("compare")}
@@ -334,7 +348,21 @@ const OperatorModulePage = () => {
               </Select>
             </div>
 
-            {viewMode === "compare" ? (
+            {viewMode === "pipeline" ? (
+              <PipelineBoard
+                columns={pipelineData?.data?.columns || {}}
+                counts={pipelineData?.data?.counts || {}}
+                isLoading={pipelineLoading}
+                showSLA
+                accentColor="blue"
+                onProjectClick={(project) => {
+                  router.push(`?selectedProject=${project._id}`, { scroll: false });
+                  const found = projects.find((p) => p._id === project._id);
+                  setSelectedProject(found || project);
+                }}
+                quickActionsFactory={(project) => []}
+              />
+            ) : viewMode === "compare" ? (
               <ProjectCompare projects={projects} />
             ) : viewMode === "tracker" ? (
               <ProjectLiveTrackerView projects={projects} isLoading={false} theme="blue" />

@@ -23,6 +23,7 @@ import { GridSkeleton } from "@/components/shared/SkeletonLoading";
 import DefectExercisePlayer from "@/components/qc/training/DefectExercisePlayer";
 import CertificateViewer from "@/components/qc/training/CertificateViewer";
 import { useLearningPaths, useUserPathProgress, useEnrollInPath, useDefectExercises, useSubmitExercise, useCertificate } from "@/hooks/useTrainingPaths";
+import { BACKEND_URL } from "@/lib/config";
 
 const DIFF_COLORS = { beginner: "bg-emerald-100 text-emerald-700", intermediate: "bg-amber-100 text-amber-700", advanced: "bg-red-100 text-red-700" };
 const EMPTY_FORM = { title: "", description: "", category: CATEGORIES[0], difficulty: "beginner", passingScore: 70, questions: [] };
@@ -529,9 +530,8 @@ export default function TrainingCalibration() {
               ) : (
                 <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-5">
                   {exercises.map(ex => {
-                    const backendUrl = process.env.NEXT_PUBLIC_BACKEND_URL || "http://localhost:5000";
                     const exerciseImg = ex.imageUrl
-                      ? (ex.imageUrl.startsWith("http") ? ex.imageUrl : `${backendUrl}/api/videos/snapshot/${ex.imageUrl}`)
+                      ? (ex.imageUrl.startsWith("http") ? ex.imageUrl : `${BACKEND_URL}/api/videos/snapshot/${ex.imageUrl}`)
                       : '/training_pictures/interactive_exercise.jpg';
                     return (
                       <div key={ex._id || ex.id} className="group bg-white rounded-2xl border border-gray-100 hover:border-amber-200 hover:shadow-xl transition-all overflow-hidden cursor-pointer" onClick={() => setActiveExercise(ex)}>

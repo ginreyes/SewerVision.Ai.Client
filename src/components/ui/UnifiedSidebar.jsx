@@ -60,6 +60,9 @@ import {
   DollarSign,
   MapPin,
   Zap,
+  ListChecks,
+  LayoutGrid,
+  Brain,
 } from 'lucide-react';
 import ModuleLoading from './SewerVisionLoadingAnimation';
 import { useLoadingModuleSetting } from '@/hooks/useLoadingModuleSettings';
@@ -119,6 +122,9 @@ const ICON_MAP = {
   DollarSign,
   MapPin,
   Zap,
+  ListChecks,
+  LayoutGrid,
+  Brain,
 };
 
 // ── Hardcoded admin sidebar (never filtered by permissions) ──
@@ -308,6 +314,7 @@ const FALLBACK_MENUS = {
     ]},
     { label: 'Work', items: [
       { label: 'Tasks', icon: 'ClipboardList', path: '/qc-technician/task', key: 'tasks' },
+      { label: 'Review Queue', icon: 'ListChecks', path: '/qc-technician/review-queue', key: 'review-queue' },
       { label: 'Review Workspace', icon: 'ClipboardCheck', path: '/qc-technician/quality-control', key: 'quality-control' },
       { label: 'Review Templates', icon: 'FileText', path: '/qc-technician/review-templates', key: 'review-templates' },
       { label: 'Devices', icon: 'Monitor', path: '/qc-technician/devices', key: 'devices' },
@@ -379,6 +386,7 @@ const FALLBACK_MENUS = {
     { label: 'Main', items: [
       { label: 'Dashboard', icon: 'LayoutDashboard', path: '/customer-rep/dashboard', key: 'dashboard', locked: true },
       { label: 'Projects', icon: 'FolderOpen', path: '/customer-rep/projects', key: 'projects' },
+      { label: 'Project Overview', icon: 'LayoutGrid', path: '/customer-rep/projects/overview', key: 'project-overview' },
       { label: 'Inbox', icon: 'Inbox', path: '/customer-rep/inbox', key: 'inbox' },
     ]},
     { label: 'Support', items: [

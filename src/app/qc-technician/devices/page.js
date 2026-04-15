@@ -15,6 +15,7 @@ import {
   Zap, Settings, MapPin, HardDrive, Wrench, AlertTriangle
 } from "lucide-react";
 import { api } from "@/lib/helper";
+import { BACKEND_URL } from "@/lib/config";
 import { devicesApi } from "@/data/devicesApi";
 import { useAlert } from "@/components/providers/AlertProvider";
 import { useUser } from "@/components/providers/UserContext";
@@ -218,7 +219,6 @@ const QCDevicesPage = () => {
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
           {filteredDevices.map((device) => {
             const DeviceIcon = getDeviceIcon(device.type);
-            const API_URL = process.env.NEXT_PUBLIC_BACKEND_URL || "http://localhost:5000";
 
             return (
               <Card 
@@ -230,7 +230,7 @@ const QCDevicesPage = () => {
                 <div className="relative h-48 bg-gradient-to-br from-gray-100 to-gray-50 overflow-hidden">
                   {device.image || device.imageFileId ? (
                     <img 
-                      src={`${API_URL}/api/devices/${device._id}/image`}
+                      src={`${BACKEND_URL}/api/devices/${device._id}/image`}
                       alt={device.name || "Device"}
                       className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-300"
                       onError={(e) => {

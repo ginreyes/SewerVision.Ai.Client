@@ -34,12 +34,12 @@ import {
 import supportApi from '@/data/supportApi';
 import complaintApi from '@/data/complaintApi';
 import { ListSkeleton } from '@/components/shared/SkeletonLoading';
+import { BACKEND_URL } from '@/lib/config';
 
 // ── Utilities ──
-const BACKEND = process.env.NEXT_PUBLIC_BACKEND_URL || 'http://localhost:5000';
 function fileProxyUrl(filename) {
   if (!filename) return '';
-  return `${BACKEND}/api/complaints/file?file=${encodeURIComponent(filename)}`;
+  return `${BACKEND_URL}/api/complaints/file?file=${encodeURIComponent(filename)}`;
 }
 function formatBytes(bytes) {
   if (!bytes) return '';

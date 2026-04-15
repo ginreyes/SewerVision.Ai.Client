@@ -3,6 +3,7 @@
 import { createContext, useContext, useEffect, useRef, useState, useCallback } from 'react';
 import { io } from 'socket.io-client';
 import { useUser } from './UserContext';
+import { BACKEND_URL } from '@/lib/config';
 
 const SocketContext = createContext(null);
 
@@ -15,9 +16,7 @@ export function SocketProvider({ children }) {
   useEffect(() => {
     if (!userId) return;
 
-    const backendUrl = process.env.NEXT_PUBLIC_BACKEND_URL || 'http://localhost:5000';
-
-    const socket = io(backendUrl, {
+    const socket = io(BACKEND_URL, {
       transports: ['websocket', 'polling'],
       withCredentials: true,
       reconnection: true,

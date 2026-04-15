@@ -1,6 +1,27 @@
 /**
  * Admin Role Constants
+ *
+ * Role-specific color configs live in this file (shapes like priorityConfig
+ * with {color, bg, border, label, ring}). For the centralized
+ * {bg, text, border, hex, dark} shape used across the app, re-exported
+ * below from @/lib/statusConfig.
  */
+
+import { BACKEND_URL } from '@/lib/config'
+
+// Re-exports from centralized status config (aliased to avoid collisions)
+export {
+  ROLE_COLORS,
+  getRoleColor,
+  CALENDAR_CATEGORY_COLORS,
+  getCalendarCategoryClass,
+  PROJECT_STATUS_COLORS as CENTRAL_PROJECT_STATUS_COLORS,
+  PRIORITY_COLORS as CENTRAL_PRIORITY_COLORS,
+  SEVERITY_COLORS as CENTRAL_SEVERITY_COLORS,
+  getProjectStatusColor as getCentralProjectStatusColor,
+  getPriorityColor as getCentralPriorityColor,
+  getSeverityColor as getCentralSeverityColor,
+} from '@/lib/statusConfig'
 
 // Chart colors
 export const COLORS = ['#3B82F6', '#8B5CF6', '#F59E0B', '#10B981']
@@ -42,18 +63,15 @@ export const getAvatarColor = (str = '') => avatarColors[str.charCodeAt(0) % ava
 
 export const getAvatarGradient = (str = '') => avatarGradients[str.charCodeAt(0) % avatarGradients.length]
 
-export const getBaseUrl = () =>
-  typeof process !== 'undefined' && process.env?.NEXT_PUBLIC_BACKEND_URL
-    ? process.env.NEXT_PUBLIC_BACKEND_URL
-    : ''
+export const getBaseUrl = () => BACKEND_URL
 
 export const avatarSrc = (user) => {
   const id = user?._id || user?.id
   if (!id) return null
-  return `${getBaseUrl()}/api/users/avatar/${id}`
+  return `${BACKEND_URL}/api/users/avatar/${id}`
 }
 
-export const API_URL = process.env.NEXT_PUBLIC_BACKEND_URL || 'http://localhost:5000'
+export const API_URL = BACKEND_URL
 
 export const getSeverityColor = (severity) => {
   const colors = {

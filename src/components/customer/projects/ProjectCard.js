@@ -5,6 +5,7 @@ import { Card, CardContent } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { Progress } from '@/components/ui/progress';
 import { statusConfig } from '@/components/customer/constants';
+import ProgressPipeline from '@/components/customer/projects/ProgressPipeline';
 
 const priorityBorder = {
   high: 'border-l-red-500',
@@ -36,6 +37,9 @@ const ProjectCard = ({ project, onView }) => {
     >
       <CardContent className="pt-5 pb-4">
         <div className="space-y-3">
+          {/* Progress Pipeline */}
+          <ProgressPipeline currentStatus={project.status} size="sm" />
+
           {/* Header Row */}
           <div className="flex items-start justify-between gap-2">
             <div className="flex-1 min-w-0">

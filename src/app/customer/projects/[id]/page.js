@@ -44,6 +44,8 @@ import SnapshotGrid from '@/components/customer/project-detail/SnapshotGrid';
 import VideoModal from '@/components/customer/project-detail/VideoModal';
 import DefectSummary from '@/components/customer/project-detail/DefectSummary';
 import ProjectTimeline from '@/components/customer/ProjectTimeline';
+import ActivityFeed from '@/components/customer/project-detail/ActivityFeed';
+import ProgressPipeline from '@/components/customer/projects/ProgressPipeline';
 
 export default function ProjectPageViewDetails() {
   const router = useRouter();
@@ -236,6 +238,11 @@ export default function ProjectPageViewDetails() {
             Export Report
           </Button>
         </div>
+      </div>
+
+      {/* Progress Pipeline */}
+      <div className="mb-5">
+        <ProgressPipeline currentStatus={project?.status} size="md" />
       </div>
 
       {/* Quick Stats Row */}
@@ -455,6 +462,11 @@ export default function ProjectPageViewDetails() {
 
       {/* Video Modal */}
       <VideoModal videoUrl={videoUrl} isOpen={isDialogOpen} onClose={setIsDialogOpen} />
+
+      {/* Activity Feed */}
+      <div className="mt-6">
+        <ActivityFeed projectId={project?._id || projectId} />
+      </div>
     </div>
   );
 }
