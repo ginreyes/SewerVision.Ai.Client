@@ -200,16 +200,11 @@ function CustomerSettingsContent() {
       formData.append('avatar', file);
       if (username) formData.append('username', username);
 
-      const token = getCookie('authToken');
-      const uploadUrl = userId
-        ? `${BACKEND_URL}/api/users/upload-avatar/${userId}`
-        : `${BACKEND_URL}/api/users/upload-avatar`;
-      const res = await fetch(uploadUrl, {
-        method: 'POST',
-        headers: token ? { Authorization: `Bearer ${token}` } : {},
-        body: formData
-      });
-      const data = await res.json();
+      const uploadPath = userId
+        ? `/api/users/upload-avatar/${userId}`
+        : `/api/users/upload-avatar`;
+      const res = await api(uploadPath, 'POST', formData);
+      const data = res.data;
 
       if (res.ok) {
         const avatarUrlWithBust = `${data.avatarUrl}${data.avatarUrl?.includes('?') ? '&' : '?'}t=${Date.now()}`;
@@ -252,16 +247,11 @@ function CustomerSettingsContent() {
       formData.append('avatar', file);
       if (username) formData.append('username', username);
 
-      const token = getCookie('authToken');
-      const uploadUrl = userId
-        ? `${BACKEND_URL}/api/users/upload-company-logo/${userId}`
-        : `${BACKEND_URL}/api/users/upload-company-logo`;
-      const res = await fetch(uploadUrl, {
-        method: 'POST',
-        headers: token ? { Authorization: `Bearer ${token}` } : {},
-        body: formData
-      });
-      const data = await res.json();
+      const uploadPath = userId
+        ? `/api/users/upload-company-logo/${userId}`
+        : `/api/users/upload-company-logo`;
+      const res = await api(uploadPath, 'POST', formData);
+      const data = res.data;
 
       if (res.ok) {
         const logoUrlWithBust = `${data.logoUrl}${data.logoUrl?.includes('?') ? '&' : '?'}t=${Date.now()}`;

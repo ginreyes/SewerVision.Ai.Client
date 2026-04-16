@@ -386,23 +386,17 @@ function SettingsPageContent() {
     if (uname) formData.append('username', uname);
     if (uid) formData.append('userId', uid);
 
-    const token = getCookie('authToken');
-
     // Always put userId in the URL path when available — don't rely on multipart body alone
     // Prefer URL userId when we have a trusted id; otherwise let backend resolve by username
-    const uploadUrl = uid
-      ? `${BACKEND_URL}/api/users/upload-avatar/${uid}`
-      : `${BACKEND_URL}/api/users/upload-avatar`;
+    const uploadPath = uid
+      ? `/api/users/upload-avatar/${uid}`
+      : `/api/users/upload-avatar`;
 
-    const res = await fetch(uploadUrl, {
-      method: 'POST',
-      headers: token ? { Authorization: `Bearer ${token}` } : {},
-      body: formData,
-    });
+    const res = await api(uploadPath, 'POST', formData);
 
-    const data = await res.json();
+    const data = res.data;
 
-    if (res.ok && data.avatarUrl) {
+    if (res.ok && data?.avatarUrl) {
       const avatarUrlWithBust = `${data.avatarUrl}${data.avatarUrl.includes('?') ? '&' : '?'}t=${Date.now()}`;
       setProfile((prev) => ({ ...prev, avatar: avatarUrlWithBust }));
 

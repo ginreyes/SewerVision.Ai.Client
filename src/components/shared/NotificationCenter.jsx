@@ -25,52 +25,19 @@ import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { useNotifications } from '@/components/providers/NotificationProvider';
 import { useAlert } from '@/components/providers/AlertProvider';
+import { ROLE_BADGE_CLASSES, getRoleTheme } from '@/lib/roleThemes';
 
-// ── Role accent color mapping ──
-const ROLE_COLORS = {
-  admin: {
-    accent: 'text-primary',
-    unreadBg: 'bg-accent/30 border-primary/20',
-    badgeBg: 'bg-red-500 hover:bg-red-600',
-    loader: 'text-primary',
-    iconAccent: 'text-primary',
-  },
-  operator: {
-    accent: 'text-blue-600',
-    unreadBg: 'bg-blue-50/50 border border-blue-100',
-    badgeBg: 'bg-red-500 hover:bg-red-600',
-    loader: 'text-blue-500',
-    iconAccent: 'text-blue-600',
-  },
-  'qc-technician': {
-    accent: 'text-primary',
-    unreadBg: 'bg-accent/30 border-primary/20',
-    badgeBg: 'bg-red-500 hover:bg-red-600',
-    loader: 'text-primary',
-    iconAccent: 'text-primary',
-  },
-  user: {
-    accent: 'text-indigo-600',
-    unreadBg: 'bg-indigo-50/50 border-indigo-200/50',
-    badgeBg: 'bg-indigo-600 hover:bg-indigo-700',
-    loader: 'text-indigo-600',
-    iconAccent: 'text-indigo-600',
-  },
-  customer: {
-    accent: 'text-emerald-600',
-    unreadBg: 'bg-accent/30 border-primary/20',
-    badgeBg: 'bg-red-500 hover:bg-red-600',
-    loader: 'text-primary',
-    iconAccent: 'text-emerald-600',
-  },
-  'customer-rep': {
-    accent: 'text-teal-600',
-    unreadBg: 'bg-teal-50/50 border border-teal-100',
-    badgeBg: 'bg-teal-100 text-teal-700 border-teal-200',
-    loader: 'text-teal-500',
-    iconAccent: 'text-teal-600',
-  },
-};
+// ── Role accent color mapping (derives from central roleThemes) ──
+function buildRoleColors(role) {
+  const theme = getRoleTheme(role);
+  return {
+    accent: theme.primary,
+    unreadBg: `${theme.activeBg} border ${theme.cardBorder}`,
+    badgeBg: ROLE_BADGE_CLASSES[role] || theme.badge,
+    loader: theme.primary,
+    iconAccent: theme.iconText,
+  };
+}
 
 // ── Notification type icon/label configs per role ──
 const DEFAULT_TYPE_CONFIG = {
@@ -220,7 +187,7 @@ export default function NotificationCenter({
   const deleteAllNotifications = providerNotifications?.deleteAllNotifications;
 
   const { showAlert } = useAlert();
-  const roleColors = ROLE_COLORS[role] || ROLE_COLORS.admin;
+  const roleColors = buildRoleColors(role);
 
   const [filter, setFilter] = useState('all');
   const [refreshing, setRefreshing] = useState(false);

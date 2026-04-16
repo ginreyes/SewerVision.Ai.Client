@@ -1,5 +1,6 @@
 'use client';
 
+import { memo } from 'react';
 import { MapPin, AlertCircle, Eye, Clock, FileText, Zap, ArrowRight } from 'lucide-react';
 import { Card, CardContent } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
@@ -132,4 +133,5 @@ const ProjectCard = ({ project, onView }) => {
   );
 };
 
-export default ProjectCard;
+/** memo: rendered many times in grid view — reduces rerenders when sibling state changes */
+export default memo(ProjectCard);

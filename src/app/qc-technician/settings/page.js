@@ -48,7 +48,6 @@ import { useAlert } from '@/components/providers/AlertProvider';
 import { useQuery } from '@tanstack/react-query';
 import { qcApi } from '@/data/qcApi';
 import { api, getCookie } from '@/lib/helper';
-import { BACKEND_URL } from '@/lib/config';
 import { ProfileStats, SectionHeader } from '@/components/qc/settings';
 import AppearanceSettings from '@/components/shared/AppearanceSettings';
 import SettingsPageShell from '@/components/shared/SettingsPageShell';
@@ -272,18 +271,13 @@ function QCSettingsContent() {
       formData.append('avatar', file);
       if (username) formData.append('username', username);
 
-      const token = getCookie('authToken');
-      const uploadUrl = userId
-        ? `${BACKEND_URL}/api/users/upload-avatar/${userId}`
-        : `${BACKEND_URL}/api/users/upload-avatar`;
+      const uploadPath = userId
+        ? `/api/users/upload-avatar/${userId}`
+        : `/api/users/upload-avatar`;
 
-      const res = await fetch(uploadUrl, {
-        method: 'POST',
-        headers: token ? { 'Authorization': `Bearer ${token}` } : {},
-        body: formData
-      });
+      const res = await api(uploadPath, 'POST', formData);
 
-      const data = await res.json();
+      const data = res.data;
 
       if (res.ok) {
         setProfile(prev => ({ ...prev, avatar: data.avatarUrl }));

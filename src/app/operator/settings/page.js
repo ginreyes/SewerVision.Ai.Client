@@ -7,7 +7,7 @@ import { Card, CardContent } from '@/components/ui/card';
 import { TabsContent } from '@/components/ui/tabs';
 import { useUser } from '@/components/providers/UserContext';
 import { useAlert } from '@/components/providers/AlertProvider';
-import { getCookie } from '@/lib/helper';
+import { api } from '@/lib/helper';
 import { BACKEND_URL } from '@/lib/config';
 import {
   useOperatorDashboardStats,
@@ -86,10 +86,7 @@ const OperatorSettingsContent = () => {
     try {
       const formData = new FormData();
       formData.append('avatar', file);
-      const token = getCookie('authToken');
-      const res = await fetch(`${BACKEND_URL}/api/users/upload-avatar/${userData._id}`, {
-        method: 'POST', headers: { Authorization: `Bearer ${token}` }, body: formData,
-      });
+      const res = await api(`/api/users/upload-avatar/${userData._id}`, 'POST', formData);
       if (res.ok) { showAlert('Avatar updated', 'success'); refetchUser?.(); }
       else showAlert('Failed to upload avatar', 'error');
     } catch { showAlert('Avatar upload failed', 'error'); }

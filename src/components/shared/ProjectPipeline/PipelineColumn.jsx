@@ -1,5 +1,6 @@
 "use client";
 
+import { memo, useMemo } from "react";
 import PipelineCard from "./PipelineCard";
 
 // ---------------------------------------------------------------------------
@@ -43,7 +44,12 @@ function SkeletonCard({ delay = 0 }) {
 // Component
 // ---------------------------------------------------------------------------
 
-export default function PipelineColumn({
+/**
+ * PipelineColumn — one of 7 columns in a kanban board.
+ * memo'd so unchanged columns skip rerender; selectedSet memoized so child
+ * PipelineCard's memo actually pays off (stable Set identity).
+ */
+function PipelineColumn({
   status,
   projects = [],
   count,
@@ -59,10 +65,13 @@ export default function PipelineColumn({
   const barColor = STATUS_BAR_COLORS[status] || "bg-gray-400";
   const displayCount = count ?? projects.length;
 
-  const selectedSet =
-    selectedIds instanceof Set
-      ? selectedIds
-      : new Set(Array.isArray(selectedIds) ? selectedIds : []);
+  const selectedSet = useMemo(
+    () =>
+      selectedIds instanceof Set
+        ? selectedIds
+        : new Set(Array.isArray(selectedIds) ? selectedIds : []),
+    [selectedIds]
+  );
 
   return (
     <div className="min-w-[260px] max-w-[300px] flex flex-col bg-gray-50/60 rounded-xl border border-gray-200">
@@ -107,3 +116,5 @@ export default function PipelineColumn({
     </div>
   );
 }
+
+export default memo(PipelineColumn);

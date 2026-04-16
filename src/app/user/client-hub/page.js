@@ -15,7 +15,6 @@ import {
   useMarkConversationRead, useUserProjects,
 } from "@/hooks/useQueryHooks";
 import { api } from "@/lib/helper";
-import { BACKEND_URL } from "@/lib/config";
 import { avatarSrc, getAvatarColor, getInitials } from "@/components/admin/constants";
 import ChatMessage, { ChatDateSeparator } from "@/components/shared/ChatMessage";
 import EmojiPicker from "@/components/shared/EmojiPicker";
@@ -145,20 +144,14 @@ export default function ClientHub() {
     const fileList = Array.isArray(filesOrFile) ? filesOrFile : [filesOrFile];
     if (fileList.length === 0 || !selected) return;
     try {
-      const token = document.cookie.split('authToken=')[1]?.split(';')[0] || '';
-
       // Upload ALL files in parallel
       const uploadResults = await Promise.all(fileList.map(async (file) => {
         const formData = new FormData();
         formData.append('file', file);
         try {
-          const res = await fetch(`${BACKEND_URL}/api/client-conversations/${selected}/upload`, {
-            method: 'POST',
-            headers: { 'Authorization': `Bearer ${token}` },
-            body: formData,
-          });
-          const data = await res.json();
-          if (data.status === 'success' && data.data?.url) {
+          const res = await api(`/api/client-conversations/${selected}/upload`, 'POST', formData);
+          const data = res.data;
+          if (data?.status === 'success' && data.data?.url) {
             return { url: data.data.url, filename: data.data.filename, mimetype: data.data.mimetype, size: data.data.size };
           }
         } catch {}

@@ -1,6 +1,6 @@
 "use client";
 
-import { useMemo } from "react";
+import { memo, useCallback, useMemo } from "react";
 import { Card, CardContent } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
@@ -80,7 +80,12 @@ function getInitials(name) {
 // Component
 // ---------------------------------------------------------------------------
 
-export default function PipelineCard({
+/**
+ * PipelineCard — rendered 50+ times in a kanban board.
+ * Wrapped in React.memo so unchanged cards don't rerender when siblings
+ * update; callback + derived values memoized to preserve memo benefit.
+ */
+function PipelineCard({
   project,
   quickActions = [],
   onClick,
@@ -102,15 +107,18 @@ export default function PipelineCard({
       ? "bg-amber-500"
       : "bg-red-500";
 
-  const handleCardClick = (e) => {
-    // Avoid triggering card click when clicking checkbox or action buttons
-    if (
-      e.target.closest("button") ||
-      e.target.closest('input[type="checkbox"]')
-    )
-      return;
-    onClick?.(project);
-  };
+  const handleCardClick = useCallback(
+    (e) => {
+      // Avoid triggering card click when clicking checkbox or action buttons
+      if (
+        e.target.closest("button") ||
+        e.target.closest('input[type="checkbox"]')
+      )
+        return;
+      onClick?.(project);
+    },
+    [onClick, project]
+  );
 
   return (
     <Card
@@ -257,3 +265,5 @@ export default function PipelineCard({
     </Card>
   );
 }
+
+export default memo(PipelineCard);

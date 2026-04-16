@@ -18,6 +18,7 @@ import AnnouncementBanner from "@/components/ui/AnnouncementBanner";
 import UnifiedSidebar from "@/components/ui/UnifiedSidebar";
 import RoleThemeProvider from "@/components/providers/RoleThemeProvider";
 import { TourGuide, useTourGuide } from "@/components/TourGuide";
+import { CommandPalette } from "@/components/shared/CommandPalette";
 import { api, getCookie, deleteCookie } from "@/lib/helper";
 
 export default function RoleLayout({ role: expectedRole, children }) {
@@ -102,6 +103,7 @@ export default function RoleLayout({ role: expectedRole, children }) {
         </div>
 
         <TourGuide isOpen={showTour} onClose={closeTour} role={expectedRole} />
+        <CommandPalette role={expectedRole} />
       </div>
     </RoleThemeProvider>
   );

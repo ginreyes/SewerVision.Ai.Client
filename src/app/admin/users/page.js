@@ -4,6 +4,7 @@ import AddUserModal from "@/components/admin/users/user-management/AddUserModal"
 import SendEmailModal from "@/components/admin/users/user-management/SendEmailModal";
 import ChangePasswordModal from "@/components/admin/users/user-management/ChangePasswordModal";
 import { api, getCookie } from "@/lib/helper";
+import { ROLE_BADGE_CLASSES } from "@/lib/roleThemes";
 import { useAlert } from "@/components/providers/AlertProvider";
 import { useDialog } from "@/components/providers/DialogProvider";
 import { useAllUsers } from "@/hooks/useQueryHooks";
@@ -45,16 +46,6 @@ function getActionBadgeClass(action) {
   const key = Object.keys(ACTION_BADGE).find((k) => action?.toLowerCase().includes(k));
   return ACTION_BADGE[key] || "bg-gray-100 text-gray-700 border-gray-200";
 }
-
-/* ─── role badge config ─── */
-const ROLE_BADGE = {
-  admin: "bg-rose-100 text-rose-700 border-rose-200",
-  user: "bg-red-100 text-red-700 border-red-200",
-  operator: "bg-blue-100 text-blue-700 border-blue-200",
-  "qc-technician": "bg-emerald-100 text-emerald-700 border-emerald-200",
-  customer: "bg-amber-100 text-amber-700 border-amber-200",
-  "customer-rep": "bg-teal-100 text-teal-700 border-teal-200",
-};
 
 /* ─── relative time helper ─── */
 function formatRelativeTime(dateStr) {
@@ -245,7 +236,7 @@ const UserPage = () => {
   const getRoleBadge = (u) => {
     const role = (u.role || "").toLowerCase();
 
-    const classes = ROLE_BADGE[role] || "bg-gray-100 text-gray-700 border-gray-200";
+    const classes = ROLE_BADGE_CLASSES[role] || "bg-gray-100 text-gray-700 border-gray-200";
     
     const labels = { 
       admin: "Admin", user: "User", operator: "Operator", "qc-technician": "QC Technician", customer: "Customer", "customer-rep": "Customer Representative"
@@ -516,7 +507,7 @@ const UserPage = () => {
       if (!item.target?.username) return <span className="text-sm text-gray-400 italic">—</span>;
       const avatarUrl = item.target.avatar || `https://ui-avatars.com/api/?name=${encodeURIComponent(item.target.username)}&background=random&color=fff`;
       const roleBadge = item.target.role
-        ? ROLE_BADGE[item.target.role.toLowerCase()] || "bg-gray-100 text-gray-700 border-gray-200"
+        ? ROLE_BADGE_CLASSES[item.target.role.toLowerCase()] || "bg-gray-100 text-gray-700 border-gray-200"
         : null;
       return (
         <div className="flex items-center gap-3 min-w-0">

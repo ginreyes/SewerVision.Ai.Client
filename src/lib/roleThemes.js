@@ -158,6 +158,21 @@ const ROLE_THEMES = {
 const DEFAULT_THEME = ROLE_THEMES.admin;
 
 /**
+ * Flat role -> Tailwind badge classname map.
+ * Single source of truth for role pill/badge styling across the app.
+ * Use this in places that just need a className string rather than the
+ * full theme object.
+ */
+export const ROLE_BADGE_CLASSES = {
+  admin: ROLE_THEMES.admin.badge,
+  operator: ROLE_THEMES.operator.badge,
+  "qc-technician": ROLE_THEMES["qc-technician"].badge,
+  user: ROLE_THEMES.user.badge,
+  customer: ROLE_THEMES.customer.badge,
+  "customer-rep": ROLE_THEMES["customer-rep"].badge,
+};
+
+/**
  * Get the theme object for a role.
  * @param {string} role - The role key (e.g. 'admin', 'operator', 'customer-rep')
  * @returns {object} Theme object with all color classes

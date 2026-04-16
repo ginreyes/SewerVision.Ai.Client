@@ -35,7 +35,6 @@ import { Select, SelectTrigger, SelectValue, SelectContent, SelectItem } from '@
 import { useUser } from '@/components/providers/UserContext';
 import { useAlert } from '@/components/providers/AlertProvider';
 import { api, getCookie } from '@/lib/helper';
-import { BACKEND_URL } from '@/lib/config';
 import SectionHeader from '@/components/user/settings/SectionHeader';
 import ToggleSetting from '@/components/user/settings/ToggleSetting';
 import AppearanceSettings from '@/components/shared/AppearanceSettings';
@@ -189,16 +188,11 @@ function UserSettingsContent() {
       formData.append('avatar', file);
       if (username) formData.append('username', username);
 
-      const token = getCookie('authToken');
-      const uploadUrl = userId
-        ? `${BACKEND_URL}/api/users/upload-avatar/${userId}`
-        : `${BACKEND_URL}/api/users/upload-avatar`;
-      const res = await fetch(uploadUrl, {
-        method: 'POST',
-        headers: token ? { Authorization: `Bearer ${token}` } : {},
-        body: formData
-      });
-      const data = await res.json();
+      const uploadPath = userId
+        ? `/api/users/upload-avatar/${userId}`
+        : `/api/users/upload-avatar`;
+      const res = await api(uploadPath, 'POST', formData);
+      const data = res.data;
 
       if (res.ok) {
         const avatarUrlWithBust = `${data.avatarUrl}${data.avatarUrl?.includes('?') ? '&' : '?'}t=${Date.now()}`;
