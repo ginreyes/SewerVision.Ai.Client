@@ -29,6 +29,7 @@ import { PipelineBoard } from '@/components/shared/ProjectPipeline';
 import PipelineAnalyticsStrip from '@/components/admin/project/PipelineAnalyticsStrip';
 import BulkActionsToolbar from '@/components/admin/project/BulkActionsToolbar';
 import { usePipeline } from '@/data/pipelineApi';
+import { SavedViewsDropdown, useSavedViewSync } from '@/components/shared/SavedViews';
 
 const SewerVisionInspectionModuleContent = () => {
   const [selectedProject, setSelectedProject] = useState(null);
@@ -37,6 +38,25 @@ const SewerVisionInspectionModuleContent = () => {
   const [statusFilter, setStatusFilter] = useState("all");
   const [viewMode, setViewMode] = useState("grid"); // 'grid' | 'table' | 'tracker' | 'compare' | 'pipeline'
   const [selectedIds, setSelectedIds] = useState([]);
+
+  // Saved Views: two-way bind current filters <-> selected SavedView + URL
+  const {
+    activeViewId,
+    applyView,
+    clearView,
+    snapshot: snapshotFilters,
+  } = useSavedViewSync({
+    applyFilters: (filters) => {
+      if (typeof filters.searchTerm === 'string') setSearchTerm(filters.searchTerm);
+      if (typeof filters.statusFilter === 'string') setStatusFilter(filters.statusFilter);
+      if (typeof filters.viewMode === 'string') setViewMode(filters.viewMode);
+    },
+    captureFilters: () => ({
+      searchTerm,
+      statusFilter,
+      viewMode,
+    }),
+  });
   const navigatingBackRef = useRef(false);
 
   const searchParams = useSearchParams();
@@ -194,6 +214,15 @@ const SewerVisionInspectionModuleContent = () => {
                     </button>
                   ))}
                 </div>
+
+                <SavedViewsDropdown
+                  entityType="project"
+                  activeViewId={activeViewId}
+                  onApply={applyView}
+                  onClear={clearView}
+                  snapshotFilters={snapshotFilters}
+                  accentColor="rose"
+                />
 
                 <StatusLegend />
 
