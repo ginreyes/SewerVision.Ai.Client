@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, useMemo, useCallback } from 'react';
+import { memo, useState, useMemo, useCallback } from 'react';
 import {
   Bell,
   Check,
@@ -74,7 +74,8 @@ function formatDate(dateString) {
 }
 
 // ── Single Notification Item ──
-function NotificationRow({ notification, roleColors, onMarkAsRead, onDelete }) {
+/** memo'd — rendered many times in a notification list */
+const NotificationRow = memo(function NotificationRow({ notification, roleColors, onMarkAsRead, onDelete }) {
   const config = DEFAULT_TYPE_CONFIG[notification.type] || DEFAULT_TYPE_CONFIG.default;
   const Icon = config.icon;
 
@@ -141,7 +142,7 @@ function NotificationRow({ notification, roleColors, onMarkAsRead, onDelete }) {
       </div>
     </div>
   );
-}
+});
 
 // ── Stat Card (optional) ──
 function StatCard({ icon: Icon, value, label, color = 'from-blue-500 to-blue-600' }) {
@@ -163,7 +164,13 @@ function StatCard({ icon: Icon, value, label, color = 'from-blue-500 to-blue-600
 // ══════════════════════════════════════════════════════════════
 // Main NotificationCenter Component
 // ══════════════════════════════════════════════════════════════
-export default function NotificationCenter({
+/**
+ * NotificationCenter — renders long lists of notification items with
+ * per-item actions. memo'd at the top level so parent rerenders (navbar,
+ * layout, socket updates) don't force a full re-render; internal state
+ * still updates normally.
+ */
+function NotificationCenter({
   role = 'admin',
   notifications: externalNotifications,
   unreadCount: externalUnreadCount,
@@ -451,3 +458,5 @@ function useNotificationsSafe() {
     return null;
   }
 }
+
+export default memo(NotificationCenter);

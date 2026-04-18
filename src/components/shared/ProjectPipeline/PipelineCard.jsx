@@ -1,10 +1,13 @@
 "use client";
 
-import { memo, useCallback, useMemo } from "react";
+import { memo, useCallback, useMemo, useRef } from "react";
+import { useQueryClient } from "@tanstack/react-query";
 import { Card, CardContent } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { MapPin, Zap, Clock, User, CheckCircle } from "lucide-react";
+import { pipelineKeys } from "@/data/pipelineApi";
+import { api } from "@/lib/helper";
 
 // ---------------------------------------------------------------------------
 // Helpers
@@ -94,6 +97,9 @@ function PipelineCard({
   onSelect,
   accentColor = "rose",
 }) {
+  const queryClient = useQueryClient();
+  const prefetchTimerRef = useRef(null);
+
   const timeInStage = useMemo(() => getTimeInStage(project), [project]);
   const slaStatus = useMemo(
     () => (showSLA ? getSLAStatus(project) : null),
@@ -120,12 +126,39 @@ function PipelineCard({
     [onClick, project]
   );
 
+  // Prefetch the project summary on hover so the detail view feels instant.
+  // Debounced 200ms so quick scroll-over doesn't fire a request per card.
+  const handleMouseEnter = useCallback(() => {
+    if (!project?._id) return;
+    if (prefetchTimerRef.current) clearTimeout(prefetchTimerRef.current);
+    prefetchTimerRef.current = setTimeout(() => {
+      queryClient.prefetchQuery({
+        queryKey: pipelineKeys.summary(project._id),
+        queryFn: async () => {
+          const res = await api(`/api/project-pipeline/${project._id}/summary`, "GET");
+          if (!res.ok) throw new Error(res.data?.message || "prefetch failed");
+          return res.data;
+        },
+        staleTime: 30_000,
+      });
+    }, 200);
+  }, [project?._id, queryClient]);
+
+  const handleMouseLeave = useCallback(() => {
+    if (prefetchTimerRef.current) {
+      clearTimeout(prefetchTimerRef.current);
+      prefetchTimerRef.current = null;
+    }
+  }, []);
+
   return (
     <Card
       className={`cursor-pointer transition-shadow hover:shadow-md border ${
         selected ? `ring-2 ring-${accentColor}-400 border-${accentColor}-300` : "border-gray-200"
       }`}
       onClick={handleCardClick}
+      onMouseEnter={handleMouseEnter}
+      onMouseLeave={handleMouseLeave}
     >
       <CardContent className="p-3 space-y-2">
         {/* Top row: checkbox, name, priority */}

@@ -1,6 +1,6 @@
 "use client";
 
-import { useCallback, useState } from "react";
+import { memo, useCallback, useMemo } from "react";
 import PipelineColumn from "./PipelineColumn";
 import PipelineSkeleton from "./PipelineSkeleton";
 
@@ -14,7 +14,12 @@ const STAGES = [
   "customer-notified",
 ];
 
-export default function PipelineBoard({
+/**
+ * PipelineBoard — root of the kanban view. memo'd so parent page rerenders
+ * (search/filter toolbar, debounced search) don't force a full column/card
+ * re-render when the columns data is unchanged.
+ */
+function PipelineBoard({
   columns,
   counts,
   isLoading = false,
@@ -43,7 +48,9 @@ export default function PipelineBoard({
     [selectedIds, onSelectionChange]
   );
 
-  const selectedSet = new Set(selectedIds);
+  // Stable Set reference — rebuild only when selectedIds actually changes,
+  // so memoized PipelineColumn / PipelineCard children don't rerender.
+  const selectedSet = useMemo(() => new Set(selectedIds), [selectedIds]);
 
   return (
     <div className="flex gap-4 overflow-x-auto pb-4">
@@ -65,3 +72,5 @@ export default function PipelineBoard({
     </div>
   );
 }
+
+export default memo(PipelineBoard);
