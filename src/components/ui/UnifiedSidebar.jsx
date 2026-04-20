@@ -98,7 +98,7 @@ const UnifiedSidebar = ({ isOpen, role, displayName }) => {
         className={cn(
           'h-full flex flex-col',
           'border-r border-gray-200/50 dark:border-[#27272a]',
-          'bg-gray-200 dark:bg-[#0c0c0e]',
+          'bg-gray-200 dark:!bg-[#09090b]',
           'transition-all duration-300'
         )}
       >

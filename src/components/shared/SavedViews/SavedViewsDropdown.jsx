@@ -39,6 +39,7 @@ import {
   useTrackSavedViewUsage,
 } from "@/data/savedViewsApi";
 import { useAlert } from "@/components/providers/AlertProvider";
+import { useDialog } from "@/components/providers/DialogProvider";
 
 const ICON_MAP = {
   Bookmark,
@@ -86,6 +87,7 @@ export default function SavedViewsDropdown({
   accentColor = "blue",
 }) {
   const { showAlert } = useAlert?.() || { showAlert: () => {} };
+  const { showDelete } = useDialog?.() || { showDelete: () => {} };
   const [createOpen, setCreateOpen] = useState(false);
   const [editTarget, setEditTarget] = useState(null);
   const [dropdownOpen, setDropdownOpen] = useState(false);
@@ -97,8 +99,27 @@ export default function SavedViewsDropdown({
   const duplicateMutation = useDuplicateSavedView();
   const trackMutation = useTrackSavedViewUsage();
 
-  const grouped = data?.grouped || { mine: [], shared: [], public: [] };
+  const rawGrouped = data?.grouped || { mine: [], shared: [], public: [] };
   const allViews = data?.views || [];
+
+  // Sort "mine" so the pinned (default) view is always first, then by most-recently-used, then alphabetical
+  const grouped = useMemo(() => {
+    const sortMine = (list) =>
+      [...list].sort((a, b) => {
+        if (!!b.isDefault - !!a.isDefault !== 0) return !!b.isDefault - !!a.isDefault;
+        const aUsed = a.lastUsedAt ? new Date(a.lastUsedAt).getTime() : 0;
+        const bUsed = b.lastUsedAt ? new Date(b.lastUsedAt).getTime() : 0;
+        if (bUsed !== aUsed) return bUsed - aUsed;
+        return (a.name || "").localeCompare(b.name || "");
+      });
+    return {
+      mine: sortMine(rawGrouped.mine || []),
+      shared: rawGrouped.shared || [],
+      public: rawGrouped.public || [],
+    };
+  }, [rawGrouped]);
+
+  const pinnedView = grouped.mine.find((v) => v.isDefault) || null;
 
   const activeView = useMemo(
     () => allViews.find((v) => v._id === activeViewId),
@@ -120,7 +141,6 @@ export default function SavedViewsDropdown({
     const filters = typeof snapshotFilters === "function" ? snapshotFilters() : {};
     try {
       const created = await createMutation.mutateAsync({ ...values, filters });
-      showAlert?.(`View "${created.name}" saved`, "success");
       setCreateOpen(false);
       onApply?.(created);
     } catch (err) {
@@ -131,8 +151,7 @@ export default function SavedViewsDropdown({
   const handleSaveEdit = async (values) => {
     if (!editTarget) return;
     try {
-      const updated = await updateMutation.mutateAsync({ id: editTarget._id, ...values });
-      showAlert?.(`View "${updated.name}" updated`, "success");
+      await updateMutation.mutateAsync({ id: editTarget._id, ...values });
       setEditTarget(null);
     } catch (err) {
       showAlert?.(err.message || "Failed to update view", "error");
@@ -141,22 +160,36 @@ export default function SavedViewsDropdown({
 
   const handleDuplicate = async (view) => {
     try {
-      const copy = await duplicateMutation.mutateAsync(view._id);
-      showAlert?.(`Duplicated as "${copy.name}"`, "success");
+      await duplicateMutation.mutateAsync(view._id);
     } catch (err) {
       showAlert?.(err.message || "Failed to duplicate", "error");
     }
   };
 
-  const handleDelete = async (view) => {
-    if (!confirm(`Delete view "${view.name}"?`)) return;
+  const handleTogglePin = async (view) => {
     try {
-      await deleteMutation.mutateAsync(view._id);
-      showAlert?.("View deleted", "success");
-      if (activeViewId === view._id) onClear?.();
+      await updateMutation.mutateAsync({ id: view._id, isDefault: !view.isDefault });
     } catch (err) {
-      showAlert?.(err.message || "Failed to delete", "error");
+      showAlert?.(err.message || "Failed to update pin", "error");
     }
+  };
+
+  const handleDelete = (view) => {
+    showDelete({
+      title: "Delete saved view?",
+      description: `"${view.name}" will be removed for you${
+        view.visibility !== "private" ? " and anyone it's shared with" : ""
+      }. This cannot be undone.`,
+      onConfirm: async () => {
+        try {
+          await deleteMutation.mutateAsync(view._id);
+          showAlert?.("View deleted", "success");
+          if (activeViewId === view._id) onClear?.();
+        } catch (err) {
+          showAlert?.(err.message || "Failed to delete", "error");
+        }
+      },
+    });
   };
 
   // Render a single view row with inline actions
@@ -181,12 +214,14 @@ export default function SavedViewsDropdown({
           />
         </span>
         <div className="flex-1 min-w-0">
-          <div className="flex items-center gap-1">
+          <div className="flex items-center gap-1.5">
             <span className="text-sm font-medium text-gray-900 dark:text-gray-100 truncate">
               {view.name}
             </span>
             {view.isDefault && (
-              <Star className="w-3 h-3 text-amber-500 fill-amber-500 flex-shrink-0" />
+              <span className="text-[9px] uppercase tracking-wider font-semibold text-amber-600 dark:text-amber-400 bg-amber-100 dark:bg-amber-500/15 px-1.5 py-0.5 rounded-full flex-shrink-0">
+                Pinned
+              </span>
             )}
           </div>
           {view.description && (
@@ -196,7 +231,31 @@ export default function SavedViewsDropdown({
           )}
         </div>
         <VisIcon className="w-3 h-3 text-gray-400 flex-shrink-0" />
-        <div className="opacity-0 group-hover:opacity-100 flex items-center gap-0.5 transition-opacity">
+        <div
+          className={`flex items-center gap-0.5 transition-opacity ${
+            view.isDefault ? "opacity-100" : "opacity-0 group-hover:opacity-100"
+          }`}
+        >
+          {canEdit && (
+            <button
+              type="button"
+              title={view.isDefault ? "Unpin default view" : "Pin as default view"}
+              onClick={(e) => {
+                e.stopPropagation();
+                handleTogglePin(view);
+              }}
+              disabled={updateMutation.isPending}
+              className={`p-1 rounded transition-colors ${
+                view.isDefault
+                  ? "text-amber-500 hover:text-amber-600"
+                  : "text-gray-400 hover:text-amber-500"
+              } disabled:opacity-50`}
+            >
+              <Star
+                className={`w-3.5 h-3.5 ${view.isDefault ? "fill-amber-500" : ""}`}
+              />
+            </button>
+          )}
           {canEdit && (
             <button
               type="button"
@@ -249,6 +308,9 @@ export default function SavedViewsDropdown({
           <Button variant="outline" size="sm" className="gap-1.5">
             <TriggerIcon className="w-3.5 h-3.5" />
             <span className="max-w-[140px] truncate">{triggerLabel}</span>
+            {activeView?.isDefault && (
+              <Star className="w-3 h-3 fill-amber-500 text-amber-500" />
+            )}
             <ChevronDown className="w-3.5 h-3.5 text-gray-400" />
           </Button>
         </DropdownMenuTrigger>
@@ -284,14 +346,26 @@ export default function SavedViewsDropdown({
             </div>
           ) : (
             <>
-              {grouped.mine.length > 0 && (
+              {pinnedView && (
+                <>
+                  <DropdownMenuLabel className="text-[10px] uppercase tracking-wider text-amber-600 dark:text-amber-400 flex items-center gap-1">
+                    <Star className="w-3 h-3 fill-amber-500 text-amber-500" /> Pinned default
+                  </DropdownMenuLabel>
+                  <ViewRow view={pinnedView} canEdit />
+                  <DropdownMenuSeparator />
+                </>
+              )}
+
+              {grouped.mine.filter((v) => !v.isDefault).length > 0 && (
                 <>
                   <DropdownMenuLabel className="text-[10px] uppercase tracking-wider text-gray-400">
                     My views
                   </DropdownMenuLabel>
-                  {grouped.mine.map((view) => (
-                    <ViewRow key={view._id} view={view} canEdit />
-                  ))}
+                  {grouped.mine
+                    .filter((v) => !v.isDefault)
+                    .map((view) => (
+                      <ViewRow key={view._id} view={view} canEdit />
+                    ))}
                 </>
               )}
 

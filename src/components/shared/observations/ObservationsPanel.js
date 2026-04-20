@@ -226,7 +226,7 @@ const ObservationsPanel = (props) => {
                 <thead>
                   <tr className="bg-gray-50/80">
                     {["#", "Distance", "PACP Code", "Observation", "Severity", "Time", "Snapshot", ""].map((h) => (
-                      <th key={h} className={`${py} ${px} text-left text-[11px] font-semibold text-gray-500 uppercase tracking-wider ${h === "" ? "w-10" : ""}`}>
+                      <th key={h} className={`${py} ${px} text-left text-[11px] font-semibold text-gray-500 dark:!text-gray-300 uppercase tracking-wider ${h === "" ? "w-10" : ""}`}>
                         {h}
                       </th>
                     ))}
@@ -249,10 +249,10 @@ const ObservationsPanel = (props) => {
                           selectedRowId === obs._id ? "bg-blue-50/60" : "hover:bg-gray-50/60"
                         }`}
                       >
-                        <td className={`${py} ${px} ${textSize} text-gray-400 font-mono`}>
+                        <td className={`${py} ${px} ${textSize} text-gray-400 dark:!text-gray-300 font-mono`}>
                           {index + 1 + (page - 1) * pageSize}
                         </td>
-                        <td className={`${py} ${px} ${textSize} font-medium text-gray-700`}>
+                        <td className={`${py} ${px} ${textSize} font-medium text-gray-700 dark:!text-gray-100`}>
                           {obs.distance}
                         </td>
                         <td className={`${py} ${px} ${textSize}`}>
@@ -268,7 +268,7 @@ const ObservationsPanel = (props) => {
                             )}
                           </div>
                         </td>
-                        <td className={`${py} ${px} ${textSize} text-gray-600 max-w-[200px] truncate`}>
+                        <td className={`${py} ${px} ${textSize} text-gray-600 dark:!text-gray-200 max-w-[200px] truncate`}>
                           {obs.observation}
                         </td>
                         <td className={`${py} ${px} ${textSize}`}>
@@ -277,7 +277,7 @@ const ObservationsPanel = (props) => {
                             {sev.label}
                           </span>
                         </td>
-                        <td className={`${py} ${px} ${textSize} text-gray-500 font-mono`}>
+                        <td className={`${py} ${px} ${textSize} text-gray-500 dark:!text-gray-300 font-mono`}>
                           {obs.time}
                         </td>
                         <td className={`${py} ${px}`}>

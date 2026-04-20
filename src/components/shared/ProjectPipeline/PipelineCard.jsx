@@ -154,7 +154,9 @@ function PipelineCard({
   return (
     <Card
       className={`cursor-pointer transition-shadow hover:shadow-md border ${
-        selected ? `ring-2 ring-${accentColor}-400 border-${accentColor}-300` : "border-gray-200"
+        selected
+          ? `ring-2 ring-${accentColor}-400 border-${accentColor}-300`
+          : "border-gray-200 dark:border-[#27272a]"
       }`}
       onClick={handleCardClick}
       onMouseEnter={handleMouseEnter}
@@ -168,10 +170,10 @@ function PipelineCard({
               type="checkbox"
               checked={selected}
               onChange={(e) => onSelect(project._id, e.target.checked)}
-              className="mt-0.5 h-4 w-4 rounded border-gray-300 cursor-pointer"
+              className="mt-0.5 h-4 w-4 rounded border-gray-300 dark:border-[#27272a] cursor-pointer"
             />
           )}
-          <span className="flex-1 text-sm font-semibold text-gray-900 truncate">
+          <span className="flex-1 text-sm font-semibold text-gray-900 dark:text-gray-100 truncate">
             {project.name}
           </span>
           {project.priority && (
@@ -187,7 +189,7 @@ function PipelineCard({
         </div>
 
         {/* Second row: client + location */}
-        <div className="flex items-center gap-3 text-xs text-gray-500">
+        <div className="flex items-center gap-3 text-xs text-gray-500 dark:text-gray-400">
           {project.client && (
             <span className="truncate">
               {typeof project.client === "object"
@@ -209,7 +211,7 @@ function PipelineCard({
         <div className="flex items-center gap-2">
           {project.assignedOperator && (
             <span
-              className="inline-flex items-center justify-center w-6 h-6 rounded-full bg-blue-100 text-blue-700 text-[10px] font-medium"
+              className="inline-flex items-center justify-center w-6 h-6 rounded-full bg-blue-100 text-blue-700 dark:bg-blue-500/20 dark:text-blue-300 text-[10px] font-medium"
               title={
                 typeof project.assignedOperator === "object"
                   ? project.assignedOperator.name
@@ -221,7 +223,7 @@ function PipelineCard({
           )}
           {project.qcTechnician && (
             <span
-              className="inline-flex items-center justify-center w-6 h-6 rounded-full bg-purple-100 text-purple-700 text-[10px] font-medium"
+              className="inline-flex items-center justify-center w-6 h-6 rounded-full bg-purple-100 text-purple-700 dark:bg-purple-500/20 dark:text-purple-300 text-[10px] font-medium"
               title={
                 typeof project.qcTechnician === "object"
                   ? project.qcTechnician.name
@@ -233,7 +235,7 @@ function PipelineCard({
           )}
           <Badge
             variant="secondary"
-            className="ml-auto text-[10px] px-1.5 py-0 leading-5 bg-gray-100 text-gray-600"
+            className="ml-auto text-[10px] px-1.5 py-0 leading-5 bg-gray-100 text-gray-600 dark:bg-white/5 dark:text-gray-300"
           >
             <Clock className="w-3 h-3 mr-0.5" />
             {timeInStage.label}
@@ -245,7 +247,7 @@ function PipelineCard({
           <div className="flex items-center gap-1">
             <Badge
               variant="secondary"
-              className="text-[10px] px-1.5 py-0 leading-5 bg-purple-50 text-purple-700"
+              className="text-[10px] px-1.5 py-0 leading-5 bg-purple-50 text-purple-700 dark:bg-purple-500/15 dark:text-purple-300"
             >
               <Zap className="w-3 h-3 mr-0.5" />
               {project.aiDetections.total} detections

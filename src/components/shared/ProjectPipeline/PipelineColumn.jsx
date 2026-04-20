@@ -34,7 +34,7 @@ const STATUS_BAR_COLORS = {
 function SkeletonCard({ delay = 0 }) {
   return (
     <div
-      className="h-32 rounded-xl bg-gray-100 animate-pulse"
+      className="h-32 rounded-xl bg-gray-100 dark:bg-white/5 animate-pulse"
       style={{ animationDelay: `${delay}ms` }}
     />
   );
@@ -74,16 +74,16 @@ function PipelineColumn({
   );
 
   return (
-    <div className="min-w-[260px] max-w-[300px] flex flex-col bg-gray-50/60 rounded-xl border border-gray-200">
+    <div className="min-w-[260px] max-w-[300px] flex flex-col bg-gray-50/60 dark:bg-[#111114] rounded-xl border border-gray-200 dark:border-[#27272a]">
       {/* Color bar */}
       <div className={`h-[3px] rounded-t-xl ${barColor}`} />
 
       {/* Header */}
       <div className="flex items-center justify-between px-3 py-2.5">
-        <span className="text-sm font-semibold text-gray-700 capitalize">
+        <span className="text-sm font-semibold text-gray-700 dark:text-gray-200 capitalize">
           {label}
         </span>
-        <span className="inline-flex items-center justify-center min-w-[22px] h-5 px-1.5 text-[11px] font-medium rounded-full bg-gray-200 text-gray-600">
+        <span className="inline-flex items-center justify-center min-w-[22px] h-5 px-1.5 text-[11px] font-medium rounded-full bg-gray-200 dark:bg-white/10 text-gray-600 dark:text-gray-300">
           {displayCount}
         </span>
       </div>
@@ -97,7 +97,7 @@ function PipelineColumn({
             <SkeletonCard delay={150} />
           </>
         ) : projects.length === 0 ? (
-          <p className="text-xs text-gray-400 text-center py-6">No projects</p>
+          <p className="text-xs text-gray-400 dark:text-gray-600 text-center py-6">No projects</p>
         ) : (
           projects.map((project) => (
             <PipelineCard

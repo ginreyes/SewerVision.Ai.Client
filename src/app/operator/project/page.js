@@ -20,6 +20,7 @@ import ProjectCard from "@/components/operator/project/ProjectCard";
 import EmptyState from "@/components/shared/EmptyState";
 import { PipelineBoard } from '@/components/shared/ProjectPipeline';
 import { usePipeline } from '@/data/pipelineApi';
+import { SavedViewsDropdown, useSavedViewSync } from '@/components/shared/SavedViews';
 
 const OperatorModulePage = () => {
   const { userId } = useUser();
@@ -29,6 +30,23 @@ const OperatorModulePage = () => {
   const [debouncedSearch, setDebouncedSearch] = useState("");
   const [statusFilter, setStatusFilter] = useState("all");
   const [viewMode, setViewMode] = useState("grid"); // 'grid' | 'table' | 'pipeline'
+
+  const {
+    activeViewId,
+    applyView,
+    clearView,
+    snapshot: snapshotFilters,
+  } = useSavedViewSync({
+    applyFilters: (filters) => {
+      if (typeof filters.searchTerm === 'string') {
+        setSearchTerm(filters.searchTerm);
+        setDebouncedSearch(filters.searchTerm);
+      }
+      if (typeof filters.statusFilter === 'string') setStatusFilter(filters.statusFilter);
+      if (typeof filters.viewMode === 'string') setViewMode(filters.viewMode);
+    },
+    captureFilters: () => ({ searchTerm, statusFilter, viewMode }),
+  });
   const navigatingBackRef = useRef(false);
 
   const searchParams = useSearchParams();
@@ -238,114 +256,106 @@ const OperatorModulePage = () => {
           </>
         ) : (
           <>
-            <div className="mb-8">
-              <div className="flex items-center justify-between">
-                <div>
-                  <h1 className="text-3xl font-bold text-gray-900">
+            {/* ── Page header ── */}
+            <div className="mb-6">
+              <div className="flex items-start justify-between gap-4 flex-wrap">
+                <div className="min-w-0">
+                  <h1 className="text-3xl font-bold text-gray-900 dark:text-white">
                     Inspection Projects
                   </h1>
-                  <p className="text-gray-600 mt-2">
+                  <p className="text-gray-600 dark:text-gray-400 mt-2">
                     Manage and monitor all your inspection projects
                   </p>
                 </div>
 
-                <div className="flex items-center gap-3">
-                  {/* View mode toggle */}
-                  <div className="inline-flex items-center rounded-lg border border-gray-200 bg-white shadow-sm overflow-hidden">
-                    <Button
-                      type="button"
-                      variant={viewMode === "grid" ? "secondary" : "ghost"}
-                      size="sm"
-                      onClick={() => setViewMode("grid")}
-                      className="rounded-none gap-1"
-                    >
-                      <LayoutGrid className="w-4 h-4" />
-                      <span>Grid</span>
-                    </Button>
-                    <Button
-                      type="button"
-                      variant={viewMode === "table" ? "secondary" : "ghost"}
-                      size="sm"
-                      onClick={() => setViewMode("table")}
-                      className="rounded-none border-l border-gray-200 gap-1"
-                    >
-                      <Rows className="w-4 h-4" />
-                      <span>Table</span>
-                    </Button>
-                    <Button
-                      type="button"
-                      variant={viewMode === "tracker" ? "secondary" : "ghost"}
-                      size="sm"
-                      onClick={() => setViewMode("tracker")}
-                      className="rounded-none border-l border-gray-200 gap-1"
-                    >
-                      <MapPin className="w-4 h-4" />
-                      <span>Tracker</span>
-                    </Button>
-                    <Button
-                      type="button"
-                      variant={viewMode === "pipeline" ? "secondary" : "ghost"}
-                      size="sm"
-                      onClick={() => setViewMode("pipeline")}
-                      className="rounded-none border-l border-gray-200 gap-1"
-                    >
-                      <Columns3 className="w-4 h-4" />
-                      <span>Pipeline</span>
-                    </Button>
-                    <Button
-                      type="button"
-                      variant={viewMode === "compare" ? "secondary" : "ghost"}
-                      size="sm"
-                      onClick={() => setViewMode("compare")}
-                      className="rounded-none border-l border-gray-200 gap-1"
-                    >
-                      <GitCompare className="w-4 h-4" />
-                      <span>Compare</span>
-                    </Button>
-                  </div>
-
-                  <StatusLegend />
-
-                  <ExportButton
-                    data={projects}
-                    columns={["name", "status", "location", "progress", "workOrder"]}
-                    filename="operator-projects"
-                  />
-
-                </div>
+                {/* Primary action: Saved Views (the page-level "what am I looking at") */}
+                <SavedViewsDropdown
+                  entityType="project"
+                  activeViewId={activeViewId}
+                  onApply={applyView}
+                  onClear={clearView}
+                  snapshotFilters={snapshotFilters}
+                  accentColor="indigo"
+                />
               </div>
             </div>
 
-            <div className="mb-6 flex flex-wrap gap-4 items-center">
-              <div className="relative flex items-center gap-2">
-                <Search className="absolute left-3 text-gray-400" size={16} />
-                <Input
-                  type="text"
-                  placeholder="Search projects, clients, locations..."
-                  value={searchTerm}
-                  onChange={handleSearchChange}
-                  className="pl-9 w-64"
-                />
+            {/* ── Toolbar: filters on the left, view + utilities on the right ── */}
+            <div className="mb-6 flex flex-wrap gap-3 items-center justify-between">
+              <div className="flex flex-wrap gap-2 items-center">
+                <div className="relative flex items-center">
+                  <Search className="absolute left-3 text-gray-400" size={16} />
+                  <Input
+                    type="text"
+                    placeholder="Search projects, clients, locations..."
+                    value={searchTerm}
+                    onChange={handleSearchChange}
+                    className="pl-9 w-64"
+                  />
+                </div>
+
+                <Select
+                  value={statusFilter}
+                  onValueChange={(val) => handleStatusChange({ target: { value: val } })}
+                >
+                  <SelectTrigger className="w-[160px]">
+                    <SelectValue placeholder="All Status" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="all">All Status</SelectItem>
+                    <SelectItem value="field-capture">Field Capture</SelectItem>
+                    <SelectItem value="uploading">Uploading</SelectItem>
+                    <SelectItem value="ai-processing">AI Processing</SelectItem>
+                    <SelectItem value="qc-review">QC Review</SelectItem>
+                    <SelectItem value="completed">Completed</SelectItem>
+                    <SelectItem value="customer-notified">Customer Notified</SelectItem>
+                    <SelectItem value="planning">Planning</SelectItem>
+                  </SelectContent>
+                </Select>
               </div>
 
-              <Select
-                value={statusFilter}
-                onValueChange={(val) => handleStatusChange({ target: { value: val } })}
-              >
-                <SelectTrigger className="w-[180px]">
-                  <SelectValue placeholder="All Status" />
-                </SelectTrigger>
-                <SelectContent>
-                  <SelectItem value="all">All Status</SelectItem>
-                  <SelectItem value="field-capture">Field Capture</SelectItem>
-                  <SelectItem value="uploading">Uploading</SelectItem>
-                  <SelectItem value="ai-processing">AI Processing</SelectItem>
-                  <SelectItem value="qc-review">QC Review</SelectItem>
-                  <SelectItem value="completed">Completed</SelectItem>
-                  <SelectItem value="customer-notified">Customer Notified</SelectItem>
-                  <SelectItem value="planning">Planning</SelectItem>
-                </SelectContent>
-              </Select>
+              <div className="flex items-center gap-2">
+                {/* Compact icon-only segmented view-mode picker (label only on active) */}
+                <div className="inline-flex items-center rounded-lg border border-gray-200 dark:border-gray-700 bg-white dark:bg-[#111114] shadow-sm overflow-hidden h-9">
+                  {[
+                    { key: "grid", Icon: LayoutGrid, label: "Grid" },
+                    { key: "table", Icon: Rows, label: "Table" },
+                    { key: "tracker", Icon: MapPin, label: "Tracker" },
+                    { key: "pipeline", Icon: Columns3, label: "Pipeline" },
+                    { key: "compare", Icon: GitCompare, label: "Compare" },
+                  ].map(({ key, Icon, label }, i) => {
+                    const active = viewMode === key;
+                    return (
+                      <button
+                        key={key}
+                        type="button"
+                        onClick={() => setViewMode(key)}
+                        title={label}
+                        aria-label={label}
+                        aria-pressed={active}
+                        className={[
+                          "inline-flex items-center h-full px-2.5 text-xs font-medium transition-colors gap-1.5",
+                          i > 0 ? "border-l border-gray-200 dark:border-gray-700" : "",
+                          active
+                            ? "bg-indigo-50 text-indigo-700 dark:bg-indigo-500/15 dark:text-indigo-300"
+                            : "text-gray-600 dark:text-gray-400 hover:bg-gray-50 dark:hover:bg-white/5",
+                        ].join(" ")}
+                      >
+                        <Icon className="w-4 h-4" />
+                        {active && <span className="hidden sm:inline">{label}</span>}
+                      </button>
+                    );
+                  })}
+                </div>
+
+                <StatusLegend />
+
+                <ExportButton
+                  data={projects}
+                  columns={["name", "status", "location", "progress", "workOrder"]}
+                  filename="operator-projects"
+                />
+              </div>
             </div>
 
             {viewMode === "pipeline" ? (
@@ -412,6 +422,7 @@ const OperatorModulePage = () => {
                 showActions={false}
                 showCsvActions={false}
                 onView={handleProjectRowView}
+                onRowClick={handleProjectRowView}
                 emptyMessage="No projects found"
                 emptySubtext="Try adjusting your filters or create a new project"
                 columnDefaults={{

@@ -101,7 +101,7 @@ const ProjectLiveTrackerView = memo(function ProjectLiveTrackerView({
               </div>
               <div>
                 <p className="text-lg font-bold text-gray-900">{s.value}</p>
-                <p className="text-[10px] text-gray-500">{s.label}</p>
+                <p className="text-[10px] text-gray-500 dark:!text-gray-300">{s.label}</p>
               </div>
             </CardContent>
           </Card>
@@ -121,55 +121,69 @@ const ProjectLiveTrackerView = memo(function ProjectLiveTrackerView({
 
             return (
               <button key={id} onClick={() => setSelected(isSelected ? null : id)}
-                className={`w-full text-left rounded-xl border transition-all overflow-hidden ${
+                className={`group w-full text-left rounded-xl border transition-all overflow-hidden ${
                   isSelected
                     ? `${themeColors.border} ${themeColors.bg} shadow-sm ring-1 ${themeColors.ring}`
-                    : "border-gray-200 bg-white hover:border-gray-300 hover:shadow-sm"
+                    : "border-gray-200 dark:border-[#27272a] bg-white dark:!bg-[#111114] hover:border-gray-300 dark:hover:border-[#3f3f46] hover:shadow-sm dark:hover:shadow-black/40"
                 }`}>
-                {/* Status color stripe */}
-                <div className={`h-1 ${cfg.barColor}`} style={{ width: `${pct}%` }} />
+                {/* Status color stripe — full width, filled portion brighter */}
+                <div className="relative h-1 bg-gray-100 dark:bg-white/[0.04]">
+                  <div className={`absolute inset-y-0 left-0 ${cfg.barColor} transition-all`} style={{ width: `${pct}%` }} />
+                </div>
 
                 <div className="p-3">
-                  <div className="flex items-start justify-between gap-2 mb-2">
+                  <div className="flex items-start justify-between gap-2 mb-1.5">
                     <div className="flex items-center gap-2 min-w-0">
-                      <div className={`w-2.5 h-2.5 rounded-full shrink-0 ${cfg.dot}`} />
-                      <p className="text-sm font-semibold text-gray-900 truncate">{p.name}</p>
+                      <div className={`w-2.5 h-2.5 rounded-full shrink-0 ${cfg.dot} shadow-[0_0_6px_currentColor]`} />
+                      <p className="text-sm font-semibold text-gray-900 dark:text-gray-50 truncate">{p.name}</p>
                     </div>
                     <Badge variant="outline" className={`text-[9px] shrink-0 ${cfg.color}`}>{cfg.label}</Badge>
                   </div>
 
                   {/* Location */}
                   {p.location && (
-                    <p className="text-[10px] text-gray-400 flex items-center gap-1 mb-2 truncate">
+                    <p className="text-[10px] text-gray-400 dark:!text-gray-300 flex items-center gap-1 mb-2.5 truncate">
                       <MapPin className="w-2.5 h-2.5 shrink-0" />{p.location}
                     </p>
                   )}
 
                   {/* Progress bar */}
-                  <div className="flex items-center gap-2 mb-2">
-                    <div className="flex-1 h-1.5 bg-gray-100 rounded-full overflow-hidden">
+                  <div className="flex items-center gap-2 mb-2.5">
+                    <div className="flex-1 h-1.5 bg-gray-100 dark:bg-white/[0.06] rounded-full overflow-hidden">
                       <div className={`h-full rounded-full transition-all ${cfg.barColor}`} style={{ width: `${pct}%` }} />
                     </div>
-                    <span className="text-[10px] font-bold text-gray-500 w-8 text-right">{pct}%</span>
+                    <span className="text-[10px] font-bold text-gray-500 dark:!text-gray-200 tabular-nums w-8 text-right">{pct}%</span>
                   </div>
 
-                  {/* Team member chips */}
-                  <div className="flex items-center gap-1.5">
-                    {teamLead && (
-                      <div className="flex items-center gap-1 bg-indigo-50 rounded-full px-2 py-0.5">
-                        <img src={avatarSrc({ _id: teamLead.id })} alt="" className="w-4 h-4 rounded-full object-cover"
-                          onError={(e) => { e.target.style.display = 'none'; }} />
-                        <span className="text-[9px] font-medium text-indigo-700 truncate max-w-[60px]">{teamLead.name.split(' ')[0]}</span>
-                      </div>
-                    )}
-                    {operator && (
-                      <div className="flex items-center gap-1 bg-blue-50 rounded-full px-2 py-0.5">
-                        <img src={avatarSrc({ _id: operator.id })} alt="" className="w-4 h-4 rounded-full object-cover"
-                          onError={(e) => { e.target.style.display = 'none'; }} />
-                        <span className="text-[9px] font-medium text-blue-700 truncate max-w-[60px]">{operator.name.split(' ')[0]}</span>
-                      </div>
-                    )}
-                  </div>
+                  {/* Team member chips — legible in both modes */}
+                  {(teamLead || operator) && (
+                    <div className="flex items-center gap-1.5 flex-wrap">
+                      {teamLead && (
+                        <div
+                          title={`Team Lead: ${teamLead.name}`}
+                          className="flex items-center gap-1.5 bg-indigo-50 dark:!bg-indigo-500/15 ring-1 ring-inset ring-indigo-100 dark:!ring-indigo-400/25 rounded-full pl-0.5 pr-2 py-0.5"
+                        >
+                          <img src={avatarSrc({ _id: teamLead.id })} alt="" className="w-4 h-4 rounded-full object-cover ring-1 ring-white/70 dark:ring-[#111114]"
+                            onError={(e) => { e.target.style.display = 'none'; }} />
+                          <span className="text-[10px] font-semibold text-indigo-700 dark:!text-indigo-200 truncate max-w-[64px] leading-none">
+                            {teamLead.name.split(' ')[0]}
+                          </span>
+                        </div>
+                      )}
+                      {operator && (
+                        <div
+                          title={`Operator: ${operator.name}`}
+                          className="flex items-center gap-1.5 bg-blue-50 dark:!bg-blue-500/15 ring-1 ring-inset ring-blue-100 dark:!ring-blue-400/25 rounded-full pl-0.5 pr-2 py-0.5"
+                        >
+                          <img src={avatarSrc({ _id: operator.id })} alt="" className="w-4 h-4 rounded-full object-cover ring-1 ring-white/70 dark:ring-[#111114]"
+                            onError={(e) => { e.target.style.display = 'none'; }} />
+                          <span className="text-[10px] font-semibold text-blue-700 dark:!text-blue-200 truncate max-w-[64px] leading-none">
+                            {operator.name.split(' ')[0]}
+                          </span>
+                        </div>
+                      )}
+                    </div>
+                  )}
                 </div>
               </button>
             );
@@ -207,7 +221,7 @@ const ProjectLiveTrackerView = memo(function ProjectLiveTrackerView({
                     <div>
                       <h3 className="text-base font-bold text-gray-900">{selectedProject.name}</h3>
                       {selectedProject.location && (
-                        <p className="text-xs text-gray-500 flex items-center gap-1 mt-0.5">
+                        <p className="text-xs text-gray-500 dark:!text-gray-300 flex items-center gap-1 mt-0.5">
                           <MapPin className="w-3 h-3" />{selectedProject.location}
                         </p>
                       )}
@@ -247,7 +261,7 @@ const ProjectLiveTrackerView = memo(function ProjectLiveTrackerView({
                             <span className="text-xs font-medium text-gray-800 truncate">{t.member.name}</span>
                           </div>
                         ) : (
-                          <span className="text-[10px] text-gray-400">Not assigned</span>
+                          <span className="text-[10px] text-gray-400 dark:!text-gray-300">Not assigned</span>
                         )}
                       </div>
                     ))}

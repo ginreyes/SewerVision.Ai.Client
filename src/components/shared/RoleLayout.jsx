@@ -13,13 +13,18 @@
 
 import { useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
+import dynamic from "next/dynamic";
 import Navbar from "@/components/ui/navbar";
 import AnnouncementBanner from "@/components/ui/AnnouncementBanner";
 import UnifiedSidebar from "@/components/ui/UnifiedSidebar";
 import RoleThemeProvider from "@/components/providers/RoleThemeProvider";
 import { TourGuide, useTourGuide } from "@/components/TourGuide";
-import { CommandPalette } from "@/components/shared/CommandPalette";
 import { api, getCookie, deleteCookie } from "@/lib/helper";
+
+const CommandPalette = dynamic(
+  () => import("@/components/shared/CommandPalette").then((m) => m.CommandPalette),
+  { ssr: false }
+);
 
 export default function RoleLayout({ role: expectedRole, children }) {
   const [openSidebar, setOpenSidebar] = useState(true);
@@ -86,7 +91,7 @@ export default function RoleLayout({ role: expectedRole, children }) {
 
         {/* Sidebar */}
         <div
-          className={`fixed top-0 left-0 h-full transition-all duration-300 border-r bg-gray-100 dark:bg-[#0c0c0e] dark:border-[#27272a] z-50 ${
+          className={`fixed top-0 left-0 h-full transition-all duration-300 border-r bg-gray-100 dark:!bg-[#09090b] dark:border-[#27272a] z-50 ${
             openSidebar ? "w-[270px]" : "w-[90px] hidden lg:block"
           }`}
         >

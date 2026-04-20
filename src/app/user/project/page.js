@@ -26,6 +26,7 @@ import { PipelineBoard } from '@/components/shared/ProjectPipeline';
 import PipelineSummaryBar from '@/components/user/project/PipelineSummaryBar';
 import TeamWorkloadGrid from '@/components/user/project/TeamWorkloadGrid';
 import { usePipeline } from '@/data/pipelineApi';
+import { SavedViewsDropdown, useSavedViewSync } from '@/components/shared/SavedViews';
 
 const UserProjectModuleContent = () => {
   const { userId } = useUser();
@@ -35,6 +36,20 @@ const UserProjectModuleContent = () => {
   const [statusFilter, setStatusFilter] = useState("all");
   const [viewMode, setViewMode] = useState("grid");
   const [pipelineFilter, setPipelineFilter] = useState(null);
+
+  const {
+    activeViewId,
+    applyView,
+    clearView,
+    snapshot: snapshotFilters,
+  } = useSavedViewSync({
+    applyFilters: (filters) => {
+      if (typeof filters.searchTerm === 'string') setSearchTerm(filters.searchTerm);
+      if (typeof filters.statusFilter === 'string') setStatusFilter(filters.statusFilter);
+      if (typeof filters.viewMode === 'string') setViewMode(filters.viewMode);
+    },
+    captureFilters: () => ({ searchTerm, statusFilter, viewMode }),
+  });
 
   const searchParams = useSearchParams();
   const selectedProjectId = searchParams.get("selectedProject");
@@ -249,136 +264,121 @@ const UserProjectModuleContent = () => {
           </div>
         ) : (
           <>
-            <div className="mb-8">
-              <div className="flex items-center justify-between flex-wrap gap-4">
-                <div className="flex items-center gap-3">
-                  <div className="w-12 h-12 rounded-xl bg-gradient-to-br from-indigo-500 to-purple-600 flex items-center justify-center text-white shadow-md">
+            {/* ── Page header ── */}
+            <div className="mb-6">
+              <div className="flex items-start justify-between flex-wrap gap-4">
+                <div className="flex items-center gap-3 min-w-0">
+                  <div className="w-12 h-12 rounded-xl bg-gradient-to-br from-indigo-500 to-purple-600 flex items-center justify-center text-white shadow-md flex-shrink-0">
                     <FolderOpen className="w-6 h-6" />
                   </div>
-                  <div>
-                    <h1 className="text-3xl font-bold text-gray-900">
+                  <div className="min-w-0">
+                    <h1 className="text-3xl font-bold text-gray-900 dark:text-white">
                       My Projects
                     </h1>
-                    <p className="text-gray-600 mt-1">
+                    <p className="text-gray-600 dark:text-gray-400 mt-1">
                       Projects you manage as team lead — view progress and request deletion
                     </p>
                   </div>
                 </div>
-                <div className="flex items-center gap-3">
-                  {/* View mode toggle */}
-                  <div className="inline-flex items-center rounded-lg border border-gray-200 bg-white shadow-sm overflow-hidden">
-                    <button
-                      type="button"
-                      onClick={() => setViewMode("grid")}
-                      className={`flex items-center gap-1 px-3 py-1.5 text-xs font-medium ${
-                        viewMode === "grid"
-                          ? "bg-indigo-50 text-indigo-600"
-                          : "text-gray-600 hover:bg-gray-50"
-                      }`}
-                    >
-                      <LayoutGrid className="w-4 h-4" />
-                      <span>Grid</span>
-                    </button>
-                    <button
-                      type="button"
-                      onClick={() => setViewMode("table")}
-                      className={`flex items-center gap-1 px-3 py-1.5 text-xs font-medium border-l border-gray-200 ${
-                        viewMode === "table"
-                          ? "bg-indigo-50 text-indigo-600"
-                          : "text-gray-600 hover:bg-gray-50"
-                      }`}
-                    >
-                      <Rows className="w-4 h-4" />
-                      <span>Table</span>
-                    </button>
-                    <button
-                      type="button"
-                      onClick={() => setViewMode("tracker")}
-                      className={`flex items-center gap-1 px-3 py-1.5 text-xs font-medium border-l border-gray-200 ${
-                        viewMode === "tracker"
-                          ? "bg-indigo-50 text-indigo-600"
-                          : "text-gray-600 hover:bg-gray-50"
-                      }`}
-                    >
-                      <MapPin className="w-4 h-4" />
-                      <span>Live Tracker</span>
-                    </button>
-                    <button
-                      type="button"
-                      onClick={() => setViewMode("compare")}
-                      className={`flex items-center gap-1 px-3 py-1.5 text-xs font-medium border-l border-gray-200 ${
-                        viewMode === "compare"
-                          ? "bg-indigo-50 text-indigo-600"
-                          : "text-gray-600 hover:bg-gray-50"
-                      }`}
-                    >
-                      <GitCompare className="w-4 h-4" />
-                      <span>Compare</span>
-                    </button>
-                    <button
-                      type="button"
-                      onClick={() => setViewMode("pipeline")}
-                      className={`flex items-center gap-1 px-3 py-1.5 text-xs font-medium border-l border-gray-200 ${
-                        viewMode === "pipeline"
-                          ? "bg-indigo-50 text-indigo-600"
-                          : "text-gray-600 hover:bg-gray-50"
-                      }`}
-                    >
-                      <Columns3 className="w-4 h-4" />
-                      <span>Pipeline</span>
-                    </button>
-                  </div>
 
-                  <StatusLegend />
-
-                  <ExportButton
-                    data={projects}
-                    columns={["name", "status", "location", "progress", "workOrder"]}
-                    filename="team-projects"
+                <div className="flex items-center gap-2 flex-wrap">
+                  <SavedViewsDropdown
+                    entityType="project"
+                    activeViewId={activeViewId}
+                    onApply={applyView}
+                    onClear={clearView}
+                    snapshotFilters={snapshotFilters}
+                    accentColor="indigo"
                   />
 
                   <Button
                     onClick={handleNewProject}
-                    className="bg-gradient-to-r from-indigo-500 to-purple-600 text-white hover:from-indigo-600 hover:to-purple-700 transition-all duration-300 flex items-center gap-2 font-medium"
+                    className="bg-gradient-to-r from-indigo-500 to-purple-600 text-white hover:from-indigo-600 hover:to-purple-700 transition-all duration-300 flex items-center gap-1.5 h-9 text-xs font-medium"
                   >
-                    <Plus size={20} />
+                    <Plus size={14} />
                     New Project
                   </Button>
                 </div>
               </div>
             </div>
 
-            <div className="mb-6 flex flex-wrap gap-4 items-center">
-              <div className="relative flex items-center gap-2">
-                <Search className="absolute left-3 text-gray-400" size={16} />
-                <Input
-                  type="text"
-                  placeholder="Search projects, clients, locations..."
-                  value={searchTerm}
-                  onChange={handleSearchChange}
-                  className="pl-9 w-64"
+            {/* ── Toolbar: filters on the left, view + utilities on the right ── */}
+            <div className="mb-6 flex flex-wrap gap-3 items-center justify-between">
+              <div className="flex flex-wrap gap-2 items-center">
+                <div className="relative flex items-center">
+                  <Search className="absolute left-3 text-gray-400" size={16} />
+                  <Input
+                    type="text"
+                    placeholder="Search projects, clients, locations..."
+                    value={searchTerm}
+                    onChange={handleSearchChange}
+                    className="pl-9 w-64"
+                  />
+                </div>
+                <Select
+                  value={statusFilter}
+                  onValueChange={(val) => handleStatusChange({ target: { value: val } })}
+                >
+                  <SelectTrigger className="w-[160px]">
+                    <SelectValue placeholder="All Status" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="all">All Status</SelectItem>
+                    <SelectItem value="planning">Planning</SelectItem>
+                    <SelectItem value="field-capture">Field Capture</SelectItem>
+                    <SelectItem value="uploading">Uploading</SelectItem>
+                    <SelectItem value="ai-processing">AI Processing</SelectItem>
+                    <SelectItem value="qc-review">QC Review</SelectItem>
+                    <SelectItem value="in-progress">In Progress</SelectItem>
+                    <SelectItem value="completed">Completed</SelectItem>
+                    <SelectItem value="customer-notified">Customer Notified</SelectItem>
+                    <SelectItem value="on-hold">On Hold</SelectItem>
+                  </SelectContent>
+                </Select>
+              </div>
+
+              <div className="flex items-center gap-2">
+                {/* Compact icon-only segmented view-mode picker (label only on active) */}
+                <div className="inline-flex items-center rounded-lg border border-gray-200 dark:border-gray-700 bg-white dark:bg-[#0c0c0e] shadow-sm overflow-hidden h-9">
+                  {[
+                    { key: "grid", Icon: LayoutGrid, label: "Grid" },
+                    { key: "table", Icon: Rows, label: "Table" },
+                    { key: "tracker", Icon: MapPin, label: "Live Tracker" },
+                    { key: "compare", Icon: GitCompare, label: "Compare" },
+                    { key: "pipeline", Icon: Columns3, label: "Pipeline" },
+                  ].map(({ key, Icon, label }, i) => {
+                    const active = viewMode === key;
+                    return (
+                      <button
+                        key={key}
+                        type="button"
+                        onClick={() => setViewMode(key)}
+                        title={label}
+                        aria-label={label}
+                        aria-pressed={active}
+                        className={[
+                          "inline-flex items-center h-full px-2.5 text-xs font-medium transition-colors gap-1.5",
+                          i > 0 ? "border-l border-gray-200 dark:border-gray-700" : "",
+                          active
+                            ? "bg-indigo-50 text-indigo-600 dark:bg-indigo-500/15 dark:text-indigo-300"
+                            : "text-gray-600 dark:text-gray-400 hover:bg-gray-50 dark:hover:bg-white/5",
+                        ].join(" ")}
+                      >
+                        <Icon className="w-4 h-4" />
+                        {active && <span className="hidden sm:inline">{label}</span>}
+                      </button>
+                    );
+                  })}
+                </div>
+
+                <StatusLegend />
+
+                <ExportButton
+                  data={projects}
+                  columns={["name", "status", "location", "progress", "workOrder"]}
+                  filename="team-projects"
                 />
               </div>
-              <Select
-                value={statusFilter}
-                onValueChange={(val) => handleStatusChange({ target: { value: val } })}
-              >
-                <SelectTrigger className="w-[180px]">
-                  <SelectValue placeholder="All Status" />
-                </SelectTrigger>
-                <SelectContent>
-                  <SelectItem value="all">All Status</SelectItem>
-                  <SelectItem value="planning">Planning</SelectItem>
-                  <SelectItem value="field-capture">Field Capture</SelectItem>
-                  <SelectItem value="uploading">Uploading</SelectItem>
-                  <SelectItem value="ai-processing">AI Processing</SelectItem>
-                  <SelectItem value="qc-review">QC Review</SelectItem>
-                  <SelectItem value="in-progress">In Progress</SelectItem>
-                  <SelectItem value="completed">Completed</SelectItem>
-                  <SelectItem value="customer-notified">Customer Notified</SelectItem>
-                  <SelectItem value="on-hold">On Hold</SelectItem>
-                </SelectContent>
-              </Select>
             </div>
 
             {loading ? (
@@ -446,6 +446,7 @@ const UserProjectModuleContent = () => {
                     showCsvActions={false}
                     onView={handleProjectRowView}
                     onEdit={(row) => router.push(`/user/project/editProject/${row._id}`)}
+                    onRowClick={handleProjectRowView}
                     emptyMessage="No projects found"
                     emptySubtext="Try adjusting your filters or create a new project"
                     columnDefaults={{
