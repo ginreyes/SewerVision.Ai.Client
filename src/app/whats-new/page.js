@@ -22,7 +22,6 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { whatsNewData } from "@/data/whatsNewData";
 
 const WhatsNew = () => {
-    // Default to the first version (latest)
     const [activeVersion, setActiveVersion] = useState(whatsNewData[0]?.id || "");
     const [selectedItem, setSelectedItem] = useState(null);
     const [isDialogOpen, setIsDialogOpen] = useState(false);

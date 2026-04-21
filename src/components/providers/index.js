@@ -19,15 +19,14 @@ export function AppProviders({ children }) {
   const router = useRouter()
   const pathname = usePathname()
   useKeyboardShortcuts();
-  
+
   useEffect(() => {
     const role = getCookie("role");
-    
-    // Only redirect to dashboard if user is on root path, login path, or register path
-    // Don't redirect if they're already on a valid page within their role
+
     if (role && (pathname === '/' || pathname === '/login' || pathname === '/register')) {
       router.push(`/${role}/dashboard`);
     }
+    
   }, [router, pathname])
 
   return (
@@ -35,15 +34,13 @@ export function AppProviders({ children }) {
       <QueryProvider>
         <UserProvider>
           <SocketProvider>
-          <NotificationProvider>
-            <AlertProvider>
-              <DialogProvider>
-
-                {children}
-
-              </DialogProvider>
-            </AlertProvider>
-          </NotificationProvider>
+            <NotificationProvider>
+              <AlertProvider>
+                <DialogProvider>
+                  {children}
+                </DialogProvider>
+              </AlertProvider>
+            </NotificationProvider>
           </SocketProvider>
         </UserProvider>
       </QueryProvider>
