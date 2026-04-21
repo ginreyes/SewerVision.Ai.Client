@@ -1,6 +1,6 @@
 "use client";
 
-import { useMemo, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import { Button } from "@/components/ui/button";
 import {
   DropdownMenu,
@@ -60,6 +60,20 @@ const COLOR_DOT = {
   indigo: "bg-indigo-500",
   teal: "bg-teal-500",
   gray: "bg-gray-500",
+};
+
+// Icon colors must be literal class strings so Tailwind JIT picks them up —
+// dynamic `text-${color}-600` gets stripped at build time and the class is
+// never generated.
+const COLOR_ICON = {
+  blue: "text-blue-600 dark:text-blue-400",
+  rose: "text-rose-600 dark:text-rose-400",
+  amber: "text-amber-600 dark:text-amber-400",
+  emerald: "text-emerald-600 dark:text-emerald-400",
+  purple: "text-purple-600 dark:text-purple-400",
+  indigo: "text-indigo-600 dark:text-indigo-400",
+  teal: "text-teal-600 dark:text-teal-400",
+  gray: "text-gray-600 dark:text-gray-400",
 };
 
 const VISIBILITY_ICON = {
@@ -125,6 +139,18 @@ export default function SavedViewsDropdown({
     () => allViews.find((v) => v._id === activeViewId),
     [allViews, activeViewId]
   );
+
+  // Auto-apply filters on deep-link: when the URL carries ?viewId=X and we
+  // have the matching view loaded, push its filters into page state once.
+  // Tracks per-viewId so manual filter edits after apply aren't clobbered.
+  const autoAppliedRef = useRef(null);
+  useEffect(() => {
+    if (!activeViewId || isLoading) return;
+    if (autoAppliedRef.current === activeViewId) return;
+    if (!activeView) return; // view not yet loaded, or deleted/inaccessible
+    autoAppliedRef.current = activeViewId;
+    onApply?.(activeView);
+  }, [activeViewId, isLoading, activeView, onApply]);
 
   const handleApply = (view) => {
     onApply?.(view);
@@ -210,7 +236,7 @@ export default function SavedViewsDropdown({
           } bg-opacity-20`}
         >
           <Icon
-            className={`w-3.5 h-3.5 text-${view.color || "gray"}-600 dark:text-${view.color || "gray"}-400`}
+            className={`w-3.5 h-3.5 ${COLOR_ICON[view.color] || COLOR_ICON.gray}`}
           />
         </span>
         <div className="flex-1 min-w-0">

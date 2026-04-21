@@ -19,6 +19,7 @@ import TicketCard from "@/components/customer-rep/tickets/TicketCard";
 import renderTicketCell from "@/components/customer-rep/tickets/renderTicketCell";
 import { FILTER_OPTIONS, COLUMNS, COLUMN_DEFAULTS } from "@/components/customer-rep/tickets/constants";
 import { Input } from "@/components/ui/input";
+import { SavedViewsDropdown, useSavedViewSync } from "@/components/shared/SavedViews";
 
 export default function CustomerRepTickets() {
   const searchParams = useSearchParams();
@@ -28,6 +29,21 @@ export default function CustomerRepTickets() {
   const [showCreate, setShowCreate] = useState(false);
   const [viewMode, setViewMode] = useState("grid"); // "grid" | "table"
   const [reviewingTicket, setReviewingTicket] = useState(null);
+
+  const {
+    activeViewId,
+    applyView,
+    clearView,
+    snapshot: snapshotFilters,
+  } = useSavedViewSync({
+    applyFilters: (filters) => {
+      if (typeof filters.search === "string") setSearch(filters.search);
+      if (filters.viewMode === "grid" || filters.viewMode === "table") {
+        setViewMode(filters.viewMode);
+      }
+    },
+    captureFilters: () => ({ search, viewMode }),
+  });
 
   const isTeamLeader = Array.isArray(userData?.managedMembers) && userData.managedMembers.length > 0;
 
@@ -94,12 +110,23 @@ export default function CustomerRepTickets() {
             </div>
           </div>
           <div className="flex items-center gap-2">
+            <SavedViewsDropdown
+              entityType="ticket"
+              activeViewId={activeViewId}
+              onApply={applyView}
+              onClear={clearView}
+              snapshotFilters={snapshotFilters}
+              accentColor="teal"
+            />
+
             {/* View Toggle */}
-            <div className="flex items-center bg-gray-100 rounded-lg p-0.5">
+            <div className="flex items-center bg-gray-100 dark:bg-[#18181b] rounded-lg p-0.5">
               <button
                 onClick={() => setViewMode("grid")}
                 className={`p-1.5 rounded-md transition-colors ${
-                  viewMode === "grid" ? "bg-white shadow-sm text-teal-600" : "text-gray-500 hover:text-gray-700"
+                  viewMode === "grid"
+                    ? "bg-white dark:bg-[#27272a] shadow-sm text-teal-600 dark:text-teal-300"
+                    : "text-gray-500 hover:text-gray-700 dark:hover:text-gray-300"
                 }`}
                 title="Grid View"
               >
@@ -108,7 +135,9 @@ export default function CustomerRepTickets() {
               <button
                 onClick={() => setViewMode("table")}
                 className={`p-1.5 rounded-md transition-colors ${
-                  viewMode === "table" ? "bg-white shadow-sm text-teal-600" : "text-gray-500 hover:text-gray-700"
+                  viewMode === "table"
+                    ? "bg-white dark:bg-[#27272a] shadow-sm text-teal-600 dark:text-teal-300"
+                    : "text-gray-500 hover:text-gray-700 dark:hover:text-gray-300"
                 }`}
                 title="Table View"
               >
@@ -220,6 +249,7 @@ export default function CustomerRepTickets() {
             showActions={false}
             showCsvActions={false}
             onView={(row) => setSelectedTicketId(row._id)}
+            onRowClick={(row) => setSelectedTicketId(row._id)}
             emptyMessage="No tickets found"
             emptySubtext="Customer tickets will appear here when submitted"
             columnDefaults={COLUMN_DEFAULTS}
