@@ -143,7 +143,7 @@ export default function ProjectCompare({ projects: externalProjects }) {
       {/* Selector Row */}
       <Card className="border-0 shadow-sm">
         <CardContent className="p-5">
-          <div className="flex items-end gap-3">
+          <div className="flex flex-col sm:flex-row items-stretch sm:items-end gap-3">
             {/* Project A */}
             <div className="flex-1 space-y-1.5">
               <label className="text-xs font-semibold text-rose-600 uppercase tracking-wider">Project A</label>
@@ -228,7 +228,7 @@ export default function ProjectCompare({ projects: externalProjects }) {
       ) : pA && pB ? (
         <div className="space-y-5">
           {/* Project Headers side-by-side */}
-          <div className="grid grid-cols-2 gap-4">
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
             <ProjectHeader project={pA} color="rose" />
             <ProjectHeader project={pB} color="blue" />
           </div>

@@ -6,12 +6,7 @@ import {
 } from "lucide-react";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
-
-const DIFF_COLORS = {
-  beginner: "bg-emerald-100 text-emerald-700",
-  intermediate: "bg-amber-100 text-amber-700",
-  advanced: "bg-red-100 text-red-700",
-};
+import { DIFF_COLORS } from "@/components/shared/training/constants";
 
 const StatCard = memo(({ title, value, icon: Icon, color, bg }) => (
   <Card className="border-gray-200">

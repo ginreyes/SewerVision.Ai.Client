@@ -1,8 +1,8 @@
 'use client'
 
 import React, { useEffect, useState } from 'react'
+import { BACKEND_URL } from '@/lib/config'
 
-const API = process.env.NEXT_PUBLIC_BACKEND_URL || 'http://localhost:5000'
 const DEVICE_APP_URL = process.env.NEXT_PUBLIC_DEVICE_APP_DOWNLOAD_URL || '/downloads/concertina-device.apk'
 
 /**
@@ -52,7 +52,7 @@ export default function DeviceConnectPage() {
           // Prefer effectiveType (e.g. "4g", "3g"); fallback to type ("wifi", "cellular")
           signal = conn.effectiveType || conn.type || (conn.downlink != null ? `~${conn.downlink}Mbps` : null) || 'unknown'
         }
-        const res = await fetch(`${API}/api/devices/${encodeURIComponent(deviceId)}/ingest`, {
+        const res = await fetch(`${BACKEND_URL}/api/devices/${encodeURIComponent(deviceId)}/ingest`, {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
           body: JSON.stringify({

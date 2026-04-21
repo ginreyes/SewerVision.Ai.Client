@@ -1,10 +1,102 @@
 
 export const whatsNewData = [
     {
+        id: "v2.3.0",
+        date: "April 13 – 14, 2026",
+        label: "DRY Consolidation + Cross-Role Enhancements + TanStack Migration",
+        isNew: true,
+        updates: {
+            admin: [
+                {
+                    type: 'improvement',
+                    title: 'TanStack Query Migration',
+                    description: 'All admin pages migrated to TanStack Query for automatic caching, deduplication, and optimistic updates.',
+                    details: [
+                        'Project list, user management, calendar, announcements, audit log, notifications all cached',
+                        'All 3 ProjectDetail components (admin/operator/user) use shared hooks',
+                        'Shared hooks: useProjectObservations, useProjectSnapshots, useProjectMetadata, usePacpCodes',
+                        'Approve/reject, create project, save settings use mutations with cache invalidation',
+                    ]
+                },
+                {
+                    type: 'improvement',
+                    title: 'Code Consolidation (DRY)',
+                    description: 'Unified shared components across all 6 roles — reduced ~4000 lines of duplicated code.',
+                    details: [
+                        'RoleLayout wrapper replaces 6 identical layout files (600→30 LOC)',
+                        'Shared calendar components (MonthView, WeekView, DayView, etc.)',
+                        'Shared observations module (ObservationsPanel, AddObservation, etc.)',
+                        'Shared ProjectSwitcher using shadcn DropdownMenu',
+                        'GenericStatCard replaces 6 role-specific variants',
+                    ]
+                },
+                {
+                    type: 'feature',
+                    title: 'Project Compare for All Roles',
+                    description: 'Side-by-side project comparison now available for admin, operator, and user roles.',
+                },
+                {
+                    type: 'feature',
+                    title: 'Export Users',
+                    description: 'New export button on user management page — CSV/Excel download of user data.',
+                },
+            ],
+            operator: [
+                {
+                    type: 'feature',
+                    title: 'Analytics & Insights Page',
+                    description: 'New analytics dashboard with weekly hours, project status, AI processing stats, and monthly trends.',
+                },
+                {
+                    type: 'feature',
+                    title: 'Project Compare',
+                    description: 'Side-by-side project comparison tab added to the project list.',
+                },
+                {
+                    type: 'improvement',
+                    title: 'Calendar Dark Mode',
+                    description: 'CalendarGrid fully themed for dark mode with zinc palette.',
+                },
+            ],
+            'qc-technician': [
+                {
+                    type: 'improvement',
+                    title: 'Calendar Dark Mode',
+                    description: 'QC calendar and month view fully themed for dark mode.',
+                },
+                {
+                    type: 'improvement',
+                    title: 'Upload Page Migration',
+                    description: 'Uploads page now uses TanStack Query for cached data fetching.',
+                },
+            ],
+            user: [
+                {
+                    type: 'feature',
+                    title: 'Project Compare',
+                    description: 'Compare tab added to the project list for side-by-side analysis.',
+                },
+            ],
+            'customer-rep': [
+                {
+                    type: 'feature',
+                    title: 'Project Viewing (NEW)',
+                    description: 'Customer reps can now view all projects with details, videos, AI detections, and team info.',
+                    details: [
+                        'Read-only project list with search and status badges',
+                        'Project detail page with video player, AI detections, team sidebar',
+                        'Added to sidebar navigation',
+                    ]
+                },
+            ],
+            customer: [],
+        }
+    },
+    {
         id: "v2.2.0",
         date: "April 9 – 13, 2026",
         label: "QC Review Workspace + Dark Mode + Redis Caching",
-        isNew: true,
+        isNew: false,
         updates: {
             admin: [
                 {

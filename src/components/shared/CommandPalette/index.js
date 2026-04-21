@@ -1,0 +1,3 @@
+export { default as CommandPalette } from "./CommandPalette";
+export { useCommandPalette } from "./useCommandPalette";
+export { getStaticCommands } from "./commandRegistry";

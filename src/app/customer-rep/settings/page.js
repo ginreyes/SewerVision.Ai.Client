@@ -82,11 +82,7 @@ export default function CustomerRepSettings() {
     const formData = new FormData();
     formData.append("avatar", file);
     try {
-      const token = getCookie("token");
-      const res = await fetch(
-        `${process.env.NEXT_PUBLIC_API_URL || ""}/api/users/upload-avatar/${userId}`,
-        { method: "POST", headers: { Authorization: `Bearer ${token}` }, body: formData }
-      );
+      const res = await api(`/api/users/upload-avatar/${userId}`, "POST", formData);
       if (res.ok) { showAlert("Avatar updated", "success"); refreshUserData?.(); }
     } catch { showAlert("Failed to upload avatar", "error"); }
   };

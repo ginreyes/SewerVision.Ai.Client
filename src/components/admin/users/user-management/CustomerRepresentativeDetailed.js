@@ -20,6 +20,7 @@ import { Textarea } from "@/components/ui/textarea";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Select, SelectTrigger, SelectValue, SelectContent, SelectItem } from "@/components/ui/select";
+import { ROLE_BADGE_CLASSES } from "@/lib/roleThemes";
 
 const AVAILABILITY_OPTIONS = [
   { value: "available", label: "Available", color: "bg-emerald-500" },
@@ -36,13 +37,6 @@ const SPECIALTY_OPTIONS = [
   "Onboarding",
   "Escalation Handling",
 ];
-
-const ROLE_BADGE_STYLES = {
-  "customer-rep": "border-teal-200 text-teal-700 bg-teal-50",
-  operator: "border-blue-200 text-blue-700 bg-blue-50",
-  "qc-technician": "border-purple-200 text-purple-700 bg-purple-50",
-  user: "border-indigo-200 text-indigo-700 bg-indigo-50",
-};
 
 const CustomerRepresentativeDetailed = ({
   user,
@@ -255,7 +249,7 @@ const CustomerRepresentativeDetailed = ({
                       </div>
                     </div>
                     <div className="flex items-center gap-2">
-                      <Badge variant="outline" className={ROLE_BADGE_STYLES[m.role] || "border-gray-200 text-gray-700 bg-gray-50"}>
+                      <Badge variant="outline" className={ROLE_BADGE_CLASSES[m.role] || "bg-gray-100 text-gray-700 border-gray-200"}>
                         {m.role === "customer-rep" ? "Customer Rep" : m.role}
                       </Badge>
                       {isEdit && (

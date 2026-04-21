@@ -4,8 +4,7 @@ import { Clock, ImageIcon, Zap, Compass } from 'lucide-react';
 import { Card, CardContent } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { getSeverityVariant } from '@/components/customer/constants';
-
-const backendUrl = process.env.NEXT_PUBLIC_BACKEND_URL || 'http://localhost:5000';
+import { getSnapshotUrl } from '@/lib/getVideoUrl';
 
 const severityBorder = {
   high: 'border-l-red-500',
@@ -14,8 +13,7 @@ const severityBorder = {
 };
 
 const buildImgSrc = (rawUrl) => {
-  if (!rawUrl) return '';
-  return rawUrl.startsWith('http') ? rawUrl : `${backendUrl}/api/videos/snapshot/${rawUrl}`;
+  return getSnapshotUrl(rawUrl);
 };
 
 const DefectCard = ({ observation, snapshot }) => {

@@ -1,6 +1,26 @@
 /**
  * User (Team Lead) Role Constants
+ *
+ * Role-specific color configs live in this file (shapes like single string
+ * class names). For the centralized {bg, text, border, hex, dark} shape
+ * used across the app, re-exported below from @/lib/statusConfig.
  */
+
+import { BACKEND_URL } from '@/lib/config';
+
+// Re-exports from centralized status config (aliased to avoid collisions)
+export {
+    ROLE_COLORS,
+    getRoleColor,
+    CALENDAR_CATEGORY_COLORS,
+    getCalendarCategoryClass,
+    PROJECT_STATUS_COLORS as CENTRAL_PROJECT_STATUS_COLORS,
+    PRIORITY_COLORS as CENTRAL_PRIORITY_COLORS,
+    SEVERITY_COLORS as CENTRAL_SEVERITY_COLORS,
+    getProjectStatusColor as getCentralProjectStatusColor,
+    getPriorityColor as getCentralPriorityColor,
+    getSeverityColor as getCentralSeverityColor,
+} from '@/lib/statusConfig';
 
 export const CHART_COLORS = ['#D76A84', '#696CFF', '#10B981', '#F59E0B', '#6366F1', '#EC4899'];
 
@@ -50,7 +70,7 @@ export const getRoleStyle = (role) => ROLE_STYLE[role] || ROLE_STYLE.operator;
 export const getDeviceStatusConfig = (status) => DEVICE_STATUS_CONFIG[status] || DEVICE_STATUS_CONFIG.offline;
 
 export const getAvatarUrl = (id) =>
-    id ? `${process.env.NEXT_PUBLIC_BACKEND_URL || 'http://localhost:5000'}/api/users/avatar/${id}` : null;
+    id ? `${BACKEND_URL}/api/users/avatar/${id}` : null;
 
 export const getInitials = (name) => {
     if (!name || name === '—') return '?';

@@ -13,6 +13,7 @@ import {
 } from "@/components/ui/select";
 import { useAlert } from "@/components/providers/AlertProvider";
 import { api, getCookie } from "@/lib/helper";
+import { BACKEND_URL } from "@/lib/config";
 import { useUploadLimits } from "@/hooks/useUploadLimits";
 import {
   Edit3,
@@ -546,8 +547,7 @@ export default function EditProjectPage() {
       });
 
       const token = getCookie("authToken");
-      const apiUrl = process.env.NEXT_PUBLIC_BACKEND_URL || "http://localhost:5000";
-      xhr.open("PUT", `${apiUrl}/api/projects/update-project/${project_id}/${user_id}`);
+      xhr.open("PUT", `${BACKEND_URL}/api/projects/update-project/${project_id}/${user_id}`);
       if (token) xhr.setRequestHeader("Authorization", `Bearer ${token}`);
       xhr.send(form);
       return;

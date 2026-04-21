@@ -1,10 +1,28 @@
 /**
  * QC Technician Role Constants
+ *
+ * Role-specific color helpers below return single-string Tailwind classes.
+ * For the centralized {bg, text, border, hex, dark} shape used across the
+ * app, re-exported from @/lib/statusConfig.
  */
 
-export const POLL_INTERVAL = 30000
+export { BACKEND_URL } from '@/lib/config'
 
-export const BACKEND_URL = process.env.NEXT_PUBLIC_BACKEND_URL || 'http://localhost:5000'
+// Re-exports from centralized status config (aliased to avoid collisions)
+export {
+  ROLE_COLORS,
+  getRoleColor,
+  CALENDAR_CATEGORY_COLORS,
+  getCalendarCategoryClass,
+  PROJECT_STATUS_COLORS as CENTRAL_PROJECT_STATUS_COLORS,
+  PRIORITY_COLORS as CENTRAL_PRIORITY_COLORS,
+  SEVERITY_COLORS as CENTRAL_SEVERITY_COLORS,
+  getProjectStatusColor as getCentralProjectStatusColor,
+  getPriorityColor as getCentralPriorityColor,
+  getSeverityColor as getCentralSeverityColor,
+} from '@/lib/statusConfig'
+
+export const POLL_INTERVAL = 30000
 
 export const SAMPLE_VIDEO = 'https://cdn.pixabay.com/video/2024/02/09/199958-911694865_large.mp4'
 

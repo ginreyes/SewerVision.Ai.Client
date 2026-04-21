@@ -2,13 +2,13 @@
 
 import React, { useState, useEffect, useRef, Suspense } from 'react';
 import { useRouter, useSearchParams } from 'next/navigation';
-import { Save, Loader2, LogOut } from 'lucide-react';
+import { Loader2 } from 'lucide-react';
 import { Card, CardContent } from '@/components/ui/card';
-import { Button } from '@/components/ui/button';
-import { Tabs, TabsContent } from '@/components/ui/tabs';
+import { TabsContent } from '@/components/ui/tabs';
 import { useUser } from '@/components/providers/UserContext';
 import { useAlert } from '@/components/providers/AlertProvider';
-import { getCookie } from '@/lib/helper';
+import { api } from '@/lib/helper';
+import { BACKEND_URL } from '@/lib/config';
 import {
   useOperatorDashboardStats,
   useUpdateOperatorProfile,
@@ -20,6 +20,7 @@ import {
   SETTINGS_TABS, DEFAULT_PROFILE, DEFAULT_PASSWORD, DEFAULT_SETTINGS,
 } from '@/components/operator/settings';
 import AppearanceSettings from '@/components/shared/AppearanceSettings';
+import SettingsPageShell from '@/components/shared/SettingsPageShell';
 
 const OperatorSettingsContent = () => {
   const router = useRouter();
@@ -61,7 +62,7 @@ const OperatorSettingsContent = () => {
         department: userData.department || '',
         role: userData.role || 'Operator',
         avatar: userData.avatar
-          ? (userData.avatar.startsWith('http') ? userData.avatar : `${process.env.NEXT_PUBLIC_BACKEND_URL || 'http://localhost:5000'}/api/users/avatar/${userData._id}?t=${Date.now()}`)
+          ? (userData.avatar.startsWith('http') ? userData.avatar : `${BACKEND_URL}/api/users/avatar/${userData._id}?t=${Date.now()}`)
           : null,
       });
     }
@@ -85,10 +86,7 @@ const OperatorSettingsContent = () => {
     try {
       const formData = new FormData();
       formData.append('avatar', file);
-      const token = getCookie('authToken');
-      const res = await fetch(`${process.env.NEXT_PUBLIC_BACKEND_URL || 'http://localhost:5000'}/api/users/upload-avatar/${userData._id}`, {
-        method: 'POST', headers: { Authorization: `Bearer ${token}` }, body: formData,
-      });
+      const res = await api(`/api/users/upload-avatar/${userData._id}`, 'POST', formData);
       if (res.ok) { showAlert('Avatar updated', 'success'); refetchUser?.(); }
       else showAlert('Failed to upload avatar', 'error');
     } catch { showAlert('Avatar upload failed', 'error'); }
@@ -133,75 +131,45 @@ const OperatorSettingsContent = () => {
   const handleLogout = () => { logout(); router.push('/login'); };
 
   return (
-    <div className="p-6 max-w-5xl mx-auto space-y-6">
-      <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">
-        <div>
-          <h1 className="text-2xl font-bold text-gray-900">Operator Settings</h1>
-          <p className="text-gray-500 mt-1">Manage your account preferences and operational configurations</p>
-        </div>
-        <div className="flex items-center gap-3">
-          <Button variant="outline" className="text-gray-600" onClick={() => router.back()}>Cancel</Button>
-          <Button onClick={handleSaveSettings} disabled={saving} className="bg-blue-600 hover:bg-blue-700">
-            {saving ? <Loader2 className="w-4 h-4 mr-2 animate-spin" /> : <Save className="w-4 h-4 mr-2" />}
-            Save Changes
-          </Button>
-        </div>
-      </div>
-
-      <div className="flex flex-col lg:flex-row gap-8">
-        <Card className="lg:w-64 h-fit border-0 shadow-sm bg-white">
-          <CardContent className="p-4">
-            <nav className="space-y-1">
-              {SETTINGS_TABS.map(({ id, label, icon: Icon }) => (
-                <button key={id} onClick={() => setActiveTab(id)}
-                  className={`w-full flex items-center gap-3 px-4 py-2.5 rounded-xl text-sm font-medium transition-all ${
-                    activeTab === id ? 'bg-blue-50 text-blue-700' : 'text-gray-600 hover:bg-gray-50'
-                  }`}>
-                  <Icon className="w-4 h-4" /> {label}
-                </button>
-              ))}
-              <div className="pt-4 mt-4 border-t border-gray-100">
-                <button onClick={handleLogout} className="w-full flex items-center gap-3 px-4 py-2.5 rounded-xl text-sm font-medium text-red-500 hover:bg-red-50 transition-all">
-                  <LogOut className="w-4 h-4" /> Sign Out
-                </button>
-              </div>
-            </nav>
+    <SettingsPageShell
+      title="Operator Settings"
+      subtitle="Manage your account preferences and operational configurations"
+      accentColor="blue"
+      tabs={SETTINGS_TABS}
+      activeTab={activeTab}
+      onTabChange={setActiveTab}
+      saving={saving}
+      onSave={handleSaveSettings}
+      onLogout={handleLogout}
+    >
+      <TabsContent value="profile" className="mt-0">
+        <ProfileTab profile={profile} stats={stats} userData={userData} loading={loading}
+          onProfileChange={handleProfileChange} onAvatarClick={handleAvatarClick}
+          onAvatarFileChange={handleAvatarFileChange} fileInputRef={fileInputRef}
+          passwordForm={passwordForm} showPassword={showPassword}
+          onPasswordChange={handlePasswordChange} onTogglePassword={togglePassword}
+          onChangePassword={handleChangePassword} changingPassword={changingPassword} />
+      </TabsContent>
+      <TabsContent value="data" className="mt-0">
+        <DataSyncTab settings={settings} updateSetting={updateSetting} />
+      </TabsContent>
+      <TabsContent value="video" className="mt-0">
+        <VideoAITab settings={settings} updateSetting={updateSetting} />
+      </TabsContent>
+      <TabsContent value="notifications" className="mt-0">
+        <NotificationsTab settings={settings} updateSetting={updateSetting} />
+      </TabsContent>
+      <TabsContent value="preferences" className="mt-0">
+        <PreferencesTab settings={settings} updateSetting={updateSetting} />
+      </TabsContent>
+      <TabsContent value="appearance" className="mt-0">
+        <Card className="border-0 shadow-sm">
+          <CardContent className="pt-6">
+            <AppearanceSettings />
           </CardContent>
         </Card>
-
-        <div className="flex-1 min-w-0">
-          <Tabs value={activeTab}>
-            <TabsContent value="profile" className="mt-0">
-              <ProfileTab profile={profile} stats={stats} userData={userData} loading={loading}
-                onProfileChange={handleProfileChange} onAvatarClick={handleAvatarClick}
-                onAvatarFileChange={handleAvatarFileChange} fileInputRef={fileInputRef}
-                passwordForm={passwordForm} showPassword={showPassword}
-                onPasswordChange={handlePasswordChange} onTogglePassword={togglePassword}
-                onChangePassword={handleChangePassword} changingPassword={changingPassword} />
-            </TabsContent>
-            <TabsContent value="data" className="mt-0">
-              <DataSyncTab settings={settings} updateSetting={updateSetting} />
-            </TabsContent>
-            <TabsContent value="video" className="mt-0">
-              <VideoAITab settings={settings} updateSetting={updateSetting} />
-            </TabsContent>
-            <TabsContent value="notifications" className="mt-0">
-              <NotificationsTab settings={settings} updateSetting={updateSetting} />
-            </TabsContent>
-            <TabsContent value="preferences" className="mt-0">
-              <PreferencesTab settings={settings} updateSetting={updateSetting} />
-            </TabsContent>
-            <TabsContent value="appearance" className="mt-0">
-              <Card className="border-0 shadow-sm">
-                <CardContent className="pt-6">
-                  <AppearanceSettings />
-                </CardContent>
-              </Card>
-            </TabsContent>
-          </Tabs>
-        </div>
-      </div>
-    </div>
+      </TabsContent>
+    </SettingsPageShell>
   );
 };
 

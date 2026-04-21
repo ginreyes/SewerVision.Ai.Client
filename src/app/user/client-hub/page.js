@@ -144,21 +144,14 @@ export default function ClientHub() {
     const fileList = Array.isArray(filesOrFile) ? filesOrFile : [filesOrFile];
     if (fileList.length === 0 || !selected) return;
     try {
-      const backendUrl = process.env.NEXT_PUBLIC_BACKEND_URL || 'http://localhost:5000';
-      const token = document.cookie.split('authToken=')[1]?.split(';')[0] || '';
-
       // Upload ALL files in parallel
       const uploadResults = await Promise.all(fileList.map(async (file) => {
         const formData = new FormData();
         formData.append('file', file);
         try {
-          const res = await fetch(`${backendUrl}/api/client-conversations/${selected}/upload`, {
-            method: 'POST',
-            headers: { 'Authorization': `Bearer ${token}` },
-            body: formData,
-          });
-          const data = await res.json();
-          if (data.status === 'success' && data.data?.url) {
+          const res = await api(`/api/client-conversations/${selected}/upload`, 'POST', formData);
+          const data = res.data;
+          if (data?.status === 'success' && data.data?.url) {
             return { url: data.data.url, filename: data.data.filename, mimetype: data.data.mimetype, size: data.data.size };
           }
         } catch {}

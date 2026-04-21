@@ -1,5 +1,24 @@
 // Shared constants for customer module
 // Used across dashboard, projects, project-detail, and reports pages
+//
+// Role-specific statusConfig below uses {label, color, bgColor} shape
+// tailored to shadcn Badge variants. For the centralized
+// {bg, text, border, hex, dark} shape used across the app, re-exported
+// from @/lib/statusConfig.
+
+// Re-exports from centralized status config
+export {
+  ROLE_COLORS,
+  getRoleColor,
+  CALENDAR_CATEGORY_COLORS,
+  getCalendarCategoryClass,
+  PROJECT_STATUS_COLORS as CENTRAL_PROJECT_STATUS_COLORS,
+  PRIORITY_COLORS as CENTRAL_PRIORITY_COLORS,
+  SEVERITY_COLORS as CENTRAL_SEVERITY_COLORS,
+  getProjectStatusColor as getCentralProjectStatusColor,
+  getPriorityColor as getCentralPriorityColor,
+  getSeverityColor as getCentralSeverityColor,
+} from '@/lib/statusConfig';
 
 export const statusConfig = {
   completed: { label: 'Ready for Review', color: 'success', bgColor: 'bg-green-100 text-green-800 dark:bg-green-900 dark:text-green-200' },

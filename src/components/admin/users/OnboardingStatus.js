@@ -5,7 +5,7 @@ import {
   Users, TrendingUp, AlertTriangle, CheckCircle2, ChevronDown,
   ChevronUp, Loader2, Filter, Clock,
 } from "lucide-react";
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { Card, CardContent } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { useAllOnboarding } from "@/hooks/useQueryHooks";
 import { ALL_ROLES, ROLE_LABELS } from "@/components/admin/constants";

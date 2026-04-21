@@ -1,0 +1,454 @@
+"use client";
+
+import { useEffect, useMemo, useRef, useState } from "react";
+import { Button } from "@/components/ui/button";
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuLabel,
+  DropdownMenuSeparator,
+  DropdownMenuTrigger,
+} from "@/components/ui/dropdown-menu";
+import {
+  Bookmark,
+  Star,
+  Zap,
+  Shield,
+  Heart,
+  Flag,
+  CheckCircle,
+  ChevronDown,
+  Plus,
+  Pencil,
+  Trash2,
+  Copy,
+  X,
+  Users,
+  Globe,
+  Lock,
+  Loader2,
+} from "lucide-react";
+import SaveViewModal from "./SaveViewModal";
+import {
+  useSavedViews,
+  useCreateSavedView,
+  useUpdateSavedView,
+  useDeleteSavedView,
+  useDuplicateSavedView,
+  useTrackSavedViewUsage,
+} from "@/data/savedViewsApi";
+import { useAlert } from "@/components/providers/AlertProvider";
+import { useDialog } from "@/components/providers/DialogProvider";
+
+const ICON_MAP = {
+  Bookmark,
+  Star,
+  Zap,
+  Shield,
+  Heart,
+  Flag,
+  CheckCircle,
+};
+
+const COLOR_DOT = {
+  blue: "bg-blue-500",
+  rose: "bg-rose-500",
+  amber: "bg-amber-500",
+  emerald: "bg-emerald-500",
+  purple: "bg-purple-500",
+  indigo: "bg-indigo-500",
+  teal: "bg-teal-500",
+  gray: "bg-gray-500",
+};
+
+// Icon colors must be literal class strings so Tailwind JIT picks them up —
+// dynamic `text-${color}-600` gets stripped at build time and the class is
+// never generated.
+const COLOR_ICON = {
+  blue: "text-blue-600 dark:text-blue-400",
+  rose: "text-rose-600 dark:text-rose-400",
+  amber: "text-amber-600 dark:text-amber-400",
+  emerald: "text-emerald-600 dark:text-emerald-400",
+  purple: "text-purple-600 dark:text-purple-400",
+  indigo: "text-indigo-600 dark:text-indigo-400",
+  teal: "text-teal-600 dark:text-teal-400",
+  gray: "text-gray-600 dark:text-gray-400",
+};
+
+const VISIBILITY_ICON = {
+  private: Lock,
+  team: Users,
+  public: Globe,
+};
+
+/**
+ * SavedViewsDropdown — toolbar trigger for the Saved Views feature.
+ *
+ * props:
+ *  - entityType: 'project' | 'user' | 'report' | 'ticket'
+ *  - activeViewId: id of currently applied view (optional)
+ *  - onApply(view): callback when user applies a view
+ *  - onClear(): callback when user clears active view
+ *  - snapshotFilters(): returns current filter state to save
+ */
+export default function SavedViewsDropdown({
+  entityType = "project",
+  activeViewId,
+  onApply,
+  onClear,
+  snapshotFilters,
+  accentColor = "blue",
+}) {
+  const { showAlert } = useAlert?.() || { showAlert: () => {} };
+  const { showDelete } = useDialog?.() || { showDelete: () => {} };
+  const [createOpen, setCreateOpen] = useState(false);
+  const [editTarget, setEditTarget] = useState(null);
+  const [dropdownOpen, setDropdownOpen] = useState(false);
+
+  const { data, isLoading } = useSavedViews(entityType);
+  const createMutation = useCreateSavedView();
+  const updateMutation = useUpdateSavedView();
+  const deleteMutation = useDeleteSavedView();
+  const duplicateMutation = useDuplicateSavedView();
+  const trackMutation = useTrackSavedViewUsage();
+
+  const rawGrouped = data?.grouped || { mine: [], shared: [], public: [] };
+  const allViews = data?.views || [];
+
+  // Sort "mine" so the pinned (default) view is always first, then by most-recently-used, then alphabetical
+  const grouped = useMemo(() => {
+    const sortMine = (list) =>
+      [...list].sort((a, b) => {
+        if (!!b.isDefault - !!a.isDefault !== 0) return !!b.isDefault - !!a.isDefault;
+        const aUsed = a.lastUsedAt ? new Date(a.lastUsedAt).getTime() : 0;
+        const bUsed = b.lastUsedAt ? new Date(b.lastUsedAt).getTime() : 0;
+        if (bUsed !== aUsed) return bUsed - aUsed;
+        return (a.name || "").localeCompare(b.name || "");
+      });
+    return {
+      mine: sortMine(rawGrouped.mine || []),
+      shared: rawGrouped.shared || [],
+      public: rawGrouped.public || [],
+    };
+  }, [rawGrouped]);
+
+  const pinnedView = grouped.mine.find((v) => v.isDefault) || null;
+
+  const activeView = useMemo(
+    () => allViews.find((v) => v._id === activeViewId),
+    [allViews, activeViewId]
+  );
+
+  // Auto-apply filters on deep-link: when the URL carries ?viewId=X and we
+  // have the matching view loaded, push its filters into page state once.
+  // Tracks per-viewId so manual filter edits after apply aren't clobbered.
+  const autoAppliedRef = useRef(null);
+  useEffect(() => {
+    if (!activeViewId || isLoading) return;
+    if (autoAppliedRef.current === activeViewId) return;
+    if (!activeView) return; // view not yet loaded, or deleted/inaccessible
+    autoAppliedRef.current = activeViewId;
+    onApply?.(activeView);
+  }, [activeViewId, isLoading, activeView, onApply]);
+
+  const handleApply = (view) => {
+    onApply?.(view);
+    trackMutation.mutate(view._id);
+    setDropdownOpen(false);
+  };
+
+  const handleClear = () => {
+    onClear?.();
+    setDropdownOpen(false);
+  };
+
+  const handleSaveNew = async (values) => {
+    const filters = typeof snapshotFilters === "function" ? snapshotFilters() : {};
+    try {
+      const created = await createMutation.mutateAsync({ ...values, filters });
+      setCreateOpen(false);
+      onApply?.(created);
+    } catch (err) {
+      showAlert?.(err.message || "Failed to save view", "error");
+    }
+  };
+
+  const handleSaveEdit = async (values) => {
+    if (!editTarget) return;
+    try {
+      await updateMutation.mutateAsync({ id: editTarget._id, ...values });
+      setEditTarget(null);
+    } catch (err) {
+      showAlert?.(err.message || "Failed to update view", "error");
+    }
+  };
+
+  const handleDuplicate = async (view) => {
+    try {
+      await duplicateMutation.mutateAsync(view._id);
+    } catch (err) {
+      showAlert?.(err.message || "Failed to duplicate", "error");
+    }
+  };
+
+  const handleTogglePin = async (view) => {
+    try {
+      await updateMutation.mutateAsync({ id: view._id, isDefault: !view.isDefault });
+    } catch (err) {
+      showAlert?.(err.message || "Failed to update pin", "error");
+    }
+  };
+
+  const handleDelete = (view) => {
+    showDelete({
+      title: "Delete saved view?",
+      description: `"${view.name}" will be removed for you${
+        view.visibility !== "private" ? " and anyone it's shared with" : ""
+      }. This cannot be undone.`,
+      onConfirm: async () => {
+        try {
+          await deleteMutation.mutateAsync(view._id);
+          showAlert?.("View deleted", "success");
+          if (activeViewId === view._id) onClear?.();
+        } catch (err) {
+          showAlert?.(err.message || "Failed to delete", "error");
+        }
+      },
+    });
+  };
+
+  // Render a single view row with inline actions
+  const ViewRow = ({ view, canEdit = true }) => {
+    const Icon = ICON_MAP[view.icon] || Bookmark;
+    const VisIcon = VISIBILITY_ICON[view.visibility] || Lock;
+    const isActive = activeViewId === view._id;
+    return (
+      <div
+        className={`flex items-center gap-2 px-2 py-1.5 rounded-md group cursor-pointer ${
+          isActive ? "bg-gray-100 dark:bg-[#1f1f22]" : "hover:bg-gray-50 dark:hover:bg-[#17171a]"
+        }`}
+        onClick={() => handleApply(view)}
+      >
+        <span
+          className={`w-6 h-6 rounded-md flex items-center justify-center flex-shrink-0 ${
+            COLOR_DOT[view.color] || "bg-gray-500"
+          } bg-opacity-20`}
+        >
+          <Icon
+            className={`w-3.5 h-3.5 ${COLOR_ICON[view.color] || COLOR_ICON.gray}`}
+          />
+        </span>
+        <div className="flex-1 min-w-0">
+          <div className="flex items-center gap-1.5">
+            <span className="text-sm font-medium text-gray-900 dark:text-gray-100 truncate">
+              {view.name}
+            </span>
+            {view.isDefault && (
+              <span className="text-[9px] uppercase tracking-wider font-semibold text-amber-600 dark:text-amber-400 bg-amber-100 dark:bg-amber-500/15 px-1.5 py-0.5 rounded-full flex-shrink-0">
+                Pinned
+              </span>
+            )}
+          </div>
+          {view.description && (
+            <p className="text-[11px] text-gray-500 dark:text-gray-400 truncate">
+              {view.description}
+            </p>
+          )}
+        </div>
+        <VisIcon className="w-3 h-3 text-gray-400 flex-shrink-0" />
+        <div
+          className={`flex items-center gap-0.5 transition-opacity ${
+            view.isDefault ? "opacity-100" : "opacity-0 group-hover:opacity-100"
+          }`}
+        >
+          {canEdit && (
+            <button
+              type="button"
+              title={view.isDefault ? "Unpin default view" : "Pin as default view"}
+              onClick={(e) => {
+                e.stopPropagation();
+                handleTogglePin(view);
+              }}
+              disabled={updateMutation.isPending}
+              className={`p-1 rounded transition-colors ${
+                view.isDefault
+                  ? "text-amber-500 hover:text-amber-600"
+                  : "text-gray-400 hover:text-amber-500"
+              } disabled:opacity-50`}
+            >
+              <Star
+                className={`w-3.5 h-3.5 ${view.isDefault ? "fill-amber-500" : ""}`}
+              />
+            </button>
+          )}
+          {canEdit && (
+            <button
+              type="button"
+              title="Edit"
+              onClick={(e) => {
+                e.stopPropagation();
+                setEditTarget(view);
+              }}
+              className="p-1 rounded text-gray-400 hover:text-gray-700 dark:hover:text-gray-200"
+            >
+              <Pencil className="w-3 h-3" />
+            </button>
+          )}
+          <button
+            type="button"
+            title="Duplicate"
+            onClick={(e) => {
+              e.stopPropagation();
+              handleDuplicate(view);
+            }}
+            className="p-1 rounded text-gray-400 hover:text-gray-700 dark:hover:text-gray-200"
+          >
+            <Copy className="w-3 h-3" />
+          </button>
+          {canEdit && (
+            <button
+              type="button"
+              title="Delete"
+              onClick={(e) => {
+                e.stopPropagation();
+                handleDelete(view);
+              }}
+              className="p-1 rounded text-gray-400 hover:text-red-600"
+            >
+              <Trash2 className="w-3 h-3" />
+            </button>
+          )}
+        </div>
+      </div>
+    );
+  };
+
+  const triggerLabel = activeView ? activeView.name : "Views";
+  const TriggerIcon = activeView ? (ICON_MAP[activeView.icon] || Bookmark) : Bookmark;
+
+  return (
+    <>
+      <DropdownMenu open={dropdownOpen} onOpenChange={setDropdownOpen}>
+        <DropdownMenuTrigger asChild>
+          <Button variant="outline" size="sm" className="gap-1.5">
+            <TriggerIcon className="w-3.5 h-3.5" />
+            <span className="max-w-[140px] truncate">{triggerLabel}</span>
+            {activeView?.isDefault && (
+              <Star className="w-3 h-3 fill-amber-500 text-amber-500" />
+            )}
+            <ChevronDown className="w-3.5 h-3.5 text-gray-400" />
+          </Button>
+        </DropdownMenuTrigger>
+        <DropdownMenuContent align="start" className="w-72 p-1">
+          {activeView && (
+            <>
+              <DropdownMenuItem
+                onClick={handleClear}
+                className="text-xs text-gray-500 gap-1.5"
+              >
+                <X className="w-3 h-3" /> Clear active view
+              </DropdownMenuItem>
+              <DropdownMenuSeparator />
+            </>
+          )}
+
+          <DropdownMenuItem
+            onClick={(e) => {
+              e.preventDefault();
+              setCreateOpen(true);
+              setDropdownOpen(false);
+            }}
+            className="gap-1.5 text-sm"
+          >
+            <Plus className="w-3.5 h-3.5" /> Save current filters as view...
+          </DropdownMenuItem>
+
+          <DropdownMenuSeparator />
+
+          {isLoading ? (
+            <div className="flex items-center justify-center py-6 text-gray-400">
+              <Loader2 className="w-4 h-4 animate-spin" />
+            </div>
+          ) : (
+            <>
+              {pinnedView && (
+                <>
+                  <DropdownMenuLabel className="text-[10px] uppercase tracking-wider text-amber-600 dark:text-amber-400 flex items-center gap-1">
+                    <Star className="w-3 h-3 fill-amber-500 text-amber-500" /> Pinned default
+                  </DropdownMenuLabel>
+                  <ViewRow view={pinnedView} canEdit />
+                  <DropdownMenuSeparator />
+                </>
+              )}
+
+              {grouped.mine.filter((v) => !v.isDefault).length > 0 && (
+                <>
+                  <DropdownMenuLabel className="text-[10px] uppercase tracking-wider text-gray-400">
+                    My views
+                  </DropdownMenuLabel>
+                  {grouped.mine
+                    .filter((v) => !v.isDefault)
+                    .map((view) => (
+                      <ViewRow key={view._id} view={view} canEdit />
+                    ))}
+                </>
+              )}
+
+              {grouped.shared.length > 0 && (
+                <>
+                  <DropdownMenuSeparator />
+                  <DropdownMenuLabel className="text-[10px] uppercase tracking-wider text-gray-400">
+                    Shared with me
+                  </DropdownMenuLabel>
+                  {grouped.shared.map((view) => (
+                    <ViewRow key={view._id} view={view} canEdit={false} />
+                  ))}
+                </>
+              )}
+
+              {grouped.public.length > 0 && (
+                <>
+                  <DropdownMenuSeparator />
+                  <DropdownMenuLabel className="text-[10px] uppercase tracking-wider text-gray-400">
+                    Public
+                  </DropdownMenuLabel>
+                  {grouped.public.slice(0, 8).map((view) => (
+                    <ViewRow key={view._id} view={view} canEdit={false} />
+                  ))}
+                </>
+              )}
+
+              {grouped.mine.length === 0 && grouped.shared.length === 0 && grouped.public.length === 0 && (
+                <p className="text-xs text-gray-400 text-center py-6 px-2">
+                  No saved views yet. Set up filters and click "Save current filters as view" to create one.
+                </p>
+              )}
+            </>
+          )}
+        </DropdownMenuContent>
+      </DropdownMenu>
+
+      {/* Create modal */}
+      <SaveViewModal
+        open={createOpen}
+        onOpenChange={setCreateOpen}
+        mode="create"
+        entityType={entityType}
+        onSubmit={handleSaveNew}
+        saving={createMutation.isPending}
+      />
+
+      {/* Edit modal */}
+      <SaveViewModal
+        open={!!editTarget}
+        onOpenChange={(o) => !o && setEditTarget(null)}
+        mode="edit"
+        entityType={entityType}
+        initialValues={editTarget}
+        onSubmit={handleSaveEdit}
+        saving={updateMutation.isPending}
+      />
+    </>
+  );
+}

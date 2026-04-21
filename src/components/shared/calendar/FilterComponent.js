@@ -1,5 +1,6 @@
 import React, { useState } from "react";
 import { Checkbox } from "@/components/ui/checkbox";
+import { CALENDAR_FILTER_COLORS } from '@/lib/statusConfig';
 
 export default function EventFilters({ filters, setFilters }) {
 
@@ -35,15 +36,7 @@ export default function EventFilters({ filters, setFilters }) {
     }
   };
 
-  // Tailwind-safe static color classes with data attribute selector
-  const colorClasses = {
-    viewAll: "data-[state=checked]:bg-[#8491A2] data-[state=checked]:border-[#8491A2]",
-    personal: "data-[state=checked]:bg-[#FF3D1C] data-[state=checked]:border-[#FF3D1C]",
-    business: "data-[state=checked]:bg-[#696CFF] data-[state=checked]:border-[#696CFF]",
-    family: "data-[state=checked]:bg-[#FFAB00] data-[state=checked]:border-[#FFAB00]",
-    holiday: "data-[state=checked]:bg-[#71DD37] data-[state=checked]:border-[#71DD37]",
-    etc: "data-[state=checked]:bg-[#03C3EC] data-[state=checked]:border-[#03C3EC]",
-  };
+  const colorClasses = CALENDAR_FILTER_COLORS;
 
   const filterOptions = [
     { id: "viewAll", label: "View All" },

@@ -40,6 +40,7 @@ import EquipmentCard from '@/components/operator/dashboard/EquipmentCard'
 import ProgressTracker from '@/components/operator/ProgressTracker'
 import ActivityItem from '@/components/operator/dashboard/ActivityItem'
 import ProjectRow from '@/components/operator/dashboard/ProjectRow'
+import ActiveProjectsWidget from '@/components/operator/dashboard/ActiveProjectsWidget'
 import { formatRelativeTime } from '@/components/operator/constants'
 
 // Import query hooks
@@ -274,6 +275,9 @@ export default function OperatorDashboardContent() {
           {refreshing ? 'Refreshing...' : 'Refresh'}
         </Button>
       </div>
+
+      {/* Active Projects Widget */}
+      <ActiveProjectsWidget userId={userId} onProjectClick={(p) => router.push(`/operator/project?selectedProject=${p._id}`)} />
 
       {/* Stats Grid */}
       <div className="grid grid-cols-2 md:grid-cols-4 gap-4">

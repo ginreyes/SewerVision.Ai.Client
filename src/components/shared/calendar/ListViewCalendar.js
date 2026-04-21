@@ -1,6 +1,7 @@
 'use client'
 
 import React from 'react'
+import { CALENDAR_CATEGORY_COLORS } from '@/lib/statusConfig'
 
 export default function ListViewCalendar(props) {
   const { event_list, onEventClick, date } = props
@@ -22,14 +23,9 @@ export default function ListViewCalendar(props) {
     return acc
   }, {})
 
-  const categoryColors = {
-    personal: "#FF3D1C",
-    business: "#696CFF",
-    family: "#FFAB00",
-    holiday: "#71DD37",
-    etc: "#03C3EC",
-    viewAll: "#8491A2",
-  }
+  const categoryColors = Object.fromEntries(
+    Object.entries(CALENDAR_CATEGORY_COLORS).map(([key, val]) => [key, val.hex])
+  )
 
   return (
     <div className="w-full h-[600px] overflow-y-auto border rounded mt-4">

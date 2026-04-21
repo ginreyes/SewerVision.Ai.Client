@@ -34,103 +34,18 @@ import {
 import supportApi from '@/data/supportApi';
 import complaintApi from '@/data/complaintApi';
 import { ListSkeleton } from '@/components/shared/SkeletonLoading';
-
-// ── Utilities ──
-const BACKEND = process.env.NEXT_PUBLIC_BACKEND_URL || 'http://localhost:5000';
-function fileProxyUrl(filename) {
-  if (!filename) return '';
-  return `${BACKEND}/api/complaints/file?file=${encodeURIComponent(filename)}`;
-}
-function formatBytes(bytes) {
-  if (!bytes) return '';
-  if (bytes < 1024) return `${bytes} B`;
-  if (bytes < 1024 * 1024) return `${(bytes / 1024).toFixed(1)} KB`;
-  return `${(bytes / (1024 * 1024)).toFixed(1)} MB`;
-}
-
-// ── Ticket constants ──
-const TICKET_STATUS_COLORS = {
-  open: 'bg-amber-100 text-amber-700 border-amber-200',
-  'in-progress': 'bg-blue-100 text-blue-700 border-blue-200',
-  resolved: 'bg-emerald-100 text-emerald-700 border-emerald-200',
-  closed: 'bg-gray-100 text-gray-600 border-gray-200',
-};
-const TICKET_STATUS_ICONS = { open: AlertCircle, 'in-progress': Clock, resolved: CheckCircle, closed: XCircle };
-const TICKET_CATEGORIES = [
-  { value: 'report', label: 'Report Issue' },
-  { value: 'project', label: 'Project Inquiry' },
-  { value: 'account', label: 'Account Help' },
-  { value: 'billing', label: 'Billing' },
-  { value: 'feature', label: 'Feature Request' },
-  { value: 'other', label: 'Other' },
-];
-
-// ── Complaint constants ──
-const COMPLAINT_STATUS_COLORS = {
-  new: 'bg-amber-100 text-amber-700 border-amber-200',
-  investigating: 'bg-blue-100 text-blue-700 border-blue-200',
-  'action-required': 'bg-orange-100 text-orange-700 border-orange-200',
-  resolved: 'bg-emerald-100 text-emerald-700 border-emerald-200',
-  dismissed: 'bg-gray-100 text-gray-600 border-gray-200',
-};
-const COMPLAINT_STATUS_LABELS = {
-  new: 'Submitted', investigating: 'Under Review',
-  'action-required': 'Action Required', resolved: 'Resolved', dismissed: 'Closed',
-};
-const COMPLAINT_STATUS_ICONS = {
-  new: AlertCircle, investigating: Clock,
-  'action-required': AlertCircle, resolved: CheckCircle, dismissed: XCircle,
-};
-const SEVERITY_COLORS = {
-  critical: 'bg-red-100 text-red-700', high: 'bg-orange-100 text-orange-700',
-  medium: 'bg-amber-100 text-amber-700', low: 'bg-green-100 text-green-700',
-};
-const COMPLAINT_CATEGORIES = [
-  { value: 'service', label: 'Service Issue' }, { value: 'billing', label: 'Billing Problem' },
-  { value: 'technical', label: 'Technical Issue' }, { value: 'delivery', label: 'Delivery Problem' },
-  { value: 'quality', label: 'Quality Concern' }, { value: 'communication', label: 'Communication Issue' },
-  { value: 'other', label: 'Other' },
-];
-const SEVERITY_OPTIONS = [
-  { value: 'low', label: 'Low — Minor inconvenience' },
-  { value: 'medium', label: 'Medium — Noticeable impact' },
-  { value: 'high', label: 'High — Significant impact' },
-  { value: 'critical', label: 'Critical — Urgent attention needed' },
-];
-
-/* ─── Shared attachment renderer ─── */
-function AttachmentRow({ attachments, dark = false }) {
-  if (!attachments?.length) return null;
-  const images = attachments.filter(a => a.mimetype?.startsWith('image/'));
-  const files = attachments.filter(a => !a.mimetype?.startsWith('image/'));
-  return (
-    <div className="mt-2 space-y-1.5">
-      {images.length > 0 && (
-        <div className={`grid gap-1.5 ${images.length === 1 ? 'grid-cols-1 max-w-[180px]' : 'grid-cols-2'}`}>
-          {images.map((att, i) => (
-            <a key={i} href={fileProxyUrl(att.filename)} target="_blank" rel="noopener noreferrer"
-              className="relative rounded-xl overflow-hidden group block aspect-square border border-black/10">
-              <img src={fileProxyUrl(att.filename)} alt={att.originalname || att.filename}
-                className="w-full h-full object-cover group-hover:scale-105 transition-transform" />
-              <div className="absolute inset-0 bg-black/0 group-hover:bg-black/25 transition-colors flex items-center justify-center">
-                <Eye className="w-4 h-4 text-white opacity-0 group-hover:opacity-100 transition-opacity" />
-              </div>
-            </a>
-          ))}
-        </div>
-      )}
-      {files.map((att, i) => (
-        <a key={i} href={fileProxyUrl(att.filename)} target="_blank" rel="noopener noreferrer"
-          className={`flex items-center gap-2 px-3 py-2 rounded-xl group transition-colors ${dark ? 'bg-black/10 hover:bg-black/20 border border-black/10' : 'bg-gray-100 hover:bg-gray-200 border border-gray-200'}`}>
-          <FileText className="w-4 h-4 shrink-0 opacity-70" />
-          <span className="text-xs font-medium truncate flex-1">{att.originalname || att.filename}</span>
-          {att.size ? <span className="text-[10px] opacity-60 shrink-0">{formatBytes(att.size)}</span> : null}
-          <Download className="w-3 h-3 opacity-40 group-hover:opacity-90 shrink-0" />
-        </a>
-      ))}
-    </div>
-  );
-}
+import AttachmentRow, { fileProxyUrl, formatBytes } from '@/components/customer/support/AttachmentRow';
+import {
+  TICKET_STATUS_COLORS,
+  TICKET_STATUS_ICONS,
+  TICKET_CATEGORIES,
+  COMPLAINT_STATUS_COLORS,
+  COMPLAINT_STATUS_LABELS,
+  COMPLAINT_STATUS_ICONS,
+  SEVERITY_COLORS,
+  COMPLAINT_CATEGORIES,
+  SEVERITY_OPTIONS,
+} from './constants';
 
 /* ─── Ticket Detail View ─── */
 function TicketDetailView({ ticketId, userId, userData, onBack }) {

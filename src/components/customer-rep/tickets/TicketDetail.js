@@ -22,11 +22,11 @@ import {
   Globe,
   Lock,
 } from "lucide-react";
+import { BACKEND_URL } from "@/lib/config";
 
-const BACKEND = process.env.NEXT_PUBLIC_BACKEND_URL || "http://localhost:5000";
 function fileProxyUrl(filename) {
   if (!filename) return "";
-  return `${BACKEND}/api/complaints/file?file=${encodeURIComponent(filename)}`;
+  return `${BACKEND_URL}/api/complaints/file?file=${encodeURIComponent(filename)}`;
 }
 function formatBytes(b) {
   if (!b) return "";

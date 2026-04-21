@@ -14,7 +14,6 @@ import {
   Building2,
   Eye,
   EyeOff,
-  LogOut,
   Upload,
   CheckCircle2,
   Pencil,
@@ -40,7 +39,9 @@ import { Select, SelectTrigger, SelectValue, SelectContent, SelectItem } from '@
 import { useUser } from '@/components/providers/UserContext';
 import { useAlert } from '@/components/providers/AlertProvider';
 import { api, getCookie } from '@/lib/helper';
+import { BACKEND_URL } from '@/lib/config';
 import AppearanceSettings from '@/components/shared/AppearanceSettings';
+import SettingsPageShell from '@/components/shared/SettingsPageShell';
 
 function CustomerSettingsContent() {
   const router = useRouter();
@@ -199,17 +200,11 @@ function CustomerSettingsContent() {
       formData.append('avatar', file);
       if (username) formData.append('username', username);
 
-      const token = getCookie('authToken');
-      const backendUrl = process.env.NEXT_PUBLIC_BACKEND_URL || 'http://localhost:5000';
-      const uploadUrl = userId
-        ? `${backendUrl}/api/users/upload-avatar/${userId}`
-        : `${backendUrl}/api/users/upload-avatar`;
-      const res = await fetch(uploadUrl, {
-        method: 'POST',
-        headers: token ? { Authorization: `Bearer ${token}` } : {},
-        body: formData
-      });
-      const data = await res.json();
+      const uploadPath = userId
+        ? `/api/users/upload-avatar/${userId}`
+        : `/api/users/upload-avatar`;
+      const res = await api(uploadPath, 'POST', formData);
+      const data = res.data;
 
       if (res.ok) {
         const avatarUrlWithBust = `${data.avatarUrl}${data.avatarUrl?.includes('?') ? '&' : '?'}t=${Date.now()}`;
@@ -252,17 +247,11 @@ function CustomerSettingsContent() {
       formData.append('avatar', file);
       if (username) formData.append('username', username);
 
-      const token = getCookie('authToken');
-      const backendUrl = process.env.NEXT_PUBLIC_BACKEND_URL || 'http://localhost:5000';
-      const uploadUrl = userId
-        ? `${backendUrl}/api/users/upload-company-logo/${userId}`
-        : `${backendUrl}/api/users/upload-company-logo`;
-      const res = await fetch(uploadUrl, {
-        method: 'POST',
-        headers: token ? { Authorization: `Bearer ${token}` } : {},
-        body: formData
-      });
-      const data = await res.json();
+      const uploadPath = userId
+        ? `/api/users/upload-company-logo/${userId}`
+        : `/api/users/upload-company-logo`;
+      const res = await api(uploadPath, 'POST', formData);
+      const data = res.data;
 
       if (res.ok) {
         const logoUrlWithBust = `${data.logoUrl}${data.logoUrl?.includes('?') ? '&' : '?'}t=${Date.now()}`;
@@ -285,8 +274,7 @@ function CustomerSettingsContent() {
   const getCompanyLogoUrl = () => {
     if (!profile.companyLogo) return null;
     if (profile.companyLogo.startsWith('http')) return profile.companyLogo;
-    const backendUrl = process.env.NEXT_PUBLIC_BACKEND_URL || 'http://localhost:5000';
-    return `${backendUrl}/api/users/company-logo/${userData?._id}`;
+    return `${BACKEND_URL}/api/users/company-logo/${userData?._id}`;
   };
 
   const handlePasswordChange = async (e) => {
@@ -326,54 +314,25 @@ function CustomerSettingsContent() {
     { id: 'appearance', label: 'Appearance', icon: Monitor },
   ];
 
+  const headerActions = (
+    <Button variant="outline" size="sm" className="text-gray-600" onClick={() => router.push('/customer/dashboard')}>
+      Back to Dashboard
+    </Button>
+  );
+
   return (
-    <div className="max-w-7xl mx-auto p-6 space-y-8" data-tour="customer-settings">
-      {/* Header */}
-      <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">
-        <div>
-          <h1 className="text-2xl font-bold text-gray-900">Settings</h1>
-          <p className="text-gray-500 mt-1">Manage your account and personal information</p>
-        </div>
-        <div className="flex items-center gap-3">
-          <Button variant="outline" size="sm" className="text-gray-600" onClick={() => router.push('/customer/dashboard')}>
-            Back to Dashboard
-          </Button>
-        </div>
-      </div>
-
-      <div className="flex flex-col lg:flex-row gap-8">
-        {/* Sidebar Navigation */}
-        <Card className="lg:w-64 h-fit border-0 shadow-sm bg-white">
-          <CardContent className="p-4">
-            <nav className="space-y-1">
-              {sidebarItems.map((item) => (
-                <button
-                  key={item.id}
-                  onClick={() => handleSectionChange(item.id)}
-                  className={`flex items-center w-full px-3 py-2 text-sm font-medium rounded-lg transition-colors ${
-                    activeSection === item.id
-                      ? 'bg-teal-50 text-teal-700'
-                      : 'text-gray-600 hover:bg-gray-50 hover:text-gray-900'
-                  }`}
-                >
-                  <item.icon className={`w-4 h-4 mr-3 ${activeSection === item.id ? 'text-teal-600' : 'text-gray-400'}`} />
-                  {item.label}
-                </button>
-              ))}
-              <Separator className="my-4" />
-              <button
-                onClick={logout}
-                className="flex items-center w-full px-3 py-2 text-sm font-medium text-red-600 rounded-lg hover:bg-red-50 transition-colors"
-              >
-                <LogOut className="w-4 h-4 mr-3" />
-                Sign Out
-              </button>
-            </nav>
-          </CardContent>
-        </Card>
-
-        {/* Main Content */}
-        <div className="flex-1 space-y-6">
+    <SettingsPageShell
+      title="Settings"
+      subtitle="Manage your account and personal information"
+      accentColor="teal"
+      tabs={sidebarItems}
+      activeTab={activeSection}
+      onTabChange={handleSectionChange}
+      showSave={false}
+      onLogout={logout}
+      extraHeaderActions={headerActions}
+      wrapInTabs={false}
+    >
 
           {/* ── Profile Section ── */}
           {activeSection === 'profile' && (
@@ -844,10 +803,7 @@ function CustomerSettingsContent() {
               </CardContent>
             </Card>
           )}
-
-        </div>
-      </div>
-    </div>
+    </SettingsPageShell>
   );
 }
 

@@ -1,6 +1,6 @@
 "use client";
 
-import { api, getCookie } from "@/lib/helper";
+import { api, apiBlob } from "@/lib/helper";
 
 /**
  * Uploads API functions
@@ -117,21 +117,13 @@ export const uploadsApi = {
    * Download file
    */
   async downloadFile(uploadId, filename) {
-    const API = process.env.NEXT_PUBLIC_BACKEND_URL || "http://localhost:5000";
-    const authToken = getCookie("authToken");
-    
-    const response = await fetch(`${API}/api/uploads/download/${uploadId}`, {
-      method: 'GET',
-      headers: {
-        ...(authToken ? { "Authorization": `Bearer ${authToken}` } : {}),
-      },
-    });
+    const response = await apiBlob(`/api/uploads/download/${uploadId}`, 'GET');
 
     if (!response.ok) {
-      throw new Error('Failed to download file');
+      throw new Error(response.error?.message || 'Failed to download file');
     }
 
-    const blob = await response.blob();
+    const blob = response.blob;
     const url = window.URL.createObjectURL(blob);
     const a = document.createElement('a');
     a.href = url;
@@ -157,63 +149,43 @@ export const uploadsApi = {
       throw new Error('Upload ID is required');
     }
 
-    const API = process.env.NEXT_PUBLIC_BACKEND_URL || "http://localhost:5000";
-    const authToken = getCookie("authToken");
-    
-    const url = `${API}/api/uploads/view/${uploadId}`;
-    
     // Fetch file with authentication
     try {
-      const response = await fetch(url, {
-        method: 'GET',
-        headers: {
-          ...(authToken ? { "Authorization": `Bearer ${authToken}` } : {}),
-        },
-      });
+      const response = await apiBlob(`/api/uploads/view/${uploadId}`, 'GET');
 
       if (!response.ok) {
         // Try to get error message from response
         let errorMessage = 'Failed to view file';
-        try {
-          const errorData = await response.json();
+        const errorData = response.error;
+        if (errorData && typeof errorData === 'object') {
           errorMessage = errorData.message || errorData.error || errorMessage;
-        } catch (e) {
-          // If response is not JSON, use status text
-          errorMessage = response.statusText || errorMessage;
+        } else if (typeof errorData === 'string' && errorData) {
+          errorMessage = errorData;
         }
         throw new Error(errorMessage);
       }
 
       // Get content type to determine how to display
-      const contentType = response.headers.get('content-type') || '';
+      const contentType = response.headers?.get('content-type') || '';
       const contentTypeLower = contentType.toLowerCase();
-      
+
       // Check if response is JSON based on content-type header
       if (contentTypeLower.includes('application/json')) {
-        // If it's JSON, read as JSON
-        const data = await response.json();
-        if (data.success === false || data.message) {
+        // If it's JSON, read the blob as text then parse
+        let data = null;
+        try {
+          const text = await response.blob.text();
+          data = JSON.parse(text);
+        } catch {}
+        if (data && (data.success === false || data.message)) {
           throw new Error(data.message || 'Failed to view file');
         }
         // If it's file info, we can't view it directly
         throw new Error('File cannot be viewed directly. Please download it instead.');
       }
 
-      // Read response as blob for file content
-      let blob;
-      try {
-        blob = await response.blob();
-      } catch (blobError) {
-        // If blob reading fails, try to get error message
-        try {
-          const errorText = await response.text();
-          const errorData = JSON.parse(errorText);
-          throw new Error(errorData.message || 'Failed to load file');
-        } catch (parseError) {
-          throw new Error('Failed to load file content');
-        }
-      }
-      
+      const blob = response.blob;
+
       if (!blob || blob.size === 0) {
         throw new Error('File is empty or could not be loaded');
       }

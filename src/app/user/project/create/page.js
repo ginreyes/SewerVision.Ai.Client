@@ -7,6 +7,7 @@ import { Label } from "@/components/ui/label";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { useAlert } from "@/components/providers/AlertProvider";
 import { api } from "@/lib/helper";
+import { BACKEND_URL } from "@/lib/config";
 import { useUploadLimits } from "@/hooks/useUploadLimits";
 import dynamic from "next/dynamic";
 
@@ -445,7 +446,6 @@ export default function CreateProjectPage({ backUrl = "/user/project", returnTo 
         videoForm.append("video", videoFile);
         videoForm.append("projectId", createdProjectId);
         const token = typeof window !== "undefined" ? (document.cookie.match(/authToken=([^;]*)/)?.[1] || "") : "";
-        const apiUrl = process.env.NEXT_PUBLIC_BACKEND_URL || "http://localhost:5000";
 
         const markUploadFailed = (errorMsg) => {
           api(`/api/projects/update-project/${createdProjectId}/${userId}`, "PUT", {
@@ -463,7 +463,7 @@ export default function CreateProjectPage({ backUrl = "/user/project", returnTo 
         xhr.addEventListener("timeout", () => markUploadFailed("Video upload timed out"));
         xhr.timeout = 600000;
 
-        xhr.open("POST", `${apiUrl}/api/videos/upload`);
+        xhr.open("POST", `${BACKEND_URL}/api/videos/upload`);
         if (token) xhr.setRequestHeader("Authorization", `Bearer ${token}`);
         xhr.send(videoForm);
       }

@@ -10,6 +10,7 @@ import {
 import { Card, CardContent } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { Separator } from '@/components/ui/separator';
+import { BACKEND_URL } from '@/lib/config';
 import {
   Monitor,
   Camera,
@@ -32,8 +33,6 @@ import {
 
 const DeviceDetailModal = ({ isOpen, onClose, device }) => {
   if (!device) return null;
-
-  const API_URL = process.env.NEXT_PUBLIC_BACKEND_URL || "http://localhost:5000";
 
   const getDeviceIcon = (type) => {
     switch (type?.toLowerCase()) {
@@ -115,7 +114,7 @@ const DeviceDetailModal = ({ isOpen, onClose, device }) => {
           <div className="relative h-56 bg-gradient-to-br from-gray-100 to-gray-50 rounded-xl overflow-hidden mb-6">
             {device.image || device.imageFileId ? (
               <img 
-                src={`${API_URL}/api/devices/${device._id}/image`}
+                src={`${BACKEND_URL}/api/devices/${device._id}/image`}
                 alt={device.name || "Device"}
                 className="w-full h-full object-cover"
                 onError={(e) => {

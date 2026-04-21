@@ -82,7 +82,7 @@ const RegisterForm = () => {
     };
 
     return (
-        <div className="min-h-screen flex bg-white font-sans">
+        <div className="min-h-screen flex bg-white dark:bg-zinc-900 font-sans">
             {/* Left Side: Brand & Feature Showcase (Hidden on Mobile) */}
             <div className="hidden lg:flex lg:w-1/2 relative bg-gray-50 flex-col justify-between p-12 overflow-hidden">
                 {/* Background Decoration */}
@@ -132,14 +132,14 @@ const RegisterForm = () => {
             </div>
 
             {/* Right Side: Registration Form */}
-            <div className="w-full lg:w-1/2 flex items-center justify-center p-4 lg:p-12 relative bg-gray-50/30 overflow-y-auto">
+            <div className="w-full lg:w-1/2 flex items-center justify-center p-4 lg:p-12 relative bg-gray-50/30 dark:bg-zinc-900 overflow-y-auto">
                 <div className="w-full max-w-lg">
                     {/* Mobile Logo */}
                     <div className="lg:hidden flex justify-center mb-6">
                         <Image src='/Logo.png' width={60} height={60} alt="Logo" />
                     </div>
 
-                    <Card className="border-0 shadow-xl bg-white/80 backdrop-blur-xl rounded-2xl overflow-hidden">
+                    <Card className="border-0 shadow-xl bg-white/80 dark:bg-[#2b2a33] backdrop-blur-xl rounded-2xl overflow-hidden">
                         <div className="h-1.5 bg-gradient-to-r from-rose-500 to-purple-600"></div>
 
                         <CardHeader className="text-center pt-6 pb-4 px-6">
@@ -149,11 +149,11 @@ const RegisterForm = () => {
                                 </div>
                             </div>
 
-                            <h1 className="text-2xl font-bold text-gray-900 mb-1">
+                            <h1 className="text-2xl font-bold text-gray-900 dark:text-white mb-1">
                                 Registration
                             </h1>
 
-                            <CardDescription className="text-sm text-gray-600">
+                            <CardDescription className="text-sm text-gray-600 dark:text-zinc-400">
                                 Create your account to access your dashboard and reports
                             </CardDescription>
                         </CardHeader>
@@ -162,7 +162,7 @@ const RegisterForm = () => {
                             <form onSubmit={handleSubmit(onSubmit)} className="space-y-4">
                                 {/* Company Name (required for customer) */}
                                 <div className="space-y-2">
-                                    <Label htmlFor="company_name" className="text-sm font-semibold text-gray-700">
+                                    <Label htmlFor="company_name" className="text-sm font-semibold text-gray-700 dark:text-zinc-300">
                                         Company Name
                                     </Label>
                                     <Input
@@ -170,7 +170,7 @@ const RegisterForm = () => {
                                         type="text"
                                         id="company_name"
                                         placeholder="Your company name"
-                                        className="h-11 bg-gray-50 border-gray-200 focus:bg-white focus:border-green-500 focus:ring-green-500/20 rounded-xl transition-all"
+                                        className="h-11 bg-gray-50 dark:bg-zinc-700 border-gray-200 dark:border-zinc-600 focus:bg-white dark:focus:bg-zinc-600 focus:border-green-500 focus:ring-green-500/20 rounded-xl transition-all dark:text-white dark:placeholder:text-zinc-400"
                                     />
                                     {errors.company_name && (
                                         <p className="text-red-500 text-xs mt-1 font-medium">
@@ -182,7 +182,7 @@ const RegisterForm = () => {
                                 {/* Name Fields */}
                                 <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                                     <div className="space-y-2">
-                                        <Label htmlFor="first_name" className="text-sm font-semibold text-gray-700">
+                                        <Label htmlFor="first_name" className="text-sm font-semibold text-gray-700 dark:text-zinc-300">
                                             First Name
                                         </Label>
                                         <Input
@@ -190,7 +190,7 @@ const RegisterForm = () => {
                                             type="text"
                                             id="first_name"
                                             placeholder="First name"
-                                            className="h-11 bg-gray-50 border-gray-200 focus:bg-white focus:border-rose-500 focus:ring-rose-500/20 rounded-xl transition-all"
+                                            className="h-11 bg-gray-50 dark:bg-zinc-700 border-gray-200 dark:border-zinc-600 focus:bg-white dark:focus:bg-zinc-600 focus:border-rose-500 focus:ring-rose-500/20 rounded-xl transition-all dark:text-white dark:placeholder:text-zinc-400"
                                         />
                                         {errors.first_name && (
                                             <p className="text-red-500 text-xs mt-1 font-medium">
@@ -200,7 +200,7 @@ const RegisterForm = () => {
                                     </div>
 
                                     <div className="space-y-2">
-                                        <Label htmlFor="last_name" className="text-sm font-semibold text-gray-700">
+                                        <Label htmlFor="last_name" className="text-sm font-semibold text-gray-700 dark:text-zinc-300">
                                             Last Name
                                         </Label>
                                         <Input
@@ -208,7 +208,7 @@ const RegisterForm = () => {
                                             type="text"
                                             id="last_name"
                                             placeholder="Last name"
-                                            className="h-11 bg-gray-50 border-gray-200 focus:bg-white focus:border-rose-500 focus:ring-rose-500/20 rounded-xl transition-all"
+                                            className="h-11 bg-gray-50 dark:bg-zinc-700 border-gray-200 dark:border-zinc-600 focus:bg-white dark:focus:bg-zinc-600 focus:border-rose-500 focus:ring-rose-500/20 rounded-xl transition-all dark:text-white dark:placeholder:text-zinc-400"
                                         />
                                         {errors.last_name && (
                                             <p className="text-red-500 text-xs mt-1 font-medium">
@@ -221,7 +221,7 @@ const RegisterForm = () => {
                                 {/* Username and Email */}
                                 <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                                     <div className="space-y-2 group">
-                                        <Label htmlFor="username" className="text-sm font-semibold text-gray-700">
+                                        <Label htmlFor="username" className="text-sm font-semibold text-gray-700 dark:text-zinc-300">
                                             Username
                                         </Label>
                                         <div className="relative">
@@ -233,7 +233,7 @@ const RegisterForm = () => {
                                                 type="text"
                                                 id="username"
                                                 placeholder="Choose a username"
-                                                className="pl-10 h-11 bg-gray-50 border-gray-200 focus:bg-white focus:border-rose-500 focus:ring-rose-500/20 rounded-xl transition-all"
+                                                className="pl-10 h-11 bg-gray-50 dark:bg-zinc-700 border-gray-200 dark:border-zinc-600 focus:bg-white dark:focus:bg-zinc-600 focus:border-rose-500 focus:ring-rose-500/20 rounded-xl transition-all dark:text-white dark:placeholder:text-zinc-400"
                                             />
                                         </div>
                                         {errors.username && (
@@ -244,7 +244,7 @@ const RegisterForm = () => {
                                     </div>
 
                                     <div className="space-y-2 group">
-                                        <Label htmlFor="email" className="text-sm font-semibold text-gray-700">
+                                        <Label htmlFor="email" className="text-sm font-semibold text-gray-700 dark:text-zinc-300">
                                             Email
                                         </Label>
                                         <div className="relative">
@@ -256,7 +256,7 @@ const RegisterForm = () => {
                                                 type="email"
                                                 id="email"
                                                 placeholder="your.email@example.com"
-                                                className="pl-10 h-11 bg-gray-50 border-gray-200 focus:bg-white focus:border-rose-500 focus:ring-rose-500/20 rounded-xl transition-all"
+                                                className="pl-10 h-11 bg-gray-50 dark:bg-zinc-700 border-gray-200 dark:border-zinc-600 focus:bg-white dark:focus:bg-zinc-600 focus:border-rose-500 focus:ring-rose-500/20 rounded-xl transition-all dark:text-white dark:placeholder:text-zinc-400"
                                             />
                                         </div>
                                         {errors.email && (
@@ -270,7 +270,7 @@ const RegisterForm = () => {
                                 {/* Passwords */}
                                 <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                                     <div className="space-y-2 group">
-                                        <Label htmlFor="password" className="text-sm font-semibold text-gray-700">
+                                        <Label htmlFor="password" className="text-sm font-semibold text-gray-700 dark:text-zinc-300">
                                             Password
                                         </Label>
                                         <div className="relative">
@@ -282,7 +282,7 @@ const RegisterForm = () => {
                                                 type={passwordVisible ? "text" : "password"}
                                                 id="password"
                                                 placeholder="••••••••"
-                                                className="pl-10 pr-10 h-11 bg-gray-50 border-gray-200 focus:bg-white focus:border-rose-500 focus:ring-rose-500/20 rounded-xl transition-all"
+                                                className="pl-10 pr-10 h-11 bg-gray-50 dark:bg-zinc-700 border-gray-200 dark:border-zinc-600 focus:bg-white dark:focus:bg-zinc-600 focus:border-rose-500 focus:ring-rose-500/20 rounded-xl transition-all dark:text-white dark:placeholder:text-zinc-400"
                                             />
                                             <button
                                                 type="button"
@@ -304,7 +304,7 @@ const RegisterForm = () => {
                                     </div>
 
                                     <div className="space-y-2 group">
-                                        <Label htmlFor="confirmPassword" className="text-sm font-semibold text-gray-700">
+                                        <Label htmlFor="confirmPassword" className="text-sm font-semibold text-gray-700 dark:text-zinc-300">
                                             Confirm Password
                                         </Label>
                                         <div className="relative">
@@ -316,7 +316,7 @@ const RegisterForm = () => {
                                                 type={confirmPasswordVisible ? "text" : "password"}
                                                 id="confirmPassword"
                                                 placeholder="••••••••"
-                                                className="pl-10 pr-10 h-11 bg-gray-50 border-gray-200 focus:bg-white focus:border-rose-500 focus:ring-rose-500/20 rounded-xl transition-all"
+                                                className="pl-10 pr-10 h-11 bg-gray-50 dark:bg-zinc-700 border-gray-200 dark:border-zinc-600 focus:bg-white dark:focus:bg-zinc-600 focus:border-rose-500 focus:ring-rose-500/20 rounded-xl transition-all dark:text-white dark:placeholder:text-zinc-400"
                                             />
                                             <button
                                                 type="button"
@@ -352,7 +352,7 @@ const RegisterForm = () => {
                                             />
                                         )}
                                     />
-                                    <Label htmlFor="privacy" className="text-xs text-gray-700 cursor-pointer leading-relaxed">
+                                    <Label htmlFor="privacy" className="text-xs text-gray-700 dark:text-zinc-300 cursor-pointer leading-relaxed">
                                         I agree to the{" "}
                                         <span className="text-rose-600 hover:underline font-medium">privacy policy</span>
                                         {" "}and{" "}
@@ -384,10 +384,10 @@ const RegisterForm = () => {
                                 {/* Divider */}
                                 <div className="relative my-5">
                                     <div className="absolute inset-0 flex items-center">
-                                        <div className="w-full border-t border-gray-200"></div>
+                                        <div className="w-full border-t border-gray-200 dark:border-zinc-700"></div>
                                     </div>
                                     <div className="relative flex justify-center text-sm">
-                                        <span className="px-4 bg-white text-gray-500 font-medium">Already have an account?</span>
+                                        <span className="px-4 bg-white dark:bg-[#2b2a33] text-gray-500 dark:text-zinc-400 font-medium">Already have an account?</span>
                                     </div>
                                 </div>
 

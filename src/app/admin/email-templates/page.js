@@ -1,6 +1,7 @@
 "use client";
 
-import React, { useState, useEffect, useCallback } from "react";
+import React, { useState } from "react";
+import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import {
   Mail, Plus, Edit, Trash2, Eye, CheckCircle2, XCircle,
   Loader2, Search, ToggleLeft, ToggleRight,
@@ -22,58 +23,85 @@ const CATEGORY_COLORS = {
   custom: "bg-gray-100 text-gray-600 border-gray-200",
 };
 
+const TEMPLATES_KEY = ["admin", "email-templates"];
+
 export default function EmailTemplatesPage() {
   const { showAlert } = useAlert();
-  const [templates, setTemplates] = useState([]);
-  const [loading, setLoading] = useState(true);
+  const queryClient = useQueryClient();
   const [search, setSearch] = useState("");
   const [editing, setEditing] = useState(null); // null = list view, 'new' = create, template obj = edit
-  const [saving, setSaving] = useState(false);
 
-  const fetchTemplates = useCallback(async () => {
-    try {
+  const { data: templatesData, isLoading: loading } = useQuery({
+    queryKey: TEMPLATES_KEY,
+    queryFn: async () => {
       const res = await api("/api/email-templates", "GET");
-      if (res.ok) setTemplates(res.data?.data || []);
-    } catch { /* silent */ }
-    finally { setLoading(false); }
-  }, []);
+      if (!res.ok) throw new Error("Failed to fetch email templates");
+      return res.data;
+    },
+    staleTime: 1000 * 60,
+  });
 
-  useEffect(() => { fetchTemplates(); }, [fetchTemplates]);
+  const templates = templatesData?.data || [];
 
   const filtered = templates.filter(t => !search || t.name.toLowerCase().includes(search.toLowerCase()) || t.subject.toLowerCase().includes(search.toLowerCase()));
 
-  async function handleSave(data) {
-    setSaving(true);
-    try {
+  const saveMutation = useMutation({
+    mutationFn: async (data) => {
       const isEdit = editing && editing !== "new";
-      const res = isEdit
-        ? await api(`/api/email-templates/${editing._id}`, "PUT", data)
-        : await api("/api/email-templates", "POST", data);
+      return isEdit
+        ? api(`/api/email-templates/${editing._id}`, "PUT", data)
+        : api("/api/email-templates", "POST", data);
+    },
+    onSuccess: (res) => {
       if (res.ok) {
+        const isEdit = editing && editing !== "new";
         showAlert(isEdit ? "Template updated" : "Template created", "success");
         setEditing(null);
-        fetchTemplates();
+        queryClient.invalidateQueries({ queryKey: TEMPLATES_KEY });
       } else {
         showAlert(res.data?.message || "Failed to save", "error");
       }
-    } catch { showAlert("Failed to save", "error"); }
-    finally { setSaving(false); }
-  }
+    },
+    onError: () => showAlert("Failed to save", "error"),
+  });
 
-  async function handleDelete(id) {
+  const deleteMutation = useMutation({
+    mutationFn: (id) => api(`/api/email-templates/${id}`, "DELETE"),
+    onSuccess: (res) => {
+      if (res.ok) {
+        showAlert("Template deleted", "success");
+        queryClient.invalidateQueries({ queryKey: TEMPLATES_KEY });
+      } else {
+        showAlert(res.data?.message || "Failed to delete", "error");
+      }
+    },
+    onError: () => showAlert("Failed to delete", "error"),
+  });
+
+  const toggleMutation = useMutation({
+    mutationFn: ({ id, nextActive }) => api(`/api/email-templates/${id}`, "PUT", { active: nextActive }),
+    onSuccess: (res, variables) => {
+      if (res.ok) {
+        showAlert(`Template ${variables.nextActive ? "activated" : "deactivated"}`, "success");
+        queryClient.invalidateQueries({ queryKey: TEMPLATES_KEY });
+      } else {
+        showAlert(res.data?.message || "Failed to toggle", "error");
+      }
+    },
+    onError: () => showAlert("Failed to toggle", "error"),
+  });
+
+  const handleSave = (data) => saveMutation.mutate(data);
+
+  const handleDelete = (id) => {
     if (!confirm('Delete this template? This action cannot be undone.')) return;
-    try {
-      const res = await api(`/api/email-templates/${id}`, "DELETE");
-      if (res.ok) { showAlert("Template deleted", "success"); fetchTemplates(); }
-    } catch { showAlert("Failed to delete", "error"); }
-  }
+    deleteMutation.mutate(id);
+  };
 
-  async function handleToggle(id, currentActive) {
-    try {
-      const res = await api(`/api/email-templates/${id}`, "PUT", { active: !currentActive });
-      if (res.ok) { showAlert(`Template ${!currentActive ? "activated" : "deactivated"}`, "success"); fetchTemplates(); }
-    } catch { showAlert("Failed to toggle", "error"); }
-  }
+  const handleToggle = (id, currentActive) =>
+    toggleMutation.mutate({ id, nextActive: !currentActive });
+
+  const saving = saveMutation.isPending;
 
   if (loading) {
     return <div className="flex items-center justify-center min-h-[60vh]"><Loader2 className="w-8 h-8 animate-spin text-rose-500" /></div>;

@@ -38,6 +38,7 @@ import { api, getCookie } from '@/lib/helper';
 import SectionHeader from '@/components/user/settings/SectionHeader';
 import ToggleSetting from '@/components/user/settings/ToggleSetting';
 import AppearanceSettings from '@/components/shared/AppearanceSettings';
+import SettingsPageShell from '@/components/shared/SettingsPageShell';
 
 function UserSettingsContent() {
   const router = useRouter();
@@ -187,17 +188,11 @@ function UserSettingsContent() {
       formData.append('avatar', file);
       if (username) formData.append('username', username);
 
-      const token = getCookie('authToken');
-      const backendUrl = process.env.NEXT_PUBLIC_BACKEND_URL || 'http://localhost:5000';
-      const uploadUrl = userId
-        ? `${backendUrl}/api/users/upload-avatar/${userId}`
-        : `${backendUrl}/api/users/upload-avatar`;
-      const res = await fetch(uploadUrl, {
-        method: 'POST',
-        headers: token ? { Authorization: `Bearer ${token}` } : {},
-        body: formData
-      });
-      const data = await res.json();
+      const uploadPath = userId
+        ? `/api/users/upload-avatar/${userId}`
+        : `/api/users/upload-avatar`;
+      const res = await api(uploadPath, 'POST', formData);
+      const data = res.data;
 
       if (res.ok) {
         const avatarUrlWithBust = `${data.avatarUrl}${data.avatarUrl?.includes('?') ? '&' : '?'}t=${Date.now()}`;
@@ -278,75 +273,53 @@ function UserSettingsContent() {
   const canEdit = Boolean(isEditingSettings);
   const isDirty = isEditingSettings && JSON.stringify(settings) !== JSON.stringify(settingsSnapshot);
 
-  return (
-    <div className="max-w-7xl mx-auto p-6 space-y-8">
-      <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">
-        <div>
-          <h1 className="text-2xl font-bold text-gray-900">Settings</h1>
-          <p className="text-gray-500 mt-1">Manage your account and preferences as team lead</p>
-        </div>
-        <div className="flex items-center gap-3">
-          <Button variant="outline" size="sm" className="text-gray-600" onClick={() => router.push('/user/dashboard')}>
-            Back to Dashboard
+  const userSettingsTabs = [
+    { id: 'profile', label: 'Profile', icon: User },
+    { id: 'notifications', label: 'Notifications', icon: Bell },
+    { id: 'preferences', label: 'Preferences', icon: Globe },
+    { id: 'appearance', label: 'Appearance', icon: Monitor },
+  ];
+
+  const headerActions = (
+    <>
+      <Button variant="outline" size="sm" className="text-gray-600" onClick={() => router.push('/user/dashboard')}>
+        Back to Dashboard
+      </Button>
+      {!isEditingSettings ? (
+        <Button variant="rose" size="sm" onClick={handleEditSettings} className="gap-1.5">
+          <Pencil className="w-4 h-4" />
+          Edit
+        </Button>
+      ) : (
+        <>
+          <Button variant="outline" size="sm" onClick={handleCancelEdit} className="gap-1.5">
+            <X className="w-4 h-4" />
+            Cancel
           </Button>
-          {/* Top-bar edit/save only controls notifications & preferences */}
-          {!isEditingSettings ? (
-            <Button variant="rose" size="sm" onClick={handleEditSettings} className="gap-1.5">
-              <Pencil className="w-4 h-4" />
-              Edit
+          {isDirty && (
+            <Button variant="rose" size="sm" onClick={handleSaveSettings} disabled={saving} className="gap-1.5">
+              {saving ? <Loader2 className="w-4 h-4 animate-spin" /> : <Save className="w-4 h-4" />}
+              Save changes
             </Button>
-          ) : (
-            <>
-              <Button variant="outline" size="sm" onClick={handleCancelEdit} className="gap-1.5">
-                <X className="w-4 h-4" />
-                Cancel
-              </Button>
-              {isDirty && (
-                <Button variant="rose" size="sm" onClick={handleSaveSettings} disabled={saving} className="gap-1.5">
-                  {saving ? <Loader2 className="w-4 h-4 animate-spin" /> : <Save className="w-4 h-4" />}
-                  Save changes
-                </Button>
-              )}
-            </>
           )}
-        </div>
-      </div>
+        </>
+      )}
+    </>
+  );
 
-      <div className="flex flex-col lg:flex-row gap-8">
-        <Card className="lg:w-64 h-fit border-0 shadow-sm bg-white">
-          <CardContent className="p-4">
-            <nav className="space-y-1">
-              {[
-                { id: 'profile', label: 'Profile', icon: User },
-                { id: 'notifications', label: 'Notifications', icon: Bell },
-                { id: 'preferences', label: 'Preferences', icon: Globe },
-                { id: 'appearance', label: 'Appearance', icon: Monitor },
-              ].map((item) => (
-                <button
-                  key={item.id}
-                  onClick={() => handleTabChange(item.id)}
-                  className={`flex items-center w-full px-3 py-2 text-sm font-medium rounded-lg transition-colors ${
-                    activeTab === item.id ? 'bg-indigo-50 text-indigo-700' : 'text-gray-600 hover:bg-gray-50 hover:text-gray-900'
-                  }`}
-                >
-                  <item.icon className={`w-4 h-4 mr-3 ${activeTab === item.id ? 'text-indigo-600' : 'text-gray-400'}`} />
-                  {item.label}
-                </button>
-              ))}
-              <Separator className="my-4" />
-              <button
-                onClick={logout}
-                className="flex items-center w-full px-3 py-2 text-sm font-medium text-red-600 rounded-lg hover:bg-red-50 transition-colors"
-              >
-                <LogOut className="w-4 h-4 mr-3" />
-                Sign Out
-              </button>
-            </nav>
-          </CardContent>
-        </Card>
-
-        <div className="flex-1">
-          <Tabs value={activeTab} onValueChange={handleTabChange} className="space-y-6">
+  return (
+    <SettingsPageShell
+      title="Settings"
+      subtitle="Manage your account and preferences as team lead"
+      accentColor="indigo"
+      tabs={userSettingsTabs}
+      activeTab={activeTab}
+      onTabChange={handleTabChange}
+      saving={saving}
+      showSave={false}
+      extraHeaderActions={headerActions}
+      onLogout={logout}
+    >
             <TabsContent value="profile" className="space-y-6 mt-0">
               <Card className="border-0 shadow-sm">
                 <CardHeader>
@@ -663,17 +636,14 @@ function UserSettingsContent() {
               </Card>
             </TabsContent>
 
-            <TabsContent value="appearance" className="space-y-6 mt-0">
-              <Card className="border-0 shadow-sm">
-                <CardContent className="pt-6">
-                  <AppearanceSettings />
-                </CardContent>
-              </Card>
-            </TabsContent>
-          </Tabs>
-        </div>
-      </div>
-    </div>
+      <TabsContent value="appearance" className="space-y-6 mt-0">
+        <Card className="border-0 shadow-sm">
+          <CardContent className="pt-6">
+            <AppearanceSettings />
+          </CardContent>
+        </Card>
+      </TabsContent>
+    </SettingsPageShell>
   );
 }
 

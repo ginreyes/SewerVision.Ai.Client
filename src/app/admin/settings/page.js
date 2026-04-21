@@ -18,7 +18,6 @@ import {
   Shield,
   Eye,
   EyeOff,
-  LogOut,
   Upload,
   CheckCircle2,
   Pencil,
@@ -26,7 +25,6 @@ import {
   Activity,
   BrainCircuit,
   Settings as SettingsIcon,
-  RefreshCcw,
   RotateCcw,
   Monitor
 } from 'lucide-react';
@@ -34,7 +32,7 @@ import { Card, CardContent, CardHeader, CardTitle, CardDescription, CardFooter }
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
-import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
+import { TabsContent } from '@/components/ui/tabs';
 import { Switch } from '@/components/ui/switch';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
@@ -45,10 +43,12 @@ import { Slider } from '@/components/ui/slider';
 import { useUser } from '@/components/providers/UserContext';
 import { useAlert } from '@/components/providers/AlertProvider';
 import { api, getCookie } from '@/lib/helper';
+import { BACKEND_URL } from '@/lib/config';
 import settingsApi from '@/data/settingsApi';
 import { SectionHeader, ToggleSetting, SettingsPageLoading } from '@/components/admin/settings';
 import { invalidateLoadingModuleCache } from '@/hooks/useLoadingModuleSettings';
 import AppearanceSettings from '@/components/shared/AppearanceSettings';
+import SettingsPageShell from '@/components/shared/SettingsPageShell';
 
 function SettingsPageContent() {
   const router = useRouter();
@@ -386,24 +386,17 @@ function SettingsPageContent() {
     if (uname) formData.append('username', uname);
     if (uid) formData.append('userId', uid);
 
-    const token = getCookie('authToken');
-    const backendUrl = process.env.NEXT_PUBLIC_BACKEND_URL || 'http://localhost:5000';
-
     // Always put userId in the URL path when available — don't rely on multipart body alone
     // Prefer URL userId when we have a trusted id; otherwise let backend resolve by username
-    const uploadUrl = uid
-      ? `${backendUrl}/api/users/upload-avatar/${uid}`
-      : `${backendUrl}/api/users/upload-avatar`;
+    const uploadPath = uid
+      ? `/api/users/upload-avatar/${uid}`
+      : `/api/users/upload-avatar`;
 
-    const res = await fetch(uploadUrl, {
-      method: 'POST',
-      headers: token ? { Authorization: `Bearer ${token}` } : {},
-      body: formData,
-    });
+    const res = await api(uploadPath, 'POST', formData);
 
-    const data = await res.json();
+    const data = res.data;
 
-    if (res.ok && data.avatarUrl) {
+    if (res.ok && data?.avatarUrl) {
       const avatarUrlWithBust = `${data.avatarUrl}${data.avatarUrl.includes('?') ? '&' : '?'}t=${Date.now()}`;
       setProfile((prev) => ({ ...prev, avatar: avatarUrlWithBust }));
 
@@ -543,71 +536,34 @@ function SettingsPageContent() {
 
 
 
+  const adminSettingsTabs = [
+    { id: 'profile', label: 'Profile', icon: User },
+    { id: 'ai-models', label: 'AI Models', icon: BrainCircuit },
+    { id: 'cloud-streaming', label: 'Cloud & Stream', icon: HardDrive },
+    { id: 'qc-workflow', label: 'QC Workflow', icon: Activity },
+    { id: 'notifications', label: 'Notifications', icon: Bell },
+    { id: 'ai-learning', label: 'AI Learning', icon: Cpu },
+    { id: 'aws-config', label: 'Storage Config', icon: Server },
+    { id: 'system-admin', label: 'System Admin', icon: SettingsIcon },
+    { id: 'appearance', label: 'Appearance', icon: Monitor },
+  ];
+
+  const showSaveButton = activeTab !== 'profile' && isSectionDirty(activeTab);
+
   return (
-    <div className="max-w-7xl mx-auto p-6 space-y-8">
-      {/* Header */}
-      <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">
-        <div>
-          <h1 className="text-2xl font-bold text-gray-900">Admin Settings</h1>
-          <p className="text-gray-500 mt-1">Manage system configurations and personal preferences</p>
-        </div>
-        <div className="flex items-center gap-3">
-          <Button variant="outline" className="text-gray-600 gap-2" onClick={fetchSettings}>
-            <RefreshCcw className="w-4 h-4" /> Refresh
-          </Button>
-          {activeTab !== 'profile' && isSectionDirty(activeTab) && (
-            <Button onClick={() => saveSettings(activeTab)} disabled={saving} className="bg-blue-600 hover:bg-blue-700">
-              {saving ? <Loader2 className="w-4 h-4 mr-2 animate-spin" /> : <Save className="w-4 h-4 mr-2" />}
-              Save Changes
-            </Button>
-          )}
-        </div>
-      </div>
-
-      <div className="flex flex-col lg:flex-row gap-8">
-        {/* Sidebar Navigation */}
-        <Card className="lg:w-64 h-fit border-0 shadow-sm bg-white">
-          <CardContent className="p-4">
-            <nav className="space-y-1">
-              {[
-                { id: 'profile', label: 'Profile', icon: User },
-                { id: 'ai-models', label: 'AI Models', icon: BrainCircuit },
-                { id: 'cloud-streaming', label: 'Cloud & Stream', icon: HardDrive },
-                { id: 'qc-workflow', label: 'QC Workflow', icon: Activity },
-                { id: 'notifications', label: 'Notifications', icon: Bell },
-                { id: 'ai-learning', label: 'AI Learning', icon: Cpu },
-                { id: 'aws-config', label: 'Storage Config', icon: Server },
-                { id: 'system-admin', label: 'System Admin', icon: SettingsIcon },
-                { id: 'appearance', label: 'Appearance', icon: Monitor },
-              ].map((item) => (
-                <button
-                  key={item.id}
-                  onClick={() => handleTabChange(item.id)}
-                  className={`flex items-center w-full px-3 py-2 text-sm font-medium rounded-lg transition-colors ${activeTab === item.id
-                    ? 'bg-blue-50 text-blue-700'
-                    : 'text-gray-600 hover:bg-gray-50 hover:text-gray-900'
-                    }`}
-                >
-                  <item.icon className={`w-4 h-4 mr-3 ${activeTab === item.id ? 'text-blue-600' : 'text-gray-400'
-                    }`} />
-                  {item.label}
-                </button>
-              ))}
-              <Separator className="my-4" />
-              <button
-                onClick={logout}
-                className="flex items-center w-full px-3 py-2 text-sm font-medium text-red-600 rounded-lg hover:bg-red-50 transition-colors"
-              >
-                <LogOut className="w-4 h-4 mr-3" />
-                Sign Out
-              </button>
-            </nav>
-          </CardContent>
-        </Card>
-
-        {/* Main Content Area */}
-        <div className="flex-1">
-          <Tabs value={activeTab} onValueChange={handleTabChange} className="space-y-6">
+    <SettingsPageShell
+      title="Admin Settings"
+      subtitle="Manage system configurations and personal preferences"
+      accentColor="rose"
+      tabs={adminSettingsTabs}
+      activeTab={activeTab}
+      onTabChange={handleTabChange}
+      saving={saving}
+      onSave={() => saveSettings(activeTab)}
+      showSave={showSaveButton}
+      onRefresh={fetchSettings}
+      onLogout={logout}
+    >
 
             {/* --- Profile Tab --- */}
             <TabsContent value="profile" className="space-y-6 mt-0">
@@ -651,7 +607,7 @@ function SettingsPageContent() {
                       <input type="file" ref={fileInputRef} className="hidden" accept="image/*" onChange={handleAvatarFileChange} />
                       <div className="cursor-pointer w-24 h-24 rounded-full overflow-hidden" onClick={handleAvatarClick}>
                         <UserAvatar
-                          src={profile.avatar || (userId || userData?._id ? `${process.env.NEXT_PUBLIC_BACKEND_URL || 'http://localhost:5000'}/api/users/avatar/${userId || userData?._id}` : null)}
+                          src={profile.avatar || (userId || userData?._id ? `${BACKEND_URL}/api/users/avatar/${userId || userData?._id}` : null)}
                           fallback={(profile.firstName?.[0] || '') + (profile.lastName?.[0] || '') || 'U'}
                           size="xl"
                           className="w-24 h-24 border-4 border-white shadow-lg bg-blue-100 text-blue-600 text-2xl"
@@ -841,11 +797,11 @@ function SettingsPageContent() {
                   <SectionHeader icon={Cpu} title="AI Learning Loop" description="Configure continuous learning parameters" />
                 </CardHeader>
                 <CardContent className="space-y-6">
-                  <div className="flex items-start gap-3 p-3 bg-blue-50 border border-blue-200 rounded-lg text-sm text-blue-800">
-                    <BrainCircuit className="w-4 h-4 mt-0.5 shrink-0 text-blue-600" />
+                  <div className="flex items-start gap-3 p-3 bg-blue-50 dark:bg-blue-500/10 border border-blue-200 dark:border-blue-500/20 rounded-lg text-sm text-blue-800 dark:text-blue-300">
+                    <BrainCircuit className="w-4 h-4 mt-0.5 shrink-0 text-blue-600 dark:text-blue-400" />
                     <div>
                       <p className="font-medium">Powered by Roboflow</p>
-                      <p className="text-blue-700 text-xs mt-0.5">AI inference is handled by Roboflow (configured via environment variables). These settings control how QC feedback is collected — actual model retraining is managed in your Roboflow workspace.</p>
+                      <p className="text-blue-700 dark:text-blue-400/80 text-xs mt-0.5">AI inference is handled by Roboflow (configured via environment variables). These settings control how QC feedback is collected — actual model retraining is managed in your Roboflow workspace.</p>
                     </div>
                   </div>
                   <ToggleSetting label="Feedback Loop" description="Enable automated training from QC data" checked={feedbackLoopEnabled} onCheckedChange={setFeedbackLoopEnabled} />
@@ -860,9 +816,9 @@ function SettingsPageContent() {
                       </SelectContent>
                     </Select>
                   </div>
-                  <div className="bg-green-50 p-4 rounded-lg">
-                    <h4 className="font-semibold text-green-800 mb-2">Metrics</h4>
-                    <ul className="text-sm text-green-700 space-y-1">
+                  <div className="bg-green-50 dark:bg-green-500/10 border border-green-200 dark:border-green-500/20 p-4 rounded-lg">
+                    <h4 className="font-semibold text-green-800 dark:text-green-300 mb-2">Metrics</h4>
+                    <ul className="text-sm text-green-700 dark:text-green-400 space-y-1">
                       <li>Accuracy: {performanceMetrics.accuracy}%</li>
                       <li>FPR: {performanceMetrics.falsePositiveRate}%</li>
                     </ul>
@@ -994,19 +950,15 @@ function SettingsPageContent() {
 
             </TabsContent>
 
-            {/* --- Appearance Tab --- */}
-            <TabsContent value="appearance" className="space-y-6 mt-0">
-              <Card className="border-0 shadow-sm">
-                <CardContent className="pt-6">
-                  <AppearanceSettings />
-                </CardContent>
-              </Card>
-            </TabsContent>
-
-          </Tabs>
-        </div>
-      </div>
-    </div>
+      {/* --- Appearance Tab --- */}
+      <TabsContent value="appearance" className="space-y-6 mt-0">
+        <Card className="border-0 shadow-sm">
+          <CardContent className="pt-6">
+            <AppearanceSettings />
+          </CardContent>
+        </Card>
+      </TabsContent>
+    </SettingsPageShell>
   );
 }
 

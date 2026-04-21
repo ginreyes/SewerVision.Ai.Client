@@ -125,6 +125,7 @@ const SewerTable = (props) => {
     rowsPerPageOptions = [10, 20, 50],
     getRowId = null,
     columnDefaults = {},
+    onRowClick = null,
   } = props
 
   const hasActions = showActions && (onView || onDelete || onDisable || onEmail || onChangePassword)
@@ -359,10 +360,17 @@ const SewerTable = (props) => {
                   return (
                     <tr
                       key={rowId}
-                      className="border-t border-gray-100 hover:bg-gray-50 dark:hover:bg-zinc-800 transition-colors"
+                      onClick={onRowClick ? () => onRowClick(item) : undefined}
+                      className={`border-t border-gray-100 hover:bg-gray-50 dark:hover:bg-zinc-800 transition-colors ${
+                        onRowClick ? "cursor-pointer" : ""
+                      }`}
                     >
                       {showCheckbox && (
-                        <td className="p-3" style={{ width: 40 }}>
+                        <td
+                          className="p-3"
+                          style={{ width: 40 }}
+                          onClick={(e) => e.stopPropagation()}
+                        >
                           <input
                             type="checkbox"
                             checked={isChecked}
@@ -382,7 +390,11 @@ const SewerTable = (props) => {
                         )
                       })}
                       {hasActions && (
-                        <td className="p-3 text-right" style={{ width: widths["__actions"] }}>
+                        <td
+                          className="p-3 text-right"
+                          style={{ width: widths["__actions"] }}
+                          onClick={(e) => e.stopPropagation()}
+                        >
                           <DropdownMenu>
                             <DropdownMenuTrigger asChild>
                               <Button variant="ghost" size="sm" className="h-8 w-8 p-0 hover:bg-gray-100">

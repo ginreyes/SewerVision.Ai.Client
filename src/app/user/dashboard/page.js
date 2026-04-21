@@ -18,6 +18,7 @@ import { useUser } from '@/components/providers/UserContext';
 import Link from 'next/link';
 
 import StatsCards from '@/components/user/dashboard/StatsCards';
+import WeeklyDigestWidget from '@/components/user/project/WeeklyDigestWidget';
 import TeamMemberList from '@/components/user/dashboard/TeamMemberList';
 import UserDashboardDetail from '@/components/user/dashboard/UserDashboardDetail';
 import { useUserDashboard, useUserTeamMemberDashboard } from '@/hooks/useQueryHooks';
@@ -249,6 +250,8 @@ export default function UserDashboardPage() {
             qcCount={teamCounts.qc}
             reportsCount={reportsCount}
           />
+
+          <WeeklyDigestWidget managerId={userId} />
 
           {/* Charts row */}
           <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
