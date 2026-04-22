@@ -35,6 +35,8 @@ import supportApi from '@/data/supportApi';
 import complaintApi from '@/data/complaintApi';
 import { ListSkeleton } from '@/components/shared/SkeletonLoading';
 import AttachmentRow, { fileProxyUrl, formatBytes } from '@/components/customer/support/AttachmentRow';
+import TicketRow from '@/components/customer/support/TicketRow';
+import ComplaintRow from '@/components/customer/support/ComplaintRow';
 import {
   TICKET_STATUS_COLORS,
   TICKET_STATUS_ICONS,
@@ -96,7 +98,7 @@ function TicketDetailView({ ticketId, userId, userData, onBack }) {
   };
 
   if (isLoading) return <div className="flex justify-center py-16"><Loader2 className="w-5 h-5 animate-spin text-emerald-500" /></div>;
-  if (!ticket) return <div className="text-center py-16 text-gray-500">Ticket not found</div>;
+  if (!ticket) return <div className="text-center py-16 text-gray-500 dark:!text-gray-300">Ticket not found</div>;
 
   const StatusIcon = TICKET_STATUS_ICONS[ticket.status] || AlertCircle;
   const myName = userData ? `${userData.first_name || ''} ${userData.last_name || ''}`.trim() || userData.username : 'You';
@@ -121,7 +123,7 @@ function TicketDetailView({ ticketId, userId, userData, onBack }) {
                 <Badge className={`${TICKET_STATUS_COLORS[ticket.status]} text-xs gap-1`}><StatusIcon className="w-3 h-3" />{ticket.status}</Badge>
                 <Badge variant="outline" className="text-xs capitalize">{ticket.category}</Badge>
                 <Badge variant="outline" className="text-xs capitalize">{ticket.priority} priority</Badge>
-                <span className="text-xs text-gray-400">{ticket.created_at ? new Date(ticket.created_at).toLocaleString() : ''}</span>
+                <span className="text-xs text-gray-400 dark:!text-gray-400">{ticket.created_at ? new Date(ticket.created_at).toLocaleString() : ''}</span>
               </div>
             </div>
           </div>
@@ -133,7 +135,7 @@ function TicketDetailView({ ticketId, userId, userData, onBack }) {
         {/* Opening message — ME (right, teal) */}
         <div className="flex items-end gap-2 justify-end">
           <div className="max-w-[75%] flex flex-col items-end">
-            <span className="text-[10px] text-gray-400 mb-1 mr-1">{ticket.created_at ? new Date(ticket.created_at).toLocaleString() : ''}</span>
+            <span className="text-[10px] text-gray-400 dark:!text-gray-400 mb-1 mr-1">{ticket.created_at ? new Date(ticket.created_at).toLocaleString() : ''}</span>
             <div className="bg-emerald-500 text-white rounded-2xl rounded-br-sm px-4 py-2.5 shadow-sm">
               <p className="text-sm whitespace-pre-wrap leading-relaxed">{ticket.message}</p>
             </div>
@@ -156,7 +158,7 @@ function TicketDetailView({ ticketId, userId, userData, onBack }) {
               <div key={idx} className="flex items-end gap-2">
                 <UserAvatar src={avatarSrc} fallback={avatarFallback} size="sm" />
                 <div className="max-w-[75%]">
-                  <span className="text-[10px] text-gray-400 mb-1 ml-1 block">{senderName} · {resp.timestamp ? new Date(resp.timestamp).toLocaleString() : ''}</span>
+                  <span className="text-[10px] text-gray-400 dark:!text-gray-400 mb-1 ml-1 block">{senderName} · {resp.timestamp ? new Date(resp.timestamp).toLocaleString() : ''}</span>
                   <div className="bg-white rounded-2xl rounded-bl-sm px-4 py-2.5 shadow-sm border border-gray-200">
                     <p className="text-sm text-gray-800 whitespace-pre-wrap leading-relaxed">{resp.text}</p>
                     <AttachmentRow attachments={resp.attachments} />
@@ -169,7 +171,7 @@ function TicketDetailView({ ticketId, userId, userData, onBack }) {
           return (
             <div key={idx} className="flex items-end gap-2 justify-end">
               <div className="max-w-[75%] flex flex-col items-end">
-                <span className="text-[10px] text-gray-400 mb-1 mr-1">{resp.timestamp ? new Date(resp.timestamp).toLocaleString() : ''}</span>
+                <span className="text-[10px] text-gray-400 dark:!text-gray-400 mb-1 mr-1">{resp.timestamp ? new Date(resp.timestamp).toLocaleString() : ''}</span>
                 <div className="bg-emerald-500 text-white rounded-2xl rounded-br-sm px-4 py-2.5 shadow-sm">
                   <p className="text-sm whitespace-pre-wrap leading-relaxed">{resp.text}</p>
                   <AttachmentRow attachments={resp.attachments} dark />
@@ -183,7 +185,7 @@ function TicketDetailView({ ticketId, userId, userData, onBack }) {
         {(ticket.status === 'resolved' || ticket.status === 'closed') && (
           <div className="flex items-center gap-2 py-1">
             <div className="flex-1 h-px bg-gray-300" />
-            <span className="text-[10px] text-gray-400 px-2 flex items-center gap-1">
+            <span className="text-[10px] text-gray-400 dark:!text-gray-400 px-2 flex items-center gap-1">
               <CheckCircle className="w-3 h-3 text-emerald-500" />
               {ticket.status === 'resolved' ? 'Ticket resolved' : 'Ticket closed'}
             </span>
@@ -236,7 +238,7 @@ function TicketDetailView({ ticketId, userId, userData, onBack }) {
                   className="text-gray-400 hover:text-emerald-600 hover:bg-emerald-50 h-8 px-2 rounded-lg">
                   {uploading ? <Loader2 className="w-4 h-4 animate-spin" /> : <Paperclip className="w-4 h-4" />}
                 </Button>
-                <span className="text-[10px] text-gray-400">JPG, PNG, PDF, MP4 · max 20MB</span>
+                <span className="text-[10px] text-gray-400 dark:!text-gray-400">JPG, PNG, PDF, MP4 · max 20MB</span>
               </div>
               <Button size="sm" onClick={handleReply}
                 disabled={(!replyText.trim() && replyAttachments.length === 0) || responseMutation.isPending}
@@ -257,7 +259,7 @@ function ComplaintDetailView({ complaintId, onBack }) {
   const { data: complaint, isLoading } = useComplaint(complaintId);
 
   if (isLoading) return <div className="flex justify-center py-16"><Loader2 className="w-5 h-5 animate-spin text-emerald-500" /></div>;
-  if (!complaint) return <div className="text-center py-16 text-gray-500">Complaint not found</div>;
+  if (!complaint) return <div className="text-center py-16 text-gray-500 dark:!text-gray-300">Complaint not found</div>;
 
   const StatusIcon = COMPLAINT_STATUS_ICONS[complaint.status] || AlertCircle;
   const linkedTicket = complaint.linkedTicketId;
@@ -287,12 +289,12 @@ function ComplaintDetailView({ complaintId, onBack }) {
                   {complaint.severity} severity
                 </Badge>
                 <Badge variant="outline" className="text-xs capitalize">{complaint.category}</Badge>
-                <span className="text-xs text-gray-400">{complaint.created_at ? new Date(complaint.created_at).toLocaleString() : ''}</span>
+                <span className="text-xs text-gray-400 dark:!text-gray-400">{complaint.created_at ? new Date(complaint.created_at).toLocaleString() : ''}</span>
               </div>
             </div>
           </div>
           <div className="bg-gray-50 rounded-xl border border-gray-100 p-4">
-            <p className="text-sm text-gray-700 whitespace-pre-wrap leading-relaxed">{complaint.description}</p>
+            <p className="text-sm text-gray-700 dark:!text-gray-200 whitespace-pre-wrap leading-relaxed">{complaint.description}</p>
           </div>
         </CardContent>
       </Card>
@@ -301,8 +303,8 @@ function ComplaintDetailView({ complaintId, onBack }) {
         <Card className="border-0 shadow-sm overflow-hidden">
           <div className="bg-gray-50/60 border-b border-gray-100 px-5 py-3 flex items-center gap-2">
             <Paperclip className="w-3.5 h-3.5 text-gray-400" />
-            <span className="text-xs font-semibold text-gray-500 uppercase tracking-wide">Attachments</span>
-            <span className="ml-auto text-xs text-gray-400">{attachments.length} file{attachments.length !== 1 ? 's' : ''}</span>
+            <span className="text-xs font-semibold text-gray-500 dark:!text-gray-300 uppercase tracking-wide">Attachments</span>
+            <span className="ml-auto text-xs text-gray-400 dark:!text-gray-400">{attachments.length} file{attachments.length !== 1 ? 's' : ''}</span>
           </div>
           <CardContent className="p-4">
             {attachments.filter(a => a.mimetype?.startsWith('image/')).length > 0 && (
@@ -325,7 +327,7 @@ function ComplaintDetailView({ complaintId, onBack }) {
                   className="flex items-center gap-2 px-3 py-2 rounded-xl bg-gray-100 hover:bg-gray-200 border border-gray-200 group transition-colors">
                   <FileText className="w-4 h-4 shrink-0 text-gray-500" />
                   <span className="text-xs font-medium truncate flex-1">{att.originalname || att.filename}</span>
-                  {att.size && <span className="text-[10px] text-gray-400">{formatBytes(att.size)}</span>}
+                  {att.size && <span className="text-[10px] text-gray-400 dark:!text-gray-400">{formatBytes(att.size)}</span>}
                   <Download className="w-3 h-3 text-gray-400 group-hover:text-gray-700" />
                 </a>
               ))}
@@ -343,7 +345,7 @@ function ComplaintDetailView({ complaintId, onBack }) {
               </div>
               <span className="text-sm font-semibold text-gray-900">Support Ticket Created</span>
             </div>
-            <div className="flex items-center gap-2 px-3 py-2 bg-emerald-50 rounded-lg border border-emerald-100 text-sm text-gray-700">
+            <div className="flex items-center gap-2 px-3 py-2 bg-emerald-50 rounded-lg border border-emerald-100 text-sm text-gray-700 dark:!text-gray-200">
               <Ticket className="w-3.5 h-3.5 text-emerald-500 shrink-0" />
               <span className="flex-1 truncate">{linkedTicket.subject || 'Support ticket'}</span>
               {linkedTicket.status && <Badge variant="outline" className="text-[10px] capitalize shrink-0">{linkedTicket.status}</Badge>}
@@ -359,7 +361,7 @@ function ComplaintDetailView({ complaintId, onBack }) {
               <CheckCircle className="w-4 h-4 text-emerald-500" />
               <h4 className="text-sm font-semibold text-emerald-700">Resolution</h4>
             </div>
-            <p className="text-sm text-gray-700 whitespace-pre-wrap">{complaint.resolution}</p>
+            <p className="text-sm text-gray-700 dark:!text-gray-200 whitespace-pre-wrap">{complaint.resolution}</p>
           </CardContent>
         </Card>
       )}
@@ -385,112 +387,7 @@ function ComplaintDetailView({ complaintId, onBack }) {
   );
 }
 
-/* ─── Ticket list item ─── */
-function TicketRow({ t, gridMode, onClick }) {
-  const StatusIcon = TICKET_STATUS_ICONS[t.status] || AlertCircle;
-  const hasAttachments = t.responses?.some(r => r.attachments?.length > 0);
-
-  if (gridMode) {
-    return (
-      <Card className="border shadow-sm hover:shadow-md transition-all cursor-pointer hover:border-emerald-200 group" onClick={onClick}>
-        <CardContent className="p-4">
-          <div className="flex items-start justify-between gap-2 mb-3">
-            <div className="w-8 h-8 rounded-lg bg-emerald-100 flex items-center justify-center shrink-0">
-              <Ticket className="w-4 h-4 text-emerald-600" />
-            </div>
-            <Badge className={`${TICKET_STATUS_COLORS[t.status]} text-[10px] shrink-0`}>
-              <StatusIcon className="w-2.5 h-2.5 mr-0.5 inline" />{t.status}
-            </Badge>
-          </div>
-          <p className="text-sm font-semibold text-gray-900 mb-1 line-clamp-2 group-hover:text-emerald-700 transition-colors">{t.subject}</p>
-          <p className="text-xs text-gray-500 capitalize mb-3">{t.category}</p>
-          <div className="flex items-center justify-between text-[10px] text-gray-400">
-            <span>{t.created_at ? new Date(t.created_at).toLocaleDateString() : ''}</span>
-            <div className="flex items-center gap-1.5">
-              {t.responses?.length > 0 && <span className="flex items-center gap-0.5"><MessageSquare className="w-3 h-3" />{t.responses.length}</span>}
-              {hasAttachments && <Paperclip className="w-3 h-3" />}
-            </div>
-          </div>
-        </CardContent>
-      </Card>
-    );
-  }
-
-  return (
-    <tr className="hover:bg-emerald-50/50 cursor-pointer transition-colors group" onClick={onClick}>
-      <td className="px-4 py-3">
-        <p className="text-sm font-medium text-gray-900 group-hover:text-emerald-700 transition-colors">{t.subject}</p>
-      </td>
-      <td className="px-4 py-3">
-        <Badge className={`${TICKET_STATUS_COLORS[t.status]} text-[10px]`}><StatusIcon className="w-2.5 h-2.5 mr-0.5 inline" />{t.status}</Badge>
-      </td>
-      <td className="px-4 py-3 hidden sm:table-cell">
-        <Badge variant="outline" className="text-[10px] capitalize">{t.category}</Badge>
-      </td>
-      <td className="px-4 py-3 hidden md:table-cell text-xs text-gray-400">{t.created_at ? new Date(t.created_at).toLocaleDateString() : ''}</td>
-      <td className="px-4 py-3 text-right">
-        <div className="flex items-center justify-end gap-2">
-          {t.responses?.length > 0 && <Badge variant="secondary" className="text-[10px]">{t.responses.length} replies</Badge>}
-          <ChevronRight className="w-4 h-4 text-gray-300 group-hover:text-emerald-500 transition-colors" />
-        </div>
-      </td>
-    </tr>
-  );
-}
-
-/* ─── Complaint list item ─── */
-function ComplaintRow({ c, gridMode, onClick }) {
-  const StatusIcon = COMPLAINT_STATUS_ICONS[c.status] || AlertCircle;
-  const hasAttachments = c.attachments?.length > 0;
-
-  if (gridMode) {
-    return (
-      <Card className="border shadow-sm hover:shadow-md transition-all cursor-pointer hover:border-amber-200 group" onClick={onClick}>
-        <CardContent className="p-4">
-          <div className="flex items-start justify-between gap-2 mb-3">
-            <div className="w-8 h-8 rounded-lg bg-amber-100 flex items-center justify-center shrink-0">
-              <MessageSquareWarning className="w-4 h-4 text-amber-600" />
-            </div>
-            <Badge className={`${COMPLAINT_STATUS_COLORS[c.status]} text-[10px] shrink-0`}>
-              <StatusIcon className="w-2.5 h-2.5 mr-0.5 inline" />{COMPLAINT_STATUS_LABELS[c.status] || c.status}
-            </Badge>
-          </div>
-          <p className="text-sm font-semibold text-gray-900 mb-1 line-clamp-2 group-hover:text-amber-700 transition-colors">{c.title}</p>
-          <p className="text-xs text-gray-500 capitalize mb-3">{c.category}</p>
-          <div className="flex items-center justify-between text-[10px] text-gray-400">
-            <span>{c.created_at ? new Date(c.created_at).toLocaleDateString() : ''}</span>
-            <div className="flex items-center gap-1.5">
-              <Badge variant="outline" className={`text-[9px] capitalize ${SEVERITY_COLORS[c.severity] || ''}`}>{c.severity}</Badge>
-              {hasAttachments && <Paperclip className="w-3 h-3" />}
-            </div>
-          </div>
-        </CardContent>
-      </Card>
-    );
-  }
-
-  return (
-    <tr className="hover:bg-amber-50/50 cursor-pointer transition-colors group" onClick={onClick}>
-      <td className="px-4 py-3">
-        <p className="text-sm font-medium text-gray-900 group-hover:text-amber-700 transition-colors">{c.title}</p>
-      </td>
-      <td className="px-4 py-3">
-        <Badge className={`${COMPLAINT_STATUS_COLORS[c.status]} text-[10px]`}><StatusIcon className="w-2.5 h-2.5 mr-0.5 inline" />{COMPLAINT_STATUS_LABELS[c.status] || c.status}</Badge>
-      </td>
-      <td className="px-4 py-3 hidden sm:table-cell">
-        <Badge variant="outline" className={`text-[10px] capitalize ${SEVERITY_COLORS[c.severity] || ''}`}>{c.severity}</Badge>
-      </td>
-      <td className="px-4 py-3 hidden md:table-cell text-xs text-gray-400">{c.created_at ? new Date(c.created_at).toLocaleDateString() : ''}</td>
-      <td className="px-4 py-3 text-right">
-        <div className="flex items-center justify-end gap-2">
-          {c.linkedTicketId && <Badge variant="secondary" className="text-[10px] bg-emerald-50 text-emerald-700 hidden sm:flex"><Ticket className="w-2.5 h-2.5 mr-0.5" />Ticket</Badge>}
-          {hasAttachments && <Badge variant="outline" className="text-[10px] text-gray-500 hidden sm:flex"><Paperclip className="w-2.5 h-2.5 mr-0.5" />{c.attachments.length}</Badge>}
-          <ChevronRight className="w-4 h-4 text-gray-300 group-hover:text-amber-500 transition-colors" />
-        </div>
-      </td>
-    </tr>
-  );
-}
+// TicketRow and ComplaintRow extracted to @/components/customer/support/
 
 /* ─── Main Page ─── */
 export default function HelpCenterPage() {
@@ -750,10 +647,10 @@ export default function HelpCenterPage() {
               <table className="w-full text-left">
                 <thead>
                   <tr className="bg-gray-50 border-b border-gray-100">
-                    <th className="px-4 py-2.5 text-xs font-semibold text-gray-500 uppercase tracking-wide">Subject</th>
-                    <th className="px-4 py-2.5 text-xs font-semibold text-gray-500 uppercase tracking-wide">Status</th>
-                    <th className="px-4 py-2.5 text-xs font-semibold text-gray-500 uppercase tracking-wide hidden sm:table-cell">Category</th>
-                    <th className="px-4 py-2.5 text-xs font-semibold text-gray-500 uppercase tracking-wide hidden md:table-cell">Date</th>
+                    <th className="px-4 py-2.5 text-xs font-semibold text-gray-500 dark:!text-gray-300 uppercase tracking-wide">Subject</th>
+                    <th className="px-4 py-2.5 text-xs font-semibold text-gray-500 dark:!text-gray-300 uppercase tracking-wide">Status</th>
+                    <th className="px-4 py-2.5 text-xs font-semibold text-gray-500 dark:!text-gray-300 uppercase tracking-wide hidden sm:table-cell">Category</th>
+                    <th className="px-4 py-2.5 text-xs font-semibold text-gray-500 dark:!text-gray-300 uppercase tracking-wide hidden md:table-cell">Date</th>
                     <th className="px-4 py-2.5"></th>
                   </tr>
                 </thead>
@@ -783,10 +680,10 @@ export default function HelpCenterPage() {
               <table className="w-full text-left">
                 <thead>
                   <tr className="bg-gray-50 border-b border-gray-100">
-                    <th className="px-4 py-2.5 text-xs font-semibold text-gray-500 uppercase tracking-wide">Title</th>
-                    <th className="px-4 py-2.5 text-xs font-semibold text-gray-500 uppercase tracking-wide">Status</th>
-                    <th className="px-4 py-2.5 text-xs font-semibold text-gray-500 uppercase tracking-wide hidden sm:table-cell">Severity</th>
-                    <th className="px-4 py-2.5 text-xs font-semibold text-gray-500 uppercase tracking-wide hidden md:table-cell">Date</th>
+                    <th className="px-4 py-2.5 text-xs font-semibold text-gray-500 dark:!text-gray-300 uppercase tracking-wide">Title</th>
+                    <th className="px-4 py-2.5 text-xs font-semibold text-gray-500 dark:!text-gray-300 uppercase tracking-wide">Status</th>
+                    <th className="px-4 py-2.5 text-xs font-semibold text-gray-500 dark:!text-gray-300 uppercase tracking-wide hidden sm:table-cell">Severity</th>
+                    <th className="px-4 py-2.5 text-xs font-semibold text-gray-500 dark:!text-gray-300 uppercase tracking-wide hidden md:table-cell">Date</th>
                     <th className="px-4 py-2.5"></th>
                   </tr>
                 </thead>
@@ -921,7 +818,7 @@ export default function HelpCenterPage() {
                     )}
                     {cAttachments.length === 0 && (
                       <button type="button" onClick={() => fileInputRef.current?.click()} disabled={uploading}
-                        className="w-full flex items-center justify-center gap-2 border-2 border-dashed border-gray-200 rounded-xl py-3 text-xs text-gray-400 hover:border-emerald-300 hover:text-emerald-600 hover:bg-emerald-50/30 transition-all">
+                        className="w-full flex items-center justify-center gap-2 border-2 border-dashed border-gray-200 rounded-xl py-3 text-xs text-gray-400 dark:!text-gray-400 hover:border-emerald-300 hover:text-emerald-600 hover:bg-emerald-50/30 transition-all">
                         {uploading ? <><Loader2 className="w-4 h-4 animate-spin" /> Uploading…</> : <><Paperclip className="w-4 h-4" /> Attach images or files (optional)</>}
                       </button>
                     )}

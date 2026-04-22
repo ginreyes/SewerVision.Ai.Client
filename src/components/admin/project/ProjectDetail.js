@@ -4,39 +4,15 @@ import {
   ChevronDown,
   Play,
   Pause,
-  SkipBack,
-  SkipForward,
-  Rewind,
-  FastForward,
   Maximize,
-  Settings,
-  ArrowLeft,
   MoreHorizontal,
   Plus,
   Edit3,
   PlayCircle,
-  X,
-  RefreshCw,
   Loader2,
-  Video,
-  Trash2,
-  User,
-  Clock,
-  Film,
   FileVideo,
-  Upload,
-  MapPin,
-  Building2,
-  Ruler,
-  Calendar,
-  CheckCircle2,
-  Zap,
-  Square,
-  RotateCcw,
-  AlertTriangle,
 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
-import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
 import { Badge } from '@/components/ui/badge';
 import AddObservation from './AddObersavation';
 import ObservationsPanel from './ObservationsPanel';
@@ -52,7 +28,7 @@ import { useProjectVideos, useProjectObservations, useProjectSnapshots, useProje
 import { useRouter } from 'next/navigation';
 import { getVideoUrl } from '@/lib/getVideoUrl';
 import { AddCustomMetadataDialog, EditMetadataDialog, DeleteVideoDialog, UploadProgressDialog } from '@/components/shared/project-dialogs';
-import ProjectSwitcher from '@/components/shared/ProjectSwitcher';
+import { DetailHeader, ProjectInfoBanner, UploadStatusBanners, ProjectVideoList } from '@/components/shared/project-detail';
 
 const ProjectDetail = ({ project, setSelectedProject, onBack, initialSeekTime, allProjects = [] }) => {
   // Project switcher state removed — now using shadcn DropdownMenu via ProjectSwitcher
@@ -762,241 +738,45 @@ const ProjectDetail = ({ project, setSelectedProject, onBack, initialSeekTime, a
   return (
     <div className="min-h-screen bg-gradient-to-br from-slate-50 to-gray-100">
       <div className="max-w-7xl mx-auto p-6">
-        {/* Enhanced Header */}
-        <div className="bg-white/80 backdrop-blur-sm border border-gray-200/50 px-6 py-4 mb-6 rounded-2xl shadow-sm">
-          <div className="flex items-center justify-between">
-            <div className="flex items-center space-x-4">
-              {/* Back Button */}
-              <button
-                onClick={handleBackToProjects}
-                className="flex items-center space-x-2 text-gray-600 hover:text-gray-900 transition-all duration-200 group bg-gray-50 hover:bg-gray-100 px-3 py-2 rounded-xl"
-              >
-                <ArrowLeft className="h-4 w-4 group-hover:-translate-x-1 transition-transform duration-200" />
-                <span className="text-sm font-medium">Back to Projects</span>
-              </button>
+        <DetailHeader
+          role="admin"
+          project={project}
+          allProjects={allProjects}
+          onBack={handleBackToProjects}
+          onSelectProject={(p) => {
+            router.push(`?selectedProject=${p._id}`, { scroll: false });
+            setSelectedProject(p);
+          }}
+          fileInputRef={fileInputRef}
+          onVideoUpload={handleVideoUpload}
+          onStop={() => setIsStopConfirmOpen(true)}
+          onReprocess={() => setIsReprocessConfirmOpen(true)}
+          onReset={() => setIsResetConfirmOpen(true)}
+          onEdit={() => router.push(`/admin/project/editProject/${project._id}`)}
+          isStopping={isStopping}
+          isReprocessing={isReprocessing}
+          isResetting={isResetting}
+        />
 
-              <div className="h-6 w-px bg-gray-200"></div>
-
-              <div className="flex items-center space-x-3">
-                <h1 className="text-lg font-bold text-gray-900">Project Console</h1>
-                <ProjectSwitcher
-                  projects={allProjects}
-                  currentId={project?._id}
-                  onSelect={(p) => {
-                    // Must push URL param so the parent page's useEffect
-                    // fetches the full project data (with populates).
-                    router.push(`?selectedProject=${p._id}`, { scroll: false });
-                    setSelectedProject(p);
-                  }}
-                />
-                <span className="font-semibold text-gray-700">{project?.name || 'Untitled Project'}</span>
-
-                {/* Status Badge - Dynamic based on status */}
-                <span className={`inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-xs font-semibold ${project?.status === 'ai-processing'
-                  ? 'bg-violet-100 text-violet-700'
-                  : project?.status === 'completed'
-                    ? 'bg-emerald-100 text-emerald-700'
-                    : project?.status === 'on-hold'
-                      ? 'bg-slate-100 text-slate-700'
-                      : project?.status === 'planning'
-                        ? 'bg-blue-100 text-blue-700'
-                        : 'bg-amber-100 text-amber-700'
-                  }`}>
-                  {project?.status === 'ai-processing' && <Zap className="w-3 h-3" />}
-                  {project?.status === 'completed' && <CheckCircle2 className="w-3 h-3" />}
-                  {project?.status?.replace('-', ' ').replace(/\b\w/g, l => l.toUpperCase()) || 'In Progress'}
-                </span>
-              </div>
-            </div>
-
-            {/* Action Buttons */}
-            <div className="flex items-center space-x-2">
-              {/* Hidden File Input */}
-              <input
-                type="file"
-                ref={fileInputRef}
-                onChange={handleVideoUpload}
-                accept="video/mp4,video/webm,video/quicktime,video/x-msvideo,video/mpeg,.mp4,.webm,.mov,.avi,.mpeg"
-                className="hidden"
-              />
-
-              {/* Stop Processing Button — visible only during AI processing */}
-              {project?.status === 'ai-processing' && (
-                <Button
-                  onClick={() => setIsStopConfirmOpen(true)}
-                  disabled={isStopping}
-                  className="flex items-center gap-2 bg-red-600 hover:bg-red-700 text-white"
-                >
-                  {isStopping ? <Loader2 className="h-4 w-4 animate-spin" /> : <Square className="h-4 w-4" />}
-                  <span>{isStopping ? 'Stopping...' : 'Stop AI'}</span>
-                </Button>
-              )}
-
-              {/* Reprocess AI Button - Show for applicable statuses */}
-              {project?.status !== 'planning' && project?.status !== 'in-progress' && (
-                <Button
-                  onClick={() => setIsReprocessConfirmOpen(true)}
-                  disabled={isReprocessing}
-                  className={`flex items-center gap-2 transition-all duration-300 ${isReprocessing
-                    ? 'bg-gradient-to-r from-violet-500 to-purple-600 shadow-lg shadow-violet-200'
-                    : 'bg-gradient-to-r from-violet-600 to-purple-700 hover:from-violet-700 hover:to-purple-800'
-                    } text-white`}
-                >
-                  {isReprocessing ? (
-                    <>
-                      <Loader2 className="h-4 w-4 animate-spin" />
-                      <span>Reprocessing...</span>
-                    </>
-                  ) : (
-                    <>
-                      <Zap className="h-4 w-4" />
-                      <span>Reprocess AI</span>
-                    </>
-                  )}
-                </Button>
-              )}
-
-              {/* Reset AI Data Button — visible when project has AI data */}
-              {project?.aiDetections?.total > 0 && project?.status !== 'ai-processing' && (
-                <Button
-                  onClick={() => setIsResetConfirmOpen(true)}
-                  disabled={isResetting}
-                  variant="outline"
-                  className="flex items-center gap-2 border-orange-300 text-orange-600 hover:bg-orange-50 hover:text-orange-700"
-                >
-                  {isResetting ? <Loader2 className="h-4 w-4 animate-spin" /> : <RotateCcw className="h-4 w-4" />}
-                  <span>{isResetting ? 'Resetting...' : 'Reset AI Data'}</span>
-                </Button>
-              )}
-
-              {/* Edit Button - Navigates to edit project */}
-              <Button
-                onClick={() => router.push(`/admin/project/editProject/${project._id}`)}
-                variant="ghost"
-                size="icon"
-                className="hover:bg-gray-100 rounded-xl"
-                title="Edit Project"
-              >
-                <Edit3 className="h-5 w-5 text-gray-500" />
-              </Button>
-            </div>
-          </div>
-        </div>
-
-        {/* Upload Error Banner */}
-        {project?.uploadError && (
-          <div className="mb-4 flex items-center gap-3 p-4 bg-red-50 border border-red-200 rounded-xl">
-            <div className="w-9 h-9 rounded-full bg-red-100 flex items-center justify-center flex-shrink-0">
-              <AlertTriangle className="h-4 w-4 text-red-600" />
-            </div>
-            <div className="flex-1 min-w-0">
-              <p className="text-sm font-semibold text-red-800">Video Upload Failed</p>
-              <p className="text-xs text-red-600 truncate">{project.uploadError}</p>
-            </div>
-            <Button size="sm" variant="outline" className="text-xs border-red-300 text-red-600 hover:bg-red-100" onClick={() => {
-              api(`/api/projects/update-project/${project._id}/${user_id}`, 'PUT', {
-                projectData: JSON.stringify({ uploadError: '', status: 'planning' }),
-              }).then(() => { if (setSelectedProject) setSelectedProject({ ...project, uploadError: '', status: 'planning' }); });
-            }}>
-              Dismiss
-            </Button>
-          </div>
-        )}
-
-        {/* Uploading Status Banner */}
-        {project?.status === 'uploading' && !project?.uploadError && (
-          <div className="mb-4 flex items-center gap-3 p-4 bg-blue-50 border border-blue-200 rounded-xl">
-            <Loader2 className="h-5 w-5 text-blue-600 animate-spin flex-shrink-0" />
-            <div>
-              <p className="text-sm font-semibold text-blue-800">Video Uploading</p>
-              <p className="text-xs text-blue-600">Your video is being uploaded in the background. You can continue working.</p>
-            </div>
-          </div>
-        )}
+        <UploadStatusBanners
+          project={project}
+          onDismissError={() => {
+            api(`/api/projects/update-project/${project._id}/${user_id}`, 'PUT', {
+              projectData: JSON.stringify({ uploadError: '', status: 'planning' }),
+            }).then(() => {
+              if (setSelectedProject) setSelectedProject({ ...project, uploadError: '', status: 'planning' });
+            });
+          }}
+        />
 
         <div className="flex gap-6 overflow-hidden">
           {/* Main Content — min-w-0 prevents observation table from blowing out the flex layout */}
           <div className="flex-1 min-w-0">
-            {/* Project Info Banner */}
-            {project && (
-              <div className={`border rounded-2xl p-6 mb-6 transition-all duration-300 shadow-sm backdrop-blur-sm ${isReprocessing
-                ? 'bg-gradient-to-r from-blue-50/80 via-indigo-50/80 to-purple-50/80 border-blue-200 shadow-lg shadow-blue-100/50'
-                : `bg-gradient-to-r ${statusGradient.banner} ${statusGradient.bannerBorder}`
-                }`}>
-                <div className="flex items-start justify-between">
-                  <div className="space-y-3">
-                    <div className="flex items-center gap-3">
-                      <h2 className="text-2xl font-bold text-gray-900">{project.name}</h2>
-                      <Badge variant="outline" className={`${statusGradient.text} border-current`}>
-                        {project.status?.replace('-', ' ').toUpperCase() || 'ACTIVE'}
-                      </Badge>
-                    </div>
-
-                    {/* Info Pills */}
-                    <div className="flex flex-wrap gap-3">
-                      <div className="flex items-center gap-2 bg-white/60 backdrop-blur-sm px-3 py-1.5 rounded-lg border border-gray-100 shadow-sm">
-                        <MapPin className="w-4 h-4 text-gray-500" />
-                        <span className="text-sm font-medium text-gray-700">{project.location}</span>
-                      </div>
-                      <div className="flex items-center gap-2 bg-white/60 backdrop-blur-sm px-3 py-1.5 rounded-lg border border-gray-100 shadow-sm">
-                        <Building2 className="w-4 h-4 text-gray-500" />
-                        <span className="text-sm font-medium text-gray-700">{project.client}</span>
-                      </div>
-                      <div className="flex items-center gap-2 bg-white/60 backdrop-blur-sm px-3 py-1.5 rounded-lg border border-gray-100 shadow-sm">
-                        <Ruler className="w-4 h-4 text-gray-500" />
-                        <span className="text-sm font-medium text-gray-700">{project.totalLength}</span>
-                      </div>
-                      {(project.estimatedCompletion || project.estimated_completion) && (
-                        <div className="flex items-center gap-2 bg-white/60 backdrop-blur-sm px-3 py-1.5 rounded-lg border border-amber-200 shadow-sm">
-                          <Calendar className="w-4 h-4 text-amber-600" />
-                          <span className="text-sm font-medium text-amber-700">
-                            Due: {new Date(project.estimatedCompletion || project.estimated_completion).toLocaleDateString()}
-                          </span>
-                        </div>
-                      )}
-                    </div>
-                  </div>
-                  <div className="flex items-center space-x-4">
-                    <div className="text-right min-w-[100px]">
-                      <div className="text-sm text-gray-500 font-medium">Progress</div>
-                      {isReprocessing ? (
-                        <div className="flex items-center justify-end gap-2">
-                          <div className="flex space-x-1">
-                            <span className="w-2 h-2 bg-blue-500 rounded-full animate-bounce" style={{ animationDelay: '0ms' }}></span>
-                            <span className="w-2 h-2 bg-indigo-500 rounded-full animate-bounce" style={{ animationDelay: '150ms' }}></span>
-                            <span className="w-2 h-2 bg-purple-500 rounded-full animate-bounce" style={{ animationDelay: '300ms' }}></span>
-                          </div>
-                          <span className="text-sm font-semibold text-blue-600">Processing</span>
-                        </div>
-                      ) : project.status === 'ai-processing' ? (
-                        <div className="flex items-center justify-end gap-2">
-                          <Loader2 className="h-5 w-5 animate-spin text-violet-500" />
-                          <span className="text-lg font-bold text-violet-600">AI Active</span>
-                        </div>
-                      ) : (
-                        <div className={`text-2xl font-bold bg-gradient-to-r ${statusGradient.textGradient} bg-clip-text text-transparent`}>
-                          {project.progress}%
-                        </div>
-                      )}
-                    </div>
-                  </div>
-                </div>
-
-                {/* Progress bar with animation during reprocessing */}
-                {(isReprocessing || project.status === 'ai-processing') && (
-                  <div className="mt-4">
-                    <div className="w-full bg-gray-200 rounded-full h-2.5 overflow-hidden">
-                      <div className={`h-2.5 rounded-full bg-gradient-to-r ${statusGradient.progressBg} animate-pulse`}
-                        style={{ width: isReprocessing ? '30%' : `${project.progress}%`, transition: 'width 0.3s ease' }}>
-                      </div>
-                    </div>
-                    <p className="text-xs text-gray-500 mt-1 text-center">
-                      {isReprocessing ? 'Starting AI reprocessing...' : 'AI is analyzing the video footage'}
-                    </p>
-                  </div>
-                )}
-              </div>
-            )}
+            <ProjectInfoBanner
+              project={project}
+              statusGradient={statusGradient}
+              isReprocessing={isReprocessing}
+            />
 
             {/* Enhanced Video Player Container */}
             <div
@@ -1106,137 +886,22 @@ const ProjectDetail = ({ project, setSelectedProject, onBack, initialSeekTime, a
 
           {/* Right Sidebar — shrink-0 keeps it at exactly 320px regardless of left content size */}
           <div className="w-80 shrink-0 bg-white/80 dark:bg-[#0c0c0e]/80 backdrop-blur-sm border border-gray-200/50 rounded-2xl p-5 space-y-5 shadow-sm h-fit">
-            {/* Project Videos Section */}
-            <div className="bg-gradient-to-br from-blue-50/50 to-indigo-50/50 dark:from-blue-500/5 dark:to-indigo-500/5 rounded-xl p-4 border border-blue-100/50 dark:border-blue-500/15">
-              <div className="flex items-center justify-between mb-4">
-                <div className="flex items-center space-x-2">
-                  <button
-                    onClick={() => setIsVideosExpanded(!isVideosExpanded)}
-                    className="flex items-center space-x-2 text-gray-700 hover:text-gray-900 transition-colors"
-                  >
-                    {isVideosExpanded ? <ChevronUp className="h-4 w-4" /> : <ChevronDown className="h-4 w-4" />}
-                    <span className="font-semibold text-sm">PROJECT VIDEOS</span>
-                  </button>
-                  <Badge variant="secondary" className="text-xs bg-blue-100 text-blue-700">
-                    {projectVideos.length}
-                  </Badge>
-                </div>
-                <div className="flex items-center gap-2">
-                  {loadingVideos && <Loader2 className="h-4 w-4 animate-spin text-blue-500" />}
-                  <Button
-                    size="sm"
-                    variant="ghost"
-                    className="h-7 w-7 p-0 hover:bg-blue-100"
-                    onClick={triggerUpload}
-                    disabled={isUploading}
-                    title="Upload Video"
-                  >
-                    {isUploading ? <Loader2 className="h-4 w-4 animate-spin text-blue-600" /> : <Plus className="h-4 w-4 text-blue-600" />}
-                  </Button>
-                </div>
-              </div>
-
-              {isVideosExpanded && (
-                <div className="space-y-2">
-                  {projectVideos.length === 0 ? (
-                    <div className="text-center py-8 text-gray-500 bg-white/60 rounded-xl border-2 border-dashed border-gray-200">
-                      <div className="w-12 h-12 bg-gray-100 rounded-xl flex items-center justify-center mx-auto mb-3">
-                        <Film className="w-6 h-6 text-gray-400" />
-                      </div>
-                      <p className="text-sm font-medium text-gray-600 mb-1">No videos uploaded</p>
-                      <p className="text-xs text-gray-400 mb-3">Upload a video to get started</p>
-                      <Button
-                        size="sm"
-                        variant="outline"
-                        className="border-blue-200 text-blue-600 hover:bg-blue-50"
-                        onClick={triggerUpload}
-                        disabled={isUploading}
-                      >
-                        {isUploading ? <Loader2 className="h-3.5 w-3.5 mr-1.5 animate-spin" /> : <Upload className="h-3.5 w-3.5 mr-1.5" />}
-                        {isUploading ? 'Uploading...' : 'Upload Video'}
-                      </Button>
-                    </div>
-                  ) : (
-                    <div className="space-y-2 max-h-[300px] overflow-y-auto">
-                      {projectVideos.map((video) => (
-                        <div
-                          key={video._id}
-                          onClick={() => setSelectedVideo(video)}
-                          className={`p-3 rounded-lg border cursor-pointer transition-all ${selectedVideo?._id === video._id
-                            ? 'border-blue-500 bg-blue-50 dark:bg-blue-500/10 shadow-sm'
-                            : 'border-gray-200 dark:border-[#27272a] hover:border-blue-300 hover:bg-gray-50 dark:hover:bg-[#18181b]'
-                            }`}
-                        >
-                          <div className="flex items-start justify-between">
-                            <div className="flex-1 min-w-0">
-                              <p className="text-sm font-medium text-gray-900 truncate">
-                                {video.originalName || video.filename}
-                              </p>
-                              <div className="flex items-center gap-2 mt-1">
-                                <span className="text-xs text-gray-500">
-                                  {formatFileSize(video.fileSize)}
-                                </span>
-                                <Badge
-                                  variant={video.aiProcessingStatus === 'completed' ? 'default' :
-                                    video.aiProcessingStatus === 'processing' ? 'secondary' : 'outline'}
-                                  className={`text-[10px] px-1.5 py-0 ${video.aiProcessingStatus === 'pending' ? 'bg-yellow-50 text-yellow-700 border-yellow-200' : ''
-                                    }`}
-                                >
-                                  {video.aiProcessingStatus === 'pending' ? 'Ready for AI' : video.aiProcessingStatus}
-                                </Badge>
-                              </div>
-
-                              {/* Uploader info */}
-                              {video.uploadedBy && (
-                                <div className="flex items-center gap-2 mt-2">
-                                  <Avatar className="w-5 h-5">
-                                    <AvatarImage src={video.uploadedBy.avatar} />
-                                    <AvatarFallback className="text-[10px]">
-                                      {video.uploadedBy.first_name?.[0] || video.uploadedBy.username?.[0] || 'U'}
-                                    </AvatarFallback>
-                                  </Avatar>
-                                  <span className="text-xs text-gray-500 truncate">
-                                    {video.uploadedBy.first_name
-                                      ? `${video.uploadedBy.first_name} ${video.uploadedBy.last_name || ''}`
-                                      : video.uploadedBy.username}
-                                  </span>
-                                </div>
-                              )}
-
-                              {/* Upload date */}
-                              <div className="flex items-center gap-1 mt-1 text-xs text-gray-400">
-                                <Clock className="w-3 h-3" />
-                                {new Date(video.uploadedAt).toLocaleDateString()}
-                              </div>
-                            </div>
-
-                            {/* Actions */}
-                            <div className="flex items-center gap-1">
-                              {selectedVideo?._id === video._id && (
-                                <div className="w-2 h-2 rounded-full bg-blue-500 animate-pulse" />
-                              )}
-                              {isAdmin && (
-                                <button
-                                  onClick={(e) => {
-                                    e.stopPropagation();
-                                    setVideoToDelete(video);
-                                    setIsDeleteVideoOpen(true);
-                                  }}
-                                  className="p-1 text-gray-400 hover:text-red-500 hover:bg-red-50 rounded transition-colors"
-                                  title="Delete video"
-                                >
-                                  <Trash2 className="w-4 h-4" />
-                                </button>
-                              )}
-                            </div>
-                          </div>
-                        </div>
-                      ))}
-                    </div>
-                  )}
-                </div>
-              )}
-            </div>
+            <ProjectVideoList
+              videos={projectVideos}
+              selectedVideo={selectedVideo}
+              onSelectVideo={setSelectedVideo}
+              onTriggerUpload={triggerUpload}
+              onRequestDelete={(video) => {
+                setVideoToDelete(video);
+                setIsDeleteVideoOpen(true);
+              }}
+              isVideosExpanded={isVideosExpanded}
+              onToggleExpanded={() => setIsVideosExpanded(!isVideosExpanded)}
+              loading={loadingVideos}
+              isUploading={isUploading}
+              allowDelete={isAdmin}
+              formatFileSize={formatFileSize}
+            />
 
             {/* Snapshots */}
             <div className="bg-white">

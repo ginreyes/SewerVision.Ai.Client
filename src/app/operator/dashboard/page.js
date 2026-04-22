@@ -260,7 +260,7 @@ export default function OperatorDashboardContent() {
           <h1 className="text-2xl font-bold text-gray-900">
             {userData?.first_name ? `Welcome, ${userData.first_name}` : 'Operator Dashboard'}
           </h1>
-          <p className="text-sm text-gray-500 mt-0.5">
+          <p className="text-sm text-gray-500 dark:!text-gray-300 mt-0.5">
             Monitor your field operations
           </p>
         </div>
@@ -335,7 +335,7 @@ export default function OperatorDashboardContent() {
                   <EquipmentCard key={device.id} equipment={device} onClick={handleEquipmentClick} />
                 ))
               ) : (
-                <div className="text-center py-6 text-gray-500">
+                <div className="text-center py-6 text-gray-500 dark:!text-gray-300">
                   <Server className="w-8 h-8 mx-auto mb-2 opacity-50" />
                   <p className="text-sm">No devices assigned</p>
                   <Button variant="ghost" size="sm" className="text-blue-600 mt-2" onClick={() => router.push('/operator/connect-device')}>
@@ -392,7 +392,7 @@ export default function OperatorDashboardContent() {
                           {event.time}
                         </span>
                         {event.location && (
-                          <span className="text-xs text-gray-500 flex items-center gap-1 truncate">
+                          <span className="text-xs text-gray-500 dark:!text-gray-400 flex items-center gap-1 truncate">
                             <MapPin className="w-3 h-3" />
                             {event.location}
                           </span>
@@ -403,7 +403,7 @@ export default function OperatorDashboardContent() {
                   </div>
                 ))
               ) : (
-                <div className="text-center py-6 text-gray-500">
+                <div className="text-center py-6 text-gray-500 dark:!text-gray-300">
                   <CalendarIcon className="w-8 h-8 mx-auto mb-2 opacity-50" />
                   <p className="text-sm">No events scheduled today</p>
                   <Button variant="ghost" size="sm" className="text-blue-600 mt-2" onClick={() => router.push('/operator/calendar')}>
@@ -433,7 +433,7 @@ export default function OperatorDashboardContent() {
                   <ProjectRow key={project._id} project={project} onClick={() => router.push(`/operator/project`)} />
                 ))
               ) : (
-                <div className="text-center py-6 text-gray-500">
+                <div className="text-center py-6 text-gray-500 dark:!text-gray-300">
                   <FolderOpen className="w-8 h-8 mx-auto mb-2 opacity-50" />
                   <p className="text-sm">No projects assigned yet</p>
                 </div>
@@ -508,7 +508,7 @@ export default function OperatorDashboardContent() {
             <div className="p-5 space-y-4">
               <div className="grid grid-cols-2 gap-3">
                 <div className="bg-gray-50 rounded-xl p-3">
-                  <div className="flex items-center gap-2 text-gray-500 text-xs mb-1">
+                  <div className="flex items-center gap-2 text-gray-500 dark:!text-gray-400 text-xs mb-1">
                     <Wifi className="w-3 h-3" />
                     Status
                   </div>
@@ -518,7 +518,7 @@ export default function OperatorDashboardContent() {
                   </span>
                 </div>
                 <div className="bg-gray-50 rounded-xl p-3">
-                  <div className="flex items-center gap-2 text-gray-500 text-xs mb-1">
+                  <div className="flex items-center gap-2 text-gray-500 dark:!text-gray-400 text-xs mb-1">
                     <Battery className="w-3 h-3" />
                     Battery
                   </div>
@@ -529,14 +529,14 @@ export default function OperatorDashboardContent() {
                   </p>
                 </div>
                 <div className="bg-gray-50 rounded-xl p-3">
-                  <div className="flex items-center gap-2 text-gray-500 text-xs mb-1">
+                  <div className="flex items-center gap-2 text-gray-500 dark:!text-gray-400 text-xs mb-1">
                     <MapPin className="w-3 h-3" />
                     Location
                   </div>
                   <p className="font-semibold text-gray-900 text-sm truncate">{selectedEquipment.location || 'Not set'}</p>
                 </div>
                 <div className="bg-gray-50 rounded-xl p-3">
-                  <div className="flex items-center gap-2 text-gray-500 text-xs mb-1">
+                  <div className="flex items-center gap-2 text-gray-500 dark:!text-gray-400 text-xs mb-1">
                     <Monitor className="w-3 h-3" />
                     Type
                   </div>
@@ -544,7 +544,7 @@ export default function OperatorDashboardContent() {
                 </div>
               </div>
               {selectedEquipment.lastSeen && (
-                <p className="text-xs text-gray-500">
+                <p className="text-xs text-gray-500 dark:!text-gray-400">
                   Last seen: {new Date(selectedEquipment.lastSeen).toLocaleString()}
                 </p>
               )}

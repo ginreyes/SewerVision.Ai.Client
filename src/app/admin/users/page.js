@@ -1,5 +1,6 @@
 "use client";
 import React, { useState, useEffect, useMemo } from "react";
+import { SavedViewsDropdown, useSavedViewSync } from "@/components/shared/SavedViews";
 import AddUserModal from "@/components/admin/users/user-management/AddUserModal";
 import SendEmailModal from "@/components/admin/users/user-management/SendEmailModal";
 import ChangePasswordModal from "@/components/admin/users/user-management/ChangePasswordModal";
@@ -70,6 +71,26 @@ function formatRelativeTime(dateStr) {
 const UserPage = () => {
   const [search, setSearch] = useState("");
   const [filters, setFilters] = useState({ role: "", status: "" });
+
+  // Saved Views: two-way bind search + role/status filters <-> selected SavedView + URL
+  const {
+    activeViewId,
+    applyView,
+    clearView,
+    snapshot: snapshotFilters,
+  } = useSavedViewSync({
+    applyFilters: (v) => {
+      if (typeof v.search === "string") setSearch(v.search);
+      if (v.role !== undefined || v.status !== undefined) {
+        setFilters((prev) => ({
+          role: typeof v.role === "string" ? v.role : prev.role,
+          status: typeof v.status === "string" ? v.status : prev.status,
+        }));
+      }
+    },
+    captureFilters: () => ({ search, role: filters.role, status: filters.status }),
+  });
+
   const { showAlert } = useAlert();
   const { showDelete } = useDialog();
   const router = useRouter();
@@ -486,7 +507,7 @@ const UserPage = () => {
       return (
         <div className="min-w-0">
           <p className="text-sm font-medium text-gray-900 truncate">{formatRelativeTime(item.time)}</p>
-          <p className="text-[11px] text-gray-400 truncate">
+          <p className="text-[11px] text-gray-400 dark:!text-gray-400 truncate">
             {item.time !== "-" ? new Date(item.time).toLocaleString() : "-"}
           </p>
         </div>
@@ -534,9 +555,9 @@ const UserPage = () => {
         <div className="flex items-center gap-2.5 min-w-0">
           <img src={avatarUrl} alt={pb.name} className="w-8 h-8 rounded-full object-cover shadow-sm flex-shrink-0" />
           <div className="min-w-0">
-            <div className="text-sm font-medium text-gray-700 truncate">{pb.name}</div>
+            <div className="text-sm font-medium text-gray-700 dark:!text-gray-200 truncate">{pb.name}</div>
             {pb.name !== pb.username && (
-              <div className="text-[11px] text-gray-400 truncate">@{pb.username}</div>
+              <div className="text-[11px] text-gray-400 dark:!text-gray-400 truncate">@{pb.username}</div>
             )}
           </div>
         </div>
@@ -603,11 +624,19 @@ const UserPage = () => {
               </div>
               <div>
                 <h1 className="text-2xl font-bold text-gray-900">{pageTitle}</h1>
-                <p className="text-sm text-gray-500">{pageDescription}</p>
+                <p className="text-sm text-gray-500 dark:!text-gray-300">{pageDescription}</p>
               </div>
             </div>
             {activeTab === "users" && (
               <div className="flex items-center gap-3">
+                <SavedViewsDropdown
+                  entityType="user"
+                  activeViewId={activeViewId}
+                  onApply={applyView}
+                  onClear={clearView}
+                  snapshotFilters={snapshotFilters}
+                  accentColor="rose"
+                />
                 <ExportButton
                   data={users}
                   columns={[

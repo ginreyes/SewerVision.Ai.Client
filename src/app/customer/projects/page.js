@@ -26,6 +26,7 @@ import { statusConfig } from '@/components/customer/constants';
 import ProjectCard from '@/components/customer/projects/ProjectCard';
 import ProjectSearchFilter from '@/components/customer/projects/ProjectSearchFilter';
 import { GridSkeleton } from '@/components/shared/SkeletonLoading';
+import { SavedViewsDropdown, useSavedViewSync } from '@/components/shared/SavedViews';
 
 export default function ProjectPage() {
   const [searchQuery, setSearchQuery] = useState('');
@@ -34,6 +35,22 @@ export default function ProjectPage() {
   const [viewMode, setViewMode] = useState('grid');
   const router = useRouter();
   const { userId } = useUser();
+
+  // Saved Views: two-way bind search/status/viewMode/sortBy <-> selected SavedView + URL
+  const {
+    activeViewId,
+    applyView,
+    clearView,
+    snapshot: snapshotFilters,
+  } = useSavedViewSync({
+    applyFilters: (v) => {
+      if (typeof v.searchQuery === 'string') setSearchQuery(v.searchQuery);
+      if (typeof v.statusFilter === 'string') setStatusFilter(v.statusFilter);
+      if (typeof v.sortBy === 'string') setSortBy(v.sortBy);
+      if (typeof v.viewMode === 'string') setViewMode(v.viewMode);
+    },
+    captureFilters: () => ({ searchQuery, statusFilter, sortBy, viewMode }),
+  });
 
   const {
     data: projects = [],
@@ -119,6 +136,16 @@ export default function ProjectPage() {
             <p className="text-muted-foreground mt-1">
               Manage and view your inspection projects
             </p>
+          </div>
+          <div className="flex items-center gap-2">
+            <SavedViewsDropdown
+              entityType="project"
+              activeViewId={activeViewId}
+              onApply={applyView}
+              onClear={clearView}
+              snapshotFilters={snapshotFilters}
+              accentColor="blue"
+            />
           </div>
         </div>
 
