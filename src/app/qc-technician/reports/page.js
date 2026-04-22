@@ -32,6 +32,7 @@ import ReportCard from '@/components/qc/reports/ReportCard'
 import NewReportModal from '@/components/qc/reports/NewReportModal'
 import CreateTemplateModal from '@/components/qc/reports/CreateTemplateModal'
 import EditTemplateModal from '@/components/qc/reports/EditTemplateModal'
+import { SavedViewsDropdown, useSavedViewSync } from '@/components/shared/SavedViews'
 
 const QualityReportPage = () => {
   const router = useRouter()
@@ -42,6 +43,22 @@ const QualityReportPage = () => {
   const [filterStatus, setFilterStatus] = useState('all')
   const [searchTerm, setSearchTerm] = useState('')
   const [dateRange, setDateRange] = useState('30days')
+
+  // Saved Views: two-way bind search/status/dateRange <-> selected SavedView + URL
+  const {
+    activeViewId,
+    applyView,
+    clearView,
+    snapshot: snapshotFilters,
+  } = useSavedViewSync({
+    applyFilters: (v) => {
+      if (typeof v.searchTerm === 'string') setSearchTerm(v.searchTerm)
+      if (typeof v.filterStatus === 'string') setFilterStatus(v.filterStatus)
+      if (typeof v.dateRange === 'string') setDateRange(v.dateRange)
+    },
+    captureFilters: () => ({ searchTerm, filterStatus, dateRange }),
+  })
+
   const [isModalOpen, setIsModalOpen] = useState(false)
   const [isNewReportModalOpen, setIsNewReportModalOpen] = useState(false)
   const [isTemplateModalOpen, setIsTemplateModalOpen] = useState(false)
@@ -519,10 +536,18 @@ const QualityReportPage = () => {
             </div>
             <div>
               <h1 className="text-2xl font-bold text-gray-900">Quality Reports</h1>
-              <p className="text-sm text-gray-500">Generate and manage PACP inspection reports</p>
+              <p className="text-sm text-gray-500 dark:!text-gray-300">Generate and manage PACP inspection reports</p>
             </div>
           </div>
-          <div className="flex gap-2">
+          <div className="flex items-center gap-2">
+            <SavedViewsDropdown
+              entityType="report"
+              activeViewId={activeViewId}
+              onApply={applyView}
+              onClear={clearView}
+              snapshotFilters={snapshotFilters}
+              accentColor="amber"
+            />
             <Button onClick={() => setIsNewReportModalOpen(true)}>
               <Plus className="h-4 w-4 mr-2" />
               New Report
@@ -562,7 +587,7 @@ const QualityReportPage = () => {
                   </div>
                   <div className="mt-3">
                     <p className="text-2xl font-bold text-gray-900">{stats.completed}</p>
-                    <p className="text-sm text-gray-500">Completed</p>
+                    <p className="text-sm text-gray-500 dark:!text-gray-300">Completed</p>
                   </div>
                 </div>
                 <div className="bg-white rounded-xl border border-gray-100 p-4 hover:shadow-md transition-all">
@@ -573,7 +598,7 @@ const QualityReportPage = () => {
                   </div>
                   <div className="mt-3">
                     <p className="text-2xl font-bold text-gray-900">{stats.draft}</p>
-                    <p className="text-sm text-gray-500">Draft</p>
+                    <p className="text-sm text-gray-500 dark:!text-gray-300">Draft</p>
                   </div>
                 </div>
                 <div className="bg-white rounded-xl border border-gray-100 p-4 hover:shadow-md transition-all">
@@ -584,7 +609,7 @@ const QualityReportPage = () => {
                   </div>
                   <div className="mt-3">
                     <p className="text-2xl font-bold text-gray-900">{stats.avgAccuracy || 0}%</p>
-                    <p className="text-sm text-gray-500">Avg Accuracy</p>
+                    <p className="text-sm text-gray-500 dark:!text-gray-300">Avg Accuracy</p>
                   </div>
                 </div>
                 <div className="bg-white rounded-xl border border-gray-100 p-4 hover:shadow-md transition-all">
@@ -595,7 +620,7 @@ const QualityReportPage = () => {
                   </div>
                   <div className="mt-3">
                     <p className="text-2xl font-bold text-gray-900">{stats.total}</p>
-                    <p className="text-sm text-gray-500">Total Reports</p>
+                    <p className="text-sm text-gray-500 dark:!text-gray-300">Total Reports</p>
                   </div>
                 </div>
               </div>
@@ -678,7 +703,7 @@ const QualityReportPage = () => {
               <div className="flex items-center justify-between">
                 <div>
                   <h2 className="text-lg font-semibold text-gray-900">Report Templates</h2>
-                  <p className="text-sm text-gray-500">Pre-configured templates for consistent reporting</p>
+                  <p className="text-sm text-gray-500 dark:!text-gray-300">Pre-configured templates for consistent reporting</p>
                 </div>
                 <Button onClick={() => setIsTemplateModalOpen(true)}>
                   <Plus className="h-4 w-4 mr-2" />
@@ -690,7 +715,7 @@ const QualityReportPage = () => {
                 <Card>
                   <CardContent className="py-12 flex flex-col items-center justify-center">
                     <Loader2 className="w-8 h-8 animate-spin text-red-600 mb-3" />
-                    <p className="text-sm text-gray-500">Loading templates...</p>
+                    <p className="text-sm text-gray-500 dark:!text-gray-300">Loading templates...</p>
                   </CardContent>
                 </Card>
               ) : reportTemplates.length === 0 ? (
@@ -698,7 +723,7 @@ const QualityReportPage = () => {
                   <CardContent className="py-12 text-center">
                     <FileCheck className="w-12 h-12 text-gray-400 mx-auto mb-3" />
                     <h3 className="text-lg font-semibold text-gray-900 mb-1">No templates found</h3>
-                    <p className="text-sm text-gray-500 mb-4">Create your first template to get started</p>
+                    <p className="text-sm text-gray-500 dark:!text-gray-300 mb-4">Create your first template to get started</p>
                     <Button onClick={() => setIsTemplateModalOpen(true)} variant="outline">
                       <Plus className="w-4 h-4 mr-2" />
                       Create Template
@@ -722,7 +747,7 @@ const QualityReportPage = () => {
                                   <Badge variant="outline" className="ml-2 text-xs">Default</Badge>
                                 )}
                               </h3>
-                              <p className="text-xs text-gray-500 line-clamp-2">{template.description || 'No description'}</p>
+                              <p className="text-xs text-gray-500 dark:!text-gray-400 line-clamp-2">{template.description || 'No description'}</p>
                             </div>
                           </div>
                           <Button
@@ -754,7 +779,7 @@ const QualityReportPage = () => {
                         )}
 
                         <div className="flex items-center justify-between pt-4 border-t border-gray-100">
-                          <span className="text-xs text-gray-500">
+                          <span className="text-xs text-gray-500 dark:!text-gray-400">
                             {template.lastUsed ? new Date(template.lastUsed).toLocaleDateString() : 'Never used'}
                           </span>
                           <Button size="sm" onClick={() => {
@@ -775,7 +800,7 @@ const QualityReportPage = () => {
               <div className="flex items-center justify-between">
                 <div>
                   <h2 className="text-lg font-semibold text-gray-900">Report Analytics</h2>
-                  <p className="text-sm text-gray-500">Insights into your reporting performance and trends</p>
+                  <p className="text-sm text-gray-500 dark:!text-gray-300">Insights into your reporting performance and trends</p>
                 </div>
                 <Select value={analyticsDateRange} onValueChange={setAnalyticsDateRange}>
                   <SelectTrigger className="w-[180px]">
@@ -798,7 +823,7 @@ const QualityReportPage = () => {
                       <Award className="w-6 h-6 text-green-600" />
                     </div>
                     <p className="text-2xl font-bold text-gray-900 mb-1">94.2%</p>
-                    <p className="text-sm text-gray-500">Avg Report Accuracy</p>
+                    <p className="text-sm text-gray-500 dark:!text-gray-300">Avg Report Accuracy</p>
                   </CardContent>
                 </Card>
 
@@ -808,7 +833,7 @@ const QualityReportPage = () => {
                       <Clock className="w-6 h-6 text-red-700" />
                     </div>
                     <p className="text-2xl font-bold text-gray-900 mb-1">2.3h</p>
-                    <p className="text-sm text-gray-500">Avg Time to Complete</p>
+                    <p className="text-sm text-gray-500 dark:!text-gray-300">Avg Time to Complete</p>
                   </CardContent>
                 </Card>
 
@@ -818,7 +843,7 @@ const QualityReportPage = () => {
                       <Target className="w-6 h-6 text-red-700" />
                     </div>
                     <p className="text-2xl font-bold text-gray-900 mb-1">98.1%</p>
-                    <p className="text-sm text-gray-500">Client Approval Rate</p>
+                    <p className="text-sm text-gray-500 dark:!text-gray-300">Client Approval Rate</p>
                   </CardContent>
                 </Card>
               </div>
@@ -833,7 +858,7 @@ const QualityReportPage = () => {
                     <div className="h-64 bg-gray-50 rounded-lg flex items-center justify-center border border-gray-200">
                       <div className="text-center">
                         <TrendingUp className="w-10 h-10 text-gray-400 mx-auto mb-2" />
-                        <p className="text-sm text-gray-500">Monthly report generation chart</p>
+                        <p className="text-sm text-gray-500 dark:!text-gray-300">Monthly report generation chart</p>
                       </div>
                     </div>
                   </CardContent>
@@ -847,7 +872,7 @@ const QualityReportPage = () => {
                     <div className="h-64 bg-gray-50 rounded-lg flex items-center justify-center border border-gray-200">
                       <div className="text-center">
                         <PieChart className="w-10 h-10 text-gray-400 mx-auto mb-2" />
-                        <p className="text-sm text-gray-500">Defect type breakdown chart</p>
+                        <p className="text-sm text-gray-500 dark:!text-gray-300">Defect type breakdown chart</p>
                       </div>
                     </div>
                   </CardContent>

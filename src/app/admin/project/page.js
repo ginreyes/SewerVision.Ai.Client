@@ -30,6 +30,9 @@ import PipelineAnalyticsStrip from '@/components/admin/project/PipelineAnalytics
 import BulkActionsToolbar from '@/components/admin/project/BulkActionsToolbar';
 import { usePipeline } from '@/data/pipelineApi';
 import { SavedViewsDropdown, useSavedViewSync } from '@/components/shared/SavedViews';
+import { BulkActionBar, BulkResultToast } from '@/components/shared/bulk';
+import { useBulkMutation } from '@/data/bulkApi';
+import { useDialog } from '@/components/providers/DialogProvider';
 
 const SewerVisionInspectionModuleContent = () => {
   const [selectedProject, setSelectedProject] = useState(null);
@@ -83,6 +86,63 @@ const SewerVisionInspectionModuleContent = () => {
   const totalPages = projectsData?.totalPages || 1;
 
   const { data: pipelineData, isLoading: pipelineLoading } = usePipeline({});
+
+  // Bulk Actions v2 — wires list-view multi-select to the shared bulk surface
+  const bulkMutation = useBulkMutation('project');
+  const [bulkResult, setBulkResult] = useState(null);
+  const { showDelete } = useDialog();
+
+  const runBulk = (op, payload) => {
+    bulkMutation.mutate(
+      { ids: selectedIds, op, payload },
+      {
+        onSuccess: (result) => {
+          setBulkResult(result);
+          setSelectedIds([]);
+          refetch();
+        },
+        onError: (err) => {
+          showAlert(err.message || 'Bulk op failed', 'error');
+        },
+      }
+    );
+  };
+
+  const handleBulkAction = (op, action) => {
+    if (action?.destructive) {
+      showDelete({
+        title: `Delete ${selectedIds.length} project(s)?`,
+        description: 'This cannot be undone.',
+        onConfirm: () => runBulk(op),
+      });
+      return;
+    }
+    if (action?.clientOnly && op === 'export') {
+      // CSV export handled client-side — reuse existing ExportButton logic later
+      showAlert('Use the Export button in the toolbar for CSV export', 'info');
+      return;
+    }
+    if (op === 'status') {
+      const status = prompt('Status (planning|field-capture|uploading|ai-processing|qc-review|completed|on-hold):');
+      if (!status) return;
+      runBulk(op, { status });
+      return;
+    }
+    if (op === 'tag') {
+      const tag = prompt('Tag to add:');
+      if (!tag) return;
+      runBulk(op, { tag });
+      return;
+    }
+    if (op === 'assign') {
+      const assigneeId = prompt('Assignee user id:');
+      if (!assigneeId) return;
+      runBulk(op, { assigneeId });
+      return;
+    }
+    // archive / unarchive need no payload
+    runBulk(op);
+  };
 
   const handleSearchChange = (e) => {
     setSearchTerm(e.target.value);
@@ -541,6 +601,24 @@ const SewerVisionInspectionModuleContent = () => {
           </>
         )}
       </div>
+
+      {/* Bulk Actions v2 — active for non-pipeline list views */}
+      {viewMode !== 'pipeline' && (
+        <BulkActionBar
+          entity="project"
+          selectedCount={selectedIds.length}
+          onAction={handleBulkAction}
+          onClear={() => setSelectedIds([])}
+          isPending={bulkMutation.isPending}
+          accent="rose"
+        />
+      )}
+      {bulkResult && (
+        <BulkResultToast
+          result={bulkResult}
+          onDismiss={() => setBulkResult(null)}
+        />
+      )}
     </div>
   );
 };

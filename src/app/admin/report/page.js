@@ -31,6 +31,7 @@ import { useAlert } from "@/components/providers/AlertProvider"
 import reportsApi from '@/data/reportsApi'
 import { useAdminReports } from '@/hooks/useQueryHooks'
 import { UserAvatar } from '@/components/admin/report'
+import GenericStatCard from '@/components/shared/GenericStatCard'
 
 // ─── Leader Select with Avatar ────────────────────────────────────
 const LeaderOption = ({ leader }) => {
@@ -363,65 +364,98 @@ const Reports = () => {
   const selectedLeader = leaders.find(l => l._id === filterLeaderId)
 
   return (
-    <div className="max-w-7xl mx-auto bg-gray-50 min-h-screen pb-12">
-      {/* Header */}
-      <div className="bg-white shadow-sm border-b border-gray-200 sticky top-0 z-30">
-        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-          <div className="flex items-center justify-between h-16">
-            <div className="flex items-center space-x-4">
-              <h1 className="text-2xl font-bold bg-clip-text text-transparent bg-gradient-to-r from-[#D76A84] to-rose-600">
-                Reports & Analytics
-              </h1>
-              <span className="px-3 py-1 bg-rose-50 text-rose-700 border border-rose-100 rounded-full text-sm font-medium">
-                {analytics.totalReports} Total
-              </span>
-            </div>
-            <div className="flex items-center space-x-3">
-              <DropdownMenu>
-                <DropdownMenuTrigger asChild>
-                  <Button className={roseGradientClass}>
-                    Actions <ChevronDown className="w-4 h-4 ml-2" />
-                  </Button>
-                </DropdownMenuTrigger>
-                <DropdownMenuContent align="end">
-                  <DropdownMenuItem onClick={handleExportReports}>
-                    <Download className="w-4 h-4 mr-2" /> Export
-                  </DropdownMenuItem>
-                  <DropdownMenuItem onClick={() => refetchReports()} disabled={reportsFetching}>
-                    <RefreshCw className={`w-4 h-4 mr-2 ${reportsFetching ? 'animate-spin' : ''}`} /> Sync
-                  </DropdownMenuItem>
-                </DropdownMenuContent>
-              </DropdownMenu>
-            </div>
+    <div className="p-6 space-y-6 max-w-7xl mx-auto">
+      {/* Welcome-style Header */}
+      <div className="flex items-center justify-between flex-wrap gap-4">
+        <div className="flex items-center gap-4 min-w-0">
+          <div className="w-12 h-12 rounded-xl flex items-center justify-center flex-shrink-0 bg-rose-100 dark:bg-rose-500/15">
+            <FileText className="w-6 h-6 text-rose-600 dark:text-rose-400" />
           </div>
+          <div className="min-w-0">
+            <h1 className="text-2xl font-bold text-gray-900 dark:text-white truncate">
+              Reports &amp; Analytics
+            </h1>
+            <p className="text-sm text-gray-500 dark:!text-gray-300 mt-0.5">
+              {analytics.totalReports} total across your organization
+            </p>
+          </div>
+        </div>
+        <div className="flex items-center gap-2 flex-wrap">
+          <Button
+            onClick={() => refetchReports()}
+            disabled={reportsFetching}
+            variant="outline"
+            size="sm"
+            className="gap-2"
+          >
+            <RefreshCw className={`w-4 h-4 ${reportsFetching ? 'animate-spin' : ''}`} />
+            {reportsFetching ? 'Syncing...' : 'Sync'}
+          </Button>
+          <DropdownMenu>
+            <DropdownMenuTrigger asChild>
+              <Button className={roseGradientClass}>
+                Actions <ChevronDown className="w-4 h-4 ml-2" />
+              </Button>
+            </DropdownMenuTrigger>
+            <DropdownMenuContent align="end">
+              <DropdownMenuItem onClick={handleExportReports}>
+                <Download className="w-4 h-4 mr-2" /> Export
+              </DropdownMenuItem>
+              <DropdownMenuItem onClick={() => refetchReports()} disabled={reportsFetching}>
+                <RefreshCw className={`w-4 h-4 mr-2 ${reportsFetching ? 'animate-spin' : ''}`} /> Sync
+              </DropdownMenuItem>
+            </DropdownMenuContent>
+          </DropdownMenu>
         </div>
       </div>
 
-      {/* Admin no longer creates reports here; modal removed */}
+      <Tabs value={activeTab} onValueChange={setActiveTab}>
+        <TabsList className="grid w-fit grid-cols-3 bg-white dark:bg-[#18181b] p-1 rounded-xl border border-gray-100 dark:border-[#27272a] shadow-sm">
+          {['overview', 'reports', 'analytics'].map(tab => (
+            <TabsTrigger key={tab} value={tab} className="data-[state=active]:bg-[#D76A84] data-[state=active]:text-white dark:data-[state=active]:text-white rounded-lg transition-all capitalize">
+              {tab}
+            </TabsTrigger>
+          ))}
+        </TabsList>
 
-      <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
-        <Tabs value={activeTab} onValueChange={setActiveTab}>
-          <TabsList className="grid w-fit grid-cols-3 mb-8 bg-white p-1 rounded-xl border border-gray-100 shadow-sm">
-            {['overview', 'reports', 'analytics'].map(tab => (
-              <TabsTrigger key={tab} value={tab} className="data-[state=active]:bg-[#D76A84] data-[state=active]:text-white rounded-lg transition-all capitalize">
-                {tab}
-              </TabsTrigger>
-            ))}
-          </TabsList>
+        {/* ── Overview Tab ─────────────────────────────────────────── */}
+        <TabsContent value="overview" className="space-y-6 animate-in fade-in-50 duration-500 mt-6">
+          <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
+            <GenericStatCard
+              icon={FileText}
+              value={analytics.totalReports}
+              label="Total Reports"
+              subtitle="This period"
+              color="rose"
+              trend={analytics.monthlyGrowth !== undefined ? { value: `${Math.abs(analytics.monthlyGrowth)}%`, positive: analytics.monthlyGrowth >= 0 } : undefined}
+            />
+            <GenericStatCard
+              icon={CheckCircle}
+              value={analytics.completedReports}
+              label="Completed"
+              subtitle={`${analytics.pendingReports} pending`}
+              color="green"
+            />
+            <GenericStatCard
+              icon={Brain}
+              value={`${analytics.aiAccuracy}%`}
+              label="AI Accuracy"
+              subtitle="Avg. confidence"
+              color="purple"
+            />
+            <GenericStatCard
+              icon={AlertTriangle}
+              value={analytics.criticalIssues}
+              label="Critical Issues"
+              subtitle="Needs attention"
+              color="amber"
+            />
+          </div>
 
-          {/* ── Overview Tab ─────────────────────────────────────────── */}
-          <TabsContent value="overview" className="space-y-8 animate-in fade-in-50 duration-500">
-            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-5">
-              <StatCard title="Total Reports" value={analytics.totalReports} subtitle="This period" icon={FileText} color="bg-gradient-to-br from-blue-500 to-purple-600" trend={analytics.monthlyGrowth} />
-              <StatCard title="Completed" value={analytics.completedReports} subtitle={`${analytics.pendingReports} pending`} icon={CheckCircle} color="bg-gradient-to-br from-green-500 to-emerald-600" />
-              <StatCard title="AI Accuracy" value={`${analytics.aiAccuracy}%`} subtitle="Avg. Confidence" icon={Brain} color="bg-gradient-to-br from-[#D76A84] to-pink-600" />
-              <StatCard title="Critical Issues" value={analytics.criticalIssues} subtitle="Needs Attention" icon={AlertTriangle} color="bg-gradient-to-br from-orange-500 to-red-600" />
-            </div>
-
-            <Card>
+            <Card className="border-0 shadow-sm dark:bg-[#0c0c0e] dark:border dark:border-[#27272a]">
               <CardHeader>
-                <CardTitle>Recent Activity</CardTitle>
-                <CardDescription>Latest generated inspection reports</CardDescription>
+                <CardTitle className="dark:text-white">Recent Activity</CardTitle>
+                <CardDescription className="dark:!text-gray-400">Latest generated inspection reports</CardDescription>
               </CardHeader>
               <CardContent>
                 <div className="space-y-3">
@@ -431,7 +465,7 @@ const Reports = () => {
                     return (
                       <div
                         key={report._id || report.id}
-                        className="flex items-center justify-between p-4 border border-gray-100 hover:border-rose-100 rounded-xl hover:bg-rose-50/30 transition-all cursor-pointer group"
+                        className="flex items-center justify-between p-4 border border-gray-100 dark:border-[#27272a] hover:border-rose-100 dark:hover:border-rose-500/30 rounded-xl hover:bg-rose-50/30 dark:hover:bg-rose-500/5 transition-all cursor-pointer group"
                         onClick={() => (report._id || report.id) && router.push(`/admin/report/${report._id || report.id}`)}
                       >
                         <div className="flex items-center gap-4">
@@ -439,8 +473,8 @@ const Reports = () => {
                             <FileText className="w-4 h-4" />
                           </div>
                           <div className="min-w-0">
-                            <h4 className="font-medium text-gray-900 truncate">{report.inspectionId || report.projectId?.name || report.location || 'Untitled Report'}</h4>
-                            <p className="text-xs text-gray-400">{report.location || '—'} · {report.createdAt ? new Date(report.createdAt).toLocaleDateString() : ''}</p>
+                            <h4 className="font-medium text-gray-900 dark:text-white truncate">{report.inspectionId || report.projectId?.name || report.location || 'Untitled Report'}</h4>
+                            <p className="text-xs text-gray-400 dark:!text-gray-400">{report.location || '—'} · {report.createdAt ? new Date(report.createdAt).toLocaleDateString() : ''}</p>
                           </div>
                         </div>
                         <div className="flex items-center gap-3">
@@ -458,16 +492,16 @@ const Reports = () => {
                       </div>
                     )
                   })}
-                  {reports.length === 0 && <div className="text-center py-8 text-gray-400">No recent reports found</div>}
+                  {reports.length === 0 && <div className="text-center py-8 text-gray-400 dark:!text-gray-400">No recent reports found</div>}
                 </div>
               </CardContent>
             </Card>
           </TabsContent>
 
           {/* ── Reports Tab ──────────────────────────────────────────── */}
-          <TabsContent value="reports" className="space-y-5">
+          <TabsContent value="reports" className="space-y-5 mt-6">
             {/* Filters card */}
-            <Card>
+            <Card className="border-0 shadow-sm dark:bg-[#0c0c0e] dark:border dark:border-[#27272a]">
               <CardContent className="p-5">
                 <div className="flex flex-col md:flex-row gap-3">
                   <div className="relative flex-1">
@@ -651,9 +685,8 @@ const Reports = () => {
             </div>
           </TabsContent>
 
-          {/* Templates tab removed – admin reviews existing reports only */}
-        </Tabs>
-      </div>
+        {/* Templates tab removed – admin reviews existing reports only */}
+      </Tabs>
     </div>
   )
 }

@@ -1,6 +1,7 @@
 'use client'
 import React, { useState, useEffect, useCallback } from 'react'
-import { Camera, BarChart3, Brain, Shield, Loader2, RefreshCw } from 'lucide-react'
+import { BarChart3, Brain, Shield, RefreshCw } from 'lucide-react'
+import { Button } from '@/components/ui/button'
 import { DashboardSkeleton } from '@/components/shared/SkeletonLoading'
 import dashboardApi from '@/data/dashboardApi'
 import { useCharts } from '@/components/admin/dashboard/useCharts'
@@ -8,6 +9,7 @@ import OverviewTab from '@/components/admin/dashboard/OverviewTab'
 import AiModelsTab from '@/components/admin/dashboard/AiModelsTab'
 import QcReviewTab from '@/components/admin/dashboard/QcReviewTab'
 import { useSocket } from '@/components/providers/SocketProvider'
+import { useUser } from '@/components/providers/UserContext'
 
 const TABS = [
   { id: 'overview', label: 'Overview', icon: BarChart3 },
@@ -17,6 +19,7 @@ const TABS = [
 
 const AdminDashboard = () => {
   const socket = useSocket()
+  const { userData } = useUser()
   const [activeTab, setActiveTab] = useState('overview')
 
   // Data state
@@ -79,69 +82,70 @@ const AdminDashboard = () => {
   })
 
   return (
-    <div className="max-w-7xl mx-auto bg-white dark:bg-[#0c0c0e] rounded-lg shadow-sm border border-gray-200 dark:border-[#27272a]">
-      {/* Header */}
-      <header className="bg-white shadow-sm border-b border-gray-200">
-        <div className="px-6 py-4">
-          <div className="flex items-center justify-between">
-            <div className="flex items-center space-x-4">
-              <div className="flex items-center space-x-2">
-                <Camera className="w-8 h-8 text-blue-600" />
-                <h1 className="text-2xl font-bold text-gray-900">SewerVision.ai</h1>
-              </div>
-              <span className="px-3 py-1 bg-blue-100 text-blue-800 text-sm rounded-full font-medium">Dashboard</span>
-            </div>
+    <div className="p-6 space-y-6 max-w-7xl mx-auto">
+      {/* Welcome Header */}
+      <div className="flex items-center justify-between">
+        <div>
+          <h1 className="text-2xl font-bold text-gray-900 dark:text-white">
+            {userData?.first_name ? `Welcome, ${userData.first_name}` : 'Admin Dashboard'}
+          </h1>
+          <p className="text-sm text-gray-500 dark:!text-gray-300 mt-0.5">
+            Monitor the platform at a glance
+          </p>
+        </div>
+        <Button
+          onClick={fetchDashboardData}
+          disabled={loading}
+          variant="outline"
+          size="sm"
+          className="gap-2"
+        >
+          <RefreshCw className={`w-4 h-4 ${loading ? 'animate-spin' : ''}`} />
+          {loading ? 'Refreshing...' : 'Refresh'}
+        </Button>
+      </div>
+
+      {/* Tab Navigation */}
+      <div className="border-b border-gray-200 dark:border-[#27272a]">
+        <div className="flex space-x-8">
+          {TABS.map((tab) => (
             <button
-              onClick={fetchDashboardData}
-              disabled={loading}
-              className="flex items-center space-x-2 bg-gray-100 text-gray-700 px-4 py-2 rounded-lg hover:bg-gray-200 transition-colors disabled:opacity-50"
-              title="Refresh Dashboard"
+              key={tab.id}
+              onClick={() => setActiveTab(tab.id)}
+              className={`flex items-center space-x-2 px-1 py-3 border-b-2 font-medium text-sm transition-colors ${
+                activeTab === tab.id
+                  ? 'border-rose-500 text-rose-600 dark:text-rose-400'
+                  : 'border-transparent text-gray-500 dark:!text-gray-300 hover:text-gray-700 dark:hover:!text-white hover:border-gray-300 dark:hover:border-[#3f3f46]'
+              }`}
             >
-              <RefreshCw className={`w-4 h-4 ${loading ? 'animate-spin' : ''}`} />
-              <span>Refresh</span>
+              <tab.icon className="w-4 h-4" />
+              <span>{tab.label}</span>
             </button>
-          </div>
+          ))}
         </div>
-      </header>
+      </div>
 
-      {/* Navigation Tabs */}
-      <nav className="bg-white border-b border-gray-200">
-        <div className="px-6">
-          <div className="flex space-x-8">
-            {TABS.map((tab) => (
-              <button
-                key={tab.id}
-                onClick={() => setActiveTab(tab.id)}
-                className={`flex items-center space-x-2 px-1 py-4 border-b-2 font-medium text-sm ${
-                  activeTab === tab.id
-                    ? 'border-blue-500 text-blue-600'
-                    : 'border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300'
-                }`}
-              >
-                <tab.icon className="w-4 h-4" />
-                <span>{tab.label}</span>
-              </button>
-            ))}
-          </div>
+      {/* Error Banner */}
+      {error && (
+        <div className="rounded-xl border border-red-200 dark:border-red-500/30 bg-red-50 dark:bg-red-500/10 px-4 py-3 text-sm text-red-800 dark:text-red-200">
+          {error}
         </div>
-      </nav>
+      )}
 
-      {/* Main Content */}
-      <main className="px-6 py-6">
-        {loading && <DashboardSkeleton />}
+      {/* Tab Content */}
+      {loading && <DashboardSkeleton />}
 
-        {!loading && activeTab === 'overview' && (
-          <OverviewTab projectStats={projectStats} recentProjects={recentProjects} getCanvasRef={getCanvasRef} />
-        )}
+      {!loading && activeTab === 'overview' && (
+        <OverviewTab projectStats={projectStats} recentProjects={recentProjects} getCanvasRef={getCanvasRef} />
+      )}
 
-        {activeTab === 'ai-models' && (
-          <AiModelsTab aiDetections={aiDetections} getCanvasRef={getCanvasRef} />
-        )}
+      {!loading && activeTab === 'ai-models' && (
+        <AiModelsTab aiDetections={aiDetections} getCanvasRef={getCanvasRef} />
+      )}
 
-        {activeTab === 'qc-review' && (
-          <QcReviewTab qcReviewProjects={qcReviewProjects} projectStats={projectStats} recentProjects={recentProjects} />
-        )}
-      </main>
+      {!loading && activeTab === 'qc-review' && (
+        <QcReviewTab qcReviewProjects={qcReviewProjects} projectStats={projectStats} recentProjects={recentProjects} />
+      )}
     </div>
   )
 }

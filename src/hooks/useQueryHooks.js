@@ -20,6 +20,10 @@ export {
     useAdminReport,
     useAllUsers,
     useCustomers,
+    useDeleteUser,
+    useUpdateUserInfo,
+    useSendEmailToUser,
+    useAdminChangePassword,
     usePermissionLevels,
     usePermissionModules,
     useCreatePermissionLevel,
@@ -326,7 +330,8 @@ export {
 import { queryKeys } from './queryKeys';
 import {
     useDashboardStats, useAdminUploads, useAdminUploadStats, useAdminReports, useAdminReport,
-    useAllUsers, useCustomers, usePermissionLevels, usePermissionModules,
+    useAllUsers, useCustomers, useDeleteUser, useUpdateUserInfo, useSendEmailToUser, useAdminChangePassword,
+    usePermissionLevels, usePermissionModules,
     useCreatePermissionLevel, useUpdatePermissionLevel, useDeletePermissionLevel,
     useAdminCalendarEvents, useCreateCalendarEvent, useUpdateCalendarEvent, useDeleteCalendarEvent,
     useAdminProjects, useCreateProject, useDevices, useDevice, useCreateDevice, useUpdateDevice,
@@ -638,6 +643,10 @@ export default {
     // Admin — Users, Permissions, Calendar, Projects
     useAllUsers,
     useCustomers,
+    useDeleteUser,
+    useUpdateUserInfo,
+    useSendEmailToUser,
+    useAdminChangePassword,
     usePermissionLevels,
     usePermissionModules,
     useCreatePermissionLevel,
