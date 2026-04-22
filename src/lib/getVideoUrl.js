@@ -13,7 +13,10 @@ export function getVideoUrl(videoPath) {
   if (!videoPath) return '';
   if (videoPath.startsWith('http')) return videoPath;
   if (videoPath.startsWith('/api/videos/')) return `${BACKEND_URL}${videoPath}`;
-  return `${BACKEND_URL}/api/videos/${videoPath}`;
+  // Guard against callers passing a raw B2 key like "videos/123-name.mp4".
+  // The /api/videos/:id route expects a Mongo id, never a storage key.
+  const cleaned = videoPath.startsWith('videos/') ? videoPath.slice('videos/'.length) : videoPath;
+  return `${BACKEND_URL}/api/videos/${cleaned}`;
 }
 
 /** AI detection snapshot image URL */
