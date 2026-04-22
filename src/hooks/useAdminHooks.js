@@ -108,6 +108,70 @@ export function useCustomers(options = {}) {
     });
 }
 
+/**
+ * Delete a user account. Body: { user_id, actorUsername?, actorRole? }.
+ * Invalidates ['admin', 'users'] so the list refetches after success.
+ */
+export function useDeleteUser() {
+    const queryClient = useQueryClient();
+    return useMutation({
+        mutationFn: async (body) => {
+            const res = await api('/api/users/delete-account', 'DELETE', body);
+            if (!res.ok) throw new Error(res.data?.message || 'Failed to delete user');
+            return res.data;
+        },
+        onSuccess: () => {
+            queryClient.invalidateQueries({ queryKey: ['admin', 'users'] });
+        },
+    });
+}
+
+/**
+ * Update user info (used for enable/disable + inline edits).
+ * Body: { user_id, active?, ...fields }.
+ */
+export function useUpdateUserInfo() {
+    const queryClient = useQueryClient();
+    return useMutation({
+        mutationFn: async (body) => {
+            const res = await api('/api/users/change-info', 'PUT', body);
+            if (!res.ok) throw new Error(res.data?.message || 'Failed to update user');
+            return res.data;
+        },
+        onSuccess: () => {
+            queryClient.invalidateQueries({ queryKey: ['admin', 'users'] });
+        },
+    });
+}
+
+/**
+ * Send an email to a user via the admin compose flow.
+ * Body: { user_id, subject, message }. Does NOT invalidate any cache.
+ */
+export function useSendEmailToUser() {
+    return useMutation({
+        mutationFn: async (body) => {
+            const res = await api('/api/users/send-email', 'POST', body);
+            if (!res.ok) throw new Error(res.data?.message || 'Failed to send email');
+            return res.data;
+        },
+    });
+}
+
+/**
+ * Admin-triggered password reset. Body: { user_id, newPassword }.
+ * Does NOT invalidate list cache — password is not in the list payload.
+ */
+export function useAdminChangePassword() {
+    return useMutation({
+        mutationFn: async (body) => {
+            const res = await api('/api/users/admin-change-password', 'POST', body);
+            if (!res.ok) throw new Error(res.data?.message || 'Failed to change password');
+            return res.data;
+        },
+    });
+}
+
 export function usePermissionLevels(role, options = {}) {
     return useQuery({
         queryKey: queryKeys.permissionLevels(role),
