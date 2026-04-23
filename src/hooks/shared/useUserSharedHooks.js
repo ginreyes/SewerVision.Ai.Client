@@ -3,6 +3,7 @@
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { userApi } from '@/data/userApi';
 import { operatorApi } from '@/data/operatorApi';
+import { adminOvertimeApi } from '@/data/adminOvertimeApi';
 import { queryKeys } from '../queryKeys';
 
 /**
@@ -323,4 +324,112 @@ export function useUserTeamSummary(userId, options = {}) {
 export function useCreatePerformanceMetrics() {
     const qc = useQueryClient();
     return useMutation({ mutationFn: (data) => userApi.createMetrics(data), onSuccess: () => { qc.invalidateQueries({ queryKey: ['user', 'team-metrics'] }); qc.invalidateQueries({ queryKey: ['user', 'team-summary'] }); } });
+}
+
+/**
+ * ============ OVERTIME REQUESTS ============
+ */
+
+export function useUserOvertimeRequests(userId, filters = {}, options = {}) {
+    return useQuery({
+        queryKey: queryKeys.userOvertimeRequests(userId, filters),
+        queryFn: () => userApi.getOvertimeRequests(userId, filters),
+        enabled: !!userId,
+        staleTime: 1000 * 60 * 2,
+        ...options,
+    });
+}
+
+export function useUserOvertimeSummary(userId, options = {}) {
+    return useQuery({
+        queryKey: queryKeys.userOvertimeSummary(userId),
+        queryFn: () => userApi.getOvertimeSummary(userId),
+        enabled: !!userId,
+        staleTime: 1000 * 60 * 2,
+        ...options,
+    });
+}
+
+export function useRequestOvertime() {
+    const qc = useQueryClient();
+    return useMutation({
+        mutationFn: (data) => userApi.requestOvertime(data),
+        onSuccess: () => {
+            qc.invalidateQueries({ queryKey: ['user', 'overtime-requests'] });
+            qc.invalidateQueries({ queryKey: ['user', 'overtime-summary'] });
+            qc.invalidateQueries({ queryKey: ['admin', 'overtime-requests'] });
+            qc.invalidateQueries({ queryKey: ['admin', 'overtime-summary'] });
+            qc.invalidateQueries({ queryKey: ['overtime', 'approval-queue'] });
+        },
+    });
+}
+
+export function useWithdrawOvertimeRequest() {
+    const qc = useQueryClient();
+    return useMutation({
+        mutationFn: (id) => userApi.withdrawOvertimeRequest(id),
+        onSuccess: () => {
+            qc.invalidateQueries({ queryKey: ['user', 'overtime-requests'] });
+            qc.invalidateQueries({ queryKey: ['user', 'overtime-summary'] });
+            qc.invalidateQueries({ queryKey: ['admin', 'overtime-requests'] });
+            qc.invalidateQueries({ queryKey: ['admin', 'overtime-summary'] });
+            qc.invalidateQueries({ queryKey: ['overtime', 'approval-queue'] });
+        },
+    });
+}
+
+export function useAdminOvertimeRequests(filters = {}, options = {}) {
+    return useQuery({
+        queryKey: queryKeys.adminOvertimeRequests(filters),
+        queryFn: () => adminOvertimeApi.getAllRequests(filters),
+        staleTime: 1000 * 60 * 2,
+        ...options,
+    });
+}
+
+export function useOvertimeApprovalQueue(filters = {}, options = {}) {
+    return useQuery({
+        queryKey: queryKeys.overtimeApprovalQueue(filters),
+        queryFn: () => userApi.getOvertimeApprovalQueue(filters),
+        enabled: !!filters.approverTier,
+        staleTime: 1000 * 60 * 2,
+        ...options,
+    });
+}
+
+export function useAdminOvertimeSummary(options = {}) {
+    return useQuery({
+        queryKey: queryKeys.adminOvertimeSummary,
+        queryFn: () => adminOvertimeApi.getGlobalSummary(),
+        staleTime: 1000 * 60 * 2,
+        ...options,
+    });
+}
+
+export function useApproveOvertimeRequest() {
+    const qc = useQueryClient();
+    return useMutation({
+        mutationFn: ({ id, reviewedBy, reviewNote }) => adminOvertimeApi.approveRequest(id, { reviewedBy, reviewNote }),
+        onSuccess: () => {
+            qc.invalidateQueries({ queryKey: ['user', 'overtime-requests'] });
+            qc.invalidateQueries({ queryKey: ['user', 'overtime-summary'] });
+            qc.invalidateQueries({ queryKey: ['admin', 'overtime-requests'] });
+            qc.invalidateQueries({ queryKey: ['admin', 'overtime-summary'] });
+            qc.invalidateQueries({ queryKey: ['overtime', 'approval-queue'] });
+        },
+    });
+}
+
+export function useRejectOvertimeRequest() {
+    const qc = useQueryClient();
+    return useMutation({
+        mutationFn: ({ id, reviewedBy, reviewNote }) => adminOvertimeApi.rejectRequest(id, { reviewedBy, reviewNote }),
+        onSuccess: () => {
+            qc.invalidateQueries({ queryKey: ['user', 'overtime-requests'] });
+            qc.invalidateQueries({ queryKey: ['user', 'overtime-summary'] });
+            qc.invalidateQueries({ queryKey: ['admin', 'overtime-requests'] });
+            qc.invalidateQueries({ queryKey: ['admin', 'overtime-summary'] });
+            qc.invalidateQueries({ queryKey: ['overtime', 'approval-queue'] });
+        },
+    });
 }

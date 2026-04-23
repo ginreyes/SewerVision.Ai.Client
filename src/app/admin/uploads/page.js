@@ -18,6 +18,7 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import uploadsApi from "@/data/uploadsApi";
 import SewerTable from "@/components/ui/SewerTable";
 import BulkUploadModal from "@/components/admin/uploads/BulkUploadModal";
+import UploadStatsGrid from "@/components/admin/uploads/UploadStatsGrid";
 import { getFileTypeIcon, getStatusColor } from "@/lib/utils";
 import { useAlert } from "@/components/providers/AlertProvider";
 import { api } from "@/lib/helper";
@@ -26,6 +27,8 @@ import OverviewTab from "@/components/admin/uploads/tabs/OverviewTab";
 import StorageTab from "@/components/admin/uploads/tabs/StorageTab";
 import MonitoringTab from "@/components/admin/uploads/tabs/MonitoringTab";
 import SettingsTab from "@/components/admin/uploads/tabs/SettingsTab";
+import { SavedViewsDropdown, useSavedViewSync } from "@/components/shared/SavedViews";
+import ExportButton from "@/components/shared/ExportButton";
 
 const AdminUploads = () => {
   const router = useRouter();
@@ -34,6 +37,23 @@ const AdminUploads = () => {
   const [filterStatus, setFilterStatus] = useState("all");
   const [filterType, setFilterType] = useState("all");
   const [activeTab, setActiveTab] = useState("overview");
+
+  // Saved Views sync — named filter combinations per user
+  const captureFilters = useCallback(
+    () => ({ searchQuery, filterStatus, filterType }),
+    [searchQuery, filterStatus, filterType]
+  );
+  const applyFilters = useCallback((filters) => {
+    if (filters.searchQuery !== undefined) setSearchQuery(filters.searchQuery || "");
+    if (filters.filterStatus !== undefined) setFilterStatus(filters.filterStatus || "all");
+    if (filters.filterType !== undefined) setFilterType(filters.filterType || "all");
+  }, []);
+  const {
+    activeViewId,
+    applyView,
+    clearView,
+    snapshot: snapshotFilters,
+  } = useSavedViewSync({ applyFilters, captureFilters });
   const [selectedFiles, setSelectedFiles] = useState([]);
   const [showBulkUploadModal, setShowBulkUploadModal] = useState(false);
   const [uploads, setUploads] = useState([]);
@@ -477,18 +497,18 @@ const AdminUploads = () => {
   };
 
   return (
-    <div className="max-w-7xl mx-auto bg-gray-50">
+    <div className="max-w-7xl mx-auto bg-gray-50 dark:bg-gray-900">
       {/* Header */}
-      <div className="bg-white shadow-sm border-b border-gray-200">
+      <div className="bg-white dark:bg-gray-800 shadow-sm border-b border-gray-200 dark:border-gray-700">
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
           <div className="flex items-center justify-between h-16">
             <div className="flex items-center space-x-4">
-              <h1 className="text-2xl font-bold text-gray-900">
+              <h1 className="text-2xl font-bold text-gray-900 dark:text-gray-100">
                 Admin Upload Management
               </h1>
               <Badge
                 variant="outline"
-                className="bg-red-100 text-red-800 border-red-200"
+                className="bg-red-100 text-red-800 border-red-200 dark:bg-red-900/40 dark:text-red-200 dark:border-red-800"
               >
                 <ShieldCheck className="w-3 h-3 mr-1" />
                 Admin Access
@@ -523,10 +543,49 @@ const AdminUploads = () => {
 
           {/* Files Tab */}
           <TabsContent value="files" className="space-y-6">
+            {/* Analytics widget */}
+            <UploadStatsGrid uploads={uploads} />
+
+            {/* Saved Views + Export row */}
+            <div className="flex items-center justify-end gap-2 flex-wrap">
+              <SavedViewsDropdown
+                entityType="upload"
+                activeViewId={activeViewId}
+                onApply={applyView}
+                onClear={clearView}
+                snapshotFilters={snapshotFilters}
+                accentColor="rose"
+              />
+              <ExportButton
+                data={filteredUploads.map((u) => ({
+                  filename: u.originalName || u.filename,
+                  size: u.size,
+                  status: u.status,
+                  type: u.type,
+                  uploadedBy:
+                    typeof u.uploadedBy === "object"
+                      ? u.uploadedBy?.email || ""
+                      : u.uploadedBy || "",
+                  location: u.location || "",
+                  uploadedAt: u.uploadedAt || "",
+                }))}
+                columns={[
+                  { key: "filename", label: "File" },
+                  { key: "size", label: "Size" },
+                  { key: "status", label: "Status" },
+                  { key: "type", label: "Type" },
+                  { key: "uploadedBy", label: "Uploaded By" },
+                  { key: "location", label: "Location" },
+                  { key: "uploadedAt", label: "Date" },
+                ]}
+                filename="uploads"
+              />
+            </div>
+
             {/* Bulk Actions Bar */}
             {selectedFiles.length > 0 && (
-              <div className="bg-blue-50 border border-blue-200 rounded-lg p-3 flex items-center justify-between">
-                <span className="text-sm font-medium text-blue-800">
+              <div className="bg-blue-50 border border-blue-200 dark:bg-blue-900/20 dark:border-blue-900/50 rounded-lg p-3 flex items-center justify-between">
+                <span className="text-sm font-medium text-blue-800 dark:text-blue-200">
                   {selectedFiles.length} file{selectedFiles.length !== 1 ? 's' : ''} selected
                 </span>
                 <div className="flex items-center gap-2">

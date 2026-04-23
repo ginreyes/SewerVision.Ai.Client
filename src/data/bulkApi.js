@@ -21,6 +21,8 @@ const ENTITY_PATH = {
   user: "/api/users/bulk",
   report: "/api/reports/bulk",
   ticket: "/api/support/bulk",
+  device: "/api/devices/bulk",
+  upload: "/api/uploads/bulk",
 };
 
 const ENTITY_INVALIDATION_KEYS = {
@@ -28,6 +30,8 @@ const ENTITY_INVALIDATION_KEYS = {
   user: [["users"], ["allUsers"]],
   report: [["reports"], ["userReports"], ["customerReports"]],
   ticket: [["tickets"], ["supportTickets"]],
+  device: [["devices"], ["device"]],
+  upload: [["admin", "uploads"], ["operator", "uploads"]],
 };
 
 export function useBulkMutation(entity) {

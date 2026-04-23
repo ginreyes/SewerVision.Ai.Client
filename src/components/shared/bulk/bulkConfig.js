@@ -10,6 +10,7 @@ import {
   RefreshCw,
   CircleOff,
   Flag,
+  CheckCircle,
 } from "lucide-react";
 
 /**
@@ -45,6 +46,18 @@ export const BULK_ACTIONS = {
     { op: "priority", label: "Change priority", icon: Flag, requiresPayload: true },
     { op: "reassign", label: "Reassign", icon: UserCheck, requiresPayload: true },
     { op: "close", label: "Close tickets", icon: CircleOff, destructive: true },
+  ],
+  device: [
+    { op: "status", label: "Change status", icon: RefreshCw, requiresPayload: true },
+    { op: "unassign", label: "Unassign", icon: CircleOff },
+    { op: "export", label: "Export CSV", icon: Download, clientOnly: true },
+    { op: "delete", label: "Delete", icon: Trash2, destructive: true },
+  ],
+  upload: [
+    { op: "approve", label: "Mark approved", icon: CheckCircle, requiresPayload: false },
+    { op: "archive", label: "Archive", icon: Archive },
+    { op: "export", label: "Export CSV", icon: Download, clientOnly: true },
+    { op: "delete", label: "Delete", icon: Trash2, destructive: true },
   ],
 };
 

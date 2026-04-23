@@ -115,6 +115,12 @@ export const queryKeys = {
     userTeamMetrics: (userId) => ['user', 'team-metrics', userId],
     userMemberMetrics: (memberId) => ['user', 'member-metrics', memberId],
     userTeamSummary: (userId) => ['user', 'team-summary', userId],
+    userOvertimeRequests: (userId, filters) => ['user', 'overtime-requests', userId, filters ?? {}],
+    userOvertimeSummary: (userId) => ['user', 'overtime-summary', userId],
+    adminOvertimeRequests: (filters) => ['admin', 'overtime-requests', filters ?? {}],
+    adminOvertimeSummary: ['admin', 'overtime-summary'],
+    overtimeApprovalQueue: (filters) => ['overtime', 'approval-queue', filters ?? {}],
+    repActivity: (mode, repId) => ['rep-activity', mode ?? 'list', repId ?? null],
 
     // Devices (admin)
     devices: (params) => ['devices', params ?? {}],
