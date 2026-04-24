@@ -1,10 +1,173 @@
 
 export const whatsNewData = [
     {
+        id: "v2.4.0",
+        date: "April 23 – 24, 2026",
+        label: "Overtime End-to-End + Dual Cloud Storage (B2 + S3) + AI Pipeline Hardening",
+        isNew: true,
+        updates: {
+            admin: [
+                {
+                    type: 'feature',
+                    title: 'Admin-Switchable Cloud Storage (Backblaze B2 + Amazon S3)',
+                    description: 'New Storage tab under Admin → Uploads lets admins switch the active cloud provider at runtime without touching env vars or redeploying.',
+                    details: [
+                        'Provider dropdown with three modes: Backblaze B2, Amazon S3, Dual-write (both)',
+                        'Inline S3 credentials form with show/hide secret, Test Connection, and Save — secrets encrypted at rest with AES-256-CBC',
+                        'Per-provider usage cards with folder breakdown (videos, avatars, snapshots, certifications, etc.)',
+                        'Same controls added to Admin → System Management → Storage for quick access',
+                        'Every storage action is audit-logged with actor username, email, IP',
+                        'Files uploaded before the switch keep serving from their original provider — zero downtime migration',
+                    ]
+                },
+                {
+                    type: 'feature',
+                    title: 'Storage Migration Tool with Live Progress',
+                    description: 'One-click backup that copies all files from one provider to the other, resumable and idempotent.',
+                    details: [
+                        'Four-phase progress modal (Discover → Copy → Finalize → Done) with plain-English status',
+                        'Two progress bars — files vs bytes — with live throughput and ETA during copy',
+                        'Distinct counters for Copied / Skipped (already present) / Failed, each with tooltip explanations',
+                        'Floating global progress bubble survives navigation and page reload',
+                        'Downloadable JSON log of every file action including per-file errors',
+                    ]
+                },
+                {
+                    type: 'feature',
+                    title: 'Rep Activity Dashboard',
+                    description: 'New page aggregating tickets, complaints, and overtime per rep with SLA compliance and workload classification.',
+                    details: [
+                        'Sortable table with drill-in per rep',
+                        'Saved Views and CSV export supported',
+                        'Available in admin for all reps + in customer-rep as self-view',
+                    ]
+                },
+                {
+                    type: 'feature',
+                    title: 'Permission Modules Resync',
+                    description: 'New button in Permission Levels tab that aligns module availability after new modules are added in code — no more manual editing every level.',
+                    details: [
+                        'Dry-run preview shows per-role diff and user-impact count before applying',
+                        'Opt-in backfill only touches each role\'s DEFAULT level (custom restricted levels left untouched)',
+                        'Audit-logged with who/when/what modules were added',
+                    ]
+                },
+                {
+                    type: 'improvement',
+                    title: 'Admin Upload Management — Full Visual Revamp',
+                    description: 'Header, tabs, stats, and settings redesigned to match the polished admin/users module pattern.',
+                    details: [
+                        'Per-tab icon-badge header with dynamic accent color (rose/indigo/blue/emerald/amber)',
+                        'Icons added to all 5 tab triggers',
+                        'Stats row now uses shared GenericStatCard',
+                        'Settings tab shows active storage destination at the top with jump-to-Storage-tab action',
+                        'Section headers across Settings use icon badges for visual hierarchy',
+                    ]
+                },
+                {
+                    type: 'improvement',
+                    title: 'Rep & Admin Activity Tracking',
+                    description: 'Admin dashboard storage stats now sum across both providers; previously only counted one.',
+                },
+                {
+                    type: 'improvement',
+                    title: 'Customer Reps Page + Hot-Path Redis Caching',
+                    description: 'New Customer Reps page added; 6 hot endpoints now Redis-cached with proper TTL and invalidation.',
+                    details: [
+                        'Redis cache on dashboard stats, project list, user list, rep activity, storage config, backup logs',
+                        '6 compound MongoDB indexes added for hot queries',
+                    ]
+                },
+            ],
+            operator: [
+                {
+                    type: 'feature',
+                    title: 'Overtime Request & Approval',
+                    description: 'Operators can now submit overtime requests directly from the time-tracking page. Routed to team lead for approval.',
+                    details: [
+                        'Tabbed time-tracking page with Overtime section',
+                        'Request modal with hours, date, project, reason',
+                        'Status badge shows pending / approved / rejected with reviewer note',
+                        'Two-tier approval: operators and QC-tech route to team lead; users and customer-reps route to admin',
+                    ]
+                },
+                {
+                    type: 'feature',
+                    title: 'Storage & Backups Page',
+                    description: 'New sidebar entry showing which provider your uploads go to + audit log of storage events that affected your work.',
+                },
+            ],
+            'qc-technician': [
+                {
+                    type: 'feature',
+                    title: 'Overtime Request',
+                    description: 'Overtime submission flow added to QC time-tracking page, with role-themed accents.',
+                },
+                {
+                    type: 'improvement',
+                    title: 'Certification Uploads on Active Storage',
+                    description: 'Certification file uploads now go to the active cloud provider (S3 or B2) automatically.',
+                },
+            ],
+            user: [
+                {
+                    type: 'feature',
+                    title: 'Team Overtime',
+                    description: 'New sidebar entry — review and approve overtime requests from your operators and QC technicians.',
+                },
+                {
+                    type: 'feature',
+                    title: 'Storage & Backups Page',
+                    description: 'See where your team\'s files live and track backup activity across your work.',
+                },
+            ],
+            'customer-rep': [
+                {
+                    type: 'feature',
+                    title: 'My Performance',
+                    description: 'Self-view performance dashboard added to customer-rep sidebar — tickets, complaints, overtime, SLA compliance.',
+                },
+                {
+                    type: 'feature',
+                    title: 'Overtime Request',
+                    description: 'Overtime submission with routing to admin for approval.',
+                },
+            ],
+            customer: [],
+            bugfixes: [
+                {
+                    type: 'bugfix',
+                    title: 'AI Pipeline Now Stamps Storage Provider Correctly',
+                    description: 'Fixed silent write-drop where AIDetections and Observations were not tracking which cloud provider their snapshots lived on.',
+                    details: [
+                        'AIDetection and Observation models gained a storageProvider field (schema was silently dropping writes)',
+                        'Every upload controller (video, project, device, user avatar/logo, certification, complaint) now saves the provider on the created DB row',
+                        'Backfilled 1045 existing documents (522 AIDetection + 523 Observation + misc) with explicit provider',
+                        'Snapshot streaming endpoint now looks up provider from AIDetection → Observation → Snapshot, not only Snapshot',
+                    ]
+                },
+                {
+                    type: 'bugfix',
+                    title: 'SNAPSHOTS Card Shows AI-Generated Snapshots',
+                    description: 'Top-right SNAPSHOTS card on the project detail page was reading only user-created snapshots and never showed AI output.',
+                    details: [
+                        'New shared helper lib/projectSnapshots.js merges user Snapshot docs with AI Observation.snapshotUrl entries',
+                        'Fixed for admin and operator project detail pages (user detail already had this pattern)',
+                    ]
+                },
+                {
+                    type: 'bugfix',
+                    title: 'Fail-Fast Pipeline Guard',
+                    description: 'AI processing now errors out clearly at start if the video\'s cloud provider is not configured, instead of cryptic 403s mid-pipeline.',
+                },
+            ],
+        }
+    },
+    {
         id: "v2.3.0",
         date: "April 13 – 14, 2026",
         label: "DRY Consolidation + Cross-Role Enhancements + TanStack Migration",
-        isNew: true,
+        isNew: false,
         updates: {
             admin: [
                 {
