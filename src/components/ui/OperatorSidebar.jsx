@@ -23,6 +23,7 @@ import {
   ChevronRight,
   FolderOpen,
   HardDrive,
+  Cloud,
 } from 'lucide-react';
 import ModuleLoading from './SewerVisionLoadingAnimation';
 import { useLoadingModuleSetting } from '@/hooks/useLoadingModuleSettings';
@@ -50,6 +51,7 @@ const OperatorSidebar = ({ isOpen, role }) => {
       '/operator/dashboard': 'Dashboard',
       '/operator/project': 'Projects',
       '/operator/uploads': 'Uploads',
+      '/operator/backups': 'Storage & Backups',
       '/operator/operations': 'Operations',
       '/operator/task': 'Tasks',
       '/operator/calendar': 'Calendar',
@@ -85,6 +87,7 @@ const OperatorSidebar = ({ isOpen, role }) => {
       items: [
         { label: 'Operations', icon: SearchX, path: '/operator/operations', module: 'operations' },
         { label: 'Uploads', icon: Upload, path: '/operator/uploads', module: 'uploads' },
+        { label: 'Storage & Backups', icon: Cloud, path: '/operator/backups', module: 'backups' },
         { label: 'Tasks', icon: ClipboardList, path: '/operator/task', module: 'tasks' },
       ],
     },

@@ -16,6 +16,7 @@ import {
   BookOpen,
   Calendar,
   Settings2,
+  Cloud,
 } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import ModuleLoading from './SewerVisionLoadingAnimation';
@@ -50,6 +51,7 @@ const UserSidebar = ({ isOpen, role, userRoleMeta }) => {
       '/user/inbox': 'Inbox',
       '/user/reports': 'Reports',
       '/user/calendar': 'Calendar',
+      '/user/backups': 'Storage & Backups',
     };
 
     for (const [path, label] of Object.entries(map)) {
@@ -82,6 +84,7 @@ const UserSidebar = ({ isOpen, role, userRoleMeta }) => {
       items: [
         { label: 'Reports', icon: BookOpen, path: '/user/reports', module: 'reports' },
         { label: 'Calendar', icon: Calendar, path: '/user/calendar', module: 'calendar' },
+        { label: 'Storage & Backups', icon: Cloud, path: '/user/backups', module: 'backups' },
         { label: 'Settings', icon: Settings2, path: '/user/settings', module: 'settings' },
       ],
     },

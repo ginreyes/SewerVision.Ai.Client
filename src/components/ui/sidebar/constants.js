@@ -53,6 +53,7 @@ import {
   ListChecks,
   LayoutGrid,
   Brain,
+  Gauge,
 } from 'lucide-react';
 
 // ── Icon string → Lucide component map ──
@@ -111,6 +112,7 @@ export const ICON_MAP = {
   ListChecks,
   LayoutGrid,
   Brain,
+  Gauge,
 };
 
 // ── Hardcoded admin sidebar (never filtered by permissions) ──
@@ -127,9 +129,11 @@ export const ADMIN_MENU_GROUPS = [
     label: 'Management',
     items: [
       { label: 'Users', icon: 'Users', path: '/admin/users', module: 'users' },
+      { label: 'Customer Reps', icon: 'Headphones', path: '/admin/customer-reps', key: 'customer-reps' },
       { label: 'Uploads', icon: 'CloudUpload', path: '/admin/uploads', module: 'uploads' },
       { label: 'Devices', icon: 'Monitor', path: '/admin/devices', module: 'devices' },
       { label: 'Tasks', icon: 'ClipboardList', path: '/admin/task', module: 'tasks' },
+      { label: 'Overtime', icon: 'Clock', path: '/admin/overtime', key: 'overtime' },
       { label: 'Billing', icon: 'CreditCard', path: '/admin/billing', module: 'billing' },
       { label: 'Training Center', icon: 'GraduationCap', path: '/admin/training', module: 'admin-training' },
       { label: 'Announcements', icon: 'Megaphone', path: '/admin/announcements', module: 'announcements' },
@@ -346,6 +350,7 @@ export const FALLBACK_MENUS = {
       { label: 'Notes', icon: 'StickyNote', path: '/user/notes', key: 'notes' },
       { label: 'Calendar', icon: 'Calendar', path: '/user/calendar', key: 'calendar' },
       { label: 'Time Tracking', icon: 'Clock', path: '/user/time-tracking', key: 'time-tracking' },
+      { label: 'Team Overtime', icon: 'Zap', path: '/user/overtime', key: 'overtime' },
       { label: 'Settings', icon: 'Settings', path: '/user/settings', key: 'settings', locked: true },
     ]},
   ],
@@ -392,6 +397,7 @@ export const FALLBACK_MENUS = {
     { label: 'Insights', items: [
       { label: 'Analytics', icon: 'BarChart2', path: '/customer-rep/analytics', key: 'analytics' },
       { label: 'Monitoring', icon: 'Activity', path: '/customer-rep/monitoring', key: 'monitoring' },
+      { label: 'My Performance', icon: 'Gauge', path: '/customer-rep/performance', key: 'performance' },
     ]},
     { label: 'Team', items: [
       { label: 'Team', icon: 'Users', path: '/customer-rep/team', key: 'team' },

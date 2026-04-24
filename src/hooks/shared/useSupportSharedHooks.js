@@ -3,6 +3,7 @@
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import supportApi from '@/data/supportApi';
 import cannedResponseApi from '@/data/cannedResponseApi';
+import repActivityApi from '@/data/repActivityApi';
 import { queryKeys } from '../queryKeys';
 
 /**
@@ -211,5 +212,19 @@ export function useDeleteCannedResponse() {
     return useMutation({
         mutationFn: (id) => cannedResponseApi.delete(id),
         onSuccess: () => { queryClient.invalidateQueries({ queryKey: ['canned-responses'] }); },
+    });
+}
+
+/**
+ * ============ REP ACTIVITY HOOKS ============
+ */
+
+export function useRepActivity({ mode = 'list', repId, managedBy } = {}, options = {}) {
+    return useQuery({
+        queryKey: queryKeys.repActivity(mode, repId),
+        queryFn: () => (mode === 'self' && repId ? repActivityApi.getOne(repId) : repActivityApi.list({ managedBy })),
+        enabled: mode === 'self' ? !!repId : true,
+        staleTime: 1000 * 60 * 2,
+        ...options,
     });
 }

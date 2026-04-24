@@ -31,6 +31,15 @@ export const permissionLevelApi = {
   async assignToUser(userId, permissionLevelId) {
     return api(`/api/users/${userId}/assign-permission`, 'PATCH', { permissionLevelId });
   },
+
+  /**
+   * Resync: seeds SecurityModule from code + backfills default permission levels.
+   * Pass { dryRun: true } to preview changes without committing. Default applies.
+   */
+  async resyncModules({ dryRun = false } = {}) {
+    const qs = dryRun ? '?dryRun=1' : '';
+    return api(`/api/permission-levels/resync-modules${qs}`, 'POST');
+  },
 };
 
 export default permissionLevelApi;

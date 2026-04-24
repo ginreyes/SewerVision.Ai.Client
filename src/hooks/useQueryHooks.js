@@ -47,6 +47,16 @@ export {
     useRefreshMaintenanceSystems,
     useDismissMaintenanceAlert,
     useAdminAnalytics,
+    useStorageConfig,
+    useStorageSummary,
+    useStorageUsage,
+    useUpdateStorageConfig,
+    useTestStorageConfig,
+    useStartMigration,
+    useCancelMigration,
+    useMigrationStatus,
+    useMigrationList,
+    useBackupLogs,
 } from './useAdminHooks';
 
 // ── Operator ──
@@ -323,6 +333,18 @@ export {
     useUserMemberMetrics,
     useUserTeamSummary,
     useCreatePerformanceMetrics,
+    // Overtime
+    useUserOvertimeRequests,
+    useUserOvertimeSummary,
+    useRequestOvertime,
+    useWithdrawOvertimeRequest,
+    useAdminOvertimeRequests,
+    useAdminOvertimeSummary,
+    useApproveOvertimeRequest,
+    useRejectOvertimeRequest,
+    useOvertimeApprovalQueue,
+    // Rep Activity
+    useRepActivity,
 } from './useSharedHooks';
 
 // ── Default export (preserves backward compat for `import hooks from ...`) ──
@@ -409,6 +431,10 @@ import {
     useCreateTemplate, useUpdateTemplate, useToggleTemplateStar, useDuplicateTemplate,
     useDeleteTemplate, useUseTemplate, useUserTeamMetrics, useUserMemberMetrics,
     useUserTeamSummary, useCreatePerformanceMetrics,
+    useUserOvertimeRequests, useUserOvertimeSummary, useRequestOvertime,
+    useWithdrawOvertimeRequest, useAdminOvertimeRequests, useAdminOvertimeSummary,
+    useApproveOvertimeRequest, useRejectOvertimeRequest, useOvertimeApprovalQueue,
+    useRepActivity,
 } from './useSharedHooks';
 
 export default {
@@ -640,6 +666,17 @@ export default {
     useUserMemberMetrics,
     useUserTeamSummary,
     useCreatePerformanceMetrics,
+    // Overtime
+    useUserOvertimeRequests,
+    useUserOvertimeSummary,
+    useRequestOvertime,
+    useWithdrawOvertimeRequest,
+    useAdminOvertimeRequests,
+    useAdminOvertimeSummary,
+    useApproveOvertimeRequest,
+    useRejectOvertimeRequest,
+    useOvertimeApprovalQueue,
+    useRepActivity,
     // Admin — Users, Permissions, Calendar, Projects
     useAllUsers,
     useCustomers,

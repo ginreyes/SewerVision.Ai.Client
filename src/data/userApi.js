@@ -390,6 +390,45 @@ export const userApi = {
         if (!response.ok) throw new Error(response.data?.message || 'Failed to fetch summary');
         return response.data?.data;
     },
+
+    // ─── Overtime Requests ──────────────────────
+    async getOvertimeRequests(userId, { status, dateFrom, dateTo, page = 1, limit = 50 } = {}) {
+        const params = new URLSearchParams({ page, limit });
+        if (userId) params.set('requestedBy', userId);
+        if (status && status !== 'all') params.set('status', status);
+        if (dateFrom) params.set('dateFrom', dateFrom);
+        if (dateTo) params.set('dateTo', dateTo);
+        const response = await api(`/api/overtime-requests?${params}`, 'GET');
+        if (!response.ok) throw new Error(response.data?.message || 'Failed to fetch overtime requests');
+        return response.data?.data || [];
+    },
+    async getOvertimeSummary(userId) {
+        const params = new URLSearchParams();
+        if (userId) params.set('requestedBy', userId);
+        const response = await api(`/api/overtime-requests/summary?${params}`, 'GET');
+        if (!response.ok) throw new Error(response.data?.message || 'Failed to fetch overtime summary');
+        return response.data?.data || { pending: 0, approved: 0, rejected: 0, totalApprovedHours: 0, totalPendingHours: 0 };
+    },
+    async requestOvertime(data) {
+        const response = await api('/api/overtime-requests', 'POST', data);
+        if (!response.ok) throw new Error(response.data?.message || 'Failed to submit overtime request');
+        return response.data?.data;
+    },
+    async withdrawOvertimeRequest(id) {
+        const response = await api(`/api/overtime-requests/${id}`, 'DELETE');
+        if (!response.ok) throw new Error(response.data?.message || 'Failed to withdraw overtime request');
+        return response.data;
+    },
+
+    async getOvertimeApprovalQueue({ approverTier, managedBy, status, page = 1, limit = 100 } = {}) {
+        const params = new URLSearchParams({ page, limit });
+        if (approverTier) params.set('approverTier', approverTier);
+        if (managedBy) params.set('managedBy', managedBy);
+        if (status && status !== 'all') params.set('status', status);
+        const response = await api(`/api/overtime-requests?${params}`, 'GET');
+        if (!response.ok) throw new Error(response.data?.message || 'Failed to fetch approval queue');
+        return response.data?.data || [];
+    },
 };
 
 export default userApi;

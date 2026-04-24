@@ -41,20 +41,30 @@ const MonitoringTab = ({
 }) => {
   return (
     <TabsContent value="monitoring" className="space-y-6">
-      {/* Refresh Header */}
-      <div className="flex items-center justify-between">
-        <div>
-          <h2 className="text-lg font-semibold text-gray-900">Real-time Monitoring</h2>
-          <p className="text-sm text-gray-500">Auto-refreshes every 5 seconds when active</p>
+      {/* Refresh banner — accented card to match module style */}
+      <div className="flex items-center justify-between p-4 rounded-xl border border-emerald-100 bg-gradient-to-r from-emerald-50/50 to-teal-50/40 dark:from-emerald-500/5 dark:to-teal-500/5 dark:border-emerald-500/20">
+        <div className="flex items-center gap-3">
+          <div className="w-9 h-9 rounded-lg bg-emerald-100 dark:bg-emerald-500/15 flex items-center justify-center flex-shrink-0">
+            <Activity className="w-4 h-4 text-emerald-600 dark:text-emerald-400" />
+          </div>
+          <div>
+            <h2 className="text-sm font-semibold text-gray-900 dark:text-gray-100">
+              Live monitoring is active
+            </h2>
+            <p className="text-xs text-gray-500 dark:text-gray-400">
+              Auto-refreshes every 5 seconds while this tab is open.
+            </p>
+          </div>
         </div>
         <Button
           variant="outline"
           size="sm"
           onClick={onRefresh}
           disabled={monitoringLoading}
+          className="gap-2"
         >
-          <RefreshCw className={`w-4 h-4 mr-2 ${monitoringLoading ? 'animate-spin' : ''}`} />
-          Refresh
+          <RefreshCw className={`w-4 h-4 ${monitoringLoading ? 'animate-spin' : ''}`} />
+          Refresh now
         </Button>
       </div>
 

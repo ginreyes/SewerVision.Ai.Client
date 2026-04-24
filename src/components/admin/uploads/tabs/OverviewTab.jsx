@@ -24,7 +24,8 @@ import { Badge } from '@/components/ui/badge';
 import { Progress } from '@/components/ui/progress';
 import { TabsContent } from '@/components/ui/tabs';
 import { getFileTypeIcon, getStatusColor } from '@/lib/utils';
-import StatCard from '@/components/admin/uploads/statCard';
+import GenericStatCard from '@/components/shared/GenericStatCard';
+import { FileVideo, FileText as FileTextIcon, Package } from 'lucide-react';
 
 const OverviewTab = ({ uploads, systemStats, monitoringData, loading, onRefresh }) => {
   const processingVideos = uploads.filter(
@@ -218,74 +219,85 @@ const OverviewTab = ({ uploads, systemStats, monitoringData, loading, onRefresh 
         </Card>
       )}
 
-      {/* System Stats */}
-      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
-        <StatCard
-          title="Total Storage"
+      {/* System Stats — admin module KPI row */}
+      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
+        <GenericStatCard
+          icon={HardDrive}
+          label="Total Storage"
           value={systemStats.totalStorage}
           subtitle={`${systemStats.usedStorage} used`}
-          icon={HardDrive}
-          color="bg-gradient-to-br from-blue-500 to-purple-600"
+          color="blue"
         />
-        <StatCard
-          title="Total Files"
+        <GenericStatCard
+          icon={FolderOpen}
+          label="Total Files"
           value={systemStats.totalFiles}
           subtitle={`+${systemStats.monthlyUploads} this month`}
-          icon={FolderOpen}
-          color="bg-gradient-to-br from-green-500 to-emerald-600"
+          color="green"
         />
-        <StatCard
-          title="Active Uploads"
+        <GenericStatCard
+          icon={Upload}
+          label="Active Uploads"
           value={systemStats.activeUploads}
           subtitle={`${systemStats.failedUploads} failed`}
-          icon={Upload}
-          color="bg-gradient-to-br from-orange-500 to-red-600"
+          color="amber"
         />
-        <StatCard
-          title="AI Processing"
+        <GenericStatCard
+          icon={Brain}
+          label="AI Processing"
           value={monitoringData.processingQueue.length}
           subtitle="Videos in queue"
-          icon={Brain}
-          color="bg-gradient-to-br from-purple-500 to-pink-600"
+          color="purple"
         />
       </div>
 
       {/* Storage Usage */}
       <Card>
         <CardHeader>
-          <CardTitle className="flex items-center space-x-2">
-            <Server className="w-5 h-5" />
-            <span>Storage Usage</span>
-          </CardTitle>
+          <div className="flex items-center gap-3">
+            <div className="w-9 h-9 rounded-lg bg-blue-100 dark:bg-blue-500/15 flex items-center justify-center">
+              <Server className="w-4 h-4 text-blue-600 dark:text-blue-400" />
+            </div>
+            <div>
+              <CardTitle className="text-base">Storage Usage</CardTitle>
+              <p className="text-xs text-gray-500 mt-0.5">
+                How the active provider bucket is being used right now.
+              </p>
+            </div>
+          </div>
         </CardHeader>
         <CardContent>
-          <div className="mb-4">
-            <div className="flex justify-between text-sm text-gray-600 mb-2">
+          <div className="mb-5">
+            <div className="flex justify-between text-sm text-gray-600 dark:text-gray-400 mb-2">
               <span>
-                Used: {systemStats.usedStorage} of {systemStats.totalStorage}
+                Used: <span className="font-medium text-gray-800 dark:text-gray-200">{systemStats.usedStorage}</span> of{" "}
+                <span className="font-medium text-gray-800 dark:text-gray-200">{systemStats.totalStorage}</span>
               </span>
-              <span>{systemStats.storageUsage}%</span>
+              <span className="font-semibold">{systemStats.storageUsage}%</span>
             </div>
-            <Progress value={systemStats.storageUsage} className="h-3" />
+            <Progress value={systemStats.storageUsage} className="h-2" />
           </div>
 
-          <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
-            <div className="text-center">
-              <div className="text-lg font-bold text-blue-600">{systemStats.videoFiles}</div>
-              <div className="text-sm text-gray-600">Video Files</div>
-            </div>
-            <div className="text-center">
-              <div className="text-lg font-bold text-green-600">{systemStats.documentFiles}</div>
-              <div className="text-sm text-gray-600">Documents</div>
-            </div>
-            <div className="text-center">
-              <div className="text-lg font-bold text-purple-600">{systemStats.archiveFiles}</div>
-              <div className="text-sm text-gray-600">Archives</div>
-            </div>
-            <div className="text-center">
-              <div className="text-lg font-bold text-gray-600">{systemStats.otherFiles}</div>
-              <div className="text-sm text-gray-600">Other</div>
-            </div>
+          <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
+            {[
+              { label: 'Video Files', value: systemStats.videoFiles, icon: FileVideo, bg: 'bg-blue-50 dark:bg-blue-500/10', text: 'text-blue-600 dark:text-blue-400' },
+              { label: 'Documents', value: systemStats.documentFiles, icon: FileTextIcon, bg: 'bg-emerald-50 dark:bg-emerald-500/10', text: 'text-emerald-600 dark:text-emerald-400' },
+              { label: 'Archives', value: systemStats.archiveFiles, icon: Package, bg: 'bg-purple-50 dark:bg-purple-500/10', text: 'text-purple-600 dark:text-purple-400' },
+              { label: 'Other', value: systemStats.otherFiles, icon: FolderOpen, bg: 'bg-gray-50 dark:bg-gray-500/10', text: 'text-gray-600 dark:text-gray-400' },
+            ].map((row) => {
+              const RowIcon = row.icon;
+              return (
+                <div key={row.label} className="flex items-center gap-3 p-3 rounded-lg border border-gray-100 dark:border-gray-700">
+                  <div className={`w-9 h-9 rounded-lg ${row.bg} flex items-center justify-center flex-shrink-0`}>
+                    <RowIcon className={`w-4 h-4 ${row.text}`} />
+                  </div>
+                  <div>
+                    <p className="text-lg font-bold text-gray-900 dark:text-white leading-tight">{row.value}</p>
+                    <p className="text-xs text-gray-500 dark:text-gray-400">{row.label}</p>
+                  </div>
+                </div>
+              );
+            })}
           </div>
         </CardContent>
       </Card>
@@ -293,23 +305,32 @@ const OverviewTab = ({ uploads, systemStats, monitoringData, loading, onRefresh 
       {/* Recent Activity */}
       <Card>
         <CardHeader>
-          <CardTitle className="flex items-center space-x-2">
-            <Activity className="w-5 h-5" />
-            <span>Recent Upload Activity</span>
-          </CardTitle>
+          <div className="flex items-center gap-3">
+            <div className="w-9 h-9 rounded-lg bg-emerald-100 dark:bg-emerald-500/15 flex items-center justify-center">
+              <Activity className="w-4 h-4 text-emerald-600 dark:text-emerald-400" />
+            </div>
+            <div>
+              <CardTitle className="text-base">Recent Upload Activity</CardTitle>
+              <p className="text-xs text-gray-500 mt-0.5">
+                Latest five files added to the system.
+              </p>
+            </div>
+          </div>
         </CardHeader>
         <CardContent>
-          <div className="space-y-4">
-            {uploads.slice(0, 5).map((upload) => (
+          <div className="space-y-2">
+            {uploads.length === 0 ? (
+              <p className="text-sm text-gray-400 italic text-center py-6">No recent uploads</p>
+            ) : uploads.slice(0, 5).map((upload) => (
               <div
                 key={upload._id}
-                className="flex items-center justify-between p-3 bg-gray-50 rounded-lg"
+                className="flex items-center justify-between p-3 bg-gray-50 dark:bg-gray-800/50 rounded-lg border border-gray-100 dark:border-gray-700 hover:border-gray-200 dark:hover:border-gray-600 transition-colors"
               >
-                <div className="flex items-center space-x-3">
-                  {getFileTypeIcon(upload.type)}
-                  <div>
-                    <h4 className="font-medium text-gray-900">{upload.originalName}</h4>
-                    <p className="text-sm text-gray-500">
+                <div className="flex items-center gap-3 min-w-0">
+                  <div className="flex-shrink-0">{getFileTypeIcon(upload.type)}</div>
+                  <div className="min-w-0">
+                    <h4 className="font-medium text-gray-900 dark:text-gray-100 truncate">{upload.originalName}</h4>
+                    <p className="text-xs text-gray-500 dark:text-gray-400">
                       {new Date(upload.uploadedAt).toLocaleDateString()} • {upload.size}
                     </p>
                   </div>

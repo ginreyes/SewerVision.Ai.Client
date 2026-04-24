@@ -119,6 +119,30 @@ export const REPORT_STATUS_CONFIG = {
     draft: { label: 'Draft', className: 'bg-gray-100 text-gray-700 border-gray-200' },
 };
 
+export const OVERTIME_STATUS_CONFIG = {
+    pending: {
+        label: 'Pending',
+        className: 'bg-amber-100 text-amber-700 border-amber-200',
+        darkClassName: 'dark:bg-amber-900/40 dark:text-amber-200 dark:border-amber-800',
+        dot: 'bg-amber-500',
+    },
+    approved: {
+        label: 'Approved',
+        className: 'bg-emerald-100 text-emerald-700 border-emerald-200',
+        darkClassName: 'dark:bg-emerald-900/40 dark:text-emerald-200 dark:border-emerald-800',
+        dot: 'bg-emerald-500',
+    },
+    rejected: {
+        label: 'Rejected',
+        className: 'bg-rose-100 text-rose-700 border-rose-200',
+        darkClassName: 'dark:bg-rose-900/40 dark:text-rose-200 dark:border-rose-800',
+        dot: 'bg-rose-500',
+    },
+};
+
+export const getOvertimeStatusConfig = (status) =>
+    OVERTIME_STATUS_CONFIG[status] || OVERTIME_STATUS_CONFIG.pending;
+
 export const getProjectStatusColor = (status) =>
     PROJECT_STATUS_COLORS[status] || 'bg-gray-100 text-gray-600';
 

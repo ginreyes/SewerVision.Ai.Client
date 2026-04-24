@@ -61,6 +61,13 @@ export const queryKeys = {
     adminUploads: (params) => ['admin', 'uploads', params ?? {}],
     adminUploadStats: ['admin', 'uploads', 'stats'],
 
+    // Storage (admin controls; backup logs are role-scoped)
+    storageConfig: ['storage', 'config'],
+    storageUsage: ['storage', 'usage'],
+    migrationList: ['storage', 'migrations'],
+    migrationStatus: (jobId) => ['storage', 'migration', jobId],
+    backupLogs: (filters) => ['storage', 'backup-logs', filters ?? {}],
+
     // Admin reports
     adminReports: (filters) => ['admin', 'reports', filters ?? {}],
     adminReport: (reportId) => ['admin', 'report', reportId],
@@ -115,6 +122,12 @@ export const queryKeys = {
     userTeamMetrics: (userId) => ['user', 'team-metrics', userId],
     userMemberMetrics: (memberId) => ['user', 'member-metrics', memberId],
     userTeamSummary: (userId) => ['user', 'team-summary', userId],
+    userOvertimeRequests: (userId, filters) => ['user', 'overtime-requests', userId, filters ?? {}],
+    userOvertimeSummary: (userId) => ['user', 'overtime-summary', userId],
+    adminOvertimeRequests: (filters) => ['admin', 'overtime-requests', filters ?? {}],
+    adminOvertimeSummary: ['admin', 'overtime-summary'],
+    overtimeApprovalQueue: (filters) => ['overtime', 'approval-queue', filters ?? {}],
+    repActivity: (mode, repId) => ['rep-activity', mode ?? 'list', repId ?? null],
 
     // Devices (admin)
     devices: (params) => ['devices', params ?? {}],

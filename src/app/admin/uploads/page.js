@@ -11,6 +11,11 @@ import {
   Loader2,
   Eye,
   MapPin,
+  LayoutDashboard,
+  FolderOpen,
+  Cloud,
+  Activity,
+  Settings as SettingsIcon,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
@@ -18,6 +23,7 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import uploadsApi from "@/data/uploadsApi";
 import SewerTable from "@/components/ui/SewerTable";
 import BulkUploadModal from "@/components/admin/uploads/BulkUploadModal";
+import UploadStatsGrid from "@/components/admin/uploads/UploadStatsGrid";
 import { getFileTypeIcon, getStatusColor } from "@/lib/utils";
 import { useAlert } from "@/components/providers/AlertProvider";
 import { api } from "@/lib/helper";
@@ -26,6 +32,8 @@ import OverviewTab from "@/components/admin/uploads/tabs/OverviewTab";
 import StorageTab from "@/components/admin/uploads/tabs/StorageTab";
 import MonitoringTab from "@/components/admin/uploads/tabs/MonitoringTab";
 import SettingsTab from "@/components/admin/uploads/tabs/SettingsTab";
+import { SavedViewsDropdown, useSavedViewSync } from "@/components/shared/SavedViews";
+import ExportButton from "@/components/shared/ExportButton";
 
 const AdminUploads = () => {
   const router = useRouter();
@@ -34,6 +42,23 @@ const AdminUploads = () => {
   const [filterStatus, setFilterStatus] = useState("all");
   const [filterType, setFilterType] = useState("all");
   const [activeTab, setActiveTab] = useState("overview");
+
+  // Saved Views sync — named filter combinations per user
+  const captureFilters = useCallback(
+    () => ({ searchQuery, filterStatus, filterType }),
+    [searchQuery, filterStatus, filterType]
+  );
+  const applyFilters = useCallback((filters) => {
+    if (filters.searchQuery !== undefined) setSearchQuery(filters.searchQuery || "");
+    if (filters.filterStatus !== undefined) setFilterStatus(filters.filterStatus || "all");
+    if (filters.filterType !== undefined) setFilterType(filters.filterType || "all");
+  }, []);
+  const {
+    activeViewId,
+    applyView,
+    clearView,
+    snapshot: snapshotFilters,
+  } = useSavedViewSync({ applyFilters, captureFilters });
   const [selectedFiles, setSelectedFiles] = useState([]);
   const [showBulkUploadModal, setShowBulkUploadModal] = useState(false);
   const [uploads, setUploads] = useState([]);
@@ -476,41 +501,71 @@ const AdminUploads = () => {
     return null;
   };
 
+  // Header config driven by active tab — keeps the page feeling like one cohesive
+  // module while each tab shows its own identity (mirrors the users module pattern).
+  const tabHeader = {
+    overview:   { title: "Upload Management",  subtitle: "Monitor AI processing, recent activity, and system capacity at a glance.", icon: LayoutDashboard, accent: "rose" },
+    files:      { title: "Upload Files",       subtitle: "Browse, filter, and bulk-manage every file in the system.",                icon: FolderOpen,      accent: "indigo" },
+    storage:    { title: "Cloud Storage",      subtitle: "Choose active provider, view usage across B2 and S3, run backups.",        icon: Cloud,           accent: "blue" },
+    monitoring: { title: "Real-time Monitoring", subtitle: "Live system status, AI queue depth, and processing health.",             icon: Activity,        accent: "emerald" },
+    settings:   { title: "Upload Settings",    subtitle: "Upload limits, security, retention, and destination storage.",             icon: SettingsIcon,    accent: "amber" },
+  };
+  const currentHeader = tabHeader[activeTab] || tabHeader.overview;
+  const HeaderIcon = currentHeader.icon;
+  const accentClasses = {
+    rose:    { bg: "bg-rose-100 dark:bg-rose-500/15",       text: "text-rose-600 dark:text-rose-400" },
+    indigo:  { bg: "bg-indigo-100 dark:bg-indigo-500/15",   text: "text-indigo-600 dark:text-indigo-400" },
+    blue:    { bg: "bg-blue-100 dark:bg-blue-500/15",       text: "text-blue-600 dark:text-blue-400" },
+    emerald: { bg: "bg-emerald-100 dark:bg-emerald-500/15", text: "text-emerald-600 dark:text-emerald-400" },
+    amber:   { bg: "bg-amber-100 dark:bg-amber-500/15",     text: "text-amber-600 dark:text-amber-400" },
+  }[currentHeader.accent];
+
   return (
-    <div className="max-w-7xl mx-auto bg-gray-50">
-      {/* Header */}
-      <div className="bg-white shadow-sm border-b border-gray-200">
-        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-          <div className="flex items-center justify-between h-16">
-            <div className="flex items-center space-x-4">
-              <h1 className="text-2xl font-bold text-gray-900">
-                Admin Upload Management
-              </h1>
-              <Badge
-                variant="outline"
-                className="bg-red-100 text-red-800 border-red-200"
-              >
-                <ShieldCheck className="w-3 h-3 mr-1" />
-                Admin Access
-              </Badge>
-            </div>
-            <Button variant="outline" onClick={handleRefreshAll}>
-              <RefreshCw className="w-4 h-4 mr-2" />
-              Refresh
-            </Button>
+    <div className="p-6 space-y-6 max-w-7xl mx-auto">
+      {/* Welcome-style header — matches admin/users pattern */}
+      <div className="flex items-center justify-between flex-wrap gap-4">
+        <div className="flex items-center gap-4 min-w-0">
+          <div className={`w-12 h-12 rounded-xl flex items-center justify-center flex-shrink-0 ${accentClasses.bg}`}>
+            <HeaderIcon className={`w-6 h-6 ${accentClasses.text}`} />
           </div>
+          <div className="min-w-0">
+            <h1 className="text-2xl font-bold text-gray-900 dark:text-white truncate">{currentHeader.title}</h1>
+            <p className="text-sm text-gray-500 dark:!text-gray-300 mt-0.5">{currentHeader.subtitle}</p>
+          </div>
+        </div>
+        <div className="flex items-center gap-2 flex-wrap">
+          <Badge
+            variant="outline"
+            className="bg-red-50 text-red-700 border-red-200 dark:bg-red-900/40 dark:text-red-200 dark:border-red-800"
+          >
+            <ShieldCheck className="w-3 h-3 mr-1" />
+            Admin Access
+          </Badge>
+          <Button variant="outline" size="sm" onClick={handleRefreshAll} className="gap-2">
+            <RefreshCw className="w-4 h-4" />
+            Refresh
+          </Button>
         </div>
       </div>
 
-      <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
-        <Tabs value={activeTab} onValueChange={setActiveTab}>
-          <TabsList className="grid w-fit grid-cols-5 mb-8">
-            <TabsTrigger value="overview">Overview</TabsTrigger>
-            <TabsTrigger value="files">Files</TabsTrigger>
-            <TabsTrigger value="storage">Storage</TabsTrigger>
-            <TabsTrigger value="monitoring">Monitoring</TabsTrigger>
-            <TabsTrigger value="settings">Settings</TabsTrigger>
-          </TabsList>
+      <Tabs value={activeTab} onValueChange={setActiveTab}>
+        <TabsList className="grid w-fit grid-cols-5 mb-6">
+          <TabsTrigger value="overview" className="gap-1.5">
+            <LayoutDashboard className="w-3.5 h-3.5" /> Overview
+          </TabsTrigger>
+          <TabsTrigger value="files" className="gap-1.5">
+            <FolderOpen className="w-3.5 h-3.5" /> Files
+          </TabsTrigger>
+          <TabsTrigger value="storage" className="gap-1.5">
+            <Cloud className="w-3.5 h-3.5" /> Storage
+          </TabsTrigger>
+          <TabsTrigger value="monitoring" className="gap-1.5">
+            <Activity className="w-3.5 h-3.5" /> Monitoring
+          </TabsTrigger>
+          <TabsTrigger value="settings" className="gap-1.5">
+            <SettingsIcon className="w-3.5 h-3.5" /> Settings
+          </TabsTrigger>
+        </TabsList>
 
           {/* Overview Tab */}
           <OverviewTab
@@ -523,10 +578,49 @@ const AdminUploads = () => {
 
           {/* Files Tab */}
           <TabsContent value="files" className="space-y-6">
+            {/* Analytics widget */}
+            <UploadStatsGrid uploads={uploads} />
+
+            {/* Saved Views + Export row */}
+            <div className="flex items-center justify-end gap-2 flex-wrap">
+              <SavedViewsDropdown
+                entityType="upload"
+                activeViewId={activeViewId}
+                onApply={applyView}
+                onClear={clearView}
+                snapshotFilters={snapshotFilters}
+                accentColor="rose"
+              />
+              <ExportButton
+                data={filteredUploads.map((u) => ({
+                  filename: u.originalName || u.filename,
+                  size: u.size,
+                  status: u.status,
+                  type: u.type,
+                  uploadedBy:
+                    typeof u.uploadedBy === "object"
+                      ? u.uploadedBy?.email || ""
+                      : u.uploadedBy || "",
+                  location: u.location || "",
+                  uploadedAt: u.uploadedAt || "",
+                }))}
+                columns={[
+                  { key: "filename", label: "File" },
+                  { key: "size", label: "Size" },
+                  { key: "status", label: "Status" },
+                  { key: "type", label: "Type" },
+                  { key: "uploadedBy", label: "Uploaded By" },
+                  { key: "location", label: "Location" },
+                  { key: "uploadedAt", label: "Date" },
+                ]}
+                filename="uploads"
+              />
+            </div>
+
             {/* Bulk Actions Bar */}
             {selectedFiles.length > 0 && (
-              <div className="bg-blue-50 border border-blue-200 rounded-lg p-3 flex items-center justify-between">
-                <span className="text-sm font-medium text-blue-800">
+              <div className="bg-blue-50 border border-blue-200 dark:bg-blue-900/20 dark:border-blue-900/50 rounded-lg p-3 flex items-center justify-between">
+                <span className="text-sm font-medium text-blue-800 dark:text-blue-200">
                   {selectedFiles.length} file{selectedFiles.length !== 1 ? 's' : ''} selected
                 </span>
                 <div className="flex items-center gap-2">
@@ -611,9 +705,9 @@ const AdminUploads = () => {
             setUploadSettings={setUploadSettings}
             loading={loading}
             onSave={handleSaveSettings}
+            onNavigateToStorage={() => setActiveTab("storage")}
           />
         </Tabs>
-      </div>
 
       {/* Bulk Upload Modal */}
       <BulkUploadModal
