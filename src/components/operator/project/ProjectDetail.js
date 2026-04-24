@@ -6,6 +6,7 @@ import { useUploadLimits } from '@/hooks/useUploadLimits';
 import { useProjectVideos, useProjectObservations, useProjectSnapshots, useProjectMetadata, usePacpCodes } from '@/hooks/useQueryHooks';
 import { useRouter } from 'next/navigation';
 
+import { deriveProjectSnapshots } from '@/lib/projectSnapshots';
 import DetailHeader from './detail/DetailHeader';
 import UploadStatusBanners from './detail/UploadStatusBanners';
 import ProjectInfoBanner from './detail/ProjectInfoBanner';
@@ -193,8 +194,13 @@ const ProjectDetail = ({ project, setSelectedProject, onBack, allProjects = [] }
     setCurrentTime(newTime);
   };
 
-  // Use fetched snapshots or fallback to empty array
-  const displaySnapshots = snapshots.length > 0 ? snapshots : [];
+  // Combine user-created Snapshot docs with AI-generated observation snapshots.
+  // AI pipeline writes to Observation.snapshotUrl, not the Snapshot collection, so
+  // this merge surfaces AI snapshots in the sidebar card.
+  const displaySnapshots = useMemo(
+    () => deriveProjectSnapshots(snapshots, observations),
+    [snapshots, observations]
+  );
 
   const recordingInfo = projectMetadata || project?.metadata || {
     recordingDate: project?.metadata?.recordingDate || '',

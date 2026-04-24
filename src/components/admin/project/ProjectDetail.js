@@ -27,6 +27,7 @@ import { useUploadLimits } from '@/hooks/useUploadLimits';
 import { useProjectVideos, useProjectObservations, useProjectSnapshots, useProjectMetadata, usePacpCodes } from '@/hooks/useQueryHooks';
 import { useRouter } from 'next/navigation';
 import { getVideoUrl } from '@/lib/getVideoUrl';
+import { deriveProjectSnapshots } from '@/lib/projectSnapshots';
 import { AddCustomMetadataDialog, EditMetadataDialog, DeleteVideoDialog, UploadProgressDialog } from '@/components/shared/project-dialogs';
 import { DetailHeader, ProjectInfoBanner, UploadStatusBanners, ProjectVideoList } from '@/components/shared/project-detail';
 
@@ -642,8 +643,13 @@ const ProjectDetail = ({ project, setSelectedProject, onBack, initialSeekTime, a
     setCurrentTime(newTime);
   };
 
-  // Use fetched snapshots or fallback to empty array
-  const displaySnapshots = snapshots.length > 0 ? snapshots : [];
+  // Combine user-created Snapshot docs with AI-generated observation snapshots.
+  // AI pipeline writes snapshots to Observation.snapshotUrl (not the Snapshot collection),
+  // so without this merge the SNAPSHOTS card would always appear empty for AI-processed videos.
+  const displaySnapshots = useMemo(
+    () => deriveProjectSnapshots(snapshots, observations),
+    [snapshots, observations]
+  );
 
 
   const recordingInfo = projectMetadata || project?.metadata || {
