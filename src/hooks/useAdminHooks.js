@@ -48,6 +48,121 @@ export function useAdminUploadStats(options = {}) {
 }
 
 /**
+ * ============ STORAGE HOOKS ============
+ * Config + usage are admin-only. Backup logs are role-scoped on the backend.
+ */
+
+export function useStorageConfig(options = {}) {
+    return useQuery({
+        queryKey: queryKeys.storageConfig,
+        queryFn: () => uploadsApi.getStorageConfig(),
+        staleTime: 1000 * 60, // 1 min — rarely changes
+        ...options,
+    });
+}
+
+/**
+ * Minimal storage summary hook — safe for non-admin roles.
+ * Returns only which provider is active and whether each is configured.
+ * No secrets, no bucket names, no byte counts.
+ */
+export function useStorageSummary(options = {}) {
+    return useQuery({
+        queryKey: ['storage', 'summary'],
+        queryFn: () => uploadsApi.getStorageSummary(),
+        staleTime: 1000 * 60,
+        ...options,
+    });
+}
+
+export function useStorageUsage(options = {}) {
+    return useQuery({
+        queryKey: queryKeys.storageUsage,
+        queryFn: () => uploadsApi.getStorageUsage(),
+        staleTime: 1000 * 60 * 2, // 2 min — backend already caches 5 min
+        ...options,
+    });
+}
+
+export function useUpdateStorageConfig() {
+    const queryClient = useQueryClient();
+    return useMutation({
+        mutationFn: (payload) => uploadsApi.updateStorageConfig(payload),
+        onSuccess: () => {
+            queryClient.invalidateQueries({ queryKey: queryKeys.storageConfig });
+            queryClient.invalidateQueries({ queryKey: queryKeys.storageUsage });
+        },
+    });
+}
+
+export function useTestStorageConfig() {
+    return useMutation({
+        mutationFn: (payload) => uploadsApi.testStorageConfig(payload),
+    });
+}
+
+export function useStartMigration() {
+    const queryClient = useQueryClient();
+    return useMutation({
+        mutationFn: (direction) => uploadsApi.startMigration(direction),
+        onSuccess: () => {
+            queryClient.invalidateQueries({ queryKey: queryKeys.migrationList });
+        },
+    });
+}
+
+export function useCancelMigration() {
+    const queryClient = useQueryClient();
+    return useMutation({
+        mutationFn: (jobId) => uploadsApi.cancelMigration(jobId),
+        onSuccess: (_data, jobId) => {
+            queryClient.invalidateQueries({ queryKey: queryKeys.migrationStatus(jobId) });
+            queryClient.invalidateQueries({ queryKey: queryKeys.migrationList });
+        },
+    });
+}
+
+/**
+ * Polls a migration job every 2 seconds while it's running.
+ * Pass enabled=false once the job is terminal to stop polling.
+ */
+export function useMigrationStatus(jobId, options = {}) {
+    return useQuery({
+        queryKey: queryKeys.migrationStatus(jobId),
+        queryFn: () => uploadsApi.getMigrationStatus(jobId),
+        enabled: !!jobId && options.enabled !== false,
+        refetchInterval: (query) => {
+            const data = query.state.data;
+            if (!data) return 2000;
+            if (data.state === 'running' || data.state === 'queued') return 2000;
+            return false; // stop polling when finished/cancelled/failed
+        },
+        ...options,
+    });
+}
+
+export function useMigrationList(options = {}) {
+    return useQuery({
+        queryKey: queryKeys.migrationList,
+        queryFn: () => uploadsApi.listMigrations(),
+        staleTime: 1000 * 10,
+        ...options,
+    });
+}
+
+/**
+ * Backup audit log. Role-scoped on the backend — admins see all, others see their own.
+ */
+export function useBackupLogs(filters = {}, options = {}) {
+    return useQuery({
+        queryKey: queryKeys.backupLogs(filters),
+        queryFn: () => uploadsApi.getBackupLogs(filters),
+        staleTime: 1000 * 15,
+        ...options,
+    });
+}
+
+/**
  * ============ ADMIN REPORTS HOOKS ============
  */
 

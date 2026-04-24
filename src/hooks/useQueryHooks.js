@@ -47,6 +47,16 @@ export {
     useRefreshMaintenanceSystems,
     useDismissMaintenanceAlert,
     useAdminAnalytics,
+    useStorageConfig,
+    useStorageSummary,
+    useStorageUsage,
+    useUpdateStorageConfig,
+    useTestStorageConfig,
+    useStartMigration,
+    useCancelMigration,
+    useMigrationStatus,
+    useMigrationList,
+    useBackupLogs,
 } from './useAdminHooks';
 
 // ── Operator ──

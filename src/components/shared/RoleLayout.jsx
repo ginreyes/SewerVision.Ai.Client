@@ -19,10 +19,20 @@ import AnnouncementBanner from "@/components/ui/AnnouncementBanner";
 import UnifiedSidebar from "@/components/ui/UnifiedSidebar";
 import RoleThemeProvider from "@/components/providers/RoleThemeProvider";
 import { TourGuide, useTourGuide } from "@/components/TourGuide";
+import { SyncProvider } from "@/components/providers/SyncContext";
 import { api, getCookie, deleteCookie } from "@/lib/helper";
 
 const CommandPalette = dynamic(
   () => import("@/components/shared/CommandPalette").then((m) => m.CommandPalette),
+  { ssr: false }
+);
+
+// Only admins trigger + observe sync jobs. Non-admin roles don't get the bubble.
+// If later we want operators/users to see read-only progress, add their role here.
+const SYNC_BUBBLE_ROLES = new Set(["admin"]);
+
+const SyncProgressBubble = dynamic(
+  () => import("@/components/shared/SyncProgressBubble"),
   { ssr: false }
 );
 
@@ -81,35 +91,40 @@ export default function RoleLayout({ role: expectedRole, children }) {
 
   if (!role) return null;
 
+  const syncEnabled = SYNC_BUBBLE_ROLES.has(expectedRole);
+
   return (
     <RoleThemeProvider role={expectedRole}>
-      <div className="flex">
-        {/* Mobile sidebar overlay */}
-        {openSidebar && (
-          <div className="fixed inset-0 z-40 bg-black/50 lg:hidden" onClick={() => setOpenSidebar(false)} />
-        )}
+      <SyncProvider enabled={syncEnabled}>
+        <div className="flex">
+          {/* Mobile sidebar overlay */}
+          {openSidebar && (
+            <div className="fixed inset-0 z-40 bg-black/50 lg:hidden" onClick={() => setOpenSidebar(false)} />
+          )}
 
-        {/* Sidebar */}
-        <div
-          className={`fixed top-0 left-0 h-full transition-all duration-300 border-r bg-gray-100 dark:!bg-[#09090b] dark:border-[#27272a] z-50 ${
-            openSidebar ? "w-[270px]" : "w-[90px] hidden lg:block"
-          }`}
-        >
-          <UnifiedSidebar isOpen={openSidebar} role={role} />
+          {/* Sidebar */}
+          <div
+            className={`fixed top-0 left-0 h-full transition-all duration-300 border-r bg-gray-100 dark:!bg-[#09090b] dark:border-[#27272a] z-50 ${
+              openSidebar ? "w-[270px]" : "w-[90px] hidden lg:block"
+            }`}
+          >
+            <UnifiedSidebar isOpen={openSidebar} role={role} />
+          </div>
+
+          {/* Main content */}
+          <div className={`flex-1 transition-all duration-300 ${openSidebar ? "lg:ml-[270px]" : "lg:ml-[90px]"}`}>
+            <Navbar openSideBar={handleToggleSidebar} role={expectedRole} />
+            <main className="p-3 sm:p-4 dark:bg-[#09090b] min-h-screen transition-colors">
+              <AnnouncementBanner role={expectedRole} />
+              {children}
+            </main>
+          </div>
+
+          <TourGuide isOpen={showTour} onClose={closeTour} role={expectedRole} />
+          <CommandPalette role={expectedRole} />
+          {syncEnabled && <SyncProgressBubble />}
         </div>
-
-        {/* Main content */}
-        <div className={`flex-1 transition-all duration-300 ${openSidebar ? "lg:ml-[270px]" : "lg:ml-[90px]"}`}>
-          <Navbar openSideBar={handleToggleSidebar} role={expectedRole} />
-          <main className="p-3 sm:p-4 dark:bg-[#09090b] min-h-screen transition-colors">
-            <AnnouncementBanner role={expectedRole} />
-            {children}
-          </main>
-        </div>
-
-        <TourGuide isOpen={showTour} onClose={closeTour} role={expectedRole} />
-        <CommandPalette role={expectedRole} />
-      </div>
+      </SyncProvider>
     </RoleThemeProvider>
   );
 }

@@ -9,13 +9,16 @@ import {
   Users,
   Star,
   Eye,
+  RefreshCw,
 } from "lucide-react";
 import { Badge } from "@/components/ui/badge";
+import { Button } from "@/components/ui/button";
 import { useAlert } from "@/components/providers/AlertProvider";
 import { useDialog } from "@/components/providers/DialogProvider";
 import permissionLevelApi from "@/data/permissionLevelApi";
 import SewerTable from "@/components/ui/SewerTable";
 import { getRoleTheme, getRoleLabel } from "@/lib/roleThemes";
+import ResyncModulesModal from "./ResyncModulesModal";
 
 export default function PermissionLevelsTab() {
   const router = useRouter();
@@ -23,6 +26,7 @@ export default function PermissionLevelsTab() {
   const { showDelete } = useDialog();
   const [levels, setLevels] = useState([]);
   const [loading, setLoading] = useState(true);
+  const [resyncOpen, setResyncOpen] = useState(false);
 
   const fetchLevels = useCallback(async () => {
     setLoading(true);
@@ -163,6 +167,26 @@ export default function PermissionLevelsTab() {
 
   return (
     <div className="space-y-4">
+      {/* Toolbar — Resync action lives here so admins can refresh module availability
+          when new modules get registered in code. */}
+      <div className="flex items-center justify-between flex-wrap gap-2">
+        <div className="flex items-center gap-2 text-xs text-gray-500">
+          <RefreshCw className="w-3.5 h-3.5" />
+          <span>
+            Added new modules in code? Resync to make them available to roles.
+          </span>
+        </div>
+        <Button
+          variant="outline"
+          size="sm"
+          onClick={() => setResyncOpen(true)}
+          className="gap-2"
+        >
+          <RefreshCw className="w-3.5 h-3.5" />
+          Resync Modules
+        </Button>
+      </div>
+
       <SewerTable
         data={tableData}
         columns={columns}
@@ -182,6 +206,12 @@ export default function PermissionLevelsTab() {
           actions: 80,
         }}
         rowsPerPageOptions={[10, 20]}
+      />
+
+      <ResyncModulesModal
+        open={resyncOpen}
+        onClose={() => setResyncOpen(false)}
+        onApplied={fetchLevels}
       />
     </div>
   );

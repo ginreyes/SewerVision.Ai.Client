@@ -61,6 +61,13 @@ export const queryKeys = {
     adminUploads: (params) => ['admin', 'uploads', params ?? {}],
     adminUploadStats: ['admin', 'uploads', 'stats'],
 
+    // Storage (admin controls; backup logs are role-scoped)
+    storageConfig: ['storage', 'config'],
+    storageUsage: ['storage', 'usage'],
+    migrationList: ['storage', 'migrations'],
+    migrationStatus: (jobId) => ['storage', 'migration', jobId],
+    backupLogs: (filters) => ['storage', 'backup-logs', filters ?? {}],
+
     // Admin reports
     adminReports: (filters) => ['admin', 'reports', filters ?? {}],
     adminReport: (reportId) => ['admin', 'report', reportId],

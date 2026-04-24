@@ -246,12 +246,113 @@ export const uploadsApi = {
   },
 
   /**
-   * Get bucket storage usage (total bytes, file count, breakdown by prefix)
+   * Get a minimal, non-admin-safe storage summary.
+   * Returns only { active, primaryRead, providers: { b2: { configured }, s3: { configured } } }.
+   * Used by operator/backups and user/backups pages.
+   */
+  async getStorageSummary() {
+    const response = await api('/api/uploads/storage-summary', 'GET');
+    if (!response.ok) {
+      throw new Error(response.data?.message || 'Failed to fetch storage summary');
+    }
+    return response.data.data;
+  },
+
+  /**
+   * Get bucket storage usage for both providers: { b2: {...} | null, s3: {...} | null }.
+   * Admin-only (returns byte totals + file counts).
    */
   async getStorageUsage() {
     const response = await api('/api/uploads/storage-usage', 'GET');
     if (!response.ok) {
       throw new Error(response.data?.message || 'Failed to fetch storage usage');
+    }
+    return response.data.data;
+  },
+
+  /**
+   * Update active storage provider + S3 credentials. Admin only.
+   * payload: { provider, primaryRead, s3: { bucket, region, accessKeyId, secretAccessKey, endpoint } }
+   * Empty secretAccessKey means "keep existing" — does not overwrite.
+   */
+  async updateStorageConfig(payload) {
+    const response = await api('/api/uploads/storage-config', 'PUT', payload);
+    if (!response.ok) {
+      throw new Error(response.data?.message || 'Failed to update storage config');
+    }
+    return response.data.data;
+  },
+
+  /**
+   * Validate S3 credentials WITHOUT saving. Returns { ok: true } or { ok: false, error }.
+   */
+  async testStorageConfig(payload) {
+    const response = await api('/api/uploads/storage-config/test', 'POST', payload);
+    if (!response.ok) {
+      const msg = response.data?.error || response.data?.message || 'Failed to test storage config';
+      throw new Error(msg);
+    }
+    return response.data;
+  },
+
+  /**
+   * Start a backup/migration job between providers.
+   * direction: 'b2-to-s3' | 's3-to-b2'
+   */
+  async startMigration(direction = 'b2-to-s3') {
+    const response = await api('/api/uploads/migrate/start', 'POST', { direction });
+    if (!response.ok) {
+      throw new Error(response.data?.message || 'Failed to start migration');
+    }
+    return response.data.data;
+  },
+
+  /**
+   * Poll a migration job's status + progress.
+   */
+  async getMigrationStatus(jobId) {
+    const response = await api(`/api/uploads/migrate/status/${jobId}`, 'GET');
+    if (!response.ok) {
+      throw new Error(response.data?.message || 'Failed to fetch migration status');
+    }
+    return response.data.data;
+  },
+
+  /**
+   * Request cancellation of a running migration.
+   */
+  async cancelMigration(jobId) {
+    const response = await api(`/api/uploads/migrate/cancel/${jobId}`, 'POST');
+    if (!response.ok) {
+      throw new Error(response.data?.message || 'Failed to cancel migration');
+    }
+    return response.data;
+  },
+
+  /**
+   * List recent migration jobs (24h retention, newest first).
+   */
+  async listMigrations() {
+    const response = await api('/api/uploads/migrate/list', 'GET');
+    if (!response.ok) {
+      throw new Error(response.data?.message || 'Failed to list migrations');
+    }
+    return response.data.data;
+  },
+
+  /**
+   * Get role-scoped backup logs. Admins see all; users/operators see their own actions only.
+   * filters: { page, limit, action, startDate, endDate, search }
+   */
+  async getBackupLogs(filters = {}) {
+    const params = new URLSearchParams();
+    Object.entries(filters).forEach(([k, v]) => {
+      if (v !== undefined && v !== null && v !== '') params.append(k, String(v));
+    });
+    const qs = params.toString();
+    const response = await api(`/api/uploads/backup-logs${qs ? `?${qs}` : ''}`, 'GET');
+    if (!response.ok) {
+      throw new Error(response.data?.message || 'Failed to fetch backup logs');
     }
     return response.data.data;
   },
