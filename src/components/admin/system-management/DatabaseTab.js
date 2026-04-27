@@ -1,11 +1,12 @@
 "use client";
 
 import React, { useState, useEffect, useCallback } from "react";
-import { Database, Download, RefreshCw, HardDrive, Clock, Loader2, CheckCircle2 } from "lucide-react";
+import { Database, Download, RefreshCw, HardDrive, Clock, Loader2, CheckCircle2, Braces } from "lucide-react";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { api } from "@/lib/helper";
+import ModelsExplorer from "./ModelsExplorer";
 
 export default function DatabaseTab() {
   const [data, setData] = useState(null);
@@ -99,6 +100,20 @@ export default function DatabaseTab() {
           </table>
         </CardContent>
       </Card>
+
+      {/* Schemas / Models Explorer */}
+      <div className="pt-2">
+        <div className="flex items-center gap-2 mb-2">
+          <div className="w-7 h-7 rounded-lg bg-rose-50 flex items-center justify-center">
+            <Braces className="w-4 h-4 text-rose-600" />
+          </div>
+          <div>
+            <h3 className="text-sm font-semibold text-gray-900">Schemas</h3>
+            <p className="text-[11px] text-gray-500">Live Mongoose introspection — fields, types, indexes, and relationships across all registered models</p>
+          </div>
+        </div>
+        <ModelsExplorer />
+      </div>
     </div>
   );
 }
