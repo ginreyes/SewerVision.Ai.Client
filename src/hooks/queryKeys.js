@@ -227,4 +227,9 @@ export const queryKeys = {
 
     // Admin — Projects (admin-specific list)
     adminProjects: (filters) => ['admin', 'projects', filters ?? {}],
+    projectHealth: (id) => ['project', 'health', id],
+
+    // Admin — AI Model Configs (control plane)
+    aiModelConfigs: ['admin', 'ai-model-configs'],
+    aiModelCompare: (a, b, n) => ['admin', 'ai-model-compare', a, b, n],
 };

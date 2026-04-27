@@ -33,6 +33,7 @@ import { SavedViewsDropdown, useSavedViewSync } from '@/components/shared/SavedV
 import { BulkActionBar, BulkResultToast } from '@/components/shared/bulk';
 import { useBulkMutation } from '@/data/bulkApi';
 import { useDialog } from '@/components/providers/DialogProvider';
+import { BulkAssignModal, BulkStatusModal, BulkTagModal } from '@/components/admin/project/BulkProjectModals';
 
 const SewerVisionInspectionModuleContent = () => {
   const [selectedProject, setSelectedProject] = useState(null);
@@ -91,6 +92,8 @@ const SewerVisionInspectionModuleContent = () => {
   const bulkMutation = useBulkMutation('project');
   const [bulkResult, setBulkResult] = useState(null);
   const { showDelete } = useDialog();
+  // Open modal: 'assign' | 'status' | 'tag' | null
+  const [bulkModal, setBulkModal] = useState(null);
 
   const runBulk = (op, payload) => {
     bulkMutation.mutate(
@@ -99,6 +102,7 @@ const SewerVisionInspectionModuleContent = () => {
         onSuccess: (result) => {
           setBulkResult(result);
           setSelectedIds([]);
+          setBulkModal(null);
           refetch();
         },
         onError: (err) => {
@@ -122,22 +126,8 @@ const SewerVisionInspectionModuleContent = () => {
       showAlert('Use the Export button in the toolbar for CSV export', 'info');
       return;
     }
-    if (op === 'status') {
-      const status = prompt('Status (planning|field-capture|uploading|ai-processing|qc-review|completed|on-hold):');
-      if (!status) return;
-      runBulk(op, { status });
-      return;
-    }
-    if (op === 'tag') {
-      const tag = prompt('Tag to add:');
-      if (!tag) return;
-      runBulk(op, { tag });
-      return;
-    }
-    if (op === 'assign') {
-      const assigneeId = prompt('Assignee user id:');
-      if (!assigneeId) return;
-      runBulk(op, { assigneeId });
+    if (op === 'status' || op === 'tag' || op === 'assign') {
+      setBulkModal(op);
       return;
     }
     // archive / unarchive need no payload
@@ -619,6 +609,28 @@ const SewerVisionInspectionModuleContent = () => {
           onDismiss={() => setBulkResult(null)}
         />
       )}
+
+      <BulkAssignModal
+        open={bulkModal === 'assign'}
+        onClose={() => setBulkModal(null)}
+        selectedCount={selectedIds.length}
+        isPending={bulkMutation.isPending}
+        onConfirm={(payload) => runBulk('assign', payload)}
+      />
+      <BulkStatusModal
+        open={bulkModal === 'status'}
+        onClose={() => setBulkModal(null)}
+        selectedCount={selectedIds.length}
+        isPending={bulkMutation.isPending}
+        onConfirm={(payload) => runBulk('status', payload)}
+      />
+      <BulkTagModal
+        open={bulkModal === 'tag'}
+        onClose={() => setBulkModal(null)}
+        selectedCount={selectedIds.length}
+        isPending={bulkMutation.isPending}
+        onConfirm={(payload) => runBulk('tag', payload)}
+      />
     </div>
   );
 };

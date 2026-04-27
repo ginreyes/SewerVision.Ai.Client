@@ -28,9 +28,9 @@ export default function MonthViewCalendar({ currentYear, currentMonth, today, ev
     <div className="w-full">
       <div className="h-[600px] w-full overflow-y-auto">
         {/* Header */}
-        <div className="grid grid-cols-7 border-b border-gray-200 dark:border-[#374151] sticky top-0 bg-gray-50 dark:bg-[#111827] z-10">
+        <div className="grid grid-cols-7 border-b border-gray-200 dark:border-[#3f4856] sticky top-0 bg-gray-50 dark:bg-[#0f1623] z-10">
           {daysOfWeek.map((day) => (
-            <div key={day} className="p-3 text-center text-xs font-semibold uppercase tracking-wider text-gray-500 dark:text-gray-400 border-r border-gray-200 dark:border-[#374151] last:border-r-0">
+            <div key={day} className="p-3 text-center text-xs font-semibold uppercase tracking-wider text-gray-500 dark:text-gray-300 border-r border-gray-200 dark:border-[#3f4856] last:border-r-0">
               {day}
             </div>
           ))}
@@ -55,8 +55,10 @@ export default function MonthViewCalendar({ currentYear, currentMonth, today, ev
                 key={index}
                 onClick={day ? () => AddEvent(clickedDate) : undefined}
                 className={cn(
-                  'h-32 p-2 border-r border-b border-gray-100 dark:border-[#374151] last:border-r-0 transition-colors',
-                  day ? 'hover:bg-gray-50 dark:hover:bg-[#374151] cursor-pointer' : 'bg-gray-50/50 dark:bg-[#111827]',
+                  'h-32 p-2 border-r border-b border-gray-100 dark:border-[#3f4856] last:border-r-0 transition-colors',
+                  day
+                    ? 'bg-white dark:bg-[#1a2332] hover:bg-gray-50 dark:hover:bg-[#243042] cursor-pointer'
+                    : 'bg-gray-50/50 dark:bg-[#0f1623]',
                   isToday(day) && 'bg-blue-50/50 dark:bg-blue-500/10 border-blue-200 dark:border-blue-500/30'
                 )}
               >

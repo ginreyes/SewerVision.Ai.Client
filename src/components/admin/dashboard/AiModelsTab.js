@@ -7,6 +7,7 @@ import {
   ArrowLeft, BarChart2, Database, GitBranch, Zap,
 } from 'lucide-react'
 import { settingsApi } from '@/data/settingsApi'
+import AIControlPlane from './AIControlPlane'
 
 /** Format metric — handles both 0.76 (fraction) and 76.59 (already %) */
 function fmtPct(val) {
@@ -242,6 +243,9 @@ const AiModelsTab = ({ aiDetections, getCanvasRef }) => {
         </div>
         <div className="h-80"><canvas ref={getCanvasRef('aiPerformance')} /></div>
       </div>
+
+      {/* Control plane: registry + threshold matrix + A/B comparator */}
+      <AIControlPlane />
 
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
         {/* Live Roboflow Projects */}

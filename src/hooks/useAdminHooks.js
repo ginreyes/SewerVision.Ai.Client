@@ -435,6 +435,19 @@ export function useAdminProjects(filters = {}, options = {}) {
     });
 }
 
+export function useProjectHealth(projectId, options = {}) {
+    return useQuery({
+        queryKey: queryKeys.projectHealth(projectId),
+        queryFn: async () => {
+            const { data } = await api(`/api/projects/${projectId}/health`);
+            return data?.data || null;
+        },
+        enabled: !!projectId,
+        staleTime: 1000 * 60 * 5,
+        ...options,
+    });
+}
+
 export function useCreateProject() {
     const queryClient = useQueryClient();
     return useMutation({
@@ -591,5 +604,77 @@ export function useAdminAnalytics(options = {}) {
         queryFn: () => dashboardApi.getAnalyticsOverview(),
         staleTime: 1000 * 60 * 5,
         ...options,
+    });
+}
+
+/**
+ * ============ AI MODEL CONFIG (CONTROL PLANE) ============
+ */
+
+export function useAIModelConfigs(options = {}) {
+    return useQuery({
+        queryKey: queryKeys.aiModelConfigs,
+        queryFn: async () => {
+            const { data } = await api('/api/ai-models/configs');
+            return data?.data || [];
+        },
+        staleTime: 1000 * 30,
+        ...options,
+    });
+}
+
+export function useCreateAIModelConfig() {
+    const queryClient = useQueryClient();
+    return useMutation({
+        mutationFn: async (payload) => {
+            const res = await api('/api/ai-models/configs', 'POST', payload);
+            if (!res.ok) throw new Error(res.data?.message || 'Failed to create config');
+            return res.data?.data;
+        },
+        onSuccess: () => {
+            queryClient.invalidateQueries({ queryKey: queryKeys.aiModelConfigs });
+        },
+    });
+}
+
+export function useUpdateAIModelConfig() {
+    const queryClient = useQueryClient();
+    return useMutation({
+        mutationFn: async ({ id, ...payload }) => {
+            const res = await api(`/api/ai-models/configs/${id}`, 'PUT', payload);
+            if (!res.ok) throw new Error(res.data?.message || 'Failed to update config');
+            return res.data?.data;
+        },
+        onSuccess: () => {
+            queryClient.invalidateQueries({ queryKey: queryKeys.aiModelConfigs });
+        },
+    });
+}
+
+export function useActivateAIModelConfig() {
+    const queryClient = useQueryClient();
+    return useMutation({
+        mutationFn: async (id) => {
+            const res = await api(`/api/ai-models/configs/${id}/activate`, 'POST');
+            if (!res.ok) throw new Error(res.data?.message || 'Failed to activate config');
+            return res.data?.data;
+        },
+        onSuccess: () => {
+            queryClient.invalidateQueries({ queryKey: queryKeys.aiModelConfigs });
+        },
+    });
+}
+
+export function useCompareAIModelConfigs() {
+    return useMutation({
+        mutationFn: async ({ configIdA, configIdB, sampleSize = 200 }) => {
+            const res = await api('/api/ai-models/configs/compare', 'POST', {
+                configIdA,
+                configIdB,
+                sampleSize,
+            });
+            if (!res.ok) throw new Error(res.data?.message || 'Comparison failed');
+            return res.data?.data;
+        },
     });
 }

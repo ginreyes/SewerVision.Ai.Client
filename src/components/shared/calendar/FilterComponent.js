@@ -49,7 +49,7 @@ export default function EventFilters({ filters, setFilters }) {
 
   return (
     <div className="space-y-3">
-      <p className="text-lg font-semibold text-gray-800">Event Filters</p>
+      <p className="text-lg font-semibold text-gray-800 dark:text-gray-100">Event Filters</p>
 
       <div className="space-y-3">
         {filterOptions.map(({ id, label }) => (
@@ -60,7 +60,7 @@ export default function EventFilters({ filters, setFilters }) {
               onCheckedChange={() => handleFilterChange(id)}
               className={`${colorClasses[id]} border`}
             />
-            <label htmlFor={id} className="text-sm font-medium text-gray-700 cursor-pointer">
+            <label htmlFor={id} className="text-sm font-medium text-gray-700 dark:text-gray-200 cursor-pointer">
               {label}
             </label>
           </div>

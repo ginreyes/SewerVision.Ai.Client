@@ -24,6 +24,7 @@ import {
   getInitials as getAdminInitials,
 } from "@/components/admin/constants";
 import { STATUS_GRADIENTS, EDIT_ROUTE_PREFIX } from "./projectCard.constants";
+import ProjectHealthBadge from "@/components/admin/project/ProjectHealthBadge";
 
 // ---------------------------------------------------------------------------
 // Default status-color & priority-color helpers (used when the caller does NOT
@@ -306,7 +307,12 @@ const ProjectCard = memo((props) => {
           </div>
 
           {/* Action buttons */}
-          <div className="flex gap-1" onClick={(e) => e.stopPropagation()}>
+          <div className="flex items-center gap-1" onClick={(e) => e.stopPropagation()}>
+            {role === "admin" && project?._id && (
+              <div className="mr-1">
+                <ProjectHealthBadge projectId={project._id} compact />
+              </div>
+            )}
             {canEdit && (
               <Button
                 variant="ghost"
