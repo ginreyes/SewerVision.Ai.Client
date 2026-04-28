@@ -7,6 +7,8 @@ import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { api } from "@/lib/helper";
 import ModelsExplorer from "./ModelsExplorer";
+import DbDumpPanel from "./DbDumpPanel";
+import BackupSchedulesPanel from "./BackupSchedulesPanel";
 
 export default function DatabaseTab() {
   const [data, setData] = useState(null);
@@ -114,6 +116,10 @@ export default function DatabaseTab() {
         </div>
         <ModelsExplorer />
       </div>
+
+      {/* Backup tooling — DB dump endpoint + scheduled-backup CRUD */}
+      <DbDumpPanel />
+      <BackupSchedulesPanel />
     </div>
   );
 }

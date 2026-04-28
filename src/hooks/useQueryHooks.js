@@ -52,6 +52,7 @@ export {
     useCreateAIModelConfig,
     useUpdateAIModelConfig,
     useActivateAIModelConfig,
+    useRollbackAIModelConfig,
     useCompareAIModelConfigs,
     useStorageConfig,
     useStorageSummary,
@@ -263,6 +264,7 @@ export {
     usePendingDeletionRequests,
     // Canned Responses
     useCannedResponses,
+    useCannedResponseSuggestions,
     useCreateCannedResponse,
     useUpdateCannedResponse,
     useDeleteCannedResponse,

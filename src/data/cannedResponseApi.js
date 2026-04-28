@@ -1,9 +1,31 @@
 import { api } from "@/lib/helper";
 
 const cannedResponseApi = {
-  getAll: async (userId) => {
-    const res = await api(`/api/canned-responses${userId ? `?userId=${userId}` : ""}`, "GET");
+  /**
+   * @param {string} userId
+   * @param {{ type?: 'customer'|'qc', category?: string }} opts
+   */
+  getAll: async (userId, opts = {}) => {
+    const params = new URLSearchParams();
+    if (userId) params.set("userId", userId);
+    if (opts.type) params.set("type", opts.type);
+    if (opts.category) params.set("category", opts.category);
+    const qs = params.toString();
+    const res = await api(`/api/canned-responses${qs ? `?${qs}` : ""}`, "GET");
     if (!res?.ok) throw new Error(res?.message || "Failed to fetch templates");
+    return res.data?.data ?? res.data;
+  },
+
+  /**
+   * Auto-suggest QC templates ranked for a given detection.
+   */
+  suggest: async (userId, { detectionType, severity } = {}) => {
+    const params = new URLSearchParams();
+    if (userId) params.set("userId", userId);
+    if (detectionType) params.set("detectionType", detectionType);
+    if (severity) params.set("severity", severity);
+    const res = await api(`/api/canned-responses/suggest?${params.toString()}`, "GET");
+    if (!res?.ok) throw new Error(res?.message || "Failed to fetch suggestions");
     return res.data?.data ?? res.data;
   },
 

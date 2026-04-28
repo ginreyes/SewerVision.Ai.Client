@@ -56,6 +56,7 @@ import {
   useCompleteQCAssignment,
 } from '@/hooks/useQueryHooks';
 import { ManualForm } from '@/components/qc/project';
+import ProjectChatDrawer from '@/components/shared/project-chat/ProjectChatDrawer';
 
 // ─── Page ───────────────────────────────────────────────────
 const QualityControlPage = () => {
@@ -433,6 +434,11 @@ const QualityControlPage = () => {
         onClose={() => setShowInfoDrawer(false)}
         project={activeProject}
       />
+
+      {/* Team chat drawer — floating launcher, only when a project is active. */}
+      {activeProjectId && (
+        <ProjectChatDrawer projectId={activeProjectId} activeDetection={selectedDetection} />
+      )}
 
       {/* ═══ Complete Review Dialog ═══ */}
       {showCompleteDialog && (

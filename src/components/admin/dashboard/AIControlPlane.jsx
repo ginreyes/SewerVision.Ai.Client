@@ -17,6 +17,7 @@ import {
   useCreateAIModelConfig,
   useUpdateAIModelConfig,
   useActivateAIModelConfig,
+  useRollbackAIModelConfig,
   useCompareAIModelConfigs,
 } from "@/hooks/useQueryHooks";
 import { Button } from "@/components/ui/button";
@@ -59,7 +60,7 @@ function ThresholdSlider({ value, onChange, disabled }) {
 }
 
 // ── Section A: Registry ──
-function RegistrySection({ configs, onActivate, isActivating, activeId, onCreate, isCreating }) {
+function RegistrySection({ configs, onActivate, isActivating, activeId, onCreate, isCreating, onRollback, isRollingBack }) {
   const [showCreate, setShowCreate] = useState(false);
   const [version, setVersion] = useState("");
   const [notes, setNotes] = useState("");
@@ -158,6 +159,21 @@ function RegistrySection({ configs, onActivate, isActivating, activeId, onCreate
                         onClick={() => onActivate(c._id)}
                       >
                         <PlayCircle className="w-3.5 h-3.5" />Activate
+                      </Button>
+                    )}
+                    {active && (
+                      <Button
+                        size="sm"
+                        variant="ghost"
+                        className="h-7 gap-1 text-amber-700"
+                        disabled={isRollingBack}
+                        onClick={() => {
+                          if (window.confirm('Roll back to the previous active config?')) {
+                            onRollback?.(c._id);
+                          }
+                        }}
+                      >
+                        ↶ Rollback
                       </Button>
                     )}
                   </td>
@@ -270,7 +286,12 @@ function ABComparatorSection({ configs }) {
       if (chartRef.current) {
         chartRef.current.destroy();
       }
-      const labels = CLASS_KEYS.map((k) => CLASS_LABELS[k]);
+      const labels = CLASS_KEYS.map((k) => {
+        const d = result.deltas?.perClass?.[k];
+        if (!d || d.percent === null || d.percent === undefined) return CLASS_LABELS[k];
+        const sign = d.percent > 0 ? "+" : "";
+        return `${CLASS_LABELS[k]} (${sign}${d.percent}%)`;
+      });
       const dataA = CLASS_KEYS.map((k) => result.configA?.perClass?.[k]?.kept ?? 0);
       const dataB = CLASS_KEYS.map((k) => result.configB?.perClass?.[k]?.kept ?? 0);
       chartRef.current = new ChartCtor(canvasRef.current.getContext("2d"), {
@@ -285,7 +306,20 @@ function ABComparatorSection({ configs }) {
         options: {
           responsive: true,
           maintainAspectRatio: false,
-          plugins: { legend: { position: "bottom" } },
+          plugins: {
+            legend: { position: "bottom" },
+            tooltip: {
+              callbacks: {
+                afterLabel: (ctx) => {
+                  const k = CLASS_KEYS[ctx.dataIndex];
+                  const d = result.deltas?.perClass?.[k];
+                  if (!d || d.percent === null || d.percent === undefined) return undefined;
+                  const sign = d.percent > 0 ? "+" : "";
+                  return `Δ ${sign}${d.percent}% (${sign}${d.absolute})`;
+                },
+              },
+            },
+          },
           scales: { y: { beginAtZero: true, title: { display: true, text: "Kept detections" } } },
         },
       });
@@ -344,6 +378,20 @@ function ABComparatorSection({ configs }) {
             <span><b>Unmapped types:</b> {result.unmappedTypes}</span>
             <span><b>{result.configA.modelVersion}</b> kept {result.configA.totals.kept} / filtered {result.configA.totals.filtered}</span>
             <span><b>{result.configB.modelVersion}</b> kept {result.configB.totals.kept} / filtered {result.configB.totals.filtered}</span>
+            {result.deltas?.totalKeptPercent !== null && result.deltas?.totalKeptPercent !== undefined && (
+              <span
+                className={`font-semibold ${
+                  result.deltas.totalKeptPercent > 0
+                    ? "text-emerald-700"
+                    : result.deltas.totalKeptPercent < 0
+                    ? "text-rose-700"
+                    : "text-gray-600"
+                }`}
+              >
+                Δ Total kept: {result.deltas.totalKeptPercent > 0 ? "+" : ""}
+                {result.deltas.totalKeptPercent}%
+              </span>
+            )}
           </div>
           <div className="h-72">
             <canvas ref={canvasRef} />
@@ -365,6 +413,7 @@ export default function AIControlPlane() {
   const createMutation = useCreateAIModelConfig();
   const updateMutation = useUpdateAIModelConfig();
   const activateMutation = useActivateAIModelConfig();
+  const rollbackMutation = useRollbackAIModelConfig();
 
   const activeConfig = useMemo(() => configs.find((c) => c.isActive) || null, [configs]);
 
@@ -391,6 +440,8 @@ export default function AIControlPlane() {
         activeId={activeConfig?._id}
         onActivate={(id) => activateMutation.mutate(id)}
         isActivating={activateMutation.isPending}
+        onRollback={(id) => rollbackMutation.mutate(id)}
+        isRollingBack={rollbackMutation.isPending}
         onCreate={(payload) => createMutation.mutate(payload)}
         isCreating={createMutation.isPending}
       />

@@ -36,6 +36,9 @@ const SyncProgressBubble = dynamic(
   { ssr: false }
 );
 
+import MotionProvider from "@/components/shared/motion/MotionProvider";
+import PageTransition from "@/components/shared/motion/PageTransition";
+
 export default function RoleLayout({ role: expectedRole, children }) {
   const [openSidebar, setOpenSidebar] = useState(true);
   const [role, setRole] = useState(null);
@@ -116,7 +119,9 @@ export default function RoleLayout({ role: expectedRole, children }) {
             <Navbar openSideBar={handleToggleSidebar} role={expectedRole} />
             <main className="p-3 sm:p-4 dark:bg-[#09090b] min-h-screen transition-colors">
               <AnnouncementBanner role={expectedRole} />
-              {children}
+              <MotionProvider>
+                <PageTransition>{children}</PageTransition>
+              </MotionProvider>
             </main>
           </div>
 

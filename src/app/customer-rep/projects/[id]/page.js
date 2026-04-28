@@ -14,6 +14,7 @@ import { useQuery } from "@tanstack/react-query";
 import { api } from "@/lib/helper";
 import { DashboardSkeleton } from "@/components/shared/SkeletonLoading";
 import { getVideoUrl } from "@/lib/getVideoUrl";
+import ProjectTimelineLauncher from "@/components/shared/project-timeline/ProjectTimelineLauncher";
 
 const STATUS_COLORS = {
   planning: "bg-blue-100 text-blue-700",
@@ -75,6 +76,7 @@ export default function CustomerRepProjectDetailPage() {
 
   return (
     <div className="max-w-6xl mx-auto p-6 space-y-6">
+      <ProjectTimelineLauncher project={project} />
       {/* Header */}
       <div className="flex items-center gap-4">
         <Button variant="ghost" size="icon" onClick={() => router.push("/customer-rep/projects")} className="rounded-xl">

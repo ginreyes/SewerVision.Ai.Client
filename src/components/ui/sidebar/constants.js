@@ -26,6 +26,7 @@ import {
   Ticket,
   Activity,
   MessageSquareWarning,
+  MessageSquareText,
   Headphones,
   // New module icons
   BookMarked,
@@ -85,6 +86,7 @@ export const ICON_MAP = {
   Ticket,
   Activity,
   MessageSquareWarning,
+  MessageSquareText,
   Headphones,
   // New module icons
   BookMarked,
@@ -308,6 +310,7 @@ export const FALLBACK_MENUS = {
       { label: 'Review Queue', icon: 'ListChecks', path: '/qc-technician/review-queue', key: 'review-queue' },
       { label: 'Review Workspace', icon: 'ClipboardCheck', path: '/qc-technician/quality-control', key: 'quality-control' },
       { label: 'Review Templates', icon: 'FileText', path: '/qc-technician/review-templates', key: 'review-templates' },
+      { label: 'Chat Templates', icon: 'MessageSquareText', path: '/qc-technician/chat-templates', key: 'chat-templates' },
       { label: 'Devices', icon: 'Monitor', path: '/qc-technician/devices', key: 'devices' },
     ]},
     { label: 'Knowledge', items: [

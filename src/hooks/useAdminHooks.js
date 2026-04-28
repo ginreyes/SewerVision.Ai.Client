@@ -665,6 +665,20 @@ export function useActivateAIModelConfig() {
     });
 }
 
+export function useRollbackAIModelConfig() {
+    const queryClient = useQueryClient();
+    return useMutation({
+        mutationFn: async (id) => {
+            const res = await api(`/api/ai-models/configs/${id}/rollback`, 'POST');
+            if (!res.ok) throw new Error(res.data?.message || 'Failed to rollback config');
+            return res.data?.data;
+        },
+        onSuccess: () => {
+            queryClient.invalidateQueries({ queryKey: queryKeys.aiModelConfigs });
+        },
+    });
+}
+
 export function useCompareAIModelConfigs() {
     return useMutation({
         mutationFn: async ({ configIdA, configIdB, sampleSize = 200 }) => {

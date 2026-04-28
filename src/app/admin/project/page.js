@@ -1,5 +1,6 @@
 "use client";
-import React, { useState, useEffect, useRef, Suspense } from "react";
+import React, { useState, useEffect, useRef, Suspense, useMemo } from "react";
+import { useQueryClient } from "@tanstack/react-query";
 import { Search, Plus, Loader2, LayoutGrid, Rows, MoreVertical, Eye, Pencil, MapPin, GitCompare, Columns3 } from "lucide-react";
 import dynamic from "next/dynamic";
 import StatusLegend from "@/components/shared/StatusLegend";
@@ -20,6 +21,9 @@ import {
 
 import ProjectCard from "@/components/admin/project/ProjectCard";
 import ProjectDetail from "@/components/admin/project/ProjectDetail";
+import ProjectChatDrawer from "@/components/shared/project-chat/ProjectChatDrawer";
+import ProjectHealthBadge from "@/components/admin/project/ProjectHealthBadge";
+import ProjectTimelineLauncher from "@/components/shared/project-timeline/ProjectTimelineLauncher";
 import { api } from "@/lib/helper";
 import { useAlert } from "@/components/providers/AlertProvider";
 import { useDebouncedValue } from '@/hooks/useDebouncedValue';
@@ -42,6 +46,8 @@ const SewerVisionInspectionModuleContent = () => {
   const [statusFilter, setStatusFilter] = useState("all");
   const [viewMode, setViewMode] = useState("grid"); // 'grid' | 'table' | 'tracker' | 'compare' | 'pipeline'
   const [selectedIds, setSelectedIds] = useState([]);
+  // Sort by health (only meaningful in table view). Cycles off → desc → asc.
+  const [healthSort, setHealthSort] = useState("off");
 
   // Saved Views: two-way bind current filters <-> selected SavedView + URL
   const {
@@ -83,8 +89,29 @@ const SewerVisionInspectionModuleContent = () => {
     status: statusFilter === "all" ? "" : statusFilter,
   });
 
-  const projects = projectsData?.data || [];
+  const projects = useMemo(() => projectsData?.data || [], [projectsData]);
   const totalPages = projectsData?.totalPages || 1;
+
+  // Health-sort wrapper. Looks up cached health scores from TanStack Query
+  // (populated as ProjectHealthBadge mounts). Rows without a cached score
+  // sort last so the toggle still feels responsive on first load.
+  const queryClient = useQueryClient();
+  const tableProjects = useMemo(() => {
+    if (healthSort === 'off') return projects;
+    const scoreFor = (p) => {
+      const cached = queryClient?.getQueryData(['projectHealth', p._id]);
+      return cached?.score ?? cached?.healthScore ?? null;
+    };
+    const dir = healthSort === 'asc' ? 1 : -1;
+    return [...projects].sort((a, b) => {
+      const sa = scoreFor(a);
+      const sb = scoreFor(b);
+      if (sa === null && sb === null) return 0;
+      if (sa === null) return 1;
+      if (sb === null) return -1;
+      return (sa - sb) * dir;
+    });
+  }, [projects, healthSort, queryClient]);
 
   const { data: pipelineData, isLoading: pipelineLoading } = usePipeline({});
 
@@ -229,6 +256,8 @@ const SewerVisionInspectionModuleContent = () => {
                 allProjects={projects}
               />
             </div>
+            <ProjectChatDrawer projectId={selectedProject._id} />
+            <ProjectTimelineLauncher project={selectedProject} />
           </>
         ) : (
           <>
@@ -419,23 +448,39 @@ const SewerVisionInspectionModuleContent = () => {
                         <th className="px-4 py-3 text-left font-medium text-gray-600">
                           Videos
                         </th>
+                        <th className="px-4 py-3 text-left font-medium text-gray-600">
+                          <button
+                            type="button"
+                            onClick={() =>
+                              setHealthSort((s) =>
+                                s === "off" ? "desc" : s === "desc" ? "asc" : "off"
+                              )
+                            }
+                            className="flex items-center gap-1 hover:text-rose-700 transition-colors"
+                          >
+                            Health
+                            <span className="text-[10px]">
+                              {healthSort === "desc" ? "▼" : healthSort === "asc" ? "▲" : "↕"}
+                            </span>
+                          </button>
+                        </th>
                         <th className="px-4 py-3 text-right font-medium text-gray-600">
                           Actions
                         </th>
                       </tr>
                     </thead>
                     <tbody>
-                      {projects.length === 0 ? (
+                      {tableProjects.length === 0 ? (
                         <tr>
                           <td
                             className="px-4 py-6 text-center text-gray-500"
-                            colSpan={8}
+                            colSpan={9}
                           >
                             No projects found.
                           </td>
                         </tr>
                       ) : (
-                        projects.map((project) => {
+                        tableProjects.map((project) => {
                           const isPendingDelete = project.deleteStatus === "pending";
                           const mgr = project.managerId;
                           let leadName = "—";
@@ -517,6 +562,9 @@ const SewerVisionInspectionModuleContent = () => {
                               <td className="px-4 py-3 text-gray-700">
                                 {project.videoCount ??
                                   (project.videoUrl ? 1 : 0)}
+                              </td>
+                              <td className="px-4 py-3" onClick={(e) => e.stopPropagation()}>
+                                <ProjectHealthBadge projectId={project._id} compact />
                               </td>
                               <td
                                 className="px-4 py-3 text-right"

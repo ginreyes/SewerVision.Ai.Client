@@ -21,6 +21,7 @@ import EmptyState from "@/components/shared/EmptyState";
 import { PipelineBoard } from '@/components/shared/ProjectPipeline';
 import { usePipeline } from '@/data/pipelineApi';
 import { SavedViewsDropdown, useSavedViewSync } from '@/components/shared/SavedViews';
+import ProjectChatDrawer from '@/components/shared/project-chat/ProjectChatDrawer';
 
 const OperatorModulePage = () => {
   const { userId } = useUser();
@@ -253,6 +254,7 @@ const OperatorModulePage = () => {
                 allProjects={projects}
               />
             </div>
+            <ProjectChatDrawer projectId={selectedProject._id} />
           </>
         ) : (
           <>
