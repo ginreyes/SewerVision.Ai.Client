@@ -21,7 +21,6 @@ import EmptyState from "@/components/shared/EmptyState";
 import { PipelineBoard } from '@/components/shared/ProjectPipeline';
 import { usePipeline } from '@/data/pipelineApi';
 import { SavedViewsDropdown, useSavedViewSync } from '@/components/shared/SavedViews';
-import ProjectChatDrawer from '@/components/shared/project-chat/ProjectChatDrawer';
 
 const OperatorModulePage = () => {
   const { userId } = useUser();
@@ -245,17 +244,14 @@ const OperatorModulePage = () => {
       <div className="max-w-7xl mx-auto p-6">
         {/* Content */}
         {selectedProject ? (
-          <>
-            <div className="flex justify-center">
-              <ProjectDetail
-                project={selectedProject}
-                setSelectedProject={setSelectedProject}
-                onBack={handleBackToProjects}
-                allProjects={projects}
-              />
-            </div>
-            <ProjectChatDrawer projectId={selectedProject._id} />
-          </>
+          <div className="flex justify-center">
+            <ProjectDetail
+              project={selectedProject}
+              setSelectedProject={setSelectedProject}
+              onBack={handleBackToProjects}
+              allProjects={projects}
+            />
+          </div>
         ) : (
           <>
             {/* ── Page header ── */}

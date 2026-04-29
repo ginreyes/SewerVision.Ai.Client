@@ -87,8 +87,10 @@ export default function ProjectChatIndex() {
                 key={p.projectId}
                 type="button"
                 onClick={() => setSelectedProjectId(p.projectId)}
-                className={`w-full text-left px-3 py-2.5 border-b border-gray-100 hover:bg-rose-50 transition-colors ${
-                  selectedProjectId === p.projectId ? 'bg-rose-50' : ''
+                className={`w-full text-left px-3 py-2.5 border-b border-gray-100 transition-colors ${
+                  selectedProjectId === p.projectId
+                    ? 'bg-rose-100 border-l-2 border-l-rose-600'
+                    : 'hover:bg-rose-50'
                 }`}
               >
                 <div className="flex items-start gap-2">

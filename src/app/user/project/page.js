@@ -27,7 +27,6 @@ import PipelineSummaryBar from '@/components/user/project/PipelineSummaryBar';
 import TeamWorkloadGrid from '@/components/user/project/TeamWorkloadGrid';
 import { usePipeline } from '@/data/pipelineApi';
 import { SavedViewsDropdown, useSavedViewSync } from '@/components/shared/SavedViews';
-import ProjectChatDrawer from '@/components/shared/project-chat/ProjectChatDrawer';
 import ProjectTimelineLauncher from '@/components/shared/project-timeline/ProjectTimelineLauncher';
 
 const UserProjectModuleContent = () => {
@@ -263,7 +262,6 @@ const UserProjectModuleContent = () => {
               setSelectedProject={setSelectedProject}
               allProjects={projects}
             />
-            <ProjectChatDrawer projectId={selectedProject._id} />
             <ProjectTimelineLauncher project={selectedProject} />
           </div>
         ) : (

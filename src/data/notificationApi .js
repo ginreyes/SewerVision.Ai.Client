@@ -82,6 +82,44 @@ export const notificationApi = {
     }
     return response.data.data.deletedCount;
   },
+
+  /**
+   * Toggle conversation mute (chat-* notifications get suppressed for muted convs).
+   */
+  async toggleConversationMute(userId, conversationId) {
+    const response = await api(
+      `/api/notifications/user/${userId}/mute-conversation`,
+      'POST',
+      { conversationId }
+    );
+    if (!response.ok) throw new Error('Failed to toggle mute');
+    return response.data.data;
+  },
+
+  /**
+   * Set/clear snooze. Pass null to clear.
+   */
+  async setSnooze(userId, snoozedUntil) {
+    const response = await api(
+      `/api/notifications/user/${userId}/snooze`,
+      'PUT',
+      { snoozedUntil: snoozedUntil ? new Date(snoozedUntil).toISOString() : null }
+    );
+    if (!response.ok) throw new Error('Failed to set snooze');
+    return response.data.data;
+  },
+
+  /**
+   * Roll-up grouped by project for the panel grouped view.
+   */
+  async getGrouped(userId, limit = 10) {
+    const response = await api(
+      `/api/notifications/user/${userId}/grouped?limit=${limit}`,
+      'GET'
+    );
+    if (!response.ok) throw new Error('Failed to fetch grouped notifications');
+    return response.data.data.groups || [];
+  },
 };
 
 export default notificationApi;

@@ -13,8 +13,16 @@ const AttachmentMenu = memo(function AttachmentMenu({ onSendAttachment, theme = 
   const imageInputRef = useRef(null);
   const fileInputRef = useRef(null);
 
-  const themeBg = theme === "indigo" ? "bg-indigo-500" : "bg-emerald-500";
-  const themeColor = theme === "indigo" ? "text-indigo-500" : "text-emerald-500";
+  const THEME_BG = {
+    indigo: "bg-indigo-500", emerald: "bg-emerald-500", blue: "bg-blue-500",
+    rose: "bg-rose-500", purple: "bg-purple-500", teal: "bg-teal-500", amber: "bg-amber-500",
+  };
+  const THEME_COLOR = {
+    indigo: "text-indigo-500", emerald: "text-emerald-500", blue: "text-blue-500",
+    rose: "text-rose-500", purple: "text-purple-500", teal: "text-teal-500", amber: "text-amber-500",
+  };
+  const themeBg = THEME_BG[theme] || THEME_BG.emerald;
+  const themeColor = THEME_COLOR[theme] || THEME_COLOR.emerald;
 
   function handleFileSelect(e) {
     const selected = Array.from(e.target.files || []);

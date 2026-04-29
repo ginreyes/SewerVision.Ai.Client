@@ -29,11 +29,11 @@ const projectChatApi = {
     };
   },
 
-  sendMessage: async (conversationId, { text, attachments } = {}) => {
+  sendMessage: async (conversationId, { text, attachments, replyToMessageId } = {}) => {
     const res = await api(
       `/api/project-conversations/${conversationId}/messages`,
       "POST",
-      { text, attachments }
+      { text, attachments, replyToMessageId }
     );
     if (!res?.ok) throw new Error(res?.message || "Failed to send message");
     return res.data?.data ?? res.data;
@@ -101,6 +101,24 @@ const projectChatApi = {
     const res = await api(`/api/project-conversations/unread-total`, "GET");
     if (!res?.ok) throw new Error(res?.message || "Failed to fetch unread total");
     return res.data?.data?.unreadTotal ?? 0;
+  },
+
+  togglePinMessage: async (messageId) => {
+    const res = await api(
+      `/api/project-conversations/messages/${messageId}/pin`,
+      "POST"
+    );
+    if (!res?.ok) throw new Error(res?.message || "Failed to toggle pin");
+    return res.data?.data ?? res.data;
+  },
+
+  listPinnedMessages: async (conversationId) => {
+    const res = await api(
+      `/api/project-conversations/${conversationId}/pinned`,
+      "GET"
+    );
+    if (!res?.ok) throw new Error(res?.message || "Failed to list pinned messages");
+    return res.data?.data ?? [];
   },
 };
 

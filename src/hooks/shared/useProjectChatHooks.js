@@ -15,6 +15,7 @@ const KEYS = {
   forProject: (projectId) => ['projectChat', 'project', projectId],
   messages: (conversationId) => ['projectChat', 'messages', conversationId],
   unreadTotal: ['projectChat', 'unreadTotal'],
+  pinned: (conversationId) => ['projectChat', 'pinned', conversationId],
 };
 
 export function useMyProjectConversations() {
@@ -69,7 +70,11 @@ export function useSendProjectMessage(conversationId, currentUser) {
   return useMutation({
     mutationFn: (input) => {
       const payload = typeof input === 'string' ? { text: input } : (input || {});
-      return projectChatApi.sendMessage(conversationId, payload);
+      return projectChatApi.sendMessage(conversationId, {
+        text: payload.text,
+        attachments: payload.attachments,
+        replyToMessageId: payload.replyToMessageId,
+      });
     },
     onMutate: async (input) => {
       const payload = typeof input === 'string' ? { text: input } : (input || {});
@@ -183,6 +188,42 @@ export function useReactToProjectMessage(conversationId) {
 export function useUploadProjectAttachment() {
   return useMutation({
     mutationFn: (file) => projectChatApi.uploadAttachment(file),
+  });
+}
+
+export function usePinnedProjectMessages(conversationId) {
+  return useQuery({
+    queryKey: KEYS.pinned(conversationId),
+    queryFn: () => projectChatApi.listPinnedMessages(conversationId),
+    enabled: Boolean(conversationId),
+    staleTime: 30 * 1000,
+  });
+}
+
+export function useTogglePinProjectMessage(conversationId) {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: (messageId) => projectChatApi.togglePinMessage(messageId),
+    onSuccess: (data) => {
+      if (!data?.messageId) return;
+      // Patch pinned flag onto the message in the paged cache so the bubble
+      // hover-action reflects the new state immediately.
+      queryClient.setQueryData(KEYS.messages(conversationId), (old) => {
+        if (!old?.pages?.length) return old;
+        const pages = old.pages.map((p) => ({
+          ...p,
+          messages: p.messages.map((m) =>
+            m._id === data.messageId
+              ? { ...m, pinned: data.pinned, pinnedAt: data.pinnedAt, pinnedBy: data.pinnedBy }
+              : m
+          ),
+        }));
+        return { ...old, pages };
+      });
+      // Refetch the pinned-strip so it picks up the change (server is the
+      // source of truth for ordering by pinnedAt).
+      queryClient.invalidateQueries({ queryKey: KEYS.pinned(conversationId) });
+    },
   });
 }
 

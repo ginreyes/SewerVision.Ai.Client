@@ -21,6 +21,7 @@ const roleColor = (role) => {
     operator: 'bg-amber-50 text-amber-700',
     'qc-tech': 'bg-emerald-50 text-emerald-700',
     'qc-technician': 'bg-emerald-50 text-emerald-700',
+    'customer-rep': 'bg-sky-50 text-sky-700',
   };
   return map[role] || 'bg-gray-100 text-gray-700';
 };
@@ -37,9 +38,18 @@ export default function ProjectChatPanel({ projectId, activeDetection }) {
   const openDm = useOpenProjectDm();
   const [activeId, setActiveId] = useState(null);
 
-  // Default-select the group conversation on first load.
+  // Reset selection when the panel switches to a different project so we
+  // don't carry over a stale conversation id from the previous project.
   useEffect(() => {
-    if (activeId || !conversations.length) return;
+    setActiveId(null);
+  }, [projectId]);
+
+  // Default-select the group conversation on first load (or after project switch).
+  // Also re-select if the current activeId no longer matches any loaded conversation.
+  useEffect(() => {
+    if (!conversations.length) return;
+    const stillValid = activeId && conversations.some((c) => c._id === activeId);
+    if (stillValid) return;
     const group = conversations.find((c) => c.kind === 'group');
     setActiveId((group || conversations[0])._id);
   }, [conversations, activeId]);

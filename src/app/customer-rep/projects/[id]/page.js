@@ -15,6 +15,7 @@ import { api } from "@/lib/helper";
 import { DashboardSkeleton } from "@/components/shared/SkeletonLoading";
 import { getVideoUrl } from "@/lib/getVideoUrl";
 import ProjectTimelineLauncher from "@/components/shared/project-timeline/ProjectTimelineLauncher";
+import ProjectChatDrawer from "@/components/shared/project-chat/ProjectChatDrawer";
 
 const STATUS_COLORS = {
   planning: "bg-blue-100 text-blue-700",
@@ -253,6 +254,8 @@ export default function CustomerRepProjectDetailPage() {
           )}
         </div>
       </div>
+
+      <ProjectChatDrawer projectId={id} />
     </div>
   );
 }

@@ -56,7 +56,7 @@ import {
   useCompleteQCAssignment,
 } from '@/hooks/useQueryHooks';
 import { ManualForm } from '@/components/qc/project';
-import ProjectChatDrawer from '@/components/shared/project-chat/ProjectChatDrawer';
+import { useProjectChatLauncher } from '@/components/providers/ProjectChatLauncherProvider';
 
 // ─── Page ───────────────────────────────────────────────────
 const QualityControlPage = () => {
@@ -435,10 +435,10 @@ const QualityControlPage = () => {
         project={activeProject}
       />
 
-      {/* Team chat drawer — floating launcher, only when a project is active. */}
-      {activeProjectId && (
-        <ProjectChatDrawer projectId={activeProjectId} activeDetection={selectedDetection} />
-      )}
+      {/* Team chat — uses the layout-mounted ProjectChatBubble; this hook
+          publishes the active detection so the bubble's composer can do
+          detection-aware template auto-suggest. */}
+      <QcChatBridge activeProjectId={activeProjectId} selectedDetection={selectedDetection} />
 
       {/* ═══ Complete Review Dialog ═══ */}
       {showCompleteDialog && (
@@ -1125,6 +1125,26 @@ const QualityControlPage = () => {
     </div>
   );
 };
+
+// Bridge component — keeps the project-chat launcher (mounted at the layout
+// level) in sync with the QC workspace's selected project + detection. Hooks
+// must be called from inside a child component to keep the parent render
+// dependency graph clean.
+function QcChatBridge({ activeProjectId, selectedDetection }) {
+  const launcher = useProjectChatLauncher();
+  useEffect(() => {
+    launcher.setActiveDetection?.(selectedDetection || null);
+  }, [selectedDetection]); // eslint-disable-line react-hooks/exhaustive-deps
+  // When the QC tech opens a project for review, also surface its chat in
+  // the bubble — but do NOT auto-open the sheet; just stage it so a click on
+  // the bubble lands the user inside the right thread.
+  useEffect(() => {
+    if (activeProjectId && !launcher.isOpen) {
+      launcher.setSelectedProjectId?.(activeProjectId);
+    }
+  }, [activeProjectId]); // eslint-disable-line react-hooks/exhaustive-deps
+  return null;
+}
 
 // Wrap in Suspense because useWorkspaceUrlState calls useSearchParams(),
 // which Next.js App Router requires to be inside a Suspense boundary.

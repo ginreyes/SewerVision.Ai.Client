@@ -1,7 +1,7 @@
 'use client';
 
 import { useEffect, useMemo, useRef, useState } from 'react';
-import { Paperclip, Smile, MoreHorizontal, Pencil, Trash2, X, Loader2 } from 'lucide-react';
+import { Paperclip, Smile, MoreHorizontal, Pencil, Trash2, X, Loader2, Pin, Reply, Check, CheckCheck } from 'lucide-react';
 import { useUser } from '@/components/providers/UserContext';
 import {
   useFlattenedMessages,
@@ -12,11 +12,16 @@ import {
   useDeleteProjectMessage,
   useReactToProjectMessage,
   useUploadProjectAttachment,
+  useTogglePinProjectMessage,
 } from '@/hooks/shared/useProjectChatHooks';
 import MentionPicker from './MentionPicker';
 import MessageReactions from './MessageReactions';
 import AttachmentList from './AttachmentList';
 import TemplateSuggestionStrip from './TemplateSuggestionStrip';
+import PinnedMessagesStrip from './PinnedMessagesStrip';
+import SlashCommandPicker from './SlashCommandPicker';
+import ReadReceipt from './ReadReceipt';
+import { useCannedResponses } from '@/hooks/shared/useSupportSharedHooks';
 
 const formatTime = (iso) => {
   if (!iso) return '';
@@ -48,6 +53,7 @@ const roleBadge = (role) => {
     operator: 'bg-amber-50 text-amber-700',
     'qc-tech': 'bg-emerald-50 text-emerald-700',
     'qc-technician': 'bg-emerald-50 text-emerald-700',
+    'customer-rep': 'bg-sky-50 text-sky-700',
   };
   return (
     <span className={`text-[10px] font-medium px-1.5 py-0.5 rounded-md ${map[role] || 'bg-gray-100 text-gray-700'}`}>
@@ -97,6 +103,7 @@ export default function ConversationView({ conversation, activeDetection }) {
   const deleteMutation = useDeleteProjectMessage(conversationId);
   const reactMutation = useReactToProjectMessage(conversationId);
   const uploadMutation = useUploadProjectAttachment();
+  const pinMutation = useTogglePinProjectMessage(conversationId);
   useLiveProjectChat(conversationId);
   useMarkReadOnMount(conversationId);
 
@@ -110,8 +117,21 @@ export default function ConversationView({ conversation, activeDetection }) {
   const [mentionQuery, setMentionQuery] = useState(null); // null | { text, startIdx }
   const [mentionActiveIdx, setMentionActiveIdx] = useState(0);
 
+  // Slash-command picker state
+  const [slashQuery, setSlashQuery] = useState(null); // null | { text, startIdx }
+  const [slashActiveIdx, setSlashActiveIdx] = useState(0);
+
+  // Reply-to state — when set, the next sent message threads under this msg.
+  const [replyTo, setReplyTo] = useState(null);
+
   // Suggestion-strip dismissed-this-session flag (per detection).
   const [dismissedSuggestionFor, setDismissedSuggestionFor] = useState(null);
+
+  // Pick the template library by user role: qc-tech sees QC templates, all
+  // other internal roles share the customer library (which has been the
+  // single library for non-QC roles since the type discriminator landed).
+  const templateType = userData?.role === 'qc-tech' || userData?.role === 'qc-technician' ? 'qc' : 'customer';
+  const { data: allTemplates = [] } = useCannedResponses(userData?._id, { type: templateType });
 
   const textareaRef = useRef(null);
   const fileInputRef = useRef(null);
@@ -128,6 +148,32 @@ export default function ConversationView({ conversation, activeDetection }) {
       bottomRef.current?.scrollIntoView({ behavior: 'smooth', block: 'end' });
     }
   }, [messages]);
+
+  // Build slash-command candidates from the user's template library, ranked
+  // by shortcut prefix → title prefix → title contains → body contains.
+  // Capped at 6.
+  const slashCandidates = useMemo(() => {
+    if (!slashQuery) return [];
+    const q = (slashQuery.text || '').toLowerCase().trim();
+    const list = Array.isArray(allTemplates) ? allTemplates : (allTemplates?.data || []);
+    if (!q) return list.slice(0, 6);
+    return list
+      .map((t) => {
+        const title = (t.title || '').toLowerCase();
+        const shortcut = (t.shortcut || '').toLowerCase();
+        const body = (t.body || '').toLowerCase();
+        let score = 0;
+        if (shortcut && shortcut.startsWith(q)) score += 100;
+        if (title.startsWith(q)) score += 50;
+        else if (title.includes(q)) score += 25;
+        if (body.includes(q)) score += 10;
+        return { t, score };
+      })
+      .filter((s) => s.score > 0)
+      .sort((a, b) => b.score - a.score)
+      .slice(0, 6)
+      .map((s) => s.t);
+  }, [slashQuery, allTemplates]);
 
   // Build mention candidates from conversation participants, excluding self
   // and filtered by the active query. Declared BEFORE the early return below
@@ -161,19 +207,31 @@ export default function ConversationView({ conversation, activeDetection }) {
     );
   }
 
-  // Recompute @-mention query whenever the cursor or text changes.
+  // Recompute @-mention and /-slash queries whenever the cursor or text changes.
   function handleDraftChange(e) {
     const value = e.target.value;
     setDraft(value);
     const cursor = e.target.selectionStart;
-    // Walk back to find the most recent @ that's either at the start or after whitespace.
     const before = value.slice(0, cursor);
-    const m = before.match(/(?:^|\s)@([A-Za-z0-9_.-]{0,40})$/);
-    if (m) {
-      setMentionQuery({ text: m[1], startIdx: cursor - m[1].length - 1 });
+
+    // @-mention: most recent @ at line start or after whitespace.
+    const mention = before.match(/(?:^|\s)@([A-Za-z0-9_.-]{0,40})$/);
+    if (mention) {
+      setMentionQuery({ text: mention[1], startIdx: cursor - mention[1].length - 1 });
       setMentionActiveIdx(0);
+      setSlashQuery(null);
+      return;
+    }
+    setMentionQuery(null);
+
+    // /-slash: only when the / is the very first non-whitespace character of
+    // the message. Avoids triggering on URLs / paths mid-text.
+    const slash = before.match(/^\s*\/([A-Za-z0-9_-]{0,40})$/);
+    if (slash) {
+      setSlashQuery({ text: slash[1], startIdx: before.indexOf('/') });
+      setSlashActiveIdx(0);
     } else {
-      setMentionQuery(null);
+      setSlashQuery(null);
     }
   }
 
@@ -219,10 +277,81 @@ export default function ConversationView({ conversation, activeDetection }) {
         return;
       }
     }
+    if (slashQuery && slashCandidates.length > 0) {
+      if (e.key === 'ArrowDown') {
+        e.preventDefault();
+        setSlashActiveIdx((i) => Math.min(i + 1, slashCandidates.length - 1));
+        return;
+      }
+      if (e.key === 'ArrowUp') {
+        e.preventDefault();
+        setSlashActiveIdx((i) => Math.max(i - 1, 0));
+        return;
+      }
+      if (e.key === 'Enter' || e.key === 'Tab') {
+        e.preventDefault();
+        insertSlashTemplate(slashCandidates[slashActiveIdx]);
+        return;
+      }
+      if (e.key === 'Escape') {
+        e.preventDefault();
+        setSlashQuery(null);
+        return;
+      }
+    }
+    if (e.key === 'Escape' && replyTo) {
+      e.preventDefault();
+      setReplyTo(null);
+      return;
+    }
     if (e.key === 'Enter' && !e.shiftKey) {
       e.preventDefault();
       handleSubmit();
     }
+  }
+
+  function insertSlashTemplate(template) {
+    if (!template || !slashQuery) return;
+    // Replace the entire `/foo` chunk with the rendered template body.
+    const before = draft.slice(0, slashQuery.startIdx);
+    const afterStart = slashQuery.startIdx + 1 + slashQuery.text.length;
+    const after = draft.slice(afterStart);
+    const body = renderTemplateBody(template);
+    const next = (before + body + after).replace(/^\s+/, '');
+    setDraft(next);
+    setSlashQuery(null);
+    requestAnimationFrame(() => {
+      const ta = textareaRef.current;
+      if (!ta) return;
+      ta.focus();
+      const pos = (before + body).length;
+      ta.setSelectionRange(pos, pos);
+    });
+  }
+
+  function renderTemplateBody(template) {
+    const replacements = {
+      '{{detectionType}}': activeDetection?.type || '',
+      '{{severity}}': activeDetection?.severity || '',
+      '{{pacpCode}}': activeDetection?.pacpCode || '',
+      '{{technicianName}}': senderLabel(userData),
+      '{{date}}': new Date().toLocaleDateString(),
+      '{{projectName}}': conversation?.projectId?.name || '',
+    };
+    let body = template.body || '';
+    for (const [k, v] of Object.entries(replacements)) {
+      if (v) body = body.split(k).join(v);
+    }
+    return body;
+  }
+
+  function startReply(msg) {
+    setReplyTo(msg);
+    requestAnimationFrame(() => textareaRef.current?.focus());
+  }
+
+  function cancelReply() {
+    setReplyTo(null);
   }
 
   async function handleAttachFiles(files) {
@@ -258,10 +387,13 @@ export default function ConversationView({ conversation, activeDetection }) {
         mimetype: a.mimetype,
         size: a.size,
       })),
+      replyToMessageId: replyTo?._id || undefined,
     });
     setDraft('');
     setPendingAttachments([]);
     setMentionQuery(null);
+    setSlashQuery(null);
+    setReplyTo(null);
   }
 
   function startEdit(msg) {
@@ -307,6 +439,18 @@ export default function ConversationView({ conversation, activeDetection }) {
     requestAnimationFrame(() => textareaRef.current?.focus());
   }
 
+  // Index of the most recent message I sent — the only spot we render the
+  // read-receipt indicator (avatars + ✓/✓✓). Showing receipts on every prior
+  // sent message would be visual noise.
+  let lastMineIdx = -1;
+  for (let i = messages.length - 1; i >= 0; i--) {
+    const senderId = messages[i].sender?._id || messages[i].sender;
+    if (userData && (senderId === userData._id || senderId?.toString?.() === userData._id)) {
+      lastMineIdx = i;
+      break;
+    }
+  }
+
   // Group consecutive messages from the same sender within 5 minutes.
   const grouped = [];
   let lastDateLabel = null;
@@ -322,7 +466,7 @@ export default function ConversationView({ conversation, activeDetection }) {
     const prevSenderId = prev?.sender?._id || prev?.sender;
     const sameSender = prev && prevSenderId === senderId;
     const close = prev && Math.abs(new Date(m.createdAt) - new Date(prev.createdAt)) < 5 * 60 * 1000;
-    grouped.push({ kind: 'msg', message: m, isFirstInGroup: !sameSender || !close });
+    grouped.push({ kind: 'msg', message: m, msgIdx: i, isFirstInGroup: !sameSender || !close });
   }
 
   return (
@@ -337,6 +481,8 @@ export default function ConversationView({ conversation, activeDetection }) {
           {(conversation.participants || []).length === 1 ? '' : 's'}
         </div>
       </div>
+
+      <PinnedMessagesStrip conversationId={conversationId} scrollerRef={scrollerRef} />
 
       {/* Messages */}
       <div ref={scrollerRef} className="flex-1 overflow-y-auto px-4 py-3 space-y-1">
@@ -378,9 +524,10 @@ export default function ConversationView({ conversation, activeDetection }) {
           return (
             <div
               key={m._id}
+              data-message-id={m._id}
               className={`group/msg flex ${isMine ? 'justify-end' : 'justify-start'} ${
                 g.isFirstInGroup ? 'mt-2' : 'mt-0.5'
-              }`}
+              } ${m.pinned ? 'bg-amber-50/30 -mx-2 px-2 rounded-md' : ''}`}
             >
               <div className={`max-w-[80%] flex flex-col ${isMine ? 'items-end' : 'items-start'}`}>
                 {g.isFirstInGroup && !isMine && (
@@ -396,6 +543,22 @@ export default function ConversationView({ conversation, activeDetection }) {
                     <div className="flex items-center gap-0.5 opacity-0 group-hover/msg:opacity-100 transition-opacity">
                       <button
                         type="button"
+                        onClick={() => startReply(m)}
+                        className="p-1 rounded hover:bg-gray-100 text-gray-500"
+                        title="Reply"
+                      >
+                        <Reply className="w-3 h-3" />
+                      </button>
+                      <button
+                        type="button"
+                        onClick={() => pinMutation.mutate(m._id)}
+                        className={`p-1 rounded hover:bg-amber-100 ${m.pinned ? 'text-amber-700' : 'text-gray-500'}`}
+                        title={m.pinned ? 'Unpin' : 'Pin'}
+                      >
+                        <Pin className="w-3 h-3" />
+                      </button>
+                      <button
+                        type="button"
                         onClick={() => startEdit(m)}
                         className="p-1 rounded hover:bg-gray-100 text-gray-500"
                         title="Edit"
@@ -409,6 +572,26 @@ export default function ConversationView({ conversation, activeDetection }) {
                         title="Delete"
                       >
                         <Trash2 className="w-3 h-3" />
+                      </button>
+                    </div>
+                  )}
+                  {!isMine && !isEditing && (
+                    <div className="flex items-center gap-0.5 opacity-0 group-hover/msg:opacity-100 transition-opacity order-2">
+                      <button
+                        type="button"
+                        onClick={() => startReply(m)}
+                        className="p-1 rounded hover:bg-gray-100 text-gray-500"
+                        title="Reply"
+                      >
+                        <Reply className="w-3 h-3" />
+                      </button>
+                      <button
+                        type="button"
+                        onClick={() => pinMutation.mutate(m._id)}
+                        className={`p-1 rounded hover:bg-amber-100 ${m.pinned ? 'text-amber-700' : 'text-gray-500'}`}
+                        title={m.pinned ? 'Unpin' : 'Pin'}
+                      >
+                        <Pin className="w-3 h-3" />
                       </button>
                     </div>
                   )}
@@ -443,6 +626,25 @@ export default function ConversationView({ conversation, activeDetection }) {
                       </div>
                     ) : (
                       <>
+                        {m.replyToMessageId && typeof m.replyToMessageId === 'object' && (
+                          <div
+                            className={`text-[11px] mb-0.5 px-2 py-1 rounded-lg border-l-2 max-w-full ${
+                              isMine
+                                ? 'bg-rose-50 border-rose-300 text-gray-700'
+                                : 'bg-gray-50 border-gray-300 text-gray-600'
+                            }`}
+                          >
+                            <div className="font-semibold text-[10px] uppercase tracking-wider opacity-70">
+                              {senderLabel(m.replyToMessageId.sender)}
+                            </div>
+                            <div className="truncate max-w-[260px]">
+                              {m.replyToMessageId.text ||
+                                (m.replyToMessageId.attachments?.length
+                                  ? `📎 ${m.replyToMessageId.attachments[0].filename}`
+                                  : '—')}
+                            </div>
+                          </div>
+                        )}
                         {(m.text || '').trim() && (
                           <div
                             className={`rounded-2xl px-3 py-1.5 text-sm break-words whitespace-pre-wrap ${
@@ -467,10 +669,17 @@ export default function ConversationView({ conversation, activeDetection }) {
                       />
                     )}
 
-                    <div className={`text-[10px] text-gray-400 mt-0.5 px-1 ${isMine ? 'text-right' : 'text-left'}`}>
-                      {formatTime(m.createdAt)}
-                      {m.edited && <span className="ml-1 italic">edited</span>}
-                      {m.pending && <span className="ml-1 italic">sending…</span>}
+                    <div className={`text-[10px] text-gray-400 mt-0.5 px-1 flex items-center gap-1 ${isMine ? 'justify-end' : 'justify-start'}`}>
+                      <span>{formatTime(m.createdAt)}</span>
+                      {m.edited && <span className="italic">edited</span>}
+                      {m.pending && <span className="italic">sending…</span>}
+                      {isMine && g.msgIdx === lastMineIdx && !m.pending && (
+                        <ReadReceipt
+                          message={m}
+                          conversation={conversation}
+                          currentUserId={userData?._id}
+                        />
+                      )}
                     </div>
                   </div>
                 </div>
@@ -492,6 +701,29 @@ export default function ConversationView({ conversation, activeDetection }) {
         />
       )}
 
+      {/* Reply preview */}
+      {replyTo && (
+        <div className="border-t border-gray-100 px-3 py-2 flex items-start gap-2 bg-rose-50/50">
+          <div className="w-0.5 self-stretch bg-rose-400 rounded-full" />
+          <div className="flex-1 min-w-0">
+            <div className="text-[10px] font-semibold text-rose-700 uppercase tracking-wider">
+              Replying to {senderLabel(replyTo.sender)}
+            </div>
+            <div className="text-xs text-gray-600 truncate">
+              {replyTo.text || (replyTo.attachments?.length ? `📎 ${replyTo.attachments[0].filename}` : '—')}
+            </div>
+          </div>
+          <button
+            type="button"
+            onClick={cancelReply}
+            className="p-0.5 rounded text-gray-400 hover:text-red-500"
+            aria-label="Cancel reply"
+          >
+            <X className="w-3 h-3" />
+          </button>
+        </div>
+      )}
+
       {/* Pending attachments preview */}
       {pendingAttachments.length > 0 && (
         <div className="border-t border-gray-100 px-3 py-2 flex flex-wrap gap-2 bg-gray-50">
@@ -511,10 +743,11 @@ export default function ConversationView({ conversation, activeDetection }) {
         </div>
       )}
 
-      {/* Composer */}
+      {/* Composer — under sm: toolbar (paperclip) on top, full-width
+          textarea + send below; sm and up: paperclip · textarea · send all in one row. */}
       <form
         onSubmit={(e) => { e.preventDefault(); handleSubmit(); }}
-        className="border-t border-gray-200 p-3 flex gap-2 relative"
+        className="border-t border-gray-200 p-3 flex flex-col sm:flex-row sm:items-start gap-2 relative"
       >
         <input
           ref={fileInputRef}
@@ -527,23 +760,28 @@ export default function ConversationView({ conversation, activeDetection }) {
             e.target.value = ''; // allow re-selecting same file
           }}
         />
-        <button
-          type="button"
-          onClick={() => fileInputRef.current?.click()}
-          disabled={uploadMutation.isPending}
-          className="p-2 rounded-md text-gray-500 hover:bg-gray-100 disabled:opacity-50"
-          title="Attach files"
-        >
-          {uploadMutation.isPending ? <Loader2 className="w-4 h-4 animate-spin" /> : <Paperclip className="w-4 h-4" />}
-        </button>
 
+        <div className="flex items-center gap-1 sm:order-none order-first">
+          <button
+            type="button"
+            onClick={() => fileInputRef.current?.click()}
+            disabled={uploadMutation.isPending}
+            className="p-2 rounded-md text-gray-500 hover:bg-gray-100 disabled:opacity-50"
+            title="Attach files"
+            aria-label="Attach files"
+          >
+            {uploadMutation.isPending ? <Loader2 className="w-4 h-4 animate-spin" /> : <Paperclip className="w-4 h-4" />}
+          </button>
+        </div>
+
+        <div className="flex flex-1 gap-2 items-start">
         <div className="relative flex-1">
           <textarea
             ref={textareaRef}
             value={draft}
             onChange={handleDraftChange}
             onKeyDown={handleKeyDown}
-            placeholder="Write a message… (Enter to send, Shift+Enter for newline, @ to mention)"
+            placeholder="Write a message… (Enter to send, Shift+Enter for newline, @ to mention, / for templates)"
             rows={1}
             className="w-full resize-none rounded-xl border border-gray-200 bg-white px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-rose-500 focus:border-transparent"
           />
@@ -556,15 +794,23 @@ export default function ConversationView({ conversation, activeDetection }) {
               anchorRef={textareaRef}
             />
           )}
+          {slashQuery && (
+            <SlashCommandPicker
+              candidates={slashCandidates}
+              activeIndex={slashActiveIdx}
+              onSelect={insertSlashTemplate}
+            />
+          )}
         </div>
 
         <button
           type="submit"
           disabled={(!draft.trim() && pendingAttachments.length === 0) || sendMutation.isPending}
-          className="px-4 py-2 bg-rose-600 text-white text-sm font-medium rounded-xl hover:bg-rose-700 disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
+          className="px-4 py-2 bg-rose-600 text-white text-sm font-medium rounded-xl hover:bg-rose-700 disabled:opacity-50 disabled:cursor-not-allowed transition-colors shrink-0"
         >
           Send
         </button>
+        </div>
       </form>
     </div>
   );

@@ -99,7 +99,7 @@ export default function ProjectPage() {
   };
 
   // Loading state
-  if (isLoading) return (<GridSkeleton count={6} />)
+  if (loading) return (<GridSkeleton count={6} />)
   // Error state
   if (error) {
     return (

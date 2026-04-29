@@ -12,20 +12,38 @@ import {
   RefreshCw,
   CheckCheck,
   BellRing,
+  BellOff,
   Brain,
   Upload,
   ClipboardList,
   Ticket,
   MessageSquare,
+  MessageCircle,
+  AtSign,
+  Pin,
+  Reply,
+  Smile,
   Zap,
+  ChevronDown,
+  ChevronUp,
 } from 'lucide-react';
 
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuLabel,
+  DropdownMenuSeparator,
+  DropdownMenuTrigger,
+} from '@/components/ui/dropdown-menu';
 import { useNotifications } from '@/components/providers/NotificationProvider';
 import { useAlert } from '@/components/providers/AlertProvider';
+import { useUser } from '@/components/providers/UserContext';
 import { ROLE_BADGE_CLASSES, getRoleTheme } from '@/lib/roleThemes';
+import notificationApi from '@/data/notificationApi ';
 
 // ── Role accent color mapping (derives from central roleThemes) ──
 function buildRoleColors(role) {
@@ -53,6 +71,12 @@ const DEFAULT_TYPE_CONFIG = {
   ticket_updated: { icon: Clock, color: 'bg-cyan-100 text-cyan-600', label: 'Updated' },
   new_ticket: { icon: MessageSquare, color: 'bg-blue-100 text-blue-600', label: 'New Ticket' },
   sla_breach: { icon: AlertTriangle, color: 'bg-red-100 text-red-600', label: 'SLA' },
+  // Chat notification types (added April 29 2026)
+  chat_message: { icon: MessageCircle, color: 'bg-blue-100 text-blue-600', label: 'Chat' },
+  chat_mention: { icon: AtSign, color: 'bg-rose-100 text-rose-600', label: 'Mention' },
+  chat_reply: { icon: Reply, color: 'bg-indigo-100 text-indigo-600', label: 'Reply' },
+  chat_pin: { icon: Pin, color: 'bg-amber-100 text-amber-600', label: 'Pinned' },
+  chat_reaction: { icon: Smile, color: 'bg-pink-100 text-pink-600', label: 'Reaction' },
   system: { icon: Zap, color: 'bg-gray-100 text-gray-600', label: 'System' },
   default: { icon: Bell, color: 'bg-gray-100 text-gray-600', label: 'Info' },
 };
@@ -199,6 +223,26 @@ function NotificationCenter({
   const [filter, setFilter] = useState('all');
   const [refreshing, setRefreshing] = useState(false);
   const [deletingAll, setDeletingAll] = useState(false);
+  const [snoozedUntil, setSnoozedUntilState] = useState(null);
+  const { userId } = useUser();
+
+  // Snooze options — durations relative to now.
+  const handleSnooze = useCallback(async (durationMinutes) => {
+    if (!userId) return;
+    try {
+      const until = durationMinutes
+        ? new Date(Date.now() + durationMinutes * 60 * 1000)
+        : null;
+      const result = await notificationApi.setSnooze(userId, until);
+      setSnoozedUntilState(result?.snoozedUntil ? new Date(result.snoozedUntil) : null);
+      showAlert(
+        until ? `Snoozed for ${durationMinutes >= 60 ? `${durationMinutes / 60}h` : `${durationMinutes}m`}` : 'Snooze cleared',
+        'success'
+      );
+    } catch (err) {
+      showAlert(err?.message || 'Failed to set snooze', 'error');
+    }
+  }, [userId, showAlert]);
 
   const filteredNotifications = useMemo(() => {
     if (filter === 'unread') return notifications.filter((n) => !n.read);
@@ -307,6 +351,34 @@ function NotificationCenter({
           </p>
         </div>
         <div className="flex items-center gap-2">
+          <DropdownMenu>
+            <DropdownMenuTrigger asChild>
+              <Button variant="outline" size="sm" className="gap-2">
+                {snoozedUntil && new Date(snoozedUntil) > new Date() ? (
+                  <BellOff className="w-4 h-4" />
+                ) : (
+                  <BellRing className="w-4 h-4" />
+                )}
+                {snoozedUntil && new Date(snoozedUntil) > new Date() ? 'Snoozed' : 'Snooze'}
+              </Button>
+            </DropdownMenuTrigger>
+            <DropdownMenuContent align="end" className="w-48">
+              <DropdownMenuLabel>Snooze notifications</DropdownMenuLabel>
+              <DropdownMenuSeparator />
+              <DropdownMenuItem onClick={() => handleSnooze(30)}>30 minutes</DropdownMenuItem>
+              <DropdownMenuItem onClick={() => handleSnooze(60)}>1 hour</DropdownMenuItem>
+              <DropdownMenuItem onClick={() => handleSnooze(60 * 4)}>4 hours</DropdownMenuItem>
+              <DropdownMenuItem onClick={() => handleSnooze(60 * 24)}>Until tomorrow</DropdownMenuItem>
+              {snoozedUntil && new Date(snoozedUntil) > new Date() && (
+                <>
+                  <DropdownMenuSeparator />
+                  <DropdownMenuItem onClick={() => handleSnooze(null)} className="text-rose-600">
+                    Clear snooze
+                  </DropdownMenuItem>
+                </>
+              )}
+            </DropdownMenuContent>
+          </DropdownMenu>
           <Button
             onClick={handleMarkAllAsRead}
             variant="outline"
