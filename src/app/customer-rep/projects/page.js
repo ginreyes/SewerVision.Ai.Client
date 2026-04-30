@@ -41,19 +41,23 @@ export default function CustomerRepProjectsPage() {
   const [search, setSearch] = useState("");
   const debouncedSearch = useDebouncedValue(search, 300);
   const [statusFilter, setStatusFilter] = useState("all");
+  const [priorityFilter, setPriorityFilter] = useState("all");
+  const [sortMode, setSortMode] = useState("newest");
   const [page, setPage] = useState(1);
 
   // Reset to page 1 whenever filters change.
-  React.useEffect(() => { setPage(1); }, [debouncedSearch, statusFilter]);
+  React.useEffect(() => { setPage(1); }, [debouncedSearch, statusFilter, priorityFilter, sortMode]);
 
   const { data: projectsData, isLoading, isFetching } = useQuery({
-    queryKey: ["customer-rep", "projects", { page, search: debouncedSearch, status: statusFilter }],
+    queryKey: ["customer-rep", "projects", { page, search: debouncedSearch, status: statusFilter, priority: priorityFilter, sort: sortMode }],
     queryFn: async () => {
       const params = new URLSearchParams();
       params.set("page", String(page));
       params.set("limit", String(PAGE_SIZE));
       if (debouncedSearch.trim()) params.set("search", debouncedSearch.trim());
       if (statusFilter !== "all") params.set("status", statusFilter);
+      if (priorityFilter !== "all") params.set("priority", priorityFilter);
+      if (sortMode !== "newest") params.set("sort", sortMode);
       const { data } = await api(`/api/projects/get-all-projects?${params.toString()}`);
       return data || {};
     },
@@ -103,6 +107,30 @@ export default function CustomerRepProjectsPage() {
           {STATUS_OPTIONS.map((s) => (
             <option key={s.value} value={s.value}>{s.label}</option>
           ))}
+        </select>
+        <select
+          value={priorityFilter}
+          onChange={(e) => setPriorityFilter(e.target.value)}
+          className="text-sm border border-gray-200 rounded-md px-3 py-2 bg-white"
+          aria-label="Filter by priority"
+        >
+          <option value="all">All Priorities</option>
+          <option value="high">High</option>
+          <option value="medium">Medium</option>
+          <option value="low">Low</option>
+        </select>
+        <select
+          value={sortMode}
+          onChange={(e) => setSortMode(e.target.value)}
+          className="text-sm border border-gray-200 rounded-md px-3 py-2 bg-white"
+          aria-label="Sort projects"
+        >
+          <option value="newest">Newest first</option>
+          <option value="oldest">Oldest first</option>
+          <option value="priority-desc">Priority (high → low)</option>
+          <option value="priority-asc">Priority (low → high)</option>
+          <option value="name-asc">Name (A → Z)</option>
+          <option value="name-desc">Name (Z → A)</option>
         </select>
       </div>
 

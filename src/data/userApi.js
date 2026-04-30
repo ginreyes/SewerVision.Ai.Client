@@ -41,11 +41,13 @@ export const userApi = {
 
     // ─── Projects ───
 
-    async getAllProjects(userId, { page = 1, limit = 20, search = '', status = '' } = {}) {
+    async getAllProjects(userId, { page = 1, limit = 20, search = '', status = '', priority = '', sort = '' } = {}) {
         const params = new URLSearchParams({ page, limit });
         if (userId) params.set('managerId', userId);
         if (search) params.set('search', search);
         if (status && status !== 'all') params.set('status', status);
+        if (priority && priority !== 'all') params.set('priority', priority);
+        if (sort) params.set('sort', sort);
 
         const response = await api(`/api/projects/get-all-projects?${params}`, 'GET');
         if (!response.ok) {

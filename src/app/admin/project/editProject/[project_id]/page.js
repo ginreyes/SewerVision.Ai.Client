@@ -69,6 +69,7 @@ export default function EditProjectPage() {
   const [operators, setOperators] = useState([]);
   const [qcTechnicians, setQcTechnicians] = useState([]);
   const [leads, setLeads] = useState([]);
+  const [customerReps, setCustomerReps] = useState([]);
   const [loadingUsers, setLoadingUsers] = useState(false);
   const [customers, setCustomers] = useState([]);
   const [loadingCustomers, setLoadingCustomers] = useState(false);
@@ -103,6 +104,7 @@ export default function EditProjectPage() {
       email: "",
       certification: "",
     },
+    customerRep: "",
     assignedDevice: "",
     metadata: {
       recordingDate: "",
@@ -147,6 +149,8 @@ export default function EditProjectPage() {
 
       const customerIdVal = project.customerId?._id?.toString?.() || project.customerId?.toString?.() || project.customerId || "";
 
+      const customerRepVal = project.customerRep?._id?.toString?.() || project.customerRep?.toString?.() || project.customerRep || "";
+
       // Initialize form with project data
       setFormData({
         name: project.name || "",
@@ -178,6 +182,7 @@ export default function EditProjectPage() {
           email: project.qcTechnician?.email || "",
           certification: project.qcTechnician?.certification || "",
         },
+        customerRep: customerRepVal,
         assignedDevice: project.assignedDevice?._id?.toString?.() || project.assignedDevice?.toString?.() || "",
         metadata: {
           recordingDate: project.metadata?.recordingDate || "",
@@ -220,6 +225,9 @@ export default function EditProjectPage() {
         const leadUsers = data.users.filter(
           (u) => u.role === "user" || u.role === "User"
         );
+        const customerRepUsers = data.users.filter(
+          (u) => u.role === "customer-rep" || u.role === "Customer-Rep"
+        );
 
         if (isUserRole && Array.isArray(userData?.managedMembers) && userData.managedMembers.length > 0) {
           const managedIds = new Set(userData.managedMembers.map((id) => String(id)));
@@ -230,6 +238,7 @@ export default function EditProjectPage() {
         setOperators(operatorUsers);
         setQcTechnicians(qcUsers);
         setLeads(leadUsers);
+        setCustomerReps(customerRepUsers);
       }
     } catch (error) {
       showAlert("Failed to fetch users", "error");
@@ -447,6 +456,7 @@ export default function EditProjectPage() {
           email: originalProject.qcTechnician?.email || "",
           certification: originalProject.qcTechnician?.certification || "",
         },
+        customerRep: originalProject.customerRep?._id?.toString?.() || originalProject.customerRep?.toString?.() || originalProject.customerRep || "",
         assignedDevice: originalProject.assignedDevice?._id?.toString?.() || originalProject.assignedDevice?.toString?.() || "",
         metadata: {
           recordingDate: originalProject.metadata?.recordingDate || "",
@@ -920,58 +930,117 @@ export default function EditProjectPage() {
 
               <div className="space-y-6">
                 {!isUserRole ? (
-                  /* Admin: Assigned Lead (user role only) */
-                  <div className="border border-purple-200 rounded-lg p-4 bg-purple-50">
-                    <h4 className="font-semibold text-gray-900 mb-4">
-                      Assigned Lead
-                    </h4>
-                    <div className="space-y-4">
+                  <>
+                    {/* Admin: Assigned Lead (user role only) */}
+                    <div className="border border-purple-200 rounded-lg p-4 bg-purple-50">
+                      <h4 className="font-semibold text-gray-900 mb-4">
+                        Assigned Lead
+                      </h4>
+                      <div className="space-y-4">
+                        <div className="space-y-2">
+                          <Label className="text-sm font-medium text-gray-700">
+                            Select Lead (user) *
+                          </Label>
+                          <Select
+                            value={formData.managerId}
+                            onValueChange={handleLeadSelect}
+                          >
+                            <SelectTrigger
+                              className={`h-10 ${
+                                errors.managerId ? "border-red-500" : ""
+                              }`}
+                            >
+                              <SelectValue placeholder="Choose an assigned lead..." />
+                            </SelectTrigger>
+                            <SelectContent>
+                              {leads.length === 0 ? (
+                                <div className="px-4 py-6 text-center text-gray-500 text-sm">
+                                  No users (lead) available
+                                </div>
+                              ) : (
+                                leads.map((lead) => (
+                                  <SelectItem
+                                    key={lead.user_id}
+                                    value={lead.user_id}
+                                  >
+                                    <div className="flex items-center gap-3">
+                                      <UserCheck className="h-4 w-4 text-purple-600" />
+                                      <div>
+                                        <div className="font-medium">{lead.name}</div>
+                                        <div className="text-xs text-gray-500">{lead.email}</div>
+                                      </div>
+                                    </div>
+                                  </SelectItem>
+                                ))
+                              )}
+                            </SelectContent>
+                          </Select>
+                          {errors.managerId && (
+                            <span className="text-red-500 text-sm">
+                              {errors.managerId}
+                            </span>
+                          )}
+                        </div>
+                      </div>
+                    </div>
+
+                    {/* Admin: Customer Representative (optional) */}
+                    <div className="border border-teal-200 rounded-lg p-4 bg-teal-50">
+                      <h4 className="font-semibold text-gray-900 mb-4">
+                        Customer Representative <span className="text-xs font-normal text-gray-500">(optional)</span>
+                      </h4>
                       <div className="space-y-2">
                         <Label className="text-sm font-medium text-gray-700">
-                          Select Lead (user) *
+                          Select Customer Rep
                         </Label>
                         <Select
-                          value={formData.managerId}
-                          onValueChange={handleLeadSelect}
+                          value={formData.customerRep || "__none__"}
+                          onValueChange={(v) =>
+                            setFormData((prev) => ({
+                              ...prev,
+                              customerRep: v === "__none__" ? "" : v,
+                            }))
+                          }
                         >
-                          <SelectTrigger
-                            className={`h-10 ${
-                              errors.managerId ? "border-red-500" : ""
-                            }`}
-                          >
-                            <SelectValue placeholder="Choose an assigned lead..." />
+                          <SelectTrigger className="h-10">
+                            <SelectValue placeholder="Choose a customer rep..." />
                           </SelectTrigger>
                           <SelectContent>
-                            {leads.length === 0 ? (
+                            <SelectItem value="__none__">
+                              <span className="text-gray-500">— No customer rep —</span>
+                            </SelectItem>
+                            {customerReps.length === 0 ? (
                               <div className="px-4 py-6 text-center text-gray-500 text-sm">
-                                No users (lead) available
+                                No customer reps available
                               </div>
                             ) : (
-                              leads.map((lead) => (
-                                <SelectItem
-                                  key={lead.user_id}
-                                  value={lead.user_id}
-                                >
-                                  <div className="flex items-center gap-3">
-                                    <UserCheck className="h-4 w-4 text-purple-600" />
-                                    <div>
-                                      <div className="font-medium">{lead.name}</div>
-                                      <div className="text-xs text-gray-500">{lead.email}</div>
+                              customerReps.map((rep) => {
+                                const repId = rep._id || rep.user_id;
+                                const repName =
+                                  rep.name ||
+                                  [rep.first_name, rep.last_name].filter(Boolean).join(" ").trim() ||
+                                  rep.email;
+                                return (
+                                  <SelectItem key={repId} value={String(repId)}>
+                                    <div className="flex items-center gap-3">
+                                      <UserCheck className="h-4 w-4 text-teal-600" />
+                                      <div>
+                                        <div className="font-medium">{repName}</div>
+                                        <div className="text-xs text-gray-500">{rep.email}</div>
+                                      </div>
                                     </div>
-                                  </div>
-                                </SelectItem>
-                              ))
+                                  </SelectItem>
+                                );
+                              })
                             )}
                           </SelectContent>
                         </Select>
-                        {errors.managerId && (
-                          <span className="text-red-500 text-sm">
-                            {errors.managerId}
-                          </span>
-                        )}
+                        <p className="text-xs text-gray-500">
+                          Adds the rep to the project chat group and surfaces this project on their dashboard.
+                        </p>
                       </div>
                     </div>
-                  </div>
+                  </>
                 ) : (
                   <>
                     {/* User role: Operator */}

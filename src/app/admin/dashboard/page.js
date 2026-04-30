@@ -63,7 +63,7 @@ const AdminDashboard = () => {
   // Auto-refresh when AI is processing
   useEffect(() => {
     if (projectStats.aiProcessing <= 0) return
-    const interval = setInterval(fetchDashboardData, 10000)
+    const interval = setInterval(fetchDashboardData, 30000)
     return () => clearInterval(interval)
   }, [projectStats.aiProcessing, fetchDashboardData])
 

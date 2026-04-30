@@ -231,7 +231,7 @@ const AdminUploads = () => {
 
     if (activeTab === 'monitoring') {
       fetchMonitoringData(true);
-      const interval = setInterval(fetchMonitoringData, 5000); // Refresh every 5 seconds
+      const interval = setInterval(fetchMonitoringData, 15000); // Refresh every 15 seconds
       return () => clearInterval(interval);
     }
   }, [activeTab, fetchMonitoringData]);

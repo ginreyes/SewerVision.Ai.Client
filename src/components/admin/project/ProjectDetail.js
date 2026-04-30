@@ -30,6 +30,7 @@ import { getVideoUrl } from '@/lib/getVideoUrl';
 import { deriveProjectSnapshots } from '@/lib/projectSnapshots';
 import { AddCustomMetadataDialog, EditMetadataDialog, DeleteVideoDialog, UploadProgressDialog } from '@/components/shared/project-dialogs';
 import { DetailHeader, ProjectInfoBanner, UploadStatusBanners, ProjectVideoList } from '@/components/shared/project-detail';
+import ProjectStatusTimeline from '@/components/shared/project/ProjectStatusTimeline';
 
 const ProjectDetail = ({ project, setSelectedProject, onBack, initialSeekTime, allProjects = [] }) => {
   // Project switcher state removed — now using shadcn DropdownMenu via ProjectSwitcher
@@ -1038,6 +1039,8 @@ const ProjectDetail = ({ project, setSelectedProject, onBack, initialSeekTime, a
                 </div>
               )}
             </div>
+
+            <ProjectStatusTimeline statusHistory={project?.statusHistory} role="admin" />
           </div>
 
           {/* Dialogs - Outside flex container */}

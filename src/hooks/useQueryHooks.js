@@ -127,6 +127,8 @@ export {
     useDetection,
     useDetectionComments,
     useReviewDetection,
+    useBulkReviewDetections,
+    useBulkUndoReview,
     useCreateManualDetection,
     useCompleteQCAssignment,
     useStartQCSession,
@@ -386,6 +388,7 @@ import {
 import {
     useQCDashboardStats, useQCAssignments, useQCAssignment, useProject, useProjectVideos,
     useProjectDetections, useDetection, useDetectionComments, useReviewDetection,
+    useBulkReviewDetections, useBulkUndoReview,
     useCreateManualDetection, useCompleteQCAssignment, useStartQCSession, useEndQCSession,
     useAddDetectionComment, useQCCertifications, useCreateCertification, useQCReports,
     useQCReportByProject, useQCUploads, usePacpDefects, usePacpCategories, useCreatePacpDefect,

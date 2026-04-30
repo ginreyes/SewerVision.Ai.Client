@@ -125,11 +125,33 @@ export const qcApi = {
    */
   async reviewDetection(detectionId, reviewData) {
     const response = await api(`/api/qc-technicians/detections/${detectionId}`, 'PATCH', reviewData);
-    
+
     if (!response.ok) {
       throw new Error(response.data?.error || 'Failed to review detection');
     }
-    
+
+    return response.data.data;
+  },
+
+  /**
+   * Bulk approve/reject detections. Returns { updated, undoToken, undoExpiresAt }.
+   */
+  async bulkReviewDetections(payload) {
+    const response = await api('/api/qc-technicians/detections/bulk-review', 'POST', payload);
+    if (!response.ok) {
+      throw new Error(response.data?.error || 'Failed to bulk-review detections');
+    }
+    return response.data.data;
+  },
+
+  /**
+   * Undo a bulk-review action. Token is valid for 5 minutes and single-use.
+   */
+  async bulkUndoReview(payload) {
+    const response = await api('/api/qc-technicians/detections/bulk-undo', 'POST', payload);
+    if (!response.ok) {
+      throw new Error(response.data?.error || 'Failed to undo bulk review');
+    }
     return response.data.data;
   },
 

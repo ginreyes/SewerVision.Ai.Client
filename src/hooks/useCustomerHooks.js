@@ -13,10 +13,10 @@ import { queryKeys } from './queryKeys';
 /**
  * Hook for fetching all customer projects
  */
-export function useCustomerProjects(userId, { page = 1, limit = 100, status = '' } = {}, options = {}) {
+export function useCustomerProjects(userId, { page = 1, limit = 100, status = '', priority = '', sort = '' } = {}, options = {}) {
     return useQuery({
-        queryKey: queryKeys.customerProjects(userId, { page, limit, status }),
-        queryFn: () => customerApi.getAllProjects(userId, { page, limit, status }),
+        queryKey: queryKeys.customerProjects(userId, { page, limit, status, priority, sort }),
+        queryFn: () => customerApi.getAllProjects(userId, { page, limit, status, priority, sort }),
         enabled: !!userId,
         staleTime: 1000 * 60 * 5,
         ...options,

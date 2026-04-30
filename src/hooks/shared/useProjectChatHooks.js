@@ -192,6 +192,29 @@ export function useUploadProjectAttachment() {
 }
 
 export function usePinnedProjectMessages(conversationId) {
+  const queryClient = useQueryClient();
+
+  // Realtime: when anyone in this conversation pins/unpins a message, invalidate
+  // the pinned-strip cache and patch the inline message so other tabs update
+  // without manual refetch. The server is authoritative for ordering by
+  // pinnedAt, so we invalidate rather than splicing the pin into local state.
+  useRealtimeChat(conversationId, {
+    onPinToggled: ({ messageId, pinned, pinnedAt, pinnedBy }) => {
+      if (!conversationId) return;
+      queryClient.invalidateQueries({ queryKey: KEYS.pinned(conversationId) });
+      queryClient.setQueryData(KEYS.messages(conversationId), (old) => {
+        if (!old?.pages?.length) return old;
+        const pages = old.pages.map((p) => ({
+          ...p,
+          messages: p.messages.map((m) =>
+            m._id === messageId ? { ...m, pinned, pinnedAt, pinnedBy } : m
+          ),
+        }));
+        return { ...old, pages };
+      });
+    },
+  });
+
   return useQuery({
     queryKey: KEYS.pinned(conversationId),
     queryFn: () => projectChatApi.listPinnedMessages(conversationId),

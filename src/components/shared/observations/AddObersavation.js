@@ -73,7 +73,10 @@ const AddObservation = ({
     remarks: '', severity: 'low', clockPosition: '', length: '', width: '',
     percentage: '', joint: '', continuous: false, snapshot: false,
     snapshotLabel: '', snapshotTimestamp: '', snapshotCategory: 'defect',
+    latitude: null, longitude: null, gpsAccuracy: null,
   });
+  // GPS capture state — 'idle' | 'capturing' | 'captured' | 'denied' | 'unsupported'
+  const [gpsState, setGpsState] = useState('idle');
 
   const formatTime = (t) => {
     if (!t && t !== 0) return '00:00:00';
@@ -91,9 +94,39 @@ const AddObservation = ({
         remarks: '', severity: 'low', clockPosition: '', length: '', width: '',
         percentage: '', joint: '', continuous: false, snapshot: false,
         snapshotLabel: '', snapshotTimestamp: '', snapshotCategory: 'defect',
+        latitude: null, longitude: null, gpsAccuracy: null,
       });
+      setGpsState('idle');
     }
   }, [isOpen, currentTime, currentDistance]);
+
+  // Capture GPS once when the dialog opens. Geolocation may be denied or
+  // unavailable underground — that's fine, the observation still saves
+  // without coordinates and the operator can re-tap the chip to retry later.
+  const captureGps = React.useCallback(() => {
+    if (typeof window === 'undefined' || !navigator.geolocation) {
+      setGpsState('unsupported');
+      return;
+    }
+    setGpsState('capturing');
+    navigator.geolocation.getCurrentPosition(
+      (pos) => {
+        setFormData((prev) => ({
+          ...prev,
+          latitude: pos.coords.latitude,
+          longitude: pos.coords.longitude,
+          gpsAccuracy: pos.coords.accuracy,
+        }));
+        setGpsState('captured');
+      },
+      () => { setGpsState('denied'); },
+      { enableHighAccuracy: true, timeout: 10000, maximumAge: 30000 }
+    );
+  }, []);
+
+  useEffect(() => {
+    if (isOpen) captureGps();
+  }, [isOpen, captureGps]);
 
   // No canvas preview needed — we show the actual video element directly
 
@@ -231,7 +264,39 @@ const AddObservation = ({
                 <h4 className="text-sm font-bold text-gray-900">{STEPS[step].label}</h4>
                 <p className="text-[11px] text-gray-400">{STEPS[step].desc}</p>
               </div>
-             
+              <button
+                type="button"
+                onClick={captureGps}
+                title={
+                  gpsState === 'captured'
+                    ? `Lat ${formData.latitude?.toFixed?.(5)}, Lng ${formData.longitude?.toFixed?.(5)} (±${Math.round(formData.gpsAccuracy || 0)}m). Click to recapture.`
+                    : gpsState === 'denied'
+                      ? 'Location permission denied. Click to retry.'
+                      : gpsState === 'unsupported'
+                        ? 'Geolocation not supported in this browser'
+                        : gpsState === 'capturing'
+                          ? 'Capturing GPS…'
+                          : 'Click to capture GPS coordinates'
+                }
+                className={`text-[11px] px-2 py-1 rounded-full border flex items-center gap-1.5 transition-colors ${
+                  gpsState === 'captured'
+                    ? 'bg-green-50 border-green-200 text-green-700 hover:bg-green-100'
+                    : gpsState === 'denied' || gpsState === 'unsupported'
+                      ? 'bg-gray-50 border-gray-200 text-gray-500 hover:bg-gray-100'
+                      : 'bg-blue-50 border-blue-200 text-blue-700 hover:bg-blue-100'
+                }`}
+              >
+                <MapPin className="h-3 w-3" />
+                {gpsState === 'captured'
+                  ? `GPS captured (±${Math.round(formData.gpsAccuracy || 0)}m)`
+                  : gpsState === 'capturing'
+                    ? 'Capturing…'
+                    : gpsState === 'denied'
+                      ? 'GPS denied — retry'
+                      : gpsState === 'unsupported'
+                        ? 'GPS unavailable'
+                        : 'Capture GPS'}
+              </button>
             </div>
 
             {/* Content body */}

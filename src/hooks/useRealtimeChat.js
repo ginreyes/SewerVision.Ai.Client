@@ -15,6 +15,7 @@ import { useSocket } from '@/components/providers/SocketProvider';
  * @param {function} handlers.onReactionToggled - Called when a reaction changes
  * @param {function} handlers.onMessagesSeen - Called when messages are read
  * @param {function} handlers.onUserTyping - Called when someone is typing
+ * @param {function} handlers.onPinToggled - Called when a message is pinned/unpinned
  */
 export function useRealtimeChat(conversationId, handlers = {}) {
   const socket = useSocket();
@@ -62,12 +63,24 @@ export function useRealtimeChat(conversationId, handlers = {}) {
       }
     };
 
+    const onPinToggled = (data) => {
+      if (data.conversationId === conversationId && handlers.onPinToggled) {
+        handlers.onPinToggled({
+          messageId: data.messageId,
+          pinned: data.pinned,
+          pinnedAt: data.pinnedAt,
+          pinnedBy: data.pinnedBy,
+        });
+      }
+    };
+
     socket.on('new-message', onNewMessage);
     socket.on('message-edited', onMessageEdited);
     socket.on('message-deleted', onMessageDeleted);
     socket.on('reaction-toggled', onReactionToggled);
     socket.on('messages-seen', onMessagesSeen);
     socket.on('user-typing', onUserTyping);
+    socket.on('pin-toggled', onPinToggled);
 
     return () => {
       socket.leaveConversation(conversationId);
@@ -77,6 +90,7 @@ export function useRealtimeChat(conversationId, handlers = {}) {
       socket.off('reaction-toggled', onReactionToggled);
       socket.off('messages-seen', onMessagesSeen);
       socket.off('user-typing', onUserTyping);
+      socket.off('pin-toggled', onPinToggled);
     };
   }, [socket, conversationId]);
 }

@@ -16,6 +16,8 @@ const ProjectSearchFilter = ({
   onSearchChange,
   statusFilter,
   onStatusChange,
+  priorityFilter = 'all',
+  onPriorityChange,
   sortBy,
   onSortChange,
   viewMode = 'grid',
@@ -55,14 +57,29 @@ const ProjectSearchFilter = ({
                 <SelectItem value="on-hold">On Hold</SelectItem>
               </SelectContent>
             </Select>
+            {onPriorityChange && (
+              <Select value={priorityFilter} onValueChange={onPriorityChange}>
+                <SelectTrigger className="w-[150px]">
+                  <SelectValue placeholder="All Priorities" />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="all">All Priorities</SelectItem>
+                  <SelectItem value="high">High</SelectItem>
+                  <SelectItem value="medium">Medium</SelectItem>
+                  <SelectItem value="low">Low</SelectItem>
+                </SelectContent>
+              </Select>
+            )}
             <Select value={sortBy} onValueChange={onSortChange}>
-              <SelectTrigger className="w-[140px]">
+              <SelectTrigger className="w-[180px]">
                 <SelectValue placeholder="Sort by" />
               </SelectTrigger>
               <SelectContent>
                 <SelectItem value="newest">Newest First</SelectItem>
                 <SelectItem value="oldest">Oldest First</SelectItem>
                 <SelectItem value="name">Name (A-Z)</SelectItem>
+                <SelectItem value="priority-desc">Priority (high → low)</SelectItem>
+                <SelectItem value="priority-asc">Priority (low → high)</SelectItem>
               </SelectContent>
             </Select>
 

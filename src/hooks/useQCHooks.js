@@ -242,6 +242,43 @@ export function useReviewDetection() {
 }
 
 /**
+ * Bulk approve/reject. Invalidates the relevant detection list so the rows
+ * disappear from the pending queue immediately. Returns { updated, undoToken,
+ * undoExpiresAt } so the caller can show an Undo toast.
+ */
+export function useBulkReviewDetections() {
+    const queryClient = useQueryClient();
+    return useMutation({
+        mutationFn: (payload) => qcApi.bulkReviewDetections(payload),
+        onSuccess: (_data, variables) => {
+            if (variables?.projectId) {
+                queryClient.invalidateQueries({
+                    queryKey: ['qc', 'detections', variables.projectId],
+                    exact: false,
+                });
+            }
+            queryClient.invalidateQueries({ queryKey: ['qc', 'assignments'] });
+        },
+    });
+}
+
+export function useBulkUndoReview() {
+    const queryClient = useQueryClient();
+    return useMutation({
+        mutationFn: (payload) => qcApi.bulkUndoReview(payload),
+        onSuccess: (_data, variables) => {
+            if (variables?.projectId) {
+                queryClient.invalidateQueries({
+                    queryKey: ['qc', 'detections', variables.projectId],
+                    exact: false,
+                });
+            }
+            queryClient.invalidateQueries({ queryKey: ['qc', 'assignments'] });
+        },
+    });
+}
+
+/**
  * Hook for creating a manual detection
  */
 export function useCreateManualDetection() {

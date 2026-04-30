@@ -31,6 +31,7 @@ import { SavedViewsDropdown, useSavedViewSync } from '@/components/shared/SavedV
 export default function ProjectPage() {
   const [searchQuery, setSearchQuery] = useState('');
   const [statusFilter, setStatusFilter] = useState('all');
+  const [priorityFilter, setPriorityFilter] = useState('all');
   const [sortBy, setSortBy] = useState('newest');
   const [viewMode, setViewMode] = useState('grid');
   const router = useRouter();
@@ -75,13 +76,15 @@ export default function ProjectPage() {
   }, [projects]);
 
   // Filter and sort projects
+  const PRIORITY_WEIGHT = { high: 3, medium: 2, low: 1 };
   const filteredProjects = projects
     .filter((project) => {
       const matchesSearch = project.name.toLowerCase().includes(searchQuery.toLowerCase()) ||
                           project.location.toLowerCase().includes(searchQuery.toLowerCase()) ||
                           project.client?.toLowerCase().includes(searchQuery.toLowerCase());
       const matchesStatus = statusFilter === 'all' || project.status === statusFilter;
-      return matchesSearch && matchesStatus;
+      const matchesPriority = priorityFilter === 'all' || project.priority === priorityFilter;
+      return matchesSearch && matchesStatus && matchesPriority;
     })
     .sort((a, b) => {
       if (sortBy === 'newest') {
@@ -90,6 +93,10 @@ export default function ProjectPage() {
         return new Date(a.created_at) - new Date(b.created_at);
       } else if (sortBy === 'name') {
         return a.name.localeCompare(b.name);
+      } else if (sortBy === 'priority-desc') {
+        return (PRIORITY_WEIGHT[b.priority] || 0) - (PRIORITY_WEIGHT[a.priority] || 0);
+      } else if (sortBy === 'priority-asc') {
+        return (PRIORITY_WEIGHT[a.priority] || 0) - (PRIORITY_WEIGHT[b.priority] || 0);
       }
       return 0;
     });
@@ -213,6 +220,8 @@ export default function ProjectPage() {
           onSearchChange={setSearchQuery}
           statusFilter={statusFilter}
           onStatusChange={setStatusFilter}
+          priorityFilter={priorityFilter}
+          onPriorityChange={setPriorityFilter}
           sortBy={sortBy}
           onSortChange={setSortBy}
           viewMode={viewMode}

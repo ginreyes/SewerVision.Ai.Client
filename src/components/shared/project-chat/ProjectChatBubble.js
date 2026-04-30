@@ -4,6 +4,7 @@ import { useState, useEffect, useRef, useMemo } from 'react';
 import {
   MessageCircle, X, Send, ArrowLeft, Users, FolderOpen, Loader2,
   Paperclip, Image as ImageIcon, File, Download, Smile, ChevronDown,
+  Bell, BellOff,
 } from 'lucide-react';
 import { useUser } from '@/components/providers/UserContext';
 import { useProjectChatLauncher } from '@/components/providers/ProjectChatLauncherProvider';
@@ -230,6 +231,10 @@ export default function ProjectChatBubble({ accent = 'indigo' }) {
   const messagesEndRef = useRef(null);
   const [showEmoji, setShowEmoji] = useState(false);
   const pendingProjectIdRef = useRef(null);
+  // Set of conversation ids the current user has muted. Loaded once when the
+  // bubble first opens; mutated optimistically by handleToggleMute.
+  const [mutedConversationIds, setMutedConversationIds] = useState(() => new Set());
+  const [muteBusy, setMuteBusy] = useState(false);
 
   // Unread count polling — global across all my project conversations.
   useEffect(() => {
@@ -241,7 +246,9 @@ export default function ProjectChatBubble({ accent = 'indigo' }) {
       } catch { /* silent */ }
     };
     fetch();
-    const iv = setInterval(fetch, 15000);
+    // 60s safety poll — message arrival itself is realtime via socket; this
+    // only catches edge cases (lost socket, multi-device sync).
+    const iv = setInterval(fetch, 60000);
     return () => clearInterval(iv);
   }, [userId]);
 
@@ -256,17 +263,55 @@ export default function ProjectChatBubble({ accent = 'indigo' }) {
     const fetchData = async () => {
       setLoading(true);
       try {
-        const [convRes, projRes] = await Promise.all([
+        const [convRes, projRes, prefsRes] = await Promise.all([
           api(`/api/project-conversations`, 'GET'),
           api(`/api/project-conversations/my-projects`, 'GET'),
+          api(`/api/notifications/preferences/${userId}`, 'GET'),
         ]);
         setConversations(convRes.ok ? (convRes.data?.data || []) : []);
         setProjects(projRes.ok ? (projRes.data?.data || []) : []);
+        if (prefsRes.ok) {
+          const muted = prefsRes.data?.data?.mutedConversations || [];
+          setMutedConversationIds(new Set(muted.map((id) => String(id))));
+        }
       } catch { setConversations([]); setProjects([]); }
       finally { setLoading(false); }
     };
     fetchData();
   }, [isOpen, userId]);
+
+  // Toggle mute for the currently-selected thread. Optimistic; rolls back on
+  // failure. Backend endpoint is idempotent and returns the new mute state.
+  const handleToggleMute = async () => {
+    if (!selectedThread || !userId || muteBusy) return;
+    const currentlyMuted = mutedConversationIds.has(selectedThread);
+    setMuteBusy(true);
+    setMutedConversationIds((prev) => {
+      const next = new Set(prev);
+      if (currentlyMuted) next.delete(selectedThread);
+      else next.add(selectedThread);
+      return next;
+    });
+    try {
+      const res = await api(
+        `/api/notifications/user/${userId}/mute-conversation`,
+        'POST',
+        { conversationId: selectedThread }
+      );
+      if (!res.ok) throw new Error('mute toggle failed');
+    } catch (e) {
+      // Roll back on error.
+      setMutedConversationIds((prev) => {
+        const next = new Set(prev);
+        if (currentlyMuted) next.add(selectedThread);
+        else next.delete(selectedThread);
+        return next;
+      });
+      console.error('Toggle mute failed:', e);
+    } finally {
+      setMuteBusy(false);
+    }
+  };
 
   // Fetch messages for the selected thread.
   useEffect(() => {
@@ -657,7 +702,25 @@ export default function ProjectChatBubble({ accent = 'indigo' }) {
                   <p className="text-sm font-semibold text-gray-900 truncate">{headerName}</p>
                   <p className={`text-[10px] ${t.primaryText}`}>{headerSubtitle}</p>
                 </div>
-                <button onClick={toggleChat} className="p-1.5 rounded-full hover:bg-gray-100 text-gray-400 transition-colors ml-auto">
+                {selectedThread && (
+                  <button
+                    onClick={handleToggleMute}
+                    disabled={muteBusy}
+                    title={mutedConversationIds.has(selectedThread) ? 'Unmute this chat' : 'Mute this chat'}
+                    className={`p-1.5 rounded-full transition-colors disabled:opacity-50 ${
+                      mutedConversationIds.has(selectedThread)
+                        ? `${t.iconActiveBg} ${t.iconActiveText}`
+                        : 'hover:bg-gray-100 text-gray-500'
+                    }`}
+                  >
+                    {mutedConversationIds.has(selectedThread) ? (
+                      <BellOff className="w-4 h-4" />
+                    ) : (
+                      <Bell className="w-4 h-4" />
+                    )}
+                  </button>
+                )}
+                <button onClick={toggleChat} className="p-1.5 rounded-full hover:bg-gray-100 text-gray-400 transition-colors">
                   <X className="w-4 h-4" />
                 </button>
               </div>

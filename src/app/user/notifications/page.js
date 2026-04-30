@@ -29,6 +29,7 @@ import ChatBubble from '@/components/user/inbox/ChatBubble';
 import DateSeparator from '@/components/user/inbox/DateSeparator';
 import { typeConfig, getDateLabel } from '@/components/user/inbox/inboxConfig';
 import NotificationCenter from '@/components/shared/NotificationCenter';
+import ChatNotificationPreferences from '@/components/shared/notifications/ChatNotificationPreferences';
 
 const NotificationPageTeamLeader = () => {
   const { userId } = useUser();
@@ -194,6 +195,11 @@ const NotificationPageTeamLeader = () => {
     statusUpdate: true,
     taskAssignment: true,
     deleteRequest: true,
+    chatMention: true,
+    chatReply: true,
+    chatPin: true,
+    chatMessage: false,
+    chatReaction: false,
   });
 
   useEffect(() => {
@@ -212,6 +218,11 @@ const NotificationPageTeamLeader = () => {
               statusUpdate: prefs.statusUpdate ?? true,
               taskAssignment: prefs.taskAssignment ?? true,
               deleteRequest: prefs.deleteRequest ?? true,
+              chatMention: prefs.chatMention ?? true,
+              chatReply: prefs.chatReply ?? true,
+              chatPin: prefs.chatPin ?? true,
+              chatMessage: prefs.chatMessage ?? false,
+              chatReaction: prefs.chatReaction ?? false,
             });
           }
         } catch (err) {
@@ -382,6 +393,12 @@ const NotificationPageTeamLeader = () => {
                 </div>
               </CardContent>
             </Card>
+
+            <ChatNotificationPreferences
+              preferences={preferences}
+              onToggle={togglePreference}
+              accent="indigo"
+            />
           </NotificationCenter>
         </TabsContent>
 

@@ -426,6 +426,8 @@ export function useAdminProjects(filters = {}, options = {}) {
             if (filters.limit) params.set('limit', filters.limit);
             if (filters.search) params.set('search', filters.search);
             if (filters.status) params.set('status', filters.status);
+            if (filters.priority) params.set('priority', filters.priority);
+            if (filters.sort) params.set('sort', filters.sort);
             const qs = params.toString();
             const { data } = await api(`/api/projects/get-all-projects${qs ? '?' + qs : ''}`);
             return data || {};

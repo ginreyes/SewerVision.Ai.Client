@@ -11,6 +11,7 @@ import { useNotifications } from '@/components/providers/NotificationProvider';
 import { useAlert } from '@/components/providers/AlertProvider';
 import { api } from '@/lib/helper';
 import NotificationCenter from '@/components/shared/NotificationCenter';
+import ChatNotificationPreferences from '@/components/shared/notifications/ChatNotificationPreferences';
 
 const NotificationPageQCTechnician = () => {
   const { userId } = useUser();
@@ -25,6 +26,11 @@ const NotificationPageQCTechnician = () => {
     statusUpdate: true,
     qcReview: true,
     defectFound: true,
+    chatMention: true,
+    chatReply: true,
+    chatPin: true,
+    chatMessage: false,
+    chatReaction: false,
   });
 
   // Load preferences on mount
@@ -44,6 +50,11 @@ const NotificationPageQCTechnician = () => {
               statusUpdate: prefs.statusUpdate ?? true,
               qcReview: prefs.qcReview ?? true,
               defectFound: prefs.defectFound ?? true,
+              chatMention: prefs.chatMention ?? true,
+              chatReply: prefs.chatReply ?? true,
+              chatPin: prefs.chatPin ?? true,
+              chatMessage: prefs.chatMessage ?? false,
+              chatReaction: prefs.chatReaction ?? false,
             });
           }
         } catch (err) {
@@ -175,6 +186,12 @@ const NotificationPageQCTechnician = () => {
             </div>
           </CardContent>
         </Card>
+
+        <ChatNotificationPreferences
+          preferences={preferences}
+          onToggle={togglePreference}
+          accent="purple"
+        />
       </NotificationCenter>
     </div>
   );

@@ -44,6 +44,8 @@ const SewerVisionInspectionModuleContent = () => {
   const [searchTerm, setSearchTerm] = useState("");
   const debouncedSearchValue = useDebouncedValue(searchTerm, 300);
   const [statusFilter, setStatusFilter] = useState("all");
+  const [priorityFilter, setPriorityFilter] = useState("all");
+  const [sortMode, setSortMode] = useState("newest"); // newest | oldest | priority-desc | priority-asc | name-asc | name-desc
   const [viewMode, setViewMode] = useState("grid"); // 'grid' | 'table' | 'tracker' | 'compare' | 'pipeline'
   const [selectedIds, setSelectedIds] = useState([]);
   // Sort by health (only meaningful in table view). Cycles off → desc → asc.
@@ -87,6 +89,8 @@ const SewerVisionInspectionModuleContent = () => {
     limit,
     search: debouncedSearchValue,
     status: statusFilter === "all" ? "" : statusFilter,
+    priority: priorityFilter === "all" ? "" : priorityFilter,
+    sort: sortMode === "newest" ? "" : sortMode,
   });
 
   const projects = useMemo(() => projectsData?.data || [], [projectsData]);
@@ -319,6 +323,32 @@ const SewerVisionInspectionModuleContent = () => {
                   <option value="completed">Completed</option>
                   <option value="customer-notified">Customer Notified</option>
                   <option value="planning">Planning</option>
+                </select>
+
+                <select
+                  value={priorityFilter}
+                  onChange={(e) => { setPriorityFilter(e.target.value); setPage(1); }}
+                  className="px-3 h-9 border border-gray-300 dark:border-[#27272a] rounded-lg focus:ring-2 focus:ring-rose-500 focus:border-transparent bg-white dark:bg-[#0c0c0e] text-gray-900 dark:text-gray-100 text-sm"
+                  aria-label="Filter by priority"
+                >
+                  <option value="all">All Priorities</option>
+                  <option value="high">High</option>
+                  <option value="medium">Medium</option>
+                  <option value="low">Low</option>
+                </select>
+
+                <select
+                  value={sortMode}
+                  onChange={(e) => { setSortMode(e.target.value); setPage(1); }}
+                  className="px-3 h-9 border border-gray-300 dark:border-[#27272a] rounded-lg focus:ring-2 focus:ring-rose-500 focus:border-transparent bg-white dark:bg-[#0c0c0e] text-gray-900 dark:text-gray-100 text-sm"
+                  aria-label="Sort projects"
+                >
+                  <option value="newest">Newest first</option>
+                  <option value="oldest">Oldest first</option>
+                  <option value="priority-desc">Priority (high → low)</option>
+                  <option value="priority-asc">Priority (low → high)</option>
+                  <option value="name-asc">Name (A → Z)</option>
+                  <option value="name-desc">Name (Z → A)</option>
                 </select>
               </div>
 
