@@ -12,7 +12,7 @@ import { Textarea } from "@/components/ui/textarea";
 import {
   Select, SelectContent, SelectItem, SelectTrigger, SelectValue,
 } from "@/components/ui/select";
-import { ALL_ROLES, ROLE_LABELS, ANNOUNCEMENT_TYPE_CONFIG } from "../constants";
+import { ALL_ROLES, ROLE_LABELS, ANNOUNCEMENT_TYPE_CONFIG } from "@/components/admin/constants";
 
 const TYPE_ICONS = {
   maintenance: Wrench,

@@ -31,7 +31,7 @@ import { useRouter, useSearchParams, usePathname } from "next/navigation";
 import { useAdminProjects } from '@/hooks/useQueryHooks';
 import { PipelineBoard } from '@/components/shared/ProjectPipeline';
 import PipelineAnalyticsStrip from '@/components/admin/project/PipelineAnalyticsStrip';
-import BulkActionsToolbar from '@/components/admin/project/BulkActionsToolbar';
+import BulkActionsToolbar from '@/components/shared/bulk/BulkActionsToolbar';
 import { usePipeline } from '@/data/pipelineApi';
 import { SavedViewsDropdown, useSavedViewSync } from '@/components/shared/SavedViews';
 import { BulkActionBar, BulkResultToast } from '@/components/shared/bulk';

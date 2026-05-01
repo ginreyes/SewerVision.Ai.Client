@@ -1,28 +1,66 @@
 "use client";
 
-import { Download, X, Printer } from "lucide-react";
+import { Download } from "lucide-react";
 import { Button } from "@/components/ui/button";
+import {
+  Dialog,
+  DialogContent,
+  DialogDescription,
+  DialogFooter,
+  DialogHeader,
+  DialogTitle,
+} from "@/components/ui/dialog";
 
-const ReportPreview = ({ project, detections = [], observations = [], onClose }) => {
-  if (!project) return null;
+const STAT_CARD_CLASS = "text-center p-3 bg-gray-50 rounded-xl";
+const STAT_VALUE_CLASS = "text-xl font-bold";
+const STAT_LABEL_CLASS = "text-[10px] text-gray-500";
 
-  const totalDefects = detections.length || project?.aiDetections?.total || 0;
-  const avgConfidence = project?.confidence
-    ? (project.confidence > 1 ? project.confidence : Math.round(project.confidence * 100))
-    : 0;
+const normalizeConfidence = (raw) => {
+  if (raw == null) return 0;
+  return raw > 1 ? raw : Math.round(raw * 100);
+};
 
-  const severityCounts = {
-    critical: detections.filter((d) => d.severity === "critical").length,
-    high: detections.filter((d) => d.severity === "high").length,
-    medium: detections.filter((d) => d.severity === "medium").length,
-    low: detections.filter((d) => d.severity === "low").length,
-  };
+const countBySeverity = (detections, severity) =>
+  detections.filter((d) => d.severity === severity).length;
 
-  const handlePrint = () => {
-    const printWindow = window.open("", "_blank");
-    if (!printWindow) return;
+const formatLongDate = (date) =>
+  date.toLocaleDateString("en-US", {
+    year: "numeric",
+    month: "long",
+    day: "numeric",
+  });
 
-    printWindow.document.write(`<!DOCTYPE html><html><head><title>PACP Inspection Report — ${project.name}</title>
+const buildPrintHtml = ({ project, detections, observations, summary }) => {
+  const { totalDefects, avgConfidence, severityCounts } = summary;
+
+  const observationRows = observations
+    .slice(0, 50)
+    .map(
+      (obs, i) => `
+        <tr>
+          <td>${i + 1}</td>
+          <td>${obs.distance || ""}</td>
+          <td>${obs.pacpCode || ""}</td>
+          <td>${obs.observation || ""}</td>
+          <td><span class="severity sev-${obs.severity || "low"}">${obs.severity || "low"}</span></td>
+          <td>${obs.time || ""}</td>
+        </tr>`
+    )
+    .join("");
+
+  const observationsSection =
+    observations.length > 0
+      ? `
+        <div class="section">
+          <div class="section-title">Observations</div>
+          <table>
+            <thead><tr><th>#</th><th>Distance</th><th>PACP Code</th><th>Observation</th><th>Severity</th><th>Time</th></tr></thead>
+            <tbody>${observationRows}</tbody>
+          </table>
+        </div>`
+      : "";
+
+  return `<!DOCTYPE html><html><head><title>PACP Inspection Report — ${project.name}</title>
     <style>
       @page { size: A4; margin: 20mm; }
       body { font-family: 'Segoe UI', system-ui, sans-serif; color: #1a1a2e; margin: 0; padding: 0; }
@@ -52,17 +90,17 @@ const ReportPreview = ({ project, detections = [], observations = [], onClose })
     <div class="header">
       <div class="logo">SewerVision.ai</div>
       <h1>PACP Inspection Report</h1>
-      <p>${project.name} — ${project.location || 'N/A'}</p>
+      <p>${project.name} — ${project.location || "N/A"}</p>
     </div>
     <div style="padding: 20px;">
       <div class="section">
         <div class="section-title">Project Information</div>
         <div class="info-row"><span class="info-label">Project Name</span><span class="info-value">${project.name}</span></div>
-        <div class="info-row"><span class="info-label">Location</span><span class="info-value">${project.location || 'N/A'}</span></div>
-        <div class="info-row"><span class="info-label">Work Order</span><span class="info-value">${project.workOrder || 'N/A'}</span></div>
+        <div class="info-row"><span class="info-label">Location</span><span class="info-value">${project.location || "N/A"}</span></div>
+        <div class="info-row"><span class="info-label">Work Order</span><span class="info-value">${project.workOrder || "N/A"}</span></div>
         <div class="info-row"><span class="info-label">Status</span><span class="info-value">${project.status}</span></div>
         <div class="info-row"><span class="info-label">AI Confidence</span><span class="info-value">${avgConfidence}%</span></div>
-        <div class="info-row"><span class="info-label">Report Date</span><span class="info-value">${new Date().toLocaleDateString('en-US', { year: 'numeric', month: 'long', day: 'numeric' })}</span></div>
+        <div class="info-row"><span class="info-label">Report Date</span><span class="info-value">${formatLongDate(new Date())}</span></div>
       </div>
       <div class="section">
         <div class="section-title">Defect Summary</div>
@@ -82,66 +120,102 @@ const ReportPreview = ({ project, detections = [], observations = [], onClose })
           <div class="stat-card"><div class="stat-value" style="color:#16a34a">${severityCounts.low}</div><div class="stat-label">Low</div></div>
         </div>
       </div>
-      ${observations.length > 0 ? `
-      <div class="section">
-        <div class="section-title">Observations</div>
-        <table>
-          <thead><tr><th>#</th><th>Distance</th><th>PACP Code</th><th>Observation</th><th>Severity</th><th>Time</th></tr></thead>
-          <tbody>${observations.slice(0, 50).map((obs, i) => `
-            <tr>
-              <td>${i + 1}</td>
-              <td>${obs.distance || ''}</td>
-              <td>${obs.pacpCode || ''}</td>
-              <td>${obs.observation || ''}</td>
-              <td><span class="severity sev-${obs.severity || 'low'}">${obs.severity || 'low'}</span></td>
-              <td>${obs.time || ''}</td>
-            </tr>`).join('')}
-          </tbody>
-        </table>
-      </div>` : ''}
+      ${observationsSection}
       <div class="footer">
         <p>Generated by SewerVision.ai — ${new Date().toLocaleString()}</p>
         <p>This report is confidential and intended for authorized personnel only.</p>
       </div>
     </div>
-    </body></html>`);
-    printWindow.document.close();
-    setTimeout(() => printWindow.print(), 500);
+    </body></html>`;
+};
+
+const printReport = ({ project, detections, observations, summary }) => {
+  const printWindow = window.open("", "_blank");
+  if (!printWindow) return;
+
+  const html = buildPrintHtml({ project, detections, observations, summary });
+  printWindow.document.write(html);
+  printWindow.document.close();
+  setTimeout(() => printWindow.print(), 500);
+};
+
+const ReportPreview = ({ project, detections = [], observations = [], onClose }) => {
+  if (!project) return null;
+
+  const summary = {
+    totalDefects: detections.length || project?.aiDetections?.total || 0,
+    avgConfidence: normalizeConfidence(project?.confidence),
+    severityCounts: {
+      critical: countBySeverity(detections, "critical"),
+      high: countBySeverity(detections, "high"),
+      medium: countBySeverity(detections, "medium"),
+      low: countBySeverity(detections, "low"),
+    },
   };
 
-  return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60" onClick={onClose}>
-      <div className="bg-white rounded-2xl shadow-2xl w-[700px] max-w-[95vw] max-h-[90vh] overflow-hidden" onClick={(e) => e.stopPropagation()}>
-        {/* Header */}
-        <div className="bg-gradient-to-r from-rose-600 to-pink-600 px-6 py-4 flex items-center justify-between">
-          <div className="text-white">
-            <p className="text-[10px] uppercase tracking-[3px] text-rose-200">SewerVision.ai</p>
-            <h3 className="text-sm font-bold">PACP Inspection Report</h3>
-            <p className="text-xs text-rose-100">{project.name}</p>
-          </div>
-          <button onClick={onClose} className="text-white/70 hover:text-white"><X className="w-4 h-4" /></button>
-        </div>
+  const handleOpenChange = (open) => {
+    if (!open) onClose?.();
+  };
 
-        {/* Preview Content */}
+  const handlePrint = () => {
+    printReport({ project, detections, observations, summary });
+  };
+
+  const criticalAndHigh = summary.severityCounts.critical + summary.severityCounts.high;
+
+  return (
+    <Dialog open onOpenChange={handleOpenChange}>
+      <DialogContent size="modal-large" className="p-0 overflow-hidden">
+        <DialogHeader className="bg-gradient-to-r from-rose-600 to-pink-600 px-6 py-4">
+          <p className="text-[10px] uppercase tracking-[3px] text-rose-200">
+            SewerVision.ai
+          </p>
+          <DialogTitle className="text-sm font-bold text-white">
+            PACP Inspection Report
+          </DialogTitle>
+          <DialogDescription className="text-xs text-rose-100">
+            {project.name}
+          </DialogDescription>
+        </DialogHeader>
+
         <div className="p-6 max-h-[60vh] overflow-y-auto space-y-4">
           <div className="grid grid-cols-4 gap-3">
-            <div className="text-center p-3 bg-gray-50 rounded-xl"><p className="text-xl font-bold text-gray-900">{totalDefects}</p><p className="text-[10px] text-gray-500">Total Defects</p></div>
-            <div className="text-center p-3 bg-gray-50 rounded-xl"><p className="text-xl font-bold text-violet-700">{avgConfidence}%</p><p className="text-[10px] text-gray-500">Confidence</p></div>
-            <div className="text-center p-3 bg-red-50 rounded-xl"><p className="text-xl font-bold text-red-700">{severityCounts.critical + severityCounts.high}</p><p className="text-[10px] text-gray-500">Critical+High</p></div>
-            <div className="text-center p-3 bg-blue-50 rounded-xl"><p className="text-xl font-bold text-blue-700">{observations.length}</p><p className="text-[10px] text-gray-500">Observations</p></div>
+            <div className={STAT_CARD_CLASS}>
+              <p className={`${STAT_VALUE_CLASS} text-gray-900`}>{summary.totalDefects}</p>
+              <p className={STAT_LABEL_CLASS}>Total Defects</p>
+            </div>
+            <div className={STAT_CARD_CLASS}>
+              <p className={`${STAT_VALUE_CLASS} text-violet-700`}>{summary.avgConfidence}%</p>
+              <p className={STAT_LABEL_CLASS}>Confidence</p>
+            </div>
+            <div className="text-center p-3 bg-red-50 rounded-xl">
+              <p className={`${STAT_VALUE_CLASS} text-red-700`}>{criticalAndHigh}</p>
+              <p className={STAT_LABEL_CLASS}>Critical+High</p>
+            </div>
+            <div className="text-center p-3 bg-blue-50 rounded-xl">
+              <p className={`${STAT_VALUE_CLASS} text-blue-700`}>{observations.length}</p>
+              <p className={STAT_LABEL_CLASS}>Observations</p>
+            </div>
           </div>
-          <p className="text-xs text-gray-500">Preview of the report that will be generated. Click "Download PDF" to print/save.</p>
+          <p className="text-xs text-gray-500">
+            Preview of the report that will be generated. Click &quot;Download PDF&quot; to print/save.
+          </p>
         </div>
 
-        {/* Actions */}
-        <div className="px-6 py-4 border-t border-gray-100 flex justify-end gap-2">
-          <Button variant="outline" size="sm" className="text-xs" onClick={onClose}>Close</Button>
-          <Button size="sm" className="text-xs bg-rose-600 hover:bg-rose-700 text-white" onClick={handlePrint}>
+        <DialogFooter className="px-6 py-4 border-t border-gray-100">
+          <Button variant="outline" size="sm" className="text-xs" onClick={onClose}>
+            Close
+          </Button>
+          <Button
+            size="sm"
+            className="text-xs bg-rose-600 hover:bg-rose-700 text-white"
+            onClick={handlePrint}
+          >
             <Download className="w-3 h-3 mr-1" /> Download PDF
           </Button>
-        </div>
-      </div>
-    </div>
+        </DialogFooter>
+      </DialogContent>
+    </Dialog>
   );
 };
 
