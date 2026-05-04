@@ -15,6 +15,7 @@ import {
   useSupportGlobalStats,
 } from "@/hooks/useQueryHooks";
 import { DashboardSkeleton } from '@/components/shared/SkeletonLoading';
+import { BarChart, DonutRing } from "@/components/shared/charts";
 
 // ── Helpers ──
 function getHoursAgo(dateStr) {
@@ -38,27 +39,6 @@ function last7Days() {
   return days;
 }
 
-// ── CSS Bar Chart ──
-function BarChart({ data, maxValue, colorClass = "bg-teal-500", height = 80 }) {
-  if (!data.length) return null;
-  const max = maxValue || Math.max(...data.map(d => d.value), 1);
-  return (
-    <div className="flex items-end gap-1.5" style={{ height }}>
-      {data.map((d, i) => (
-        <div key={i} className="flex-1 flex flex-col items-center gap-1">
-          <span className="text-[10px] text-gray-400 font-medium">{d.value || ""}</span>
-          <div
-            className={`w-full rounded-t-md transition-all duration-500 ${colorClass} opacity-80 hover:opacity-100`}
-            style={{ height: `${Math.max((d.value / max) * (height - 24), d.value > 0 ? 4 : 0)}px` }}
-            title={`${d.label}: ${d.value}`}
-          />
-          <span className="text-[10px] text-gray-400 truncate w-full text-center">{d.label}</span>
-        </div>
-      ))}
-    </div>
-  );
-}
-
 // ── Horizontal Bar (category/priority distribution) ──
 function HBar({ label, value, total, colorClass = "bg-teal-400" }) {
   const pct = total > 0 ? Math.round((value / total) * 100) : 0;
@@ -70,28 +50,6 @@ function HBar({ label, value, total, colorClass = "bg-teal-400" }) {
       </div>
       <div className="h-2 bg-gray-100 rounded-full overflow-hidden">
         <div className={`h-full ${colorClass} rounded-full transition-all duration-700`} style={{ width: `${pct}%` }} />
-      </div>
-    </div>
-  );
-}
-
-// ── Donut Ring ──
-function DonutRing({ pct, size = 80, stroke = 10, colorClass = "stroke-teal-500", label, sublabel }) {
-  const r = (size - stroke * 2) / 2;
-  const circ = 2 * Math.PI * r;
-  const offset = circ - (pct / 100) * circ;
-  return (
-    <div className="flex flex-col items-center gap-1">
-      <svg width={size} height={size} className="-rotate-90">
-        <circle cx={size / 2} cy={size / 2} r={r} fill="none" stroke="#e5e7eb" strokeWidth={stroke} />
-        <circle cx={size / 2} cy={size / 2} r={r} fill="none" className={colorClass} strokeWidth={stroke}
-          strokeDasharray={circ} strokeDashoffset={offset} strokeLinecap="round"
-          style={{ transition: "stroke-dashoffset 0.8s ease" }} />
-      </svg>
-      <div className="text-center -mt-1">
-        <p className="text-lg font-bold text-gray-900">{pct}%</p>
-        <p className="text-[10px] text-gray-500">{label}</p>
-        {sublabel && <p className="text-[10px] text-gray-400">{sublabel}</p>}
       </div>
     </div>
   );
@@ -360,7 +318,7 @@ export default function AnalyticsPage() {
             </CardTitle>
           </CardHeader>
           <CardContent className="pt-0">
-            <BarChart data={dailyCreated} colorClass="bg-teal-400" height={100} />
+            <BarChart data={dailyCreated} colorClass="bg-teal-400" height={100} showValues showLabels />
           </CardContent>
         </Card>
 
@@ -371,7 +329,7 @@ export default function AnalyticsPage() {
             </CardTitle>
           </CardHeader>
           <CardContent className="pt-0">
-            <BarChart data={dailyResolved} colorClass="bg-emerald-400" height={100} />
+            <BarChart data={dailyResolved} colorClass="bg-emerald-400" height={100} showValues showLabels />
           </CardContent>
         </Card>
       </div>

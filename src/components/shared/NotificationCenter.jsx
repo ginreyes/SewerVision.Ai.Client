@@ -43,7 +43,7 @@ import { useNotifications } from '@/components/providers/NotificationProvider';
 import { useAlert } from '@/components/providers/AlertProvider';
 import { useUser } from '@/components/providers/UserContext';
 import { ROLE_BADGE_CLASSES, getRoleTheme } from '@/lib/roleThemes';
-import notificationApi from '@/data/notificationApi ';
+import notificationApi from '@/data/notificationApi';
 
 // ── Role accent color mapping (derives from central roleThemes) ──
 function buildRoleColors(role) {

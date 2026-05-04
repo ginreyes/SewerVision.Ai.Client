@@ -9,6 +9,7 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { useUser } from "@/components/providers/UserContext";
 import { useQCReviewStats } from "@/hooks/useQueryHooks";
 import { DashboardSkeleton } from '@/components/shared/SkeletonLoading';
+import { DonutRing } from "@/components/shared/charts";
 
 function StackedBar({ approved, rejected, maxTotal }) {
   const total = approved + rejected;
@@ -20,19 +21,6 @@ function StackedBar({ approved, rejected, maxTotal }) {
         <div className="w-full bg-emerald-500" style={{ height: `${total > 0 ? (approved / total) * 100 : 0}%` }} />
       </div>
     </div>
-  );
-}
-
-function DonutRing({ pct, color, size = 70 }) {
-  const r = 26, circ = 2 * Math.PI * r;
-  const dash = (pct / 100) * circ;
-  return (
-    <svg width={size} height={size} viewBox="0 0 60 60">
-      <circle cx="30" cy="30" r={r} fill="none" stroke="#f3f4f6" strokeWidth="7" />
-      <circle cx="30" cy="30" r={r} fill="none" stroke={color} strokeWidth="7"
-        strokeDasharray={`${dash} ${circ}`} strokeDashoffset={circ / 4} strokeLinecap="round" />
-      <text x="30" y="34" textAnchor="middle" fontSize="11" fontWeight="bold" fill="#111">{pct}%</text>
-    </svg>
   );
 }
 

@@ -34,6 +34,13 @@ import {
   RotateCcw,
 } from "lucide-react";
 import { Textarea } from "@/components/ui/textarea";
+import {
+  Dialog,
+  DialogContent,
+  DialogHeader,
+  DialogTitle,
+  DialogDescription,
+} from "@/components/ui/dialog";
 import { useRouter } from "next/navigation";
 import { useUser } from "@/components/providers/UserContext";
 import { useParams } from "next/navigation";
@@ -1570,47 +1577,61 @@ export default function EditProjectPage() {
       </div>
 
       {/* Upload Progress Dialog */}
-      {isUploading && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50">
-          <div className="bg-white rounded-2xl shadow-2xl p-8 w-[420px] text-center">
-            <div className="flex items-center gap-2 mb-2 justify-center">
+      <Dialog open={isUploading}>
+        <DialogContent
+          className="max-w-[420px] text-center [&>button]:hidden"
+          onInteractOutside={(e) => e.preventDefault()}
+          onEscapeKeyDown={(e) => e.preventDefault()}
+        >
+          <DialogHeader className="items-center text-center">
+            <DialogTitle className="flex items-center gap-2 justify-center">
               <Video className="w-5 h-5 text-blue-600" />
-              <h3 className="text-lg font-bold text-gray-900">Uploading Video</h3>
-            </div>
-            <p className="text-sm text-blue-600 mb-6">Please wait while your video is being uploaded...</p>
+              Uploading Video
+            </DialogTitle>
+            <DialogDescription className="text-blue-600">
+              Please wait while your video is being uploaded...
+            </DialogDescription>
+          </DialogHeader>
 
-            {/* Circular progress */}
-            <div className="relative w-24 h-24 mx-auto mb-6">
-              <svg className="w-full h-full -rotate-90" viewBox="0 0 96 96">
-                <circle cx="48" cy="48" r="42" fill="none" stroke="#e5e7eb" strokeWidth="6" />
-                <circle cx="48" cy="48" r="42" fill="none" stroke="#3b82f6" strokeWidth="6" strokeLinecap="round"
-                  strokeDasharray={2 * Math.PI * 42}
-                  strokeDashoffset={2 * Math.PI * 42 * (1 - uploadProgress / 100)}
-                  className="transition-all duration-300"
-                />
-              </svg>
-              <span className="absolute inset-0 flex items-center justify-center text-xl font-bold text-blue-600">
-                {uploadProgress}%
-              </span>
-            </div>
-
-            {/* Linear progress bar */}
-            <div className="w-full h-2.5 bg-gray-200 rounded-full overflow-hidden mb-3">
-              <div className="h-full bg-gradient-to-r from-blue-500 to-indigo-600 rounded-full transition-all duration-300"
-                style={{ width: `${uploadProgress}%` }}
+          <div className="relative w-24 h-24 mx-auto mb-2">
+            <svg className="w-full h-full -rotate-90" viewBox="0 0 96 96">
+              <circle cx="48" cy="48" r="42" fill="none" stroke="#e5e7eb" strokeWidth="6" />
+              <circle
+                cx="48"
+                cy="48"
+                r="42"
+                fill="none"
+                stroke="#3b82f6"
+                strokeWidth="6"
+                strokeLinecap="round"
+                strokeDasharray={2 * Math.PI * 42}
+                strokeDashoffset={2 * Math.PI * 42 * (1 - uploadProgress / 100)}
+                className="transition-all duration-300"
               />
-            </div>
-            <p className="text-xs text-gray-500 mb-2">Uploading... {uploadProgress}% complete</p>
-
-            {uploadProgress === 100 && (
-              <div className="flex items-center gap-2 justify-center text-green-600 mt-3">
-                <CheckCircle className="w-4 h-4" />
-                <span className="text-sm font-medium">Processing video...</span>
-              </div>
-            )}
+            </svg>
+            <span className="absolute inset-0 flex items-center justify-center text-xl font-bold text-blue-600">
+              {uploadProgress}%
+            </span>
           </div>
-        </div>
-      )}
+
+          <div className="w-full h-2.5 bg-gray-200 rounded-full overflow-hidden mb-2">
+            <div
+              className="h-full bg-gradient-to-r from-blue-500 to-indigo-600 rounded-full transition-all duration-300"
+              style={{ width: `${uploadProgress}%` }}
+            />
+          </div>
+          <p className="text-xs text-gray-500">
+            Uploading... {uploadProgress}% complete
+          </p>
+
+          {uploadProgress === 100 && (
+            <div className="flex items-center gap-2 justify-center text-green-600 mt-2">
+              <CheckCircle className="w-4 h-4" />
+              <span className="text-sm font-medium">Processing video...</span>
+            </div>
+          )}
+        </DialogContent>
+      </Dialog>
     </div>
   );
 }

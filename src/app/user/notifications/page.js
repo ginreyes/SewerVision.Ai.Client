@@ -24,7 +24,7 @@ import { useNotifications } from '@/components/providers/NotificationProvider';
 import { useAlert } from '@/components/providers/AlertProvider';
 import { api } from '@/lib/helper';
 import { useUserInbox, useUserUnreadCount } from '@/hooks/useQueryHooks';
-import notificationApi from '@/data/notificationApi ';
+import notificationApi from '@/data/notificationApi';
 import ChatBubble from '@/components/user/inbox/ChatBubble';
 import DateSeparator from '@/components/user/inbox/DateSeparator';
 import { typeConfig, getDateLabel } from '@/components/user/inbox/inboxConfig';

@@ -3,7 +3,7 @@
 import React, { createContext, useContext, useState, useEffect, useCallback } from 'react';
 import { useUser } from './UserContext';
 import { useSocket } from './SocketProvider';
-import notificationApi from '@/data/notificationApi ';
+import notificationApi from '@/data/notificationApi';
 
 const NotificationContext = createContext(undefined);
 
