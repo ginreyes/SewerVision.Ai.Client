@@ -338,6 +338,7 @@ export const FALLBACK_MENUS = {
     ]},
     { label: 'Team & Assets', items: [
       { label: 'Team Management', icon: 'Users', path: '/user/team', key: 'team' },
+      { label: 'Team Analytics', icon: 'BarChart3', path: '/user/analytics', key: 'analytics' },
       { label: 'Device Assignments', icon: 'Monitor', path: '/user/device-assignments', key: 'device-assignments' },
       { label: 'Resource Scheduler', icon: 'CalendarDays', path: '/user/resource-scheduler', key: 'resource-scheduler' },
       { label: 'Performance Reviews', icon: 'TrendingUp', path: '/user/performance-reviews', key: 'performance-reviews' },

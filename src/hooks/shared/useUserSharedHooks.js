@@ -111,6 +111,86 @@ export function useUserReports(userId, filters = {}, options = {}) {
     });
 }
 
+// Pulls dashboard + team data and derives the rollups the analytics page needs:
+// KPI strip values, a 7-day project-creation trend, and a role-count split.
+// Kept as one hook so the analytics page doesn't have to re-derive on every render.
+export function useUserTeamAnalyticsMetrics(userId, options = {}) {
+    return useQuery({
+        queryKey: ['user', 'team-analytics-metrics', userId],
+        queryFn: async () => {
+            const dashboard = await userApi.getDashboardData(userId);
+            const projects = Array.isArray(dashboard?.projects) ? dashboard.projects : [];
+            const team = Array.isArray(dashboard?.teamList) ? dashboard.teamList : [];
+
+            const now = new Date();
+            const days = [];
+            for (let i = 6; i >= 0; i--) {
+                const d = new Date(now);
+                d.setHours(0, 0, 0, 0);
+                d.setDate(d.getDate() - i);
+                days.push({
+                    iso: d.toISOString().slice(0, 10),
+                    label: d.toLocaleDateString('en-US', { weekday: 'short' }),
+                    count: 0,
+                });
+            }
+            const indexByIso = new Map(days.map((d, i) => [d.iso, i]));
+            for (const p of projects) {
+                const created = p.createdAt || p.created_at;
+                if (!created) continue;
+                const iso = new Date(created).toISOString().slice(0, 10);
+                if (indexByIso.has(iso)) days[indexByIso.get(iso)].count += 1;
+            }
+
+            const roleCounts = team.reduce(
+                (acc, m) => {
+                    if (m.role === 'operator') acc.operators += 1;
+                    else if (m.role === 'qc-technician') acc.qc += 1;
+                    return acc;
+                },
+                { operators: 0, qc: 0 }
+            );
+            const teamTotal = roleCounts.operators + roleCounts.qc;
+
+            const statusCounts = projects.reduce(
+                (acc, p) => {
+                    const s = p.status || 'unknown';
+                    acc[s] = (acc[s] || 0) + 1;
+                    return acc;
+                },
+                {}
+            );
+            const completed = statusCounts['completed'] || 0;
+            const active = projects.length - completed;
+            const completionPct = projects.length > 0 ? Math.round((completed / projects.length) * 100) : 0;
+
+            return {
+                kpis: {
+                    teamTotal,
+                    operators: roleCounts.operators,
+                    qcTechs: roleCounts.qc,
+                    activeProjects: active,
+                    completedProjects: completed,
+                    completionPct,
+                    reportsCount: dashboard?.reportsCount || 0,
+                },
+                trend7d: days,
+                roleSplit: {
+                    operators: roleCounts.operators,
+                    qcTechs: roleCounts.qc,
+                    total: teamTotal,
+                },
+                statusCounts,
+                projects,
+                team,
+            };
+        },
+        enabled: !!userId,
+        staleTime: 1000 * 60 * 2,
+        ...options,
+    });
+}
+
 // ── User Mutations ──
 
 export function useUpdateDeviceAssignment() {

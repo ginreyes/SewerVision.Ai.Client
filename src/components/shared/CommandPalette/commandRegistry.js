@@ -75,6 +75,7 @@ const NAV_USER = [
   { id: 'nav-u-dashboard', label: 'Dashboard', icon: LayoutDashboard, path: '/user/dashboard', group: 'Navigation' },
   { id: 'nav-u-projects', label: 'Projects', icon: FolderKanban, path: '/user/project', group: 'Navigation' },
   { id: 'nav-u-team', label: 'Team', icon: Users, path: '/user/team', group: 'Navigation' },
+  { id: 'nav-u-analytics', label: 'Team Analytics', icon: BarChart3, path: '/user/analytics', group: 'Navigation' },
   { id: 'nav-u-devices', label: 'Device Assignments', icon: Wrench, path: '/user/device-assignments', group: 'Navigation' },
   { id: 'nav-u-client', label: 'Client Hub', icon: MessageSquare, path: '/user/client-hub', group: 'Navigation' },
   { id: 'nav-u-notes', label: 'Notes', icon: BookOpen, path: '/user/notes', group: 'Navigation' },
