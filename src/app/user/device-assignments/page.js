@@ -54,7 +54,29 @@ export default function UserDeviceAssignmentsPage() {
   const [selectedQcId, setSelectedQcId] = useState('');
 
   const [searchQuery, setSearchQuery] = useState('');
+  // Status filter persists across refreshes — team leads typically come back
+  // to the same view (e.g. "show me only the offline ones") and re-clicking
+  // the pill every visit was friction.
   const [statusFilter, setStatusFilter] = useState('all');
+  useEffect(() => {
+    if (typeof window === 'undefined') return;
+    try {
+      const saved = window.localStorage.getItem('user.deviceAssignments.statusFilter');
+      if (saved && ['all', 'online', 'offline', 'maintenance', 'decommissioned'].includes(saved)) {
+        setStatusFilter(saved);
+      }
+    } catch {
+      // ignore quota / private-mode errors — filter just defaults to 'all'
+    }
+  }, []);
+  useEffect(() => {
+    if (typeof window === 'undefined') return;
+    try {
+      window.localStorage.setItem('user.deviceAssignments.statusFilter', statusFilter);
+    } catch {
+      // ignore
+    }
+  }, [statusFilter]);
 
   // ── Bulk-mode state ──
   const [selectMode, setSelectMode] = useState(false);

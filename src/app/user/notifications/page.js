@@ -234,6 +234,12 @@ const NotificationPageTeamLeader = () => {
   }, [userId, fetchNotifications]);
 
   const togglePreference = async (key) => {
+    // Snapshot the previous value BEFORE the optimistic update so the
+    // rollback path doesn't read a stale closure if multiple toggles fire
+    // in quick succession (the original code re-saved `preferences` from
+    // the closure, which already pointed at the new state by the time the
+    // catch block ran).
+    const previous = preferences;
     const newPreferences = {
       ...preferences,
       [key]: !preferences[key],
@@ -251,7 +257,7 @@ const NotificationPageTeamLeader = () => {
     } catch (err) {
       console.error('Error updating preferences:', err);
       showAlert('Failed to update preferences', 'error');
-      setPreferences(preferences);
+      setPreferences(previous);
     }
   };
 
