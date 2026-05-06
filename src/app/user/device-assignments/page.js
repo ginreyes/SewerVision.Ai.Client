@@ -1,6 +1,6 @@
 'use client';
 
-import React, { useState, useMemo } from 'react';
+import React, { useState, useMemo, useCallback, useEffect } from 'react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import {
@@ -20,6 +20,8 @@ import {
   Hash,
   Activity,
   Loader2,
+  CheckSquare,
+  Square,
 } from 'lucide-react';
 import { useAlert } from '@/components/providers/AlertProvider';
 import { useUser } from '@/components/providers/UserContext';
@@ -27,6 +29,14 @@ import { useUserDevices, useUserTeamMembers, useUpdateDeviceAssignment } from '@
 import { DEVICE_STATUS_CONFIG } from '@/components/user/constants';
 import PersonBadge from '@/components/user/device-assignments/PersonBadge';
 import AssignmentSelector from '@/components/user/device-assignments/AssignmentSelector';
+import BulkDeviceStatusModal from '@/components/user/device-assignments/BulkDeviceStatusModal';
+import { BulkActionBar, BulkResultToast } from '@/components/shared/bulk';
+import { useBulkMutation } from '@/data/bulkApi';
+import { exportToExcel } from '@/lib/csvExport';
+
+// Team-lead role can hit status/unassign/export — `delete` is admin-only
+// (also enforced server-side in bulkDeviceAction).
+const TEAM_LEAD_DEVICE_OPS = new Set(['status', 'unassign', 'export']);
 
 const STATUS_ICONS = { online: Wifi, offline: WifiOff, maintenance: Wrench, decommissioned: WifiOff };
 
@@ -46,11 +56,18 @@ export default function UserDeviceAssignmentsPage() {
   const [searchQuery, setSearchQuery] = useState('');
   const [statusFilter, setStatusFilter] = useState('all');
 
+  // ── Bulk-mode state ──
+  const [selectMode, setSelectMode] = useState(false);
+  const [selectedIds, setSelectedIds] = useState([]);
+  const [bulkModal, setBulkModal] = useState(null); // 'status' | null
+  const [bulkResult, setBulkResult] = useState(null);
+
   // ── Data fetching via TanStack Query ──
-  const { data: devices = [], isLoading: loading } = useUserDevices(userId, userData?.role);
+  const { data: devices = [], isLoading: loading, refetch } = useUserDevices(userId, userData?.role);
   const { data: allUsers = [], isLoading: loadingUsers } = useUserTeamMembers();
   const updateAssignmentMutation = useUpdateDeviceAssignment();
   const savingAssignment = updateAssignmentMutation.isPending;
+  const bulk = useBulkMutation('device');
 
   const operators = useMemo(() => {
     let ops = allUsers.filter((u) => u.role === 'operator');
@@ -99,6 +116,10 @@ export default function UserDeviceAssignmentsPage() {
   }, [devices]);
 
   const openDevice = (device) => {
+    if (selectMode) {
+      toggleSelect(device._id);
+      return;
+    }
     if (expandedDeviceId === device._id) {
       setExpandedDeviceId(null);
       return;
@@ -136,10 +157,95 @@ export default function UserDeviceAssignmentsPage() {
     );
   };
 
+  /* ──────────── bulk selection ──────────── */
+
+  const selectedSet = useMemo(() => new Set(selectedIds), [selectedIds]);
+  const clearSelection = useCallback(() => setSelectedIds([]), []);
+
+  const toggleSelect = useCallback((id) => {
+    setSelectedIds((prev) => (prev.includes(id) ? prev.filter((x) => x !== id) : [...prev, id]));
+  }, []);
+
+  const enterSelectMode = () => {
+    setExpandedDeviceId(null);
+    setSelectMode(true);
+  };
+  const exitSelectMode = () => {
+    setSelectMode(false);
+    setSelectedIds([]);
+  };
+
+  // Esc clears selection then exits select-mode (matches admin/project pattern).
+  useEffect(() => {
+    if (!selectMode) return;
+    const onKey = (e) => {
+      if (e.key !== 'Escape') return;
+      if (selectedIds.length > 0) clearSelection();
+      else exitSelectMode();
+    };
+    window.addEventListener('keydown', onKey);
+    return () => window.removeEventListener('keydown', onKey);
+  }, [selectMode, selectedIds.length, clearSelection]);
+
+  const runBulk = (op, payload) => {
+    bulk.mutate(
+      { ids: selectedIds, op, payload },
+      {
+        onSuccess: (result) => {
+          setBulkResult(result);
+          setBulkModal(null);
+          setSelectedIds([]);
+          refetch();
+        },
+        onError: (err) => showAlert(err?.message || 'Bulk operation failed', 'error'),
+      }
+    );
+  };
+
+  const handleBulkExport = () => {
+    const selected = devices.filter((d) => selectedSet.has(d._id));
+    if (selected.length === 0) return;
+    exportToExcel(
+      selected,
+      [
+        { key: 'name', label: 'Name', format: (v, r) => v || r.deviceName || '' },
+        { key: 'serialNumber', label: 'Serial' },
+        { key: 'manufacturer', label: 'Manufacturer' },
+        { key: 'model', label: 'Model' },
+        { key: 'status', label: 'Status' },
+        { key: 'location', label: 'Location' },
+        {
+          key: 'operator',
+          label: 'Operator',
+          format: (v) => (v ? [v.first_name, v.last_name].filter(Boolean).join(' ').trim() || v.username || '' : ''),
+        },
+        {
+          key: 'qcTechnician',
+          label: 'QC Technician',
+          format: (v) => (v ? [v.first_name, v.last_name].filter(Boolean).join(' ').trim() || v.username || '' : ''),
+        },
+      ],
+      'team-devices'
+    );
+    showAlert(`Exported ${selected.length} device${selected.length === 1 ? '' : 's'}`, 'success');
+  };
+
+  const handleBulkAction = (op, action) => {
+    if (action?.clientOnly && op === 'export') {
+      handleBulkExport();
+      return;
+    }
+    if (op === 'status') {
+      setBulkModal('status');
+      return;
+    }
+    runBulk(op);
+  };
+
   /* ──────────── render ──────────── */
 
   return (
-    <div className="p-4 sm:p-6 max-w-7xl mx-auto space-y-6">
+    <div className="p-4 sm:p-6 max-w-7xl mx-auto space-y-6 pb-32">
       {/* ── Header ── */}
       <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
         <div className="flex items-center gap-4">
@@ -190,15 +296,34 @@ export default function UserDeviceAssignmentsPage() {
         </div>
       </div>
 
-      {/* ── Search ── */}
-      <div className="relative">
-        <Search className="absolute left-3.5 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-400" />
-        <Input
-          placeholder="Search devices by name, serial, location, or manufacturer..."
-          value={searchQuery}
-          onChange={(e) => setSearchQuery(e.target.value)}
-          className="pl-10 h-11 bg-white border-slate-200 text-sm shadow-sm focus-visible:ring-indigo-500"
-        />
+      {/* ── Search + Select toggle ── */}
+      <div className="flex flex-col sm:flex-row gap-3 items-stretch sm:items-center">
+        <div className="relative flex-1">
+          <Search className="absolute left-3.5 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-400" />
+          <Input
+            placeholder="Search devices by name, serial, location, or manufacturer..."
+            value={searchQuery}
+            onChange={(e) => setSearchQuery(e.target.value)}
+            className="pl-10 h-11 bg-white border-slate-200 text-sm shadow-sm focus-visible:ring-indigo-500"
+          />
+        </div>
+        <Button
+          variant={selectMode ? 'default' : 'outline'}
+          onClick={selectMode ? exitSelectMode : enterSelectMode}
+          className="h-11 gap-2 text-sm"
+        >
+          {selectMode ? (
+            <>
+              <Square className="w-4 h-4" />
+              Exit selection
+            </>
+          ) : (
+            <>
+              <CheckSquare className="w-4 h-4" />
+              Select devices
+            </>
+          )}
+        </Button>
       </div>
 
       {/* ── Content ── */}
@@ -231,7 +356,8 @@ export default function UserDeviceAssignmentsPage() {
       ) : (
         <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
           {filteredDevices.map((d) => {
-            const isExpanded = expandedDeviceId === d._id;
+            const isExpanded = !selectMode && expandedDeviceId === d._id;
+            const isSelected = selectMode && selectedSet.has(d._id);
             const statusCfg = getStatusConfig(d.status);
             const StatusIcon = statusCfg.icon;
 
@@ -243,12 +369,30 @@ export default function UserDeviceAssignmentsPage() {
                   group relative rounded-2xl border bg-white cursor-pointer
                   transition-all duration-300 ease-out
                   ${
-                    isExpanded
-                      ? 'border-indigo-200 shadow-lg shadow-indigo-100/50 ring-1 ring-indigo-100'
-                      : 'border-slate-200 hover:border-slate-300 hover:shadow-md shadow-sm'
+                    isSelected
+                      ? 'border-indigo-300 shadow-lg shadow-indigo-100/50 ring-2 ring-indigo-300'
+                      : isExpanded
+                        ? 'border-indigo-200 shadow-lg shadow-indigo-100/50 ring-1 ring-indigo-100'
+                        : 'border-slate-200 hover:border-slate-300 hover:shadow-md shadow-sm'
                   }
                 `}
               >
+                {selectMode && (
+                  <div className="absolute top-3 right-3 z-10">
+                    <div
+                      className={`w-5 h-5 rounded-md border-2 flex items-center justify-center transition-colors ${
+                        isSelected
+                          ? 'bg-indigo-600 border-indigo-600 text-white'
+                          : 'bg-white border-slate-300'
+                      }`}
+                      aria-checked={isSelected}
+                      role="checkbox"
+                      aria-label={isSelected ? 'Deselect device' : 'Select device'}
+                    >
+                      {isSelected && <CheckSquare className="w-3 h-3" />}
+                    </div>
+                  </div>
+                )}
                 {/* Status indicator strip */}
                 <div
                   className={`absolute top-0 left-6 right-6 h-0.5 rounded-b-full ${statusCfg.color} opacity-60`}
@@ -433,6 +577,29 @@ export default function UserDeviceAssignmentsPage() {
           })}
         </div>
       )}
+
+      {selectMode && (
+        <BulkActionBar
+          entity="device"
+          selectedCount={selectedIds.length}
+          onAction={handleBulkAction}
+          onClear={clearSelection}
+          isPending={bulk.isPending}
+          accent="indigo"
+          allowedOps={TEAM_LEAD_DEVICE_OPS}
+        />
+      )}
+      {bulkResult && (
+        <BulkResultToast result={bulkResult} onDismiss={() => setBulkResult(null)} />
+      )}
+
+      <BulkDeviceStatusModal
+        open={bulkModal === 'status'}
+        onClose={() => setBulkModal(null)}
+        selectedCount={selectedIds.length}
+        isPending={bulk.isPending}
+        onConfirm={(payload) => runBulk('status', payload)}
+      />
     </div>
   );
 }
