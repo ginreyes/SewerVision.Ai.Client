@@ -1,6 +1,11 @@
 "use client";
 import RoleLayout from "@/components/shared/RoleLayout";
+import { UploadServiceWorkerProvider } from "@/components/providers/UploadServiceWorkerProvider";
 
 export default function OperatorLayout({ children }) {
-  return <RoleLayout role="operator">{children}</RoleLayout>;
+  return (
+    <UploadServiceWorkerProvider>
+      <RoleLayout role="operator">{children}</RoleLayout>
+    </UploadServiceWorkerProvider>
+  );
 }
