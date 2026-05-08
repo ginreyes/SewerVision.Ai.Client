@@ -377,8 +377,9 @@ export const userApi = {
         if (!response.ok) throw new Error(response.data?.message || 'Failed to fetch metrics');
         return response.data?.data || [];
     },
-    async getMemberMetrics(memberId) {
-        const response = await api(`/api/performance-reviews/member/${memberId}`, 'GET');
+    async getMemberMetrics(memberId, { days } = {}) {
+        const qs = days ? `?days=${days}` : '';
+        const response = await api(`/api/performance-reviews/member/${memberId}${qs}`, 'GET');
         if (!response.ok) throw new Error(response.data?.message || 'Failed to fetch member metrics');
         return response.data?.data || [];
     },

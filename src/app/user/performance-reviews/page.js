@@ -106,7 +106,9 @@ function build90DayQualitySeries(rawDocs) {
 }
 
 function MemberSparkline({ memberId }) {
-  const { data, isLoading } = useUserMemberMetrics(memberId);
+  // Sparkline reads the trailing 90-day window only — pass days=90 so the
+  // server caps the find by createdAt instead of returning all-time history.
+  const { data, isLoading } = useUserMemberMetrics(memberId, { days: 90 });
   const docs = useMemo(
     () => (Array.isArray(data) ? data : data?.data || []),
     [data]

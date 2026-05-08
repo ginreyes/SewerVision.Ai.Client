@@ -384,12 +384,13 @@ export function useUserTeamMetrics(userId, options = {}) {
     });
 }
 export function useUserMemberMetrics(memberId, options = {}) {
+    const { days, ...queryOptions } = options;
     return useQuery({
-        queryKey: queryKeys.userMemberMetrics(memberId),
-        queryFn: () => userApi.getMemberMetrics(memberId),
+        queryKey: [...queryKeys.userMemberMetrics(memberId), { days: days ?? null }],
+        queryFn: () => userApi.getMemberMetrics(memberId, { days }),
         enabled: !!memberId,
         staleTime: 1000 * 60 * 5,
-        ...options,
+        ...queryOptions,
     });
 }
 export function useUserTeamSummary(userId, options = {}) {
