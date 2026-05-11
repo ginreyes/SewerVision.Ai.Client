@@ -674,3 +674,18 @@ export function useQCReviewStats(userId, options = {}) {
         ...options,
     });
 }
+
+/**
+ * Personal defect-type trends for the QC tech (30d/90d). Different shape
+ * from useQCReviewStats — this returns weeklyByType buckets + top-5
+ * defect types, used by the new /qc-technician/defect-trends page.
+ */
+export function useQCPersonalDefectTrends(userId, range = '30d', options = {}) {
+    return useQuery({
+        queryKey: queryKeys.qcPersonalDefectTrends(userId, range),
+        queryFn: () => qcApi.getPersonalDefectTrends(userId, range),
+        enabled: !!userId,
+        staleTime: 1000 * 60 * 5,
+        ...options,
+    });
+}

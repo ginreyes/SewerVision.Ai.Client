@@ -157,6 +157,14 @@ export const NotificationProvider = ({
       // Prepend new notification to list
       setNotifications((prev) => [data, ...prev]);
       setUnreadCount((prev) => prev + 1);
+
+      // High-priority pop-out: the AlertProvider sits below this provider in
+      // the tree, so we publish via a CustomEvent rather than reaching into
+      // a hook we can't call here. HighPriorityToastBridge (rendered inside
+      // AlertProvider) consumes this and calls showAlert().
+      if (data?.priority === 'high' && typeof window !== 'undefined') {
+        window.dispatchEvent(new CustomEvent('notification:high', { detail: data }));
+      }
     };
 
     socket.on('notification', handleNotification);

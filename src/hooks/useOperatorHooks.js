@@ -436,3 +436,22 @@ export function useSyncAll() {
     const qc = useQueryClient();
     return useMutation({ mutationFn: (operatorId) => operatorApi.syncAll(operatorId), onSuccess: () => { qc.invalidateQueries({ queryKey: ['operator', 'pending-syncs'] }); qc.invalidateQueries({ queryKey: ['operator', 'offline-stats'] }); } });
 }
+
+/**
+ * Shift handoff list — the operator's own outgoing handoffs PLUS any
+ * incoming handoffs a teammate left for them. The hook does not pass an
+ * operatorId to the API because the backend scopes results to the caller's
+ * own user id (an operator can only ever see their own handoffs anyway).
+ *
+ * The operatorId arg here is only used as part of the query key so React
+ * Query invalidates per-user when the logged-in user changes.
+ */
+export function useOperatorRecentShiftHandoffs(operatorId, limit = 10, options = {}) {
+    return useQuery({
+        queryKey: queryKeys.operatorRecentShiftHandoffs(operatorId, limit),
+        queryFn: () => operatorApi.getRecentShiftHandoffs(limit),
+        enabled: !!operatorId,
+        staleTime: 1000 * 60,
+        ...options,
+    });
+}

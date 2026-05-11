@@ -97,15 +97,46 @@ function formatDate(dateString) {
   return date.toLocaleDateString();
 }
 
+// ── Priority styling ──
+// Reads notification.priority ('low' | 'normal' | 'high'); 'high' adds a
+// left ring so the user spots it before reading the text.
+const PRIORITY_RING = {
+  high: 'ring-2 ring-red-300 dark:ring-red-700',
+  normal: '',
+  low: '',
+};
+
+function rollupBody(notification) {
+  const count = notification.rollupCount;
+  if (typeof count !== 'number' || count <= 1) return notification.message;
+  const projectName = notification.projectName || notification.metadata?.projectName;
+  const noun = inferRollupNoun(notification.type);
+  return projectName
+    ? `${count} new ${noun} in ${projectName}`
+    : `${count} new ${noun}`;
+}
+
+function inferRollupNoun(type) {
+  if (!type) return 'updates';
+  if (type.startsWith('chat_')) return 'messages';
+  if (type === 'task_assignment') return 'tasks';
+  if (type === 'upload_complete') return 'uploads';
+  if (type === 'qc_review') return 'reviews';
+  return 'updates';
+}
+
 // ── Single Notification Item ──
 /** memo'd — rendered many times in a notification list */
 const NotificationRow = memo(function NotificationRow({ notification, roleColors, onMarkAsRead, onDelete }) {
   const config = DEFAULT_TYPE_CONFIG[notification.type] || DEFAULT_TYPE_CONFIG.default;
   const Icon = config.icon;
+  const priorityClass = PRIORITY_RING[notification.priority] || '';
+  const body = rollupBody(notification);
+  const isRollup = typeof notification.rollupCount === 'number' && notification.rollupCount > 1;
 
   return (
     <div
-      className={`flex items-start gap-3 p-4 rounded-xl transition-all ${
+      className={`flex items-start gap-3 p-4 rounded-xl transition-all ${priorityClass} ${
         !notification.read
           ? roleColors.unreadBg
           : 'bg-gray-50 hover:bg-gray-100 dark:bg-[#2b2a33] dark:hover:bg-[#32313b]'
@@ -120,16 +151,26 @@ const NotificationRow = memo(function NotificationRow({ notification, roleColors
       <div className="flex-1 min-w-0">
         <div className="flex items-start justify-between gap-2">
           <div className="flex-1 min-w-0">
-            <div className="flex items-center gap-2 mb-1">
+            <div className="flex items-center gap-2 mb-1 flex-wrap">
               <h4 className="font-semibold text-gray-900 dark:text-gray-200 text-sm truncate">
                 {notification.title}
               </h4>
               {!notification.read && (
                 <span className="w-2 h-2 rounded-full bg-blue-500 shrink-0" />
               )}
+              {notification.priority === 'high' && (
+                <Badge variant="destructive" className="text-[10px] px-1.5 py-0 h-4">
+                  High priority
+                </Badge>
+              )}
+              {isRollup && (
+                <Badge variant="outline" className="text-[10px] px-1.5 py-0 h-4">
+                  ×{notification.rollupCount}
+                </Badge>
+              )}
             </div>
             <p className="text-sm text-gray-600 dark:text-gray-400 line-clamp-2">
-              {notification.message}
+              {body}
             </p>
           </div>
           <span className="text-xs text-gray-400 dark:text-gray-500 whitespace-nowrap">

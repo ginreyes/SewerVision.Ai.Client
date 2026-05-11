@@ -1,12 +1,11 @@
 "use client";
 
-import React, { useState, useCallback, useMemo } from "react";
+import React, { useState, useCallback, useMemo, useEffect, useRef } from "react";
 import { CloudUpload } from "lucide-react";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { useUser } from "@/components/providers/UserContext";
 import { useAlert } from "@/components/providers/AlertProvider";
 import { useSearchParams } from "next/navigation";
-import uploadsApi from "@/data/uploadsApi";
 import { useOperatorProjects, useOperatorDevices, useOperatorUploads } from "@/hooks/useQueryHooks";
 import ExportButton from "@/components/shared/ExportButton";
 import {
@@ -17,6 +16,11 @@ import {
   UploadHistoryTable,
   getFileType,
 } from "@/components/operator/uploads";
+import {
+  uploadFileChunked,
+  wireGlobalOnlineDrain,
+  getQueueSnapshot,
+} from "@/lib/chunkedUploader";
 
 export default function OperatorUploadsPage() {
   const { userId, userData } = useUser();
@@ -82,76 +86,105 @@ export default function OperatorUploadsPage() {
     setUploadProgress({});
   }, []);
 
-  // Upload handler
-  const handleUpload = async () => {
-    if (files.length === 0) {
-      showAlert("Please select at least one file", "error");
-      return;
-    }
-    if (!uploadData.projectId) {
-      showAlert("Please select a project", "error");
-      return;
-    }
-    if (!uploadData.device || !uploadData.location) {
-      showAlert("Please fill in device and location", "error");
-      return;
-    }
-
-    setUploading(true);
-    const errors = [];
-
+  // Queue state — IDB-backed badge. Mounted in useEffect to keep the SSR
+  // render hydration-safe (IDB is window-only; reading it during the render
+  // pass would diverge the server/client trees).
+  const [queueState, setQueueState] = useState(null);
+  const refreshQueue = useCallback(async () => {
     try {
-      for (let i = 0; i < files.length; i++) {
-        const file = files[i];
-        try {
-          const fileType = getFileType(file);
-          const timestamp = Date.now();
-          const filename = `${timestamp}-${file.name}`;
+      setQueueState(await getQueueSnapshot());
+    } catch {
+      setQueueState(null);
+    }
+  }, []);
 
-          setUploadProgress((prev) => ({ ...prev, [i]: 50 }));
+  useEffect(() => {
+    if (typeof window === "undefined") return undefined;
+    refreshQueue();
+    const unsubscribe = wireGlobalOnlineDrain();
+    const onOnline = () => refreshQueue();
+    window.addEventListener("online", onOnline);
+    return () => {
+      window.removeEventListener("online", onOnline);
+      unsubscribe?.();
+    };
+  }, [refreshQueue]);
 
-          await uploadsApi.createUpload({
-            filename,
-            originalName: file.name,
-            type: fileType,
-            sizeBytes: file.size,
-            uploadedBy: userId || userData?.username || "operator",
+  // Upload handler — one file at a time, chunked, IDB-persisted.
+  // Extracted into a per-file helper so the orchestrator loop stays linear
+  // and the page renders progress consistently regardless of which file in
+  // the batch is currently active.
+  const uploadingRef = useRef(false);
+
+  const uploadOneFile = useCallback(
+    async (file, index) => {
+      const onProgress = ({ bytesDone, bytesTotal }) => {
+        const pct = Math.min(99, Math.floor((bytesDone / Math.max(1, bytesTotal)) * 100));
+        setUploadProgress((prev) => ({ ...prev, [index]: pct }));
+      };
+      try {
+        await uploadFileChunked(
+          file,
+          {
+            projectId: uploadData.projectId,
             device: uploadData.device,
             location: uploadData.location,
-            projectId: uploadData.projectId,
-            mimeType: file.type,
-            filePath: `uploads/${filename}`,
-            status: "completed",
-          });
+            uploadedBy: userId || userData?.username || "operator",
+            type: getFileType(file),
+          },
+          { onProgress }
+        );
+        setUploadProgress((prev) => ({ ...prev, [index]: 100 }));
+        return { ok: true };
+      } catch (error) {
+        setUploadProgress((prev) => ({ ...prev, [index]: -1 }));
+        return { ok: false, error };
+      }
+    },
+    [uploadData.projectId, uploadData.device, uploadData.location, userId, userData]
+  );
 
-          setUploadProgress((prev) => ({ ...prev, [i]: 100 }));
-        } catch (error) {
-          errors.push({ file: file.name, error: error.message });
-          setUploadProgress((prev) => ({ ...prev, [i]: -1 }));
-        }
+  const handleUpload = async () => {
+    if (uploadingRef.current) return;
+    if (files.length === 0) return showAlert("Please select at least one file", "error");
+    if (!uploadData.projectId) return showAlert("Please select a project", "error");
+    if (!uploadData.device || !uploadData.location) {
+      return showAlert("Please fill in device and location", "error");
+    }
+
+    uploadingRef.current = true;
+    setUploading(true);
+    let failures = 0;
+    try {
+      for (let i = 0; i < files.length; i++) {
+        const { ok } = await uploadOneFile(files[i], i);
+        if (!ok) failures++;
+        await refreshQueue();
       }
 
-      const successCount = files.length - errors.length;
-      if (successCount > 0) {
-        showAlert(`Successfully uploaded ${successCount} file(s)`, "success");
-      }
-      if (errors.length > 0) {
-        showAlert(`${errors.length} file(s) failed`, "error");
-      }
-      if (errors.length === 0) {
+      const successCount = files.length - failures;
+      if (successCount > 0) showAlert(`Successfully uploaded ${successCount} file(s)`, "success");
+      if (failures > 0) showAlert(`${failures} file(s) failed — they remain in the offline queue`, "error");
+
+      if (failures === 0) {
         setTimeout(() => {
           setFiles([]);
           setUploadData({ device: "", location: "", projectId: "" });
           setUploadProgress({});
           setActiveTab("history");
+          refreshQueue();
         }, 1500);
       }
-    } catch (error) {
-      showAlert("Upload failed", "error");
     } finally {
       setUploading(false);
+      uploadingRef.current = false;
     }
   };
+
+  const handleRetryFailed = useCallback(async () => {
+    showAlert("Retry will happen automatically when you regain connection", "info");
+    await refreshQueue();
+  }, [showAlert, refreshQueue]);
 
   const filteredUploads = useMemo(() => {
     if (!searchQuery) return uploads;
@@ -249,6 +282,8 @@ export default function OperatorUploadsPage() {
                   completedCount={completedCount}
                   canSubmit={canSubmit}
                   onUpload={handleUpload}
+                  queue={queueState}
+                  onRetryFailed={handleRetryFailed}
                 />
               </div>
             </div>

@@ -516,6 +516,20 @@ export const qcApi = {
     if (!response.ok) throw new Error(response.data?.error || 'Failed to fetch review stats');
     return response.data?.data;
   },
+
+  /**
+   * Personal defect-type trends for the logged-in QC tech. Returns weekly
+   * defect-type counts, top-5 defect types, and review-pace summary.
+   * range: '7d' | '30d' | '90d' (defaults to 30d server-side).
+   */
+  async getPersonalDefectTrends(userId, range = '30d') {
+    const response = await api(
+      `/api/qc-analytics/personal-defect-trends/${userId}?range=${encodeURIComponent(range)}`,
+      'GET'
+    );
+    if (!response.ok) throw new Error(response.data?.error || 'Failed to fetch personal defect trends');
+    return response.data?.data;
+  },
 };
 
 export default qcApi;

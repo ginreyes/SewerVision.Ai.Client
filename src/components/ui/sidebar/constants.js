@@ -293,6 +293,7 @@ export const FALLBACK_MENUS = {
       { label: 'Reports', icon: 'BarChart2', path: '/operator/reports', key: 'reports' },
       { label: 'Incidents', icon: 'AlertTriangle', path: '/operator/incidents', key: 'incidents' },
       { label: 'Time Tracking', icon: 'Clock', path: '/operator/time-tracking', key: 'time-tracking' },
+      { label: 'Shift Handoffs', icon: 'ClipboardCheck', path: '/operator/handoffs', key: 'handoffs' },
       { label: 'Analytics', icon: 'BarChart2', path: '/operator/analytics', key: 'analytics' },
     ]},
     { label: 'Account', items: [
@@ -317,6 +318,7 @@ export const FALLBACK_MENUS = {
       { label: 'Defect Library', icon: 'BookMarked', path: '/qc-technician/defect-library', key: 'defect-library' },
       { label: 'Training', icon: 'GraduationCap', path: '/qc-technician/training', key: 'training' },
       { label: 'Review Analytics', icon: 'BarChart2', path: '/qc-technician/review-analytics', key: 'review-analytics' },
+      { label: 'Defect Trends', icon: 'TrendingUp', path: '/qc-technician/defect-trends', key: 'defect-trends' },
     ]},
     { label: 'Records', items: [
       { label: 'Reports', icon: 'FileText', path: '/qc-technician/reports', key: 'reports' },

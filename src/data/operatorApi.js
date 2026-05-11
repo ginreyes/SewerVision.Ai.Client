@@ -476,6 +476,16 @@ export const operatorApi = {
         if (!response.ok) throw new Error(response.data?.message || 'Failed to fetch stats');
         return response.data?.data;
     },
+
+    // ─── Shift handoff ────────────────────────────────────────────────────
+    // Recent end-of-shift summaries the operator was a party to — either
+    // they wrote the handoff OR a teammate handed off to them. Backend
+    // scopes by req.user.id, so no operatorId param is needed for ops.
+    async getRecentShiftHandoffs(limit = 10) {
+        const response = await api(`/api/operations/shift-handoff/recent?limit=${limit}`, 'GET');
+        if (!response.ok) throw new Error(response.data?.message || 'Failed to fetch handoffs');
+        return response.data?.data ?? [];
+    },
 };
 
 export default operatorApi;

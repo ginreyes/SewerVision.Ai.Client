@@ -6,6 +6,7 @@ import { DialogProvider } from "./DialogProvider";
 import { UserProvider } from "./UserContext";
 import { useRouter, usePathname } from "next/navigation";
 import NotificationProvider from "./NotificationProvider";
+import HighPriorityToastBridge from "./HighPriorityToastBridge";
 import { QueryProvider } from "./QueryProvider";
 import { SocketProvider } from "./SocketProvider";
 import { ThemeProvider } from "./ThemeProvider";
@@ -36,6 +37,7 @@ export function AppProviders({ children }) {
           <SocketProvider>
             <NotificationProvider>
               <AlertProvider>
+                <HighPriorityToastBridge />
                 <DialogProvider>
                   {children}
                 </DialogProvider>

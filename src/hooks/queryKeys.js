@@ -110,6 +110,10 @@ export const queryKeys = {
     operatorCachedItems: (operatorId) => ['operator', 'cached-items', operatorId],
     operatorPendingSyncs: (operatorId) => ['operator', 'pending-syncs', operatorId],
     operatorOfflineStats: (operatorId) => ['operator', 'offline-stats', operatorId],
+    operatorRecentShiftHandoffs: (operatorId, limit) => ['operator', 'shift-handoffs', operatorId, limit],
+
+    // QC — New Modules
+    qcPersonalDefectTrends: (qcId, range) => ['qc', 'personal-defect-trends', qcId, range],
 
     // User — New Modules
     userWeekSchedule: (weekStart) => ['user', 'schedule', weekStart],
