@@ -314,3 +314,75 @@ export function attachOnlineDrain({ putChunk } = {}) {
   window.addEventListener('online', handler);
   return () => window.removeEventListener('online', handler);
 }
+
+// ─── Day 5: offline-start fallback + manual resume ──────────────────────
+//
+// When the operator kicks off an upload while fully offline (or the
+// /start call fails with a network error), we synthesize a client-side
+// temporary id and persist the upload as { localStart: true }. drain()
+// then re-tries /start on connectivity, swaps the temp id for the
+// server-issued one, and proceeds with PUT chunks as normal.
+//
+// Local-id shape is "local-<crypto-id>" — intentionally NOT the
+// 32-char hex the backend uses, so the server endpoints reject these
+// ids defensively if one ever leaks into a chunk PUT.
+
+const LOCAL_ID_PREFIX = 'local-';
+
+export function isLocalUploadId(id) {
+  return typeof id === 'string' && id.startsWith(LOCAL_ID_PREFIX);
+}
+
+export function newLocalUploadId() {
+  const rand =
+    (typeof crypto !== 'undefined' && typeof crypto.randomUUID === 'function')
+      ? crypto.randomUUID()
+      : `${Date.now()}-${Math.random().toString(36).slice(2)}`;
+  return `${LOCAL_ID_PREFIX}${rand}`;
+}
+
+/**
+ * Migrate every chunk row keyed by `oldUploadId` over to `newUploadId`.
+ * Used when drain() resolves a local-start row to a real server id.
+ * Preserves blob + etag + status; just rewrites the composite key.
+ */
+export async function migrateUploadId(oldUploadId, newUploadId) {
+  if (!oldUploadId || !newUploadId) throw new Error('migrateUploadId: both ids required');
+  const db = await openUploadDB();
+
+  // Move the chunks first so a crash between the two transactions leaves
+  // the upload row pointing at chunks that still exist somewhere.
+  {
+    const { store, done } = tx(db, STORE_CHUNKS, 'readwrite');
+    const idx = store.index('by_uploadId');
+    const rows = await reqAsPromise(idx.getAll(IDBKeyRange.only(oldUploadId)));
+    for (const row of rows) {
+      store.delete(row.id);
+      store.put({ ...row, id: chunkKey(newUploadId, row.index), uploadId: newUploadId });
+    }
+    await done;
+  }
+
+  // Now swap the upload row.
+  const upload = await getUpload(oldUploadId);
+  if (upload) {
+    const next = { ...upload, id: newUploadId, localStart: false };
+    const { store, done } = tx(db, STORE_UPLOADS, 'readwrite');
+    await reqAsPromise(store.delete(oldUploadId));
+    await reqAsPromise(store.put(next));
+    await done;
+  }
+}
+
+/**
+ * Reset any 'failed' uploads back to 'queued' so the next drain() picks
+ * them up. Used by the Resume button on UploadSummaryCard.
+ * Returns the number of rows requeued.
+ */
+export async function requeueFailedUploads() {
+  const failed = await listUploads({ status: STATUS_FAILED });
+  for (const upload of failed) {
+    await addUpload({ ...upload, status: STATUS_QUEUED, lastError: null });
+  }
+  return failed.length;
+}

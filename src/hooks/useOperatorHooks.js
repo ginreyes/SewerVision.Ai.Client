@@ -455,3 +455,23 @@ export function useOperatorRecentShiftHandoffs(operatorId, limit = 10, options =
         ...options,
     });
 }
+
+/**
+ * Acknowledge an incoming shift handoff. Invalidates the recent-handoffs
+ * lists for every cached operator so the "Acknowledge" badge flips
+ * immediately without a manual refetch.
+ */
+export function useAcknowledgeShiftHandoff() {
+    const queryClient = useQueryClient();
+    return useMutation({
+        mutationFn: (handoffId) => operatorApi.acknowledgeShiftHandoff(handoffId),
+        onSuccess: () => {
+            queryClient.invalidateQueries({
+                predicate: (query) =>
+                    Array.isArray(query.queryKey) &&
+                    query.queryKey[0] === 'operator' &&
+                    query.queryKey[1] === 'shift-handoffs',
+            });
+        },
+    });
+}

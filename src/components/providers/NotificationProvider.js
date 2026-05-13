@@ -171,9 +171,26 @@ export const NotificationProvider = ({
     return () => socket.off?.('notification', handleNotification);
   }, [socket, userId]);
 
+  // Rollup-aware count for the navbar bell. A rollup notification (e.g.
+  // "5 new messages in {project}") should occupy one slot, not five. We
+  // collapse unread rows into distinct buckets: each unread non-rollup
+  // counts once, and each unread rollup row counts once (regardless of
+  // its rollupCount). Falls back to the raw server count when the
+  // notifications list hasn't loaded yet so the bell is never stuck
+  // showing 0 on first paint.
+  const distinctUnreadCount = React.useMemo(() => {
+    if (!Array.isArray(notifications) || notifications.length === 0) {
+      return unreadCount;
+    }
+    const unread = notifications.filter((n) => !n.read);
+    if (unread.length === 0) return 0;
+    return unread.length;
+  }, [notifications, unreadCount]);
+
   const value = {
     notifications,
     unreadCount,
+    distinctUnreadCount,
     isLoading,
     error,
     hasMore,

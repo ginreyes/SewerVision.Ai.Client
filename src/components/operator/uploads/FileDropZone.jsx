@@ -8,6 +8,7 @@ import {
   AlertTriangle,
   Loader2,
   X,
+  Inbox,
 } from "lucide-react";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
@@ -180,6 +181,7 @@ export default function FileDropZone({
                 const progress = uploadProgress[index];
                 const isComplete = progress === 100;
                 const isFailed = progress === -1;
+                const isDeferred = progress === -2;
 
                 return (
                   <div
@@ -189,6 +191,8 @@ export default function FileDropZone({
                         ? "bg-emerald-50/50"
                         : isFailed
                         ? "bg-red-50/50"
+                        : isDeferred
+                        ? "bg-amber-50/50"
                         : "hover:bg-gray-50/50"
                     }`}
                   >
@@ -200,12 +204,18 @@ export default function FileDropZone({
                         <Badge className={`text-[10px] px-1.5 py-0 ${getFileTypeBadge(type)}`}>
                           {type}
                         </Badge>
+                        {isDeferred && (
+                          <span className="text-[10px] text-amber-700">
+                            Staged offline
+                          </span>
+                        )}
                       </div>
                     </div>
                     <div className="flex items-center gap-1.5 flex-shrink-0">
                       {isComplete && <CheckCircle className="w-4 h-4 text-emerald-500" />}
                       {isFailed && <AlertTriangle className="w-4 h-4 text-red-500" />}
-                      {uploading && !isComplete && !isFailed && progress !== undefined && (
+                      {isDeferred && <Inbox className="w-4 h-4 text-amber-500" />}
+                      {uploading && !isComplete && !isFailed && !isDeferred && progress !== undefined && (
                         <Loader2 className="w-4 h-4 animate-spin text-blue-500" />
                       )}
                       {!uploading && (

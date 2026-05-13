@@ -486,6 +486,15 @@ export const operatorApi = {
         if (!response.ok) throw new Error(response.data?.message || 'Failed to fetch handoffs');
         return response.data?.data ?? [];
     },
+
+    // Acknowledge an incoming shift handoff. Only the row's nextShiftFor
+    // (or an admin) can call this; the backend enforces.
+    async acknowledgeShiftHandoff(handoffId) {
+        if (!handoffId) throw new Error('handoffId is required');
+        const response = await api(`/api/operations/shift-handoff/${encodeURIComponent(handoffId)}/acknowledge`, 'PATCH');
+        if (!response.ok) throw new Error(response.data?.message || 'Failed to acknowledge handoff');
+        return response.data?.data;
+    },
 };
 
 export default operatorApi;

@@ -286,6 +286,7 @@ export const FALLBACK_MENUS = {
       { label: 'Equipment', icon: 'HardDrive', path: '/operator/equipement', key: 'equipment' },
       { label: 'Connect Device', icon: 'Link2', path: '/operator/connect-device', key: 'connect-device' },
       { label: 'Maintenance', icon: 'Wrench', path: '/operator/maintenance', key: 'maintenance' },
+      { label: 'Equipment Issues', icon: 'AlertTriangle', path: '/operator/equipment-issues', key: 'equipment-issues' },
       { label: 'Offline Mode', icon: 'WifiOff', path: '/operator/offline', key: 'offline' },
     ]},
     { label: 'Records', items: [
@@ -319,6 +320,7 @@ export const FALLBACK_MENUS = {
       { label: 'Training', icon: 'GraduationCap', path: '/qc-technician/training', key: 'training' },
       { label: 'Review Analytics', icon: 'BarChart2', path: '/qc-technician/review-analytics', key: 'review-analytics' },
       { label: 'Defect Trends', icon: 'TrendingUp', path: '/qc-technician/defect-trends', key: 'defect-trends' },
+      { label: 'Speed Trends', icon: 'Gauge', path: '/qc-technician/speed-trends', key: 'speed-trends' },
     ]},
     { label: 'Records', items: [
       { label: 'Reports', icon: 'FileText', path: '/qc-technician/reports', key: 'reports' },

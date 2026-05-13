@@ -1,7 +1,7 @@
 "use client";
 
 import React from "react";
-import { CloudUpload, Loader2, AlertTriangle, Inbox, RefreshCw } from "lucide-react";
+import { CloudUpload, Loader2, AlertTriangle, Inbox, RefreshCw, Play } from "lucide-react";
 import { Card, CardContent } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { formatFileSize } from "./constants";
@@ -18,6 +18,7 @@ import { formatFileSize } from "./constants";
  *   onUpload: () => void,
  *   queue?: { queued: number, draining: number, failed: number, total: number } | null,
  *   onRetryFailed?: () => void,
+ *   resuming?: boolean,
  * }} props
  */
 export default function UploadSummaryCard({
@@ -29,6 +30,7 @@ export default function UploadSummaryCard({
   onUpload,
   queue,
   onRetryFailed,
+  resuming = false,
 }) {
   const totalSize = files.reduce((sum, file) => sum + file.size, 0);
   const queueLines = renderQueueLines(queue);
@@ -56,16 +58,31 @@ export default function UploadSummaryCard({
                 </div>
               ))}
             </div>
-            {queue?.failed > 0 && onRetryFailed && (
+            {(queue?.failed > 0 || queue?.queued > 0) && onRetryFailed && (
               <Button
                 type="button"
                 onClick={onRetryFailed}
+                disabled={resuming}
                 variant="outline"
                 size="sm"
                 className="w-full mt-1 h-7 text-xs border-amber-300 hover:bg-amber-100"
               >
-                <RefreshCw className="w-3 h-3 mr-1.5" />
-                Retry failed uploads
+                {resuming ? (
+                  <>
+                    <Loader2 className="w-3 h-3 mr-1.5 animate-spin" />
+                    Resuming…
+                  </>
+                ) : queue?.failed > 0 ? (
+                  <>
+                    <RefreshCw className="w-3 h-3 mr-1.5" />
+                    Resume failed uploads
+                  </>
+                ) : (
+                  <>
+                    <Play className="w-3 h-3 mr-1.5" />
+                    Resume queued uploads
+                  </>
+                )}
               </Button>
             )}
           </div>

@@ -1,12 +1,15 @@
 "use client";
 
-import React, { useState } from "react";
-import { TrendingUp, Activity, Calendar, Target, Loader2 } from "lucide-react";
+import React, { useState, useCallback } from "react";
+import { TrendingUp, Activity, Calendar, Target, Loader2, Download } from "lucide-react";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Tabs, TabsList, TabsTrigger } from "@/components/ui/tabs";
+import { Button } from "@/components/ui/button";
 import { useUser } from "@/components/providers/UserContext";
 import { useQCPersonalDefectTrends } from "@/hooks/useQCHooks";
 import DefectTypeBars from "@/components/qc-technician/defect-trends/DefectTypeBars";
+import { useAlert } from "@/components/providers/AlertProvider";
+import { exportToCSV } from "@/lib/csvExport";
 
 /**
  * QC-Technician → Personal Defect Trends.
@@ -28,11 +31,49 @@ export default function QCPersonalDefectTrendsPage() {
   const { userId } = useUser();
   const [range, setRange] = useState("30d");
   const { data, isLoading } = useQCPersonalDefectTrends(userId, range);
+  const { showAlert } = useAlert();
+
+  const handleExportCsv = useCallback(() => {
+    const topTypes = data?.topTypes || [];
+    if (topTypes.length === 0) {
+      showAlert("Nothing to export in this range", "info");
+      return;
+    }
+    // CSV is per-defect-type breakdown — the table management asks for in 1:1s.
+    const rows = topTypes.map((t) => {
+      const approvedPct = t.count > 0 ? Math.round((t.approved / t.count) * 100) : 0;
+      return {
+        type: t.type,
+        count: t.count,
+        approved: t.approved,
+        rejected: t.rejected,
+        approvedPct,
+        avgConfidence: t.avgConfidence ?? "",
+      };
+    });
+    exportToCSV(
+      rows,
+      [
+        { key: "type", label: "Defect Type" },
+        { key: "count", label: "Reviews" },
+        { key: "approved", label: "Approved" },
+        { key: "rejected", label: "Rejected" },
+        { key: "approvedPct", label: "Approved %" },
+        { key: "avgConfidence", label: "Avg Confidence" },
+      ],
+      `qc-defect-trends-${range}`
+    );
+  }, [data, range, showAlert]);
 
   return (
     <div className="min-h-screen">
       <div className="max-w-6xl mx-auto p-6 space-y-6">
-        <Header range={range} onRangeChange={setRange} />
+        <Header
+          range={range}
+          onRangeChange={setRange}
+          onExportCsv={handleExportCsv}
+          exportDisabled={isLoading || !(data?.topTypes?.length)}
+        />
 
         <SummaryCards data={data} loading={isLoading} />
 
@@ -58,7 +99,7 @@ export default function QCPersonalDefectTrendsPage() {
   );
 }
 
-function Header({ range, onRangeChange }) {
+function Header({ range, onRangeChange, onExportCsv, exportDisabled }) {
   return (
     <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
       <div className="flex items-center gap-3">
@@ -72,15 +113,28 @@ function Header({ range, onRangeChange }) {
           </p>
         </div>
       </div>
-      <Tabs value={range} onValueChange={onRangeChange}>
-        <TabsList>
-          {RANGES.map((r) => (
-            <TabsTrigger key={r.key} value={r.key}>
-              {r.label}
-            </TabsTrigger>
-          ))}
-        </TabsList>
-      </Tabs>
+      <div className="flex items-center gap-2">
+        <Tabs value={range} onValueChange={onRangeChange}>
+          <TabsList>
+            {RANGES.map((r) => (
+              <TabsTrigger key={r.key} value={r.key}>
+                {r.label}
+              </TabsTrigger>
+            ))}
+          </TabsList>
+        </Tabs>
+        <Button
+          type="button"
+          variant="outline"
+          size="sm"
+          onClick={onExportCsv}
+          disabled={exportDisabled}
+          title="Export the current range's top defect types as CSV"
+        >
+          <Download className="w-4 h-4 mr-1.5" />
+          Export CSV
+        </Button>
+      </div>
     </div>
   );
 }

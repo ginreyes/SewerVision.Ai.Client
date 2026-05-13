@@ -24,8 +24,12 @@ import { uploadsApi } from '@/data/uploadsApi';
 import {
   queueUpload,
   drain,
-  attachOnlineDrain,
   listUploads,
+  isLocalUploadId,
+  newLocalUploadId,
+  migrateUploadId,
+  requeueFailedUploads,
+  failUpload,
 } from './uploadQueue';
 
 // Chunk size matches the backend MAX_CHUNK_BYTES ceiling minus a small margin
@@ -39,6 +43,22 @@ function sliceFileToChunks(file, chunkSize = CHUNK_SIZE_BYTES) {
     chunks.push(file.slice(offset, Math.min(offset + chunkSize, file.size)));
   }
   return chunks;
+}
+
+// Network-class errors look like TypeError("Failed to fetch") or
+// AbortError. Server-side 4xx/5xx come back as Error with a message
+// from the response body, and we want those to propagate.
+function isNetworkError(err) {
+  if (!err) return false;
+  const msg = String(err.message || err).toLowerCase();
+  if (err.name === 'TypeError') return true;
+  if (err.name === 'AbortError') return true;
+  return (
+    msg.includes('failed to fetch') ||
+    msg.includes('networkerror') ||
+    msg.includes('network request failed') ||
+    msg.includes('load failed')
+  );
 }
 
 /**
@@ -59,10 +79,36 @@ function makePutChunkAdapter({ onProgress, totalBytes, getProgressBase }) {
 }
 
 /**
+ * Stash an upload locally with a synthetic id when /start can't be
+ * reached. drain() (via resolveLocalStarts) re-issues /start on
+ * reconnect, migrates the id, and continues the chunk PUTs.
+ */
+async function queueUploadOffline(file, meta, chunks) {
+  const localId = newLocalUploadId();
+  await queueUpload(
+    {
+      id: localId,
+      projectId: meta?.projectId ?? null,
+      deviceId: meta?.device ?? null,
+      mime: file.type,
+      sizeBytes: file.size,
+      totalChunks: chunks.length,
+      originalName: file.name,
+      mimeType: file.type || 'application/octet-stream',
+      location: meta?.location ?? null,
+      localStart: true,
+    },
+    chunks
+  );
+  return localId;
+}
+
+/**
  * Upload a File via the chunked endpoint, persisting to IDB first so an
  * offline blip becomes resumable. Returns the server's Upload row on
- * success; throws on a non-recoverable failure (the IDB row is preserved
- * for inspection).
+ * success; null when the caller was offline and the upload is staged
+ * locally for drain-on-reconnect; throws on a non-recoverable failure
+ * (the IDB row is preserved for inspection).
  */
 export async function uploadFileChunked(file, meta, { onProgress, onStatus } = {}) {
   if (!file || typeof file.size !== 'number') {
@@ -72,28 +118,64 @@ export async function uploadFileChunked(file, meta, { onProgress, onStatus } = {
   onStatus?.('starting');
   const chunks = sliceFileToChunks(file);
 
-  const startRes = await uploadsApi.startChunkedUpload({
-    originalName: file.name,
-    mimeType: file.type || 'application/octet-stream',
-    sizeBytes: file.size,
-    totalChunks: chunks.length,
-    projectId: meta?.projectId,
-    device: meta?.device,
-    location: meta?.location,
-  });
+  // Offline-start fallback: if navigator is offline OR /start throws a
+  // network error, stage the upload under a client-issued local id. A
+  // later drain() will swap in the real server id and continue.
+  const offlineNow =
+    typeof navigator !== 'undefined' && navigator.onLine === false;
 
-  const uploadId = startRes.uploadId;
-  await queueUpload(
-    {
-      id: uploadId,
-      projectId: meta?.projectId ?? null,
-      deviceId: meta?.device ?? null,
-      mime: file.type,
-      sizeBytes: file.size,
-      totalChunks: chunks.length,
-    },
-    chunks
-  );
+  let uploadId;
+  let deferredStart = false;
+
+  if (offlineNow) {
+    uploadId = await queueUploadOffline(file, meta, chunks);
+    deferredStart = true;
+  } else {
+    try {
+      const startRes = await uploadsApi.startChunkedUpload({
+        originalName: file.name,
+        mimeType: file.type || 'application/octet-stream',
+        sizeBytes: file.size,
+        totalChunks: chunks.length,
+        projectId: meta?.projectId,
+        device: meta?.device,
+        location: meta?.location,
+      });
+      uploadId = startRes.uploadId;
+      await queueUpload(
+        {
+          id: uploadId,
+          projectId: meta?.projectId ?? null,
+          deviceId: meta?.device ?? null,
+          mime: file.type,
+          sizeBytes: file.size,
+          totalChunks: chunks.length,
+          originalName: file.name,
+          mimeType: file.type || 'application/octet-stream',
+          location: meta?.location ?? null,
+          localStart: false,
+        },
+        chunks
+      );
+    } catch (err) {
+      // Network-class failures (TypeError from fetch, no response) fall
+      // back to local-start. Anything else (server 4xx/5xx) is a real
+      // error and should propagate so the caller can show it.
+      if (isNetworkError(err)) {
+        uploadId = await queueUploadOffline(file, meta, chunks);
+        deferredStart = true;
+      } else {
+        throw err;
+      }
+    }
+  }
+
+  if (deferredStart) {
+    onStatus?.('queued');
+    // Nothing more we can do until connectivity returns. drain() picks it up.
+    return null;
+  }
+
   onStatus?.('queued');
 
   // Progress accounting — drain() doesn't know per-chunk byte sizes; the
@@ -123,6 +205,72 @@ export async function uploadFileChunked(file, meta, { onProgress, onStatus } = {
 }
 
 /**
+ * Walk every locally-staged upload (status='queued', localStart=true), call
+ * /start to claim a real server id, and migrate the IDB rows to that id.
+ * Failures are recorded via failUpload so the UI can surface them.
+ *
+ * Returns a map of oldId → newId for uploads that successfully resolved,
+ * so callers can post-drain /complete the right ids.
+ */
+async function resolveLocalStarts() {
+  const queued = await listUploads({ status: 'queued' });
+  const localOnly = queued.filter((u) => u.localStart && isLocalUploadId(u.id));
+  const idMap = new Map();
+  for (const upload of localOnly) {
+    try {
+      const startRes = await uploadsApi.startChunkedUpload({
+        originalName: upload.originalName || 'upload.bin',
+        mimeType: upload.mimeType || upload.mime || 'application/octet-stream',
+        sizeBytes: upload.sizeBytes,
+        totalChunks: upload.totalChunks,
+        projectId: upload.projectId,
+        device: upload.deviceId,
+        location: upload.location,
+      });
+      const newId = startRes.uploadId;
+      await migrateUploadId(upload.id, newId);
+      idMap.set(upload.id, newId);
+    } catch (err) {
+      // Network failure — leave row in 'queued' state so a future online
+      // event retries. Server failure — record so the UI surfaces it.
+      if (!isNetworkError(err)) {
+        await failUpload(upload.id, err);
+      }
+    }
+  }
+  return idMap;
+}
+
+/**
+ * Drain every queued IDB upload: first resolve any local-start rows to
+ * real server ids, then PUT each chunk, then /complete the server side
+ * for any rows that originated from an offline start. Used by the
+ * online-event handler and the manual Resume action.
+ */
+async function drainAll() {
+  const idMap = await resolveLocalStarts();
+  const adapter = async (uploadId, index, blob) => uploadsApi.putChunk(uploadId, index, blob);
+  const result = await drain({ putChunk: adapter });
+
+  // Anything that just migrated from local-start needs a /complete call
+  // — uploadFileChunked normally does that inline, but the offline path
+  // returned before reaching it. We don't know which migrated uploads
+  // actually finished all chunks here (drain deletes the IDB row on
+  // success), so we call /complete for every migrated newId and tolerate
+  // 4xx/5xx for ones that didn't fully drain.
+  for (const newId of idMap.values()) {
+    try {
+      await uploadsApi.completeChunkedUpload(newId);
+    } catch {
+      // Either the upload didn't fully drain (chunks still pending on
+      // server), or /complete is racing the next drain. Either way the
+      // IDB row state is authoritative — no action.
+    }
+  }
+  return result;
+}
+
+/**
  * Bootstrap-time wiring: registers a window 'online' handler that drains any
  * leftover queued uploads from a previous session. Idempotent — repeated
  * calls return new unsubscribe fns but only one drain runs per 'online'
@@ -130,8 +278,26 @@ export async function uploadFileChunked(file, meta, { onProgress, onStatus } = {
  * provider's useEffect.
  */
 export function wireGlobalOnlineDrain() {
-  const adapter = async (uploadId, index, blob) => uploadsApi.putChunk(uploadId, index, blob);
-  return attachOnlineDrain({ putChunk: adapter });
+  if (typeof window === 'undefined') return () => {};
+  const handler = () => {
+    if (navigator.onLine === false) return;
+    drainAll().catch(() => {
+      // swallow — failures are recorded per-upload via failUpload
+    });
+  };
+  window.addEventListener('online', handler);
+  return () => window.removeEventListener('online', handler);
+}
+
+/**
+ * Manual Resume path used by UploadSummaryCard. Resets failed rows back
+ * to 'queued', then runs the full drainAll cycle (local-start resolution
+ * + chunk PUTs + /complete). Returns { requeued, drained, failed }.
+ */
+export async function resumeFailedUploads() {
+  const requeued = await requeueFailedUploads();
+  const result = await drainAll();
+  return { requeued, ...result };
 }
 
 /**

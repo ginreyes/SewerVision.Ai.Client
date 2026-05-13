@@ -6,7 +6,7 @@ import Link from 'next/link';
 import { usePathname } from 'next/navigation';
 import { cn } from '@/lib/utils';
 import { Separator } from '@/components/ui/separator';
-import { 
+import {
   Loader2,
   LayoutDashboard,
   FolderOpen,
@@ -20,6 +20,8 @@ import {
   Bell,
   Settings,
   ChevronRight,
+  TrendingUp,
+  Gauge,
 } from 'lucide-react';
 import ModuleLoading from './SewerVisionLoadingAnimation';
 import { useLoadingModuleSetting } from '@/hooks/useLoadingModuleSettings';
@@ -52,6 +54,8 @@ const QcSidebar = ({ isOpen, role }) => {
       '/qc-technician/devices': 'Devices',
       '/qc-technician/task': 'Task',
       '/qc-technician/quality-control': 'Quality Control',
+      '/qc-technician/defect-trends': 'Defect Trends',
+      '/qc-technician/speed-trends': 'Speed Trends',
       '/qc-technician/reports': 'Reports',
       '/qc-technician/notes': 'Notes',
       '/qc-technician/certifications': 'Certifications',
@@ -83,6 +87,13 @@ const QcSidebar = ({ isOpen, role }) => {
         { label: "Task", icon: ClipboardList, path: "/qc-technician/task", module: "tasks" },
         { label: "Quality Control", icon: ClipboardCheck, path: "/qc-technician/quality-control", module: "quality-control" },
         { label: "Devices", icon: Monitor, path: "/qc-technician/devices", module: "devices" },
+      ]
+    },
+    {
+      label: 'Knowledge',
+      items: [
+        { label: "Defect Trends", icon: TrendingUp, path: "/qc-technician/defect-trends", module: "defect-trends" },
+        { label: "Speed Trends", icon: Gauge, path: "/qc-technician/speed-trends", module: "speed-trends" },
       ]
     },
     {

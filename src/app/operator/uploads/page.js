@@ -20,6 +20,7 @@ import {
   uploadFileChunked,
   wireGlobalOnlineDrain,
   getQueueSnapshot,
+  resumeFailedUploads,
 } from "@/lib/chunkedUploader";
 
 export default function OperatorUploadsPage() {
@@ -123,7 +124,7 @@ export default function OperatorUploadsPage() {
         setUploadProgress((prev) => ({ ...prev, [index]: pct }));
       };
       try {
-        await uploadFileChunked(
+        const row = await uploadFileChunked(
           file,
           {
             projectId: uploadData.projectId,
@@ -134,6 +135,13 @@ export default function OperatorUploadsPage() {
           },
           { onProgress }
         );
+        // null = deferred (offline-start); upload sits in IDB waiting for
+        // connectivity. Mark the row's progress as queued (-2) so the UI
+        // distinguishes it from completed (100) or failed (-1).
+        if (row === null) {
+          setUploadProgress((prev) => ({ ...prev, [index]: -2 }));
+          return { ok: true, deferred: true };
+        }
         setUploadProgress((prev) => ({ ...prev, [index]: 100 }));
         return { ok: true };
       } catch (error) {
@@ -155,18 +163,26 @@ export default function OperatorUploadsPage() {
     uploadingRef.current = true;
     setUploading(true);
     let failures = 0;
+    let deferred = 0;
     try {
       for (let i = 0; i < files.length; i++) {
-        const { ok } = await uploadOneFile(files[i], i);
-        if (!ok) failures++;
+        const result = await uploadOneFile(files[i], i);
+        if (!result.ok) failures++;
+        else if (result.deferred) deferred++;
         await refreshQueue();
       }
 
-      const successCount = files.length - failures;
+      const successCount = files.length - failures - deferred;
       if (successCount > 0) showAlert(`Successfully uploaded ${successCount} file(s)`, "success");
+      if (deferred > 0) {
+        showAlert(
+          `${deferred} file(s) staged locally — will upload when you reconnect`,
+          "info"
+        );
+      }
       if (failures > 0) showAlert(`${failures} file(s) failed — they remain in the offline queue`, "error");
 
-      if (failures === 0) {
+      if (failures === 0 && deferred === 0) {
         setTimeout(() => {
           setFiles([]);
           setUploadData({ device: "", location: "", projectId: "" });
@@ -181,10 +197,31 @@ export default function OperatorUploadsPage() {
     }
   };
 
+  const [resuming, setResuming] = useState(false);
   const handleRetryFailed = useCallback(async () => {
-    showAlert("Retry will happen automatically when you regain connection", "info");
-    await refreshQueue();
-  }, [showAlert, refreshQueue]);
+    if (resuming) return;
+    if (typeof navigator !== "undefined" && navigator.onLine === false) {
+      showAlert("You're offline — resume will run automatically when you reconnect", "info");
+      return;
+    }
+    setResuming(true);
+    try {
+      const { requeued, drained, failed } = await resumeFailedUploads();
+      if (drained > 0) {
+        showAlert(`Resumed ${drained} upload${drained === 1 ? "" : "s"}`, "success");
+      } else if (failed > 0) {
+        showAlert(`${failed} upload${failed === 1 ? "" : "s"} still failing — check connectivity`, "error");
+      } else if (requeued === 0) {
+        showAlert("Nothing to resume", "info");
+      }
+      await refreshQueue();
+      refetchUploads();
+    } catch (err) {
+      showAlert(err?.message || "Resume failed", "error");
+    } finally {
+      setResuming(false);
+    }
+  }, [resuming, showAlert, refreshQueue, refetchUploads]);
 
   const filteredUploads = useMemo(() => {
     if (!searchQuery) return uploads;
@@ -284,6 +321,7 @@ export default function OperatorUploadsPage() {
                   onUpload={handleUpload}
                   queue={queueState}
                   onRetryFailed={handleRetryFailed}
+                  resuming={resuming}
                 />
               </div>
             </div>

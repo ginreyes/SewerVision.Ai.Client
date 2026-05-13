@@ -1,8 +1,11 @@
 "use client";
 
-import { ClipboardCheck, AlertTriangle, MapPin, ArrowRight, User } from "lucide-react";
+import { ClipboardCheck, AlertTriangle, MapPin, ArrowRight, User, Check, Loader2 } from "lucide-react";
 import { Card, CardContent } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
+import { Button } from "@/components/ui/button";
+import { useAcknowledgeShiftHandoff } from "@/hooks/useOperatorHooks";
+import { useAlert } from "@/components/providers/AlertProvider";
 
 /**
  * HandoffCard — single row in the operator handoffs list. Reusable so the
@@ -28,12 +31,26 @@ export default function HandoffCard({ handoff, currentUserId }) {
   const incomingName = resolveName(handoff.nextShiftFor);
   const isIncoming = currentUserId && getId(handoff.nextShiftFor) === String(currentUserId);
   const projects = (handoff.projectIds || []).filter((p) => p && typeof p === "object");
+  const isAcknowledged = !!handoff.acknowledgedAt;
+  const canAcknowledge = isIncoming && !isAcknowledged;
+
+  const { showAlert } = useAlert();
+  const acknowledgeMutation = useAcknowledgeShiftHandoff();
+
+  const handleAcknowledge = async () => {
+    try {
+      await acknowledgeMutation.mutateAsync(handoff._id);
+      showAlert("Handoff acknowledged", "success");
+    } catch (err) {
+      showAlert(err?.message || "Failed to acknowledge handoff", "error");
+    }
+  };
 
   return (
     <Card className="border border-gray-200 dark:border-gray-700 hover:shadow-md transition-shadow">
       <CardContent className="p-4 space-y-3">
         <div className="flex items-start justify-between gap-3">
-          <div className="flex items-center gap-2 text-sm">
+          <div className="flex items-center gap-2 text-sm flex-wrap">
             <div className="flex items-center gap-1.5">
               <User className="w-3.5 h-3.5 text-gray-500" />
               <span className="font-medium text-gray-900 dark:text-gray-200">{outgoingName}</span>
@@ -45,6 +62,12 @@ export default function HandoffCard({ handoff, currentUserId }) {
             {isIncoming && (
               <Badge variant="secondary" className="ml-1 text-[10px] h-4 px-1.5">
                 For you
+              </Badge>
+            )}
+            {isAcknowledged && (
+              <Badge className="ml-1 text-[10px] h-4 px-1.5 bg-emerald-100 text-emerald-700 border-emerald-200 hover:bg-emerald-100 dark:bg-emerald-900/40 dark:text-emerald-300">
+                <Check className="w-2.5 h-2.5 mr-0.5" />
+                Acknowledged {formatRelative(handoff.acknowledgedAt)}
               </Badge>
             )}
           </div>
@@ -76,9 +99,48 @@ export default function HandoffCard({ handoff, currentUserId }) {
             ))}
           </div>
         )}
+
+        {canAcknowledge && (
+          <div className="pt-1">
+            <Button
+              type="button"
+              size="sm"
+              onClick={handleAcknowledge}
+              disabled={acknowledgeMutation.isPending}
+              className="bg-emerald-600 hover:bg-emerald-700 text-white"
+            >
+              {acknowledgeMutation.isPending ? (
+                <>
+                  <Loader2 className="w-3.5 h-3.5 mr-1.5 animate-spin" />
+                  Acknowledging…
+                </>
+              ) : (
+                <>
+                  <Check className="w-3.5 h-3.5 mr-1.5" />
+                  Acknowledge handoff
+                </>
+              )}
+            </Button>
+          </div>
+        )}
       </CardContent>
     </Card>
   );
+}
+
+function formatRelative(value) {
+  if (!value) return "";
+  try {
+    const d = new Date(value);
+    const now = new Date();
+    const diffMin = Math.floor((now - d) / 60000);
+    if (diffMin < 1) return "just now";
+    if (diffMin < 60) return `${diffMin}m ago`;
+    if (diffMin < 60 * 24) return `${Math.floor(diffMin / 60)}h ago`;
+    return d.toLocaleDateString();
+  } catch {
+    return "";
+  }
 }
 
 function Stat({ icon: Icon, label, value, tone }) {
