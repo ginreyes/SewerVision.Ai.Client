@@ -689,3 +689,19 @@ export function useQCPersonalDefectTrends(userId, range = '30d', options = {}) {
         ...options,
     });
 }
+
+/**
+ * Personal decision-speed trends for the QC tech. Sibling to
+ * useQCPersonalDefectTrends — same range/auth model but returns daily
+ * speed-bucket counts and p50/p90 estimates instead of defect mix.
+ * Powers the /qc-technician/speed-trends page.
+ */
+export function useQCPersonalSpeedTrends(userId, range = '30d', options = {}) {
+    return useQuery({
+        queryKey: queryKeys.qcPersonalSpeedTrends(userId, range),
+        queryFn: () => qcApi.getPersonalSpeedTrends(userId, range),
+        enabled: !!userId,
+        staleTime: 1000 * 60 * 5,
+        ...options,
+    });
+}

@@ -514,3 +514,101 @@ export function useRejectOvertimeRequest() {
         },
     });
 }
+
+/**
+ * ============ MAY 14 — TEAM-LEAD MODULES ============
+ * Approvals queue, Team Workload, Goal Tracking.
+ */
+
+// ── Approvals queue ──
+export function useApprovalsQueue(status = 'pending', options = {}) {
+    return useQuery({
+        queryKey: queryKeys.userApprovalsQueue(status),
+        queryFn: () => userApi.getApprovalsQueue(status),
+        staleTime: 1000 * 30,
+        ...options,
+    });
+}
+
+function invalidateApprovalsAndOvertime(qc) {
+    qc.invalidateQueries({
+        predicate: (query) =>
+            Array.isArray(query.queryKey) &&
+            query.queryKey[0] === 'user' &&
+            (query.queryKey[1] === 'approvals-queue' ||
+                query.queryKey[1] === 'overtime-requests' ||
+                query.queryKey[1] === 'overtime-summary'),
+    });
+    qc.invalidateQueries({ queryKey: ['overtime', 'approval-queue'] });
+}
+
+export function useApproveApprovalItem() {
+    const qc = useQueryClient();
+    return useMutation({
+        mutationFn: ({ kind, id, reviewNote }) =>
+            userApi.approveApprovalItem(kind, id, reviewNote),
+        onSuccess: () => invalidateApprovalsAndOvertime(qc),
+    });
+}
+
+export function useRejectApprovalItem() {
+    const qc = useQueryClient();
+    return useMutation({
+        mutationFn: ({ kind, id, reviewNote }) =>
+            userApi.rejectApprovalItem(kind, id, reviewNote),
+        onSuccess: () => invalidateApprovalsAndOvertime(qc),
+    });
+}
+
+// ── Team workload ──
+export function useTeamWorkload(filters = {}, options = {}) {
+    return useQuery({
+        queryKey: queryKeys.userTeamWorkload(filters),
+        queryFn: () => userApi.getTeamWorkload(filters),
+        staleTime: 1000 * 60,
+        ...options,
+    });
+}
+
+// ── Team goals ──
+export function useTeamGoals(filters = {}, options = {}) {
+    return useQuery({
+        queryKey: queryKeys.userTeamGoals(filters),
+        queryFn: () => userApi.getTeamGoals(filters),
+        staleTime: 1000 * 60,
+        ...options,
+    });
+}
+
+function invalidateTeamGoals(qc) {
+    qc.invalidateQueries({
+        predicate: (query) =>
+            Array.isArray(query.queryKey) &&
+            query.queryKey[0] === 'user' &&
+            query.queryKey[1] === 'team-goals',
+    });
+}
+
+export function useCreateTeamGoal() {
+    const qc = useQueryClient();
+    return useMutation({
+        mutationFn: (payload) => userApi.createTeamGoal(payload),
+        onSuccess: () => invalidateTeamGoals(qc),
+    });
+}
+
+export function useUpdateTeamGoal() {
+    const qc = useQueryClient();
+    return useMutation({
+        mutationFn: ({ id, payload }) => userApi.updateTeamGoal(id, payload),
+        onSuccess: () => invalidateTeamGoals(qc),
+    });
+}
+
+export function useDeleteTeamGoal() {
+    const qc = useQueryClient();
+    return useMutation({
+        mutationFn: (id) => userApi.deleteTeamGoal(id),
+        onSuccess: () => invalidateTeamGoals(qc),
+    });
+}

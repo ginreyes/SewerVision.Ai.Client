@@ -48,9 +48,8 @@ const INITIAL_FORM = {
 
 /**
  * ReportIssueModal — operator-facing form for logging a new equipment
- * issue. Frontend-only for May 13 — the submit calls the provided
- * onCreate callback (page-level handler stages the issue into local
- * state). Backend wiring lands May 14.
+ * issue. Submits via the onCreate callback, which the page wires up to
+ * the TanStack create-mutation against POST /api/maintenance/equipment-issues.
  */
 export default function ReportIssueModal({ open, onOpenChange, onCreate, devices = [] }) {
   const { showAlert } = useAlert();
@@ -101,8 +100,7 @@ export default function ReportIssueModal({ open, onOpenChange, onCreate, devices
         <DialogHeader>
           <DialogTitle>Report equipment issue</DialogTitle>
           <DialogDescription>
-            Log a problem with field gear so maintenance can pick it up. Stored
-            locally for now — submitted to the back-office on May 14.
+            Log a problem with field gear so maintenance can pick it up.
           </DialogDescription>
         </DialogHeader>
 

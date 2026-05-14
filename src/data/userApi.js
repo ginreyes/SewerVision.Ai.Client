@@ -432,6 +432,73 @@ export const userApi = {
         if (!response.ok) throw new Error(response.data?.message || 'Failed to fetch approval queue');
         return response.data?.data || [];
     },
+
+    // ─── Approvals queue (May 14) ─────────────────────────────────────────
+    async getApprovalsQueue(status = 'pending') {
+        const params = new URLSearchParams({ status });
+        const response = await api(`/api/user/approvals?${params}`, 'GET');
+        if (!response.ok) throw new Error(response.data?.message || 'Failed to fetch approvals queue');
+        return response.data?.data || { items: [], counts: {} };
+    },
+    async approveApprovalItem(kind, id, reviewNote) {
+        if (!kind || !id) throw new Error('kind and id are required');
+        const response = await api(
+            `/api/user/approvals/${encodeURIComponent(kind)}/${encodeURIComponent(id)}/approve`,
+            'PATCH',
+            reviewNote ? { reviewNote } : undefined,
+        );
+        if (!response.ok) throw new Error(response.data?.message || 'Failed to approve item');
+        return response.data?.data;
+    },
+    async rejectApprovalItem(kind, id, reviewNote) {
+        if (!kind || !id) throw new Error('kind and id are required');
+        const response = await api(
+            `/api/user/approvals/${encodeURIComponent(kind)}/${encodeURIComponent(id)}/reject`,
+            'PATCH',
+            reviewNote ? { reviewNote } : undefined,
+        );
+        if (!response.ok) throw new Error(response.data?.message || 'Failed to reject item');
+        return response.data?.data;
+    },
+
+    // ─── Team workload & capacity (May 14) ────────────────────────────────
+    async getTeamWorkload({ weekOf, overThreshold, underThreshold } = {}) {
+        const params = new URLSearchParams();
+        if (weekOf) params.set('weekOf', weekOf);
+        if (overThreshold != null) params.set('overThreshold', String(overThreshold));
+        if (underThreshold != null) params.set('underThreshold', String(underThreshold));
+        const qs = params.toString();
+        const response = await api(`/api/user/workload${qs ? `?${qs}` : ''}`, 'GET');
+        if (!response.ok) throw new Error(response.data?.message || 'Failed to fetch team workload');
+        return response.data?.data;
+    },
+
+    // ─── Team goals (May 14) ──────────────────────────────────────────────
+    async getTeamGoals({ quarter, status, memberId } = {}) {
+        const params = new URLSearchParams();
+        if (quarter) params.set('quarter', quarter);
+        if (status) params.set('status', status);
+        if (memberId) params.set('memberId', memberId);
+        const qs = params.toString();
+        const response = await api(`/api/user/goals${qs ? `?${qs}` : ''}`, 'GET');
+        if (!response.ok) throw new Error(response.data?.message || 'Failed to fetch goals');
+        return response.data?.data || { goals: [], counts: {} };
+    },
+    async createTeamGoal(payload) {
+        const response = await api('/api/user/goals', 'POST', payload);
+        if (!response.ok) throw new Error(response.data?.message || 'Failed to create goal');
+        return response.data?.data;
+    },
+    async updateTeamGoal(id, payload) {
+        const response = await api(`/api/user/goals/${encodeURIComponent(id)}`, 'PATCH', payload);
+        if (!response.ok) throw new Error(response.data?.message || 'Failed to update goal');
+        return response.data?.data;
+    },
+    async deleteTeamGoal(id) {
+        const response = await api(`/api/user/goals/${encodeURIComponent(id)}`, 'DELETE');
+        if (!response.ok) throw new Error(response.data?.message || 'Failed to delete goal');
+        return response.data;
+    },
 };
 
 export default userApi;

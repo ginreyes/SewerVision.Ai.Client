@@ -475,3 +475,61 @@ export function useAcknowledgeShiftHandoff() {
         },
     });
 }
+
+/**
+ * Equipment Issues — operator-side log of broken field gear that
+ * maintenance picks up. Backend scopes by role: operators see their own,
+ * admin/maintenance sees all. The operatorId arg is only used in the query
+ * key so React Query invalidates per-user when the logged-in user changes.
+ */
+export function useOperatorEquipmentIssues(operatorId, { status } = {}, options = {}) {
+    return useQuery({
+        queryKey: queryKeys.operatorEquipmentIssues(operatorId, { status: status ?? 'all' }),
+        queryFn: () => operatorApi.getEquipmentIssues({ status }),
+        enabled: !!operatorId,
+        staleTime: 1000 * 30,
+        ...options,
+    });
+}
+
+function invalidateEquipmentIssues(queryClient) {
+    queryClient.invalidateQueries({
+        predicate: (query) =>
+            Array.isArray(query.queryKey) &&
+            query.queryKey[0] === 'operator' &&
+            query.queryKey[1] === 'equipment-issues',
+    });
+}
+
+export function useCreateEquipmentIssue() {
+    const queryClient = useQueryClient();
+    return useMutation({
+        mutationFn: (payload) => operatorApi.createEquipmentIssue(payload),
+        onSuccess: () => invalidateEquipmentIssues(queryClient),
+    });
+}
+
+export function useAcknowledgeEquipmentIssue() {
+    const queryClient = useQueryClient();
+    return useMutation({
+        mutationFn: (id) => operatorApi.acknowledgeEquipmentIssue(id),
+        onSuccess: () => invalidateEquipmentIssues(queryClient),
+    });
+}
+
+export function useResolveEquipmentIssue() {
+    const queryClient = useQueryClient();
+    return useMutation({
+        mutationFn: ({ id, resolutionNotes }) =>
+            operatorApi.resolveEquipmentIssue(id, resolutionNotes),
+        onSuccess: () => invalidateEquipmentIssues(queryClient),
+    });
+}
+
+export function useDeleteEquipmentIssue() {
+    const queryClient = useQueryClient();
+    return useMutation({
+        mutationFn: (id) => operatorApi.deleteEquipmentIssue(id),
+        onSuccess: () => invalidateEquipmentIssues(queryClient),
+    });
+}

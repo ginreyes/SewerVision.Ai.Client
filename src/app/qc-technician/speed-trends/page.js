@@ -1,6 +1,6 @@
 "use client";
 
-import React, { useCallback, useMemo, useState } from "react";
+import React, { useCallback, useState } from "react";
 import {
   Gauge,
   Timer,
@@ -14,7 +14,9 @@ import {
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Tabs, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Button } from "@/components/ui/button";
+import { useUser } from "@/components/providers/UserContext";
 import { useAlert } from "@/components/providers/AlertProvider";
+import { useQCPersonalSpeedTrends } from "@/hooks/useQCHooks";
 import { exportToCSV } from "@/lib/csvExport";
 import SpeedDistributionBars from "@/components/qc-technician/speed-trends/SpeedDistributionBars";
 
@@ -24,16 +26,12 @@ import SpeedDistributionBars from "@/components/qc-technician/speed-trends/Speed
  * Sibling to the existing /qc-technician/defect-trends page. Where
  * Defect Trends measures defect MIX over time, this view measures
  * DECISION SPEED: percentile bands, distribution buckets per day, and
- * the fastest / slowest reviews in the range. Pairs naturally with
- * Defect Trends in a "Personal Analytics" mental model — same range
- * tabs, same theme, same export pattern.
+ * the fastest / slowest reviews in the range.
  *
- * MAY 13 SCOPE — frontend only. The hook returns deterministic mock
- * data derived from a seeded range key so the layout is testable. The
- * backend endpoint lands on May 14:
- *   GET /api/qc-analytics/personal-speed-trends?range=7d|30d|90d
- * The response shape used here is the exact shape that endpoint will
- * return — only the data source changes when the API arrives.
+ * Backend (May 14): GET /api/qc-analytics/personal-speed-trends/:userId?range=7d|30d|90d
+ * — aggregates AIDetection.qcReviewedAt - createdAt deltas into daily
+ * bucket counts plus p50/p90 estimates. Non-admin callers see only their
+ * own data (controller silently rewrites :userId).
  */
 
 const RANGES = [
@@ -44,8 +42,9 @@ const RANGES = [
 
 export default function QCReviewSpeedTrendsPage() {
   const [range, setRange] = useState("30d");
+  const { userId } = useUser();
   const { showAlert } = useAlert();
-  const { data, isLoading } = useMockSpeedTrends(range);
+  const { data, isLoading } = useQCPersonalSpeedTrends(userId, range);
 
   const handleExportCsv = useCallback(() => {
     const daily = data?.dailyByBucket || [];
@@ -287,109 +286,3 @@ function formatDuration(seconds) {
   return rm === 0 ? `${h}h` : `${h}h ${rm}m`;
 }
 
-// ─── Mock data hook ─────────────────────────────────────────────────────
-//
-// Returns deterministic-feeling data shaped exactly like the May 14
-// backend endpoint will return. Seeded by `range` so the page renders
-// consistently across re-mounts and the visual scales differ between
-// the 7d / 30d / 90d tabs without being random noise.
-function useMockSpeedTrends(range) {
-  return useMemo(() => {
-    const days = RANGES.find((r) => r.key === range)?.days ?? 30;
-    return { data: buildMockTrends(days), isLoading: false };
-  }, [range]);
-}
-
-function buildMockTrends(days) {
-  // Bucket scale grows with the range so the long view doesn't look
-  // identical to the short one. The numbers are intentionally tame —
-  // a real tech reviews ~30-80 items/day.
-  const baseDaily = Math.max(8, Math.round(40 - days * 0.15));
-
-  const dailyByBucket = Array.from({ length: days }).map((_, i) => {
-    // Pseudo-randomness keyed by day index so the chart reads cleanly.
-    const seed = i * 7919;
-    const lt30s = Math.max(0, Math.round(baseDaily * 0.42 + sineNoise(seed, 6)));
-    const lt2m = Math.max(0, Math.round(baseDaily * 0.34 + sineNoise(seed + 1, 5)));
-    const lt5m = Math.max(0, Math.round(baseDaily * 0.18 + sineNoise(seed + 2, 4)));
-    const gte5m = Math.max(0, Math.round(baseDaily * 0.06 + sineNoise(seed + 3, 2)));
-    return {
-      dayISO: daysAgo(days - 1 - i),
-      lt30s,
-      lt2m,
-      lt5m,
-      gte5m,
-    };
-  });
-
-  const totalsByBucket = dailyByBucket.reduce(
-    (acc, d) => ({
-      lt30s: acc.lt30s + d.lt30s,
-      lt2m: acc.lt2m + d.lt2m,
-      lt5m: acc.lt5m + d.lt5m,
-      gte5m: acc.gte5m + d.gte5m,
-    }),
-    { lt30s: 0, lt2m: 0, lt5m: 0, gte5m: 0 }
-  );
-
-  const totalReviews =
-    totalsByBucket.lt30s + totalsByBucket.lt2m + totalsByBucket.lt5m + totalsByBucket.gte5m;
-
-  // Median: pick the midpoint of whichever bucket contains the 50% mark.
-  const medianSeconds = estimatePercentileSeconds(totalsByBucket, 0.5);
-  const p90Seconds = estimatePercentileSeconds(totalsByBucket, 0.9);
-  const longTailPct = totalReviews > 0
-    ? Math.round((totalsByBucket.gte5m / totalReviews) * 100)
-    : 0;
-
-  return {
-    range: `${days}d`,
-    totalReviews,
-    medianSeconds,
-    p90Seconds,
-    longTailPct,
-    dailyByBucket,
-    extremes: {
-      fastest: {
-        durationSeconds: 7,
-        defectType: "Crack",
-        decision: "Approved",
-        reviewedAt: daysAgo(Math.floor(days / 3)),
-      },
-      slowest: {
-        durationSeconds: 14 * 60 + 32,
-        defectType: "Root intrusion",
-        decision: "Rejected",
-        reviewedAt: daysAgo(Math.floor(days / 5)),
-      },
-    },
-  };
-}
-
-function sineNoise(seed, amplitude) {
-  // Cheap deterministic wiggle in [-amplitude, amplitude] without a PRNG dep.
-  return Math.sin(seed * 0.91) * amplitude;
-}
-
-function daysAgo(n) {
-  const d = new Date();
-  d.setHours(0, 0, 0, 0);
-  d.setDate(d.getDate() - n);
-  return d.toISOString().slice(0, 10);
-}
-
-// Map bucket counts to a representative seconds value for percentile estimates.
-const BUCKET_MID = { lt30s: 15, lt2m: 75, lt5m: 210, gte5m: 480 };
-
-function estimatePercentileSeconds(totals, pct) {
-  const order = ["lt30s", "lt2m", "lt5m", "gte5m"];
-  const totalReviews = order.reduce((acc, b) => acc + totals[b], 0);
-  if (totalReviews === 0) return 0;
-  let running = 0;
-  const target = totalReviews * pct;
-  for (const b of order) {
-    running += totals[b];
-    if (running >= target) return BUCKET_MID[b];
-  }
-  return BUCKET_MID.gte5m;
-}

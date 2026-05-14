@@ -530,6 +530,21 @@ export const qcApi = {
     if (!response.ok) throw new Error(response.data?.error || 'Failed to fetch personal defect trends');
     return response.data?.data;
   },
+
+  /**
+   * Personal decision-speed trends for the logged-in QC tech. Returns
+   * daily bucket counts (<30s, 30s-2m, 2m-5m, 5m+), p50/p90 estimates,
+   * long-tail percentage, and the fastest/slowest review in the range.
+   * range: '7d' | '30d' | '90d' (defaults to 30d server-side).
+   */
+  async getPersonalSpeedTrends(userId, range = '30d') {
+    const response = await api(
+      `/api/qc-analytics/personal-speed-trends/${userId}?range=${encodeURIComponent(range)}`,
+      'GET'
+    );
+    if (!response.ok) throw new Error(response.data?.error || 'Failed to fetch personal speed trends');
+    return response.data?.data;
+  },
 };
 
 export default qcApi;

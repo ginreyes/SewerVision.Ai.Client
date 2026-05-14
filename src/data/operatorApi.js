@@ -495,6 +495,50 @@ export const operatorApi = {
         if (!response.ok) throw new Error(response.data?.message || 'Failed to acknowledge handoff');
         return response.data?.data;
     },
+
+    // ─── Equipment Issues ─────────────────────────────────────────────────
+    // Operator-side log of broken field gear. Backend scopes by role —
+    // operators see their own; admin/maintenance sees all.
+    async getEquipmentIssues({ status, limit = 100 } = {}) {
+        const params = new URLSearchParams();
+        if (status && status !== 'all') params.append('status', status);
+        if (limit) params.append('limit', String(limit));
+        const qs = params.toString();
+        const response = await api(`/api/maintenance/equipment-issues${qs ? `?${qs}` : ''}`, 'GET');
+        if (!response.ok) throw new Error(response.data?.message || 'Failed to fetch equipment issues');
+        return response.data?.data ?? [];
+    },
+
+    async createEquipmentIssue(payload) {
+        const response = await api('/api/maintenance/equipment-issues', 'POST', payload);
+        if (!response.ok) throw new Error(response.data?.message || 'Failed to create equipment issue');
+        return response.data?.data;
+    },
+
+    async acknowledgeEquipmentIssue(id) {
+        if (!id) throw new Error('id is required');
+        const response = await api(`/api/maintenance/equipment-issues/${encodeURIComponent(id)}/ack`, 'PATCH');
+        if (!response.ok) throw new Error(response.data?.message || 'Failed to acknowledge issue');
+        return response.data?.data;
+    },
+
+    async resolveEquipmentIssue(id, resolutionNotes) {
+        if (!id) throw new Error('id is required');
+        const response = await api(
+            `/api/maintenance/equipment-issues/${encodeURIComponent(id)}/resolve`,
+            'PATCH',
+            resolutionNotes ? { resolutionNotes } : undefined,
+        );
+        if (!response.ok) throw new Error(response.data?.message || 'Failed to resolve issue');
+        return response.data?.data;
+    },
+
+    async deleteEquipmentIssue(id) {
+        if (!id) throw new Error('id is required');
+        const response = await api(`/api/maintenance/equipment-issues/${encodeURIComponent(id)}`, 'DELETE');
+        if (!response.ok) throw new Error(response.data?.message || 'Failed to delete issue');
+        return response.data;
+    },
 };
 
 export default operatorApi;

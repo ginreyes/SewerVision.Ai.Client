@@ -1,6 +1,6 @@
 "use client";
 
-import React, { useCallback, useMemo, useState, useEffect } from "react";
+import React, { useCallback, useMemo, useState } from "react";
 import {
   Wrench,
   Plus,
@@ -13,7 +13,14 @@ import { Card, CardContent } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Tabs, TabsList, TabsTrigger, TabsContent } from "@/components/ui/tabs";
 import { useUser } from "@/components/providers/UserContext";
-import { useOperatorDevices } from "@/hooks/useQueryHooks";
+import {
+  useOperatorDevices,
+} from "@/hooks/useQueryHooks";
+import {
+  useOperatorEquipmentIssues,
+  useCreateEquipmentIssue,
+  useAcknowledgeEquipmentIssue,
+} from "@/hooks/useOperatorHooks";
 import { useAlert } from "@/components/providers/AlertProvider";
 import {
   EquipmentIssueCard,
@@ -25,101 +32,29 @@ import {
  *
  * Field-side log of broken gear so maintenance knows what to fix without
  * a Slack scrum. Operators tap "Report issue", fill a short form, and
- * see it land in the Open list. Maintenance team picks it up from the
- * back-office (rendered separately, lands May 14).
- *
- * MAY 13 SCOPE — frontend only. The list is seeded with mock data and
- * any new reports live in component state for the session. The
- * persistence + backend wiring lands on May 14:
+ * see it land in the Open list. Backend wired May 14:
  *   - POST  /api/maintenance/equipment-issues          create
- *   - GET   /api/maintenance/equipment-issues          list (operator-scoped)
+ *   - GET   /api/maintenance/equipment-issues          list (role-scoped)
  *   - PATCH /api/maintenance/equipment-issues/:id/ack  acknowledge
+ *   - PATCH /api/maintenance/equipment-issues/:id/resolve
  *
- * The component shape is already laid out for that swap — only the
- * useState seed + the local-mutation handlers need to be replaced with
- * a TanStack mutation + invalidation. The card props match the API
- * shape so EquipmentIssueCard does not need to change.
+ * The card props match the API shape directly so EquipmentIssueCard
+ * doesn't need a translation layer.
  */
-const LOCAL_STORAGE_KEY = "operator-equipment-issues-draft-v1";
-
-const SEED_ISSUES = [
-  {
-    id: "seed-1",
-    deviceName: "CAM-04",
-    category: "camera",
-    severity: "high",
-    status: "open",
-    title: "Lens fogging within 10min of submersion",
-    description:
-      "Started after lunch. Wiped + restarted, still fogs. Pressure-test seal recommended.",
-    reportedAt: hoursAgo(2.5),
-    resolvedAt: null,
-    projectName: "Maple Ave Sewer Inspection",
-  },
-  {
-    id: "seed-2",
-    deviceName: "BAT-12",
-    category: "battery",
-    severity: "medium",
-    status: "acknowledged",
-    title: "Battery drops to 0% from 35% under load",
-    description:
-      "Happens only when recording 4K. Likely a cell — pulled from rotation.",
-    reportedAt: hoursAgo(28),
-    resolvedAt: null,
-    projectName: "Industrial Park Mainline",
-  },
-  {
-    id: "seed-3",
-    deviceName: "CBL-07",
-    category: "cable",
-    severity: "low",
-    status: "resolved",
-    title: "Outer jacket fraying near connector",
-    description:
-      "Replaced with CBL-09 from spares; sent CBL-07 to repair shelf.",
-    reportedAt: hoursAgo(72),
-    resolvedAt: hoursAgo(48),
-    projectName: null,
-  },
-];
-
 export default function OperatorEquipmentIssuesPage() {
   const { userId, userData } = useUser();
   const { showAlert } = useAlert();
   const [modalOpen, setModalOpen] = useState(false);
-  const [issues, setIssues] = useState(SEED_ISSUES);
-  const [hydrated, setHydrated] = useState(false);
 
-  // Hydrate from localStorage so reports survive a tab refresh during
-  // the frontend-only phase. Hydration runs in useEffect to keep SSR/CSR
-  // trees identical (no hydration mismatch on the first paint).
-  useEffect(() => {
-    if (typeof window === "undefined") return;
-    try {
-      const raw = window.localStorage.getItem(LOCAL_STORAGE_KEY);
-      if (raw) {
-        const parsed = JSON.parse(raw);
-        if (Array.isArray(parsed) && parsed.length > 0) {
-          setIssues(parsed);
-        }
-      }
-    } catch {
-      // Corrupt JSON — ignore, fall back to seed.
-    }
-    setHydrated(true);
-  }, []);
+  const {
+    data: rawIssues = [],
+    isLoading,
+    isError,
+    error,
+  } = useOperatorEquipmentIssues(userId);
 
-  // Persist whenever the list mutates (after hydration; before that the
-  // initial render would overwrite anything the user already had).
-  useEffect(() => {
-    if (!hydrated || typeof window === "undefined") return;
-    try {
-      window.localStorage.setItem(LOCAL_STORAGE_KEY, JSON.stringify(issues));
-    } catch {
-      // Quota / private-mode — silently drop.
-    }
-  }, [issues, hydrated]);
+  const createMutation = useCreateEquipmentIssue();
+  const acknowledgeMutation = useAcknowledgeEquipmentIssue();
 
   // Device picker source — feeds the modal's <select>.
   const { data: devicesRaw, isLoading: loadingDevices } = useOperatorDevices(userId);
@@ -131,37 +66,55 @@ export default function OperatorEquipmentIssuesPage() {
     }));
   }, [devicesRaw]);
 
+  // Normalize the API shape onto the EquipmentIssueCard prop contract.
+  // The card already keys off `id`, `deviceName`, `projectName`,
+  // `reportedAt` — we just flatten a couple of populated refs.
+  const issues = useMemo(
+    () =>
+      (rawIssues || []).map((row) => ({
+        id: row._id || row.id,
+        deviceName: row.deviceName || row.deviceId?.name || null,
+        projectName: row.projectId?.name || row.projectName || null,
+        category: row.category,
+        severity: row.severity,
+        status: row.status,
+        title: row.title,
+        description: row.description,
+        reportedAt: row.reportedAt,
+        resolvedAt: row.resolvedAt || null,
+      })),
+    [rawIssues]
+  );
+
   const handleCreate = useCallback(
     async (draft) => {
-      const next = {
-        id: `local-${Date.now()}`,
-        deviceName: draft.deviceName,
-        category: draft.category,
-        severity: draft.severity,
-        status: "open",
-        title: draft.title,
-        description: draft.description,
-        reportedAt: new Date().toISOString(),
-        resolvedAt: null,
-        projectName: null,
-        reportedBy: userData?.username || "operator",
-      };
-      setIssues((prev) => [next, ...prev]);
-      showAlert("Issue logged — saved locally until backend is wired", "success");
+      try {
+        await createMutation.mutateAsync({
+          title: draft.title,
+          category: draft.category,
+          severity: draft.severity,
+          deviceName: draft.deviceName || undefined,
+          description: draft.description || undefined,
+        });
+        showAlert("Issue reported — maintenance will pick it up", "success");
+      } catch (err) {
+        showAlert(err?.message || "Failed to report issue", "error");
+        throw err;
+      }
     },
-    [showAlert, userData]
+    [createMutation, showAlert]
   );
 
   const handleAcknowledge = useCallback(
-    (id) => {
-      setIssues((prev) =>
-        prev.map((issue) =>
-          issue.id === id ? { ...issue, status: "acknowledged" } : issue
-        )
-      );
-      showAlert("Issue acknowledged", "success");
+    async (id) => {
+      try {
+        await acknowledgeMutation.mutateAsync(id);
+        showAlert("Issue acknowledged", "success");
+      } catch (err) {
+        showAlert(err?.message || "Failed to acknowledge issue", "error");
+      }
     },
-    [showAlert]
+    [acknowledgeMutation, showAlert]
   );
 
   const open = useMemo(() => issues.filter((i) => i.status === "open"), [issues]);
@@ -177,42 +130,58 @@ export default function OperatorEquipmentIssuesPage() {
   return (
     <div className="min-h-screen">
       <div className="max-w-5xl mx-auto p-6 space-y-6">
-        <Header onReport={() => setModalOpen(true)} loadingDevices={loadingDevices} />
+        <Header
+          onReport={() => setModalOpen(true)}
+          loadingDevices={loadingDevices}
+          username={userData?.username}
+        />
 
         <SummaryCards
           openCount={open.length}
           activeCount={active.length}
           resolvedCount={resolved.length}
+          loading={isLoading}
         />
 
-        <Tabs defaultValue="open" className="space-y-4">
-          <TabsList className="grid grid-cols-3 w-fit">
-            <TabsTrigger value="open">Open ({open.length})</TabsTrigger>
-            <TabsTrigger value="active">Active ({active.length})</TabsTrigger>
-            <TabsTrigger value="resolved">Resolved ({resolved.length})</TabsTrigger>
-          </TabsList>
+        {isError ? (
+          <Card className="border-rose-200 dark:border-rose-900/40">
+            <CardContent className="py-6 text-sm text-rose-700 dark:text-rose-300">
+              Failed to load equipment issues — {error?.message || "unknown error"}.
+            </CardContent>
+          </Card>
+        ) : (
+          <Tabs defaultValue="open" className="space-y-4">
+            <TabsList className="grid grid-cols-3 w-fit">
+              <TabsTrigger value="open">Open ({open.length})</TabsTrigger>
+              <TabsTrigger value="active">Active ({active.length})</TabsTrigger>
+              <TabsTrigger value="resolved">Resolved ({resolved.length})</TabsTrigger>
+            </TabsList>
 
-          <TabsContent value="open">
-            <IssueList
-              list={open}
-              emptyHint="Nothing open — nice clean kit."
-              onAcknowledge={handleAcknowledge}
-            />
-          </TabsContent>
-          <TabsContent value="active">
-            <IssueList
-              list={active}
-              emptyHint="No active issues — everything is either fresh or resolved."
-              onAcknowledge={handleAcknowledge}
-            />
-          </TabsContent>
-          <TabsContent value="resolved">
-            <IssueList
-              list={resolved}
-              emptyHint="No resolved issues yet — fixes show up here once maintenance closes them out."
-            />
-          </TabsContent>
-        </Tabs>
+            <TabsContent value="open">
+              <IssueList
+                list={open}
+                loading={isLoading}
+                emptyHint="Nothing open — nice clean kit."
+                onAcknowledge={handleAcknowledge}
+              />
+            </TabsContent>
+            <TabsContent value="active">
+              <IssueList
+                list={active}
+                loading={isLoading}
+                emptyHint="No active issues — everything is either fresh or resolved."
+                onAcknowledge={handleAcknowledge}
+              />
+            </TabsContent>
+            <TabsContent value="resolved">
+              <IssueList
+                list={resolved}
+                loading={isLoading}
+                emptyHint="No resolved issues yet — fixes show up here once maintenance closes them out."
+              />
+            </TabsContent>
+          </Tabs>
+        )}
       </div>
 
       <ReportIssueModal
@@ -257,7 +226,7 @@ function Header({ onReport, loadingDevices }) {
   );
 }
 
-function SummaryCards({ openCount, activeCount, resolvedCount }) {
+function SummaryCards({ openCount, activeCount, resolvedCount, loading }) {
   const cards = [
     {
       icon: AlertTriangle,
@@ -288,7 +257,11 @@ function SummaryCards({ openCount, activeCount, resolvedCount }) {
             </div>
             <div>
               <div className="text-2xl font-bold tabular-nums text-gray-900 dark:text-gray-100">
-                {value}
+                {loading ? (
+                  <Loader2 className="w-5 h-5 animate-spin text-gray-400" />
+                ) : (
+                  value
+                )}
               </div>
               <div className="text-xs uppercase tracking-wide text-gray-500">
                 {label}
@@ -301,7 +274,17 @@ function SummaryCards({ openCount, activeCount, resolvedCount }) {
   );
 }
 
-function IssueList({ list, emptyHint, onAcknowledge }) {
+function IssueList({ list, emptyHint, onAcknowledge, loading }) {
+  if (loading) {
+    return (
+      <Card className="border-dashed">
+        <CardContent className="py-10 flex items-center justify-center gap-2 text-gray-500">
+          <Loader2 className="w-5 h-5 animate-spin" />
+          <span className="text-sm">Loading issues…</span>
+        </CardContent>
+      </Card>
+    );
+  }
   if (list.length === 0) {
     return (
       <Card className="border-dashed">
@@ -323,9 +306,4 @@ function IssueList({ list, emptyHint, onAcknowledge }) {
       ))}
     </div>
   );
-}
-
-// Helpers — keep the mock data realistic-looking on every render.
-function hoursAgo(hours) {
-  return new Date(Date.now() - hours * 3600 * 1000).toISOString();
 }

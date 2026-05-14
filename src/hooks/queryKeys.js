@@ -111,9 +111,11 @@ export const queryKeys = {
     operatorPendingSyncs: (operatorId) => ['operator', 'pending-syncs', operatorId],
     operatorOfflineStats: (operatorId) => ['operator', 'offline-stats', operatorId],
     operatorRecentShiftHandoffs: (operatorId, limit) => ['operator', 'shift-handoffs', operatorId, limit],
+    operatorEquipmentIssues: (operatorId, filters) => ['operator', 'equipment-issues', operatorId, filters ?? {}],
 
     // QC — New Modules
     qcPersonalDefectTrends: (qcId, range) => ['qc', 'personal-defect-trends', qcId, range],
+    qcPersonalSpeedTrends: (qcId, range) => ['qc', 'personal-speed-trends', qcId, range],
 
     // User — New Modules
     userWeekSchedule: (weekStart) => ['user', 'schedule', weekStart],
@@ -136,6 +138,11 @@ export const queryKeys = {
     // Devices (admin)
     devices: (params) => ['devices', params ?? {}],
     device: (deviceId) => ['devices', deviceId],
+
+    // User (Team Lead) — May 14 modules
+    userApprovalsQueue: (status) => ['user', 'approvals-queue', status ?? 'pending'],
+    userTeamWorkload: (filters) => ['user', 'team-workload', filters ?? {}],
+    userTeamGoals: (filters) => ['user', 'team-goals', filters ?? {}],
 
     // User (Team Lead)
     userDashboard: (userId) => ['user', 'dashboard', userId],
