@@ -1,10 +1,708 @@
 
 export const whatsNewData = [
     {
+        id: "v2.5.0",
+        date: "May 11 – 15, 2026",
+        label: "Equipment Issues End-to-End + Team-Lead Modules + Offline Upload Resilience",
+        isNew: true,
+        updates: {
+            admin: [
+                {
+                    type: 'feature',
+                    title: 'Equipment Issues Back-Office Queue',
+                    description: 'New /admin/equipment-issues page consolidating every broken-gear report across operators into one acknowledge-or-resolve queue.',
+                    details: [
+                        'Cross-operator list (operator-scoping silently dropped for admin/maintenance roles)',
+                        'Filter by status (Open / Active / Resolved / All), severity (critical/high/medium/low), category (camera/battery/cable/housing/other)',
+                        'Search across title, operator name, device, project, and description',
+                        'Inline Acknowledge action on open issues, Resolve dialog with optional resolution notes (persisted on the row)',
+                        'Summary cards for Open / Critical active / Total / Resolved with critical pill in the header',
+                        'CSV export of the current filtered view (Title, Severity, Status, Operator, Device, Project, timestamps, resolution notes)',
+                        'New AdminSidebar entry under Management with Wrench icon, RBAC-gated by the admin-equipment-issues security module',
+                    ]
+                },
+                {
+                    type: 'feature',
+                    title: 'Customer Representative Assignment on Projects',
+                    description: 'Admin project edit form gained a "Customer Representative (optional)" Select so reps can be tied to a project at create/edit time.',
+                    details: [
+                        'Customer rep automatically joins the project chat group and the project appears in their dashboard',
+                        'Backend Project model gained a customerRep ObjectId field with index',
+                        'Backfill script extended to provision conversations for customer-rep-only projects',
+                    ]
+                },
+                {
+                    type: 'improvement',
+                    title: 'Database Models Explorer',
+                    description: 'Live introspection across all 63 Mongoose models surfaced under Admin → System Management → Database with a new Schemas section.',
+                    details: [
+                        'Per-model card with fieldCount, documentCount, relationship-count badges and an embedded field table',
+                        'Domain bucketing (Identity, Projects & Pipeline, Field Capture, AI & Detections, QC & Reports, Communications, etc.)',
+                        'Clickable relationship chips that scroll the target model into view',
+                        'Copy TypeScript interface + per-model CSV + Summary CSV across all 63 models for offline review',
+                        '5-minute cache with admin-only refresh endpoint',
+                    ]
+                },
+                {
+                    type: 'improvement',
+                    title: 'AI Model Control Plane',
+                    description: 'AI Model tab rebuilt into a real control surface with model version registry, per-class threshold sliders, and an A/B comparator.',
+                    details: [
+                        'Atomic active-flip via Mongo transaction (two simultaneous activates can\'t double-write)',
+                        'Per-class Confidence Threshold Matrix sliders bound to the active config and saved via PUT',
+                        'A/B Comparator picks two configs and renders a grouped bar chart of kept-detections per class over the last 50-500 detections',
+                        'New AIModelConfig collection with admin-only CRUD and audit events on every mutation',
+                        'Ingest pipeline now reads thresholds from the active config — threshold changes apply without a redeploy',
+                    ]
+                },
+                {
+                    type: 'improvement',
+                    title: 'Bulk Project Actions — Polished Modals',
+                    description: 'Replaced the ugly prompt() bulk-action flow on /admin/project with proper modals plus audit logging.',
+                    details: [
+                        'BulkAssignModal pulls live operators via the shared hook',
+                        'BulkStatusModal exposes all 8 statuses with optional note appended to statusHistory',
+                        'BulkTagModal is a single-input form; tagging fields now declared on the Project model so writes land',
+                        'Fire-and-forget audit logging for every bulk op (archive/delete classified at higher severity)',
+                    ]
+                },
+                {
+                    type: 'feature',
+                    title: 'Project Health Score',
+                    description: 'Composite 0-100 health score (age, AI confidence drift, stuck QC, missing snapshots, SLA breach, ETA) rolled up into a red/amber/green badge on every admin project card.',
+                    details: [
+                        'New GET /api/projects/:id/health endpoint',
+                        'Hover tooltip surfaces the factor breakdown',
+                        'Backed by useProjectHealth TanStack hook with 5-min staleTime',
+                    ]
+                },
+                {
+                    type: 'improvement',
+                    title: 'Devices and Projects ETag/304 Cache',
+                    description: 'Hot list endpoints now ship weak ETag + Cache-Control: private, max-age=30 and honor If-None-Match.',
+                    details: [
+                        'getDevices and getAllProjects return 304 empty-body when client revalidates inside the 30s window',
+                        '~6 widgets polling every 30s collapse to 5/6 round-trips returning 304 within each cache window',
+                    ]
+                },
+                {
+                    type: 'security',
+                    title: 'Announcement Audience Hardening',
+                    description: 'Server-side role allowlist on announcement create AND update closes an authorization hole where a customer-rep could POST/PUT roles=[\'admin\'] directly bypassing the UI gate.',
+                    details: [
+                        'ANNOUNCEMENT_ROLE_ALLOWLIST: admin → all six targetable roles, customer-rep → customer+customer-rep',
+                        'Unknown caller roles get 403 outright',
+                        'Disallowed entries return 403 "Cannot target roles outside your scope: <list>"',
+                    ]
+                },
+            ],
+            operator: [
+                {
+                    type: 'feature',
+                    title: 'Equipment Issues — Field-Side Logger',
+                    description: 'New /operator/equipment-issues page so operators can log broken gear in the field and maintenance picks it up without a Slack scrum.',
+                    details: [
+                        'Report issue modal: Title / Category (camera/battery/cable/housing/other) / Severity (critical/high/medium/low) / Device / Description',
+                        'Severity + status badges on every row, category icon, device + project link, relative reported-at timestamp',
+                        'Open / Active / Resolved tabs with empty-state copy per tab',
+                        'Summary cards: Open / Active / Resolved with role-themed rose-orange accent',
+                        'Backed by EquipmentIssue Mongoose model with compound indexes on operatorId+reportedAt and status+reportedAt',
+                    ]
+                },
+                {
+                    type: 'feature',
+                    title: 'Shift Handoffs',
+                    description: 'New /operator/handoffs page with Incoming / Outgoing / All tabs and an Acknowledge action that clears handoffs from the inbox.',
+                    details: [
+                        'Backend authorization tightened: non-admin callers locked to req.user.id so handoffs are no longer reach-anywhere',
+                        'Incoming-handoff visibility fixed (recent query expanded to operatorId OR nextShiftFor)',
+                        '"Alice → Bob" arrow flow on every card via populated user refs',
+                        'Acknowledge action idempotent — re-ack is a no-op',
+                        'Dashboard "Recent handoffs" widget exposes Acknowledge inline so operators don\'t have to navigate to clear an incoming one',
+                    ]
+                },
+                {
+                    type: 'feature',
+                    title: 'Offline Upload Resilience',
+                    description: 'Chunked uploader with IndexedDB-backed queue survives mid-upload connection drops and resumes automatically on reconnect.',
+                    details: [
+                        'Backend chunked endpoints from scratch (8 MiB chunk cap, 5 GiB total, 2048 chunk ceiling, disk-staged manifest)',
+                        'Service worker intercepts chunk PUTs while offline and persists blobs to IDB, returning a synthetic 202 Accepted',
+                        'queueUpload writes meta + chunks before the first PUT so tab-close mid-upload is resumable',
+                        'Offline-start fallback: if /start itself fails offline, the upload is staged under a local-<uuid> and migrated to a real server id on reconnect',
+                        'UploadSummaryCard surfaces queued / draining / failed counts and a "Resume failed uploads" button',
+                        'window "online" event triggers automatic drain across leftover IDB rows',
+                    ]
+                },
+                {
+                    type: 'feature',
+                    title: 'Device-App Project-Link Picker',
+                    description: 'Replaced the free-text "Project ID" input on the device app with a real <select> populated from /api/devices/:id/projects.',
+                    details: [
+                        'Eliminates typing a UUID into a tablet keyboard mid-job',
+                        'Falls back to the free-text input if the fetch yields nothing — never blocks on a network hiccup',
+                    ]
+                },
+                {
+                    type: 'improvement',
+                    title: 'GPS Auto-Tagging on Observations',
+                    description: 'Observations now auto-capture latitude, longitude, and accuracy from the device. Operator detail page shows a read-only GPS card with an "Open in Google Maps →" deep-link.',
+                    details: [
+                        '4-state chip during capture: idle / capturing / captured / denied / unsupported',
+                        'Accuracy shown in meters',
+                        'Click-to-recapture if the first fix is too coarse',
+                    ]
+                },
+            ],
+            'qc-technician': [
+                {
+                    type: 'feature',
+                    title: 'Personal Defect Trends',
+                    description: 'New /qc-technician/defect-trends page tracking your defect-type mix over 7d/30d/90d ranges with weekly buckets and CSV export.',
+                    details: [
+                        'Aggregates AIDetection.qcReviewedAt scoped to req.user._id with $isoWeek bucketing',
+                        'Top-5 defect types with approved/rejected/avg-confidence breakdown',
+                        'Average reviews per active day',
+                        'Pure-CSS stacked-bar visualization (no chart.js dep)',
+                        'CSV export for management 1:1s: Defect Type, Reviews, Approved, Rejected, Approved %, Avg Confidence',
+                    ]
+                },
+                {
+                    type: 'feature',
+                    title: 'Review Speed Trends',
+                    description: 'New /qc-technician/speed-trends page surfaces decision-time percentiles and daily speed-bucket distribution.',
+                    details: [
+                        'Backend aggregates qcReviewedAt - createdAt deltas via a single $switch projection, pre-filling every day in the range',
+                        'p50 and p90 derived from bucket counts via shared BUCKET_MID mapping',
+                        'SummaryCards: p50/median, p90, long-tail percentage (reviews ≥5min)',
+                        'Stacked daily distribution (under-30s emerald, 30s-2m cyan, 2-5m amber, 5m+ red)',
+                        'Extremes row showing the fastest and slowest review with duration, defect type, decision, and timestamp',
+                        'CSV export: day, under30s, 30s-2m, 2-5m, 5m+, total',
+                    ]
+                },
+                {
+                    type: 'feature',
+                    title: 'QC Bulk Approve/Reject with Undo',
+                    description: 'Multi-select on pending detections + sticky action bar + 5-minute undo window backed by a QCBulkUndoToken collection.',
+                    details: [
+                        'One bulkWrite + one insertMany of QCReviewHistory rows + token creation per bulk action',
+                        'Single-use undo restores the pre-bulk state via bulkWrite and deletes the audit rows that were written',
+                        'BulkUndoToast component with live countdown',
+                        'Mongo TTL index auto-cleans expired tokens',
+                    ]
+                },
+                {
+                    type: 'feature',
+                    title: 'Peer-Review Flag (F-key)',
+                    description: 'Pressing F on a detection writes qcStatus=needs_review and fans out peer-review notifications to other QC techs on the same project.',
+                    details: [
+                        'Admins are notified as fallback if no other QC tech is on the project',
+                        'Pending queue now includes needs_review rows with a distinctive amber "Flagged for second opinion by …" badge',
+                    ]
+                },
+                {
+                    type: 'feature',
+                    title: 'Keyboard Shortcuts Cheat Sheet',
+                    description: 'Pressing ? opens a Dialog with grouped Navigation / Review / General shortcuts.',
+                    details: [
+                        'J/K aliases for ↓/↑ navigation',
+                        'F flags for peer review',
+                        'A/R/Esc/Arrow behavior unchanged',
+                    ]
+                },
+            ],
+            user: [
+                {
+                    type: 'feature',
+                    title: 'Approvals Queue',
+                    description: 'New /user/approvals page surfaces every approvable item routed to the team-lead tier in one place instead of forcing the lead to bounce between per-type pages.',
+                    details: [
+                        'Pulls overtime requests where approverTier=team-lead (future approvable types — time-off, expense claims — plug into the same routes via a kind discriminator)',
+                        'Per-row Approve / Reject actions',
+                        'Summary cards: Pending / Stale > 24h / Total',
+                        'Amber "N pending > 24h" pill when SLA is slipping',
+                    ]
+                },
+                {
+                    type: 'feature',
+                    title: 'Team Workload & Capacity',
+                    description: 'New /user/workload page shows a per-member capacity heatmap aggregating active project assignments and hours-this-week with over/under flags.',
+                    details: [
+                        'Pulls from existing Project (active statuses only) and TimeEntry (ISO-week window starting Monday) collections — no new collection',
+                        'Coloured capacity bar per member (rose=over ≥40h default, amber=under ≤20h default, emerald=ok)',
+                        '3 sample project chips per member',
+                        'Roll-up totals: memberCount, overAllocated, underUtilized, totalHours, totalActiveProjects',
+                    ]
+                },
+                {
+                    type: 'feature',
+                    title: 'Goal Tracking',
+                    description: 'New /user/goals page captures forward-looking quarterly objectives, distinct from the retrospective Performance Reviews page.',
+                    details: [
+                        'TeamGoal model: ownerId + memberId? + title + description? + quarter + status + progress (0-100) + dueDate? + lastUpdate/Note',
+                        'Status-tinted summary cards: Total / On track / At risk / Blocked',
+                        'Inline status Select and progress slider per row — commits via update mutation on change',
+                        'Default quarter resolves to the current YYYY-Qn server-side',
+                    ]
+                },
+                {
+                    type: 'feature',
+                    title: 'Team Analytics + Excel Export',
+                    description: 'New /user/analytics page with KPI strip (team total, operators, qc techs, active projects, completion %), 7-day creation trend, and role-split donut pair.',
+                    details: [
+                        'Sourced from the new useUserTeamAnalyticsMetrics aggregation hook',
+                        'Export to Excel button reusing the shared csvExport helper',
+                        'Unified shared/charts BarChart + DonutRing under a single permissive prop API (replaces 3 duplicated copies that had diverging shapes)',
+                    ]
+                },
+                {
+                    type: 'feature',
+                    title: 'Bulk Team-Member Operations',
+                    description: 'Multi-select on /user/team with bulk role-change, deactivate, activate, resend-invite, and export — same toolbar pattern as the QC bulk-review flow.',
+                    details: [
+                        'Team-lead scope enforced server-side: ids outside the lead\'s managedMembers land in failed[] not mutated',
+                        'Team leads blocked from escalating role to admin/user (only operator/qc-technician allowed)',
+                        'Fixed a pre-existing bug where deactivate/activate were writing a non-existent status field — now sets active: true/false',
+                    ]
+                },
+                {
+                    type: 'feature',
+                    title: 'Bulk Device-Assignment Operations',
+                    description: 'Multi-select on /user/device-assignments with bulk status / unassign / export — destructive delete hidden for team leads (and enforced server-side).',
+                    details: [
+                        'Persisted status filter survives a refresh via localStorage with a strict allowlist',
+                        'Bulk-assign payloads naming people outside the lead\'s team rejected with 403 listing the offending fields',
+                        'Finer 403 copy: distinguishes "you tried to assign yourself outside team" vs "you tried to assign an outsider"',
+                    ]
+                },
+                {
+                    type: 'feature',
+                    title: 'Performance Reviews — At-a-Glance Card',
+                    description: 'New summary row on /user/performance-reviews with KPI tiles (Avg score, On-time %, Cycles, Submissions 30d) plus a 30-day metrics-submissions BarChart.',
+                    details: [
+                        'Sourced from the existing /api/performance-reviews/summary endpoint with client-side fallback',
+                        'Per-member 90-day quality-score sparkline below the Total Reviews tile',
+                        'Empty-state copy for new hires with zero submissions in window',
+                    ]
+                },
+            ],
+            'customer-rep': [
+                {
+                    type: 'feature',
+                    title: 'Announcement Compose',
+                    description: 'New /customer-rep/announcements/compose page lets reps draft announcements scoped to {customer, customer-rep}.',
+                    details: [
+                        'Reuses the shared AnnouncementFormModal with a new allowedRoles prop (admin retains ALL_ROLES default)',
+                        'Pulls assigned-ticket tags via useSupportAssignedTickets and renders them as a tag-filter pill row',
+                        '"Compose for tag" shortcut pre-fills title and body from a ticket',
+                    ]
+                },
+                {
+                    type: 'improvement',
+                    title: 'Canned-Response Library — Mine/Shared/All Filter',
+                    description: 'Templates page gained a Scope filter (Mine/Shared/All, defaults to Mine) so reps default to seeing only their own snippets.',
+                    details: [
+                        'Same Mine/All toggle added above the inline reply composer in TicketDetail',
+                        'Filter is by createdBy === userId so reps don\'t scroll past shared-team templates while replying',
+                    ]
+                },
+                {
+                    type: 'feature',
+                    title: 'My Activity Log',
+                    description: 'New /customer-rep/activity page reuses the ProjectStatusTimeline pattern to render the rep\'s own AuditLog rows.',
+                    details: [
+                        'Backend filters AuditLog by actorId === req.user._id',
+                        'Surfaces every action the rep took — ticket assignments, status changes, deletions',
+                    ]
+                },
+                {
+                    type: 'feature',
+                    title: 'Calendar with Ticket-Linked Callbacks',
+                    description: 'New /customer-rep/calendar page reusing the shared calendar (MonthView/WeekView/DayView) pre-filtered to the rep.',
+                    details: [
+                        'New TicketLinkSelect autocomplete sourced from useSupportAssignedTickets so callbacks can be attached to a specific ticket',
+                        'Event route allowlisted for customer-rep',
+                    ]
+                },
+            ],
+            customer: [
+                {
+                    type: 'feature',
+                    title: 'Project Status History Timeline',
+                    description: 'Status history surfaced on the Timeline tab of every project detail page across admin, user, customer, and customer-rep views with role-themed accents.',
+                },
+                {
+                    type: 'feature',
+                    title: 'Project Metadata Panel',
+                    description: 'Read-only metadata panel now shows ALL fields including shape/material/custom keys instead of just upstream/downstream/remarks.',
+                },
+                {
+                    type: 'improvement',
+                    title: 'Project Priority Filter + Sort',
+                    description: 'Project list pages gained a priority filter and sort (newest/oldest/priority-desc/priority-asc/name-asc/name-desc) with a Mongo aggregation path for priority-weighted sorting.',
+                },
+            ],
+            bugfixes: [
+                {
+                    type: 'bugfix',
+                    title: 'Bell + Rollup Count Alignment',
+                    description: 'Navbar bell badge now reads rollup-aware distinctUnreadCount so a chat-message rollup of ×5 occupies one bell slot instead of five.',
+                    details: [
+                        'Pairs cleanly with the NotificationCenter rollup pill and the per-row ×N badge — bell, list pill, and inline badge all tell the same story',
+                        'Falls back to raw server unreadCount during first paint before notifications load',
+                    ]
+                },
+                {
+                    type: 'bugfix',
+                    title: 'High-Priority Notification Toasts',
+                    description: 'Priority=high notifications now trigger an 8-second toast pop via a new HighPriorityToastBridge that listens for a notification:high CustomEvent.',
+                    details: [
+                        'Bridges AlertProvider showAlert() into NotificationProvider without flipping the provider tree',
+                        'NotificationRow renders rollupCount > 1 as "5 new messages in {project}" with type-aware noun inference',
+                    ]
+                },
+                {
+                    type: 'bugfix',
+                    title: 'Stale-Closure Rollback in Notification Toggles',
+                    description: 'togglePreference on the user notifications page was reading the new state in its catch block during a two-toggles-in-flight scenario, landing the rollback on the wrong toggle\'s value.',
+                    details: [
+                        'Now snapshots the previous state before the optimistic update and restores from the snapshot on failure',
+                    ]
+                },
+                {
+                    type: 'bugfix',
+                    title: 'Status Transition Guards',
+                    description: 'Illegal project-status jumps now return 422 with an explanatory message instead of silently writing an invalid state.',
+                    details: [
+                        'VALID_STATUS_TRANSITIONS map wired into both updateProject and updateProjectStatus',
+                        'Admin override via ?force=true writes a "Forced transition (admin override)" note into statusHistory',
+                        'Fixed updateProjectStatus\'s broken validStatuses list that listed nonexistent enum values',
+                    ]
+                },
+                {
+                    type: 'bugfix',
+                    title: 'Training Notification De-Dupe',
+                    description: 'Training.assignModules was emitting one notification per (user × module) so a user assigned 3 modules in one request got 3 identical pings — deduped via Set so each user gets exactly one notification per assignment batch.',
+                },
+                {
+                    type: 'bugfix',
+                    title: 'Performance Reviews Page Top-Performer Name',
+                    description: 'Page was rendering raw PerformanceMetrics docs into MemberCard which expected a flat shape — added normalizeMetric / build30DayTrend helpers and avatar palette so docs are normalized once into the shape the rest of the page already consumed.',
+                    details: [
+                        'Top performer name now resolves correctly from the populated teamMember',
+                        'Member tiles no longer show undefined name or "-" top performer',
+                    ]
+                },
+            ],
+        }
+    },
+    {
+        id: "v2.4.3",
+        date: "April 28 – May 01, 2026",
+        label: "Real-Time Project Chat Bubble + Notifications Phase C + PWA Foundation",
+        isNew: false,
+        updates: {
+            admin: [
+                {
+                    type: 'improvement',
+                    title: 'PWA Installable',
+                    description: 'Manifest + metadata wired so the app is installable on mobile home screens with proper icon and splash.',
+                    details: [
+                        'public/manifest.json with name/short_name/description/start_url/scope/display=standalone/theme_color',
+                        'Three icon entries: 192/512 + maskable',
+                        'metadata.manifest + applicationName + appleWebApp + icons wired into the app layout',
+                    ]
+                },
+                {
+                    type: 'improvement',
+                    title: 'Hand-Rolled Modals → shadcn Dialog',
+                    description: 'Migrated 12 hand-rolled modals (admin notes detail, project edit upload progress, qc-review lightbox, DetectionCard, training CertificateViewer, ReportPreview, AnalyticsExport, ObservationsPanel delete, and more) to shadcn Dialog with proper Esc / click-outside / open-state wiring.',
+                    details: [
+                        'Pure helpers extracted (printPdf, buildPdfHtml, normalizeConfidence, formatLongDate, buildCertificateHtml, etc.) per ryanmcdermott/clean-code-javascript principles',
+                        'Single-responsibility subcomponents (FormatButton, DeleteObservationDialog, NoteDetailDialog)',
+                        'Upload progress dialog blocks Esc / click-outside until 100% so users can\'t dismiss mid-upload',
+                    ]
+                },
+                {
+                    type: 'improvement',
+                    title: 'Performance + Cleanup Pass',
+                    description: 'Next.js + backend hot paths trimmed.',
+                    details: [
+                        'next.config.mjs gains compiler.removeConsole (strips console.log in prod, keeps error/warn) + optimizePackageImports for lucide-react/date-fns/framer-motion',
+                        'Backend tsconfig gains incremental + tsBuildInfoFile (cold→warm tsc went 6.7s → 2.0s, 70% faster)',
+                        'Parallelized chat-notification fan-out (4 sequential awaits → Promise.all)',
+                        'Bumped 4 hot pollers (project chat 15s→60s, customer chat 15s→60s, admin dashboard 10s→30s, admin uploads 5s→15s)',
+                    ]
+                },
+            ],
+            operator: [
+                {
+                    type: 'feature',
+                    title: 'Messenger-Style Project Chat Bubble',
+                    description: 'Replaced the inline drawer with a floating bottom-right launcher (420×580 panel, slideUp animation) modeled exactly on the customer ChatBubble.',
+                    details: [
+                        '"Chats" and "Projects" tabs in the panel',
+                        'Real-time via Socket.IO — DMs, group chat, reactions, edit, delete, read receipts, @-mentions, pin, reply all live',
+                        'Per-role accent palette (operator=blue) via central getRoleTheme',
+                        'New "Chat" button on every ProjectCard deep-links into the bubble pre-targeted at that project',
+                        'Backend /my-projects endpoint surfaces every project the user is on in any role plus an idempotent /ensure endpoint for one-click conversation provisioning on legacy projects',
+                    ]
+                },
+            ],
+            'qc-technician': [
+                {
+                    type: 'feature',
+                    title: 'Project Chat Bubble',
+                    description: 'Same Messenger-style bubble mounted in the QC layout with the QC theme (purple accent).',
+                    details: [
+                        'QcChatBridge publishes selectedDetection into the launcher context so the existing detection-aware template-suggest works across the bubble surface',
+                    ]
+                },
+                {
+                    type: 'feature',
+                    title: 'Chat Templates + @-Mentions',
+                    description: 'QC-specific chat templates with detection-aware auto-suggest above the composer plus @-mention autocomplete with keyboard nav.',
+                    details: [
+                        'CannedResponse model gained type discriminator (\'customer\'|\'qc\') + detectionTags',
+                        'Suggest endpoint ranks templates by detectionTags exact match → category match → severity tag match → usageCount (popularity capped so it can\'t outweigh tag relevance)',
+                        'Free-form detection types canonicalized ("Pipe Broken" → "broken_pipes") so templates surface for any matching detection',
+                        '@-mention picker is keyboard-driven (↑/↓ navigate, Enter/Tab select, Esc dismiss)',
+                        '@-mentions render inline as rose-tinted pills in message bodies',
+                    ]
+                },
+            ],
+            user: [
+                {
+                    type: 'feature',
+                    title: 'Project Chat Bubble',
+                    description: 'Same Messenger-style bubble with the user theme (indigo accent).',
+                },
+            ],
+            'customer-rep': [
+                {
+                    type: 'feature',
+                    title: 'Project Chat Group Membership',
+                    description: 'Customer reps are now first-class participants in the project chat group with their own role.',
+                    details: [
+                        'ProjectConversationRole enum extended to include \'customerRep\'',
+                        'ensureProjectConversations wires them in on assignment',
+                        'ProjectChatDrawer mounted on the customer-rep project detail page',
+                    ]
+                },
+            ],
+            customer: [],
+            bugfixes: [
+                {
+                    type: 'feature',
+                    title: 'Notifications Phase C — Full Scope',
+                    description: 'Chat notifications consolidated under a single service with priority, rollup, mute, snooze, and a 4-stage filter pipeline.',
+                    details: [
+                        '4 new chat-* notification types (chat_message / chat_reply / chat_pin / chat_reaction) on top of chat_mention',
+                        'priority (low/normal/high) and rollupCount fields on Notification',
+                        '30-second debounce coalesces chat_message and chat_reaction into a single rollup notification per (user, type, project, conversation)',
+                        '4-stage filter pipeline: per-type pref → per-conversation mute → snooze window (critical types bypass) → debounce',
+                        'NotificationCenter Snooze dropdown: 30min / 1h / 4h / Until tomorrow / Clear',
+                        'Per-conversation mute toggle in the chat bubble header (BellOff/Bell)',
+                        'Pinned-message socket emission so pin/unpin propagates without manual refetch',
+                    ]
+                },
+                {
+                    type: 'feature',
+                    title: 'Pin / Save Messages + Threading + Read Receipts ✓✓',
+                    description: 'Three chat features shipped together: pinned-messages strip at the top of every conversation showing up to 5 most recent pins with click-to-scroll, flat-thread replies (parent rendered as a quoted preview above the reply), and ✓✓ read receipts when every participant\'s lastReadAt is past the message createdAt.',
+                    details: [
+                        'pinned / pinnedAt / pinnedBy fields on ProjectMessage with compound index',
+                        'POST /messages/:id/pin authorized to sender-or-managers',
+                        'replyToMessageId on ProjectMessage with parent validation that walks to root',
+                        'New ReadReceipt component reads lastReadAt cursor + message.readBy[], stable-hashed avatar chips',
+                    ]
+                },
+                {
+                    type: 'feature',
+                    title: 'Slash-Command Template Palette',
+                    description: 'Type / in the composer to open an inline command palette with fuzzy-search across template title + shortcut + body (role-aware library: qc-tech → qc templates, all others → customer).',
+                },
+                {
+                    type: 'bugfix',
+                    title: 'Project-Chat Selection Bugs Fixed',
+                    description: 'Selected-project highlight was visually identical to hover (bg-rose-50 vs hover:bg-rose-50) and activeId carried stale conversation ids when switching projects, so the right pane stayed empty.',
+                },
+                {
+                    type: 'bugfix',
+                    title: 'Customer Projects Page Runtime Error',
+                    description: 'Fixed a stale ReferenceError on /customer/projects line 102: referenced undefined isLoading because the destructure at line 57 used isLoading: loading — renamed the call site.',
+                },
+            ],
+        }
+    },
+    {
+        id: "v2.4.2",
+        date: "May 04 – 08, 2026",
+        label: "Team Ops + Vitest Foundation + Backend Notifications Service Migration",
+        isNew: false,
+        updates: {
+            admin: [
+                {
+                    type: 'improvement',
+                    title: 'Vitest Foundation',
+                    description: 'Backend repo had ZERO tests before this — installed vitest + supertest with v8 coverage, 41 cases now passing in under 1.2s.',
+                    details: [
+                        'New src/utils/deviceScoping.ts (13 cases) + userScoping.ts (14 cases) + projectScoping.ts (14 cases) extract-and-test pattern',
+                        'Replaces the placeholder npm test "echo No tests specified" that had been there since project start',
+                        'Coverage targets src/utils + src/services',
+                    ]
+                },
+                {
+                    type: 'improvement',
+                    title: 'Backend Notifications Service Migration',
+                    description: 'Six backend controllers no longer reference the Notification model directly. Every fan-out now flows through NotificationService.create / createForUsers so prefs / snooze / Socket.IO push apply uniformly.',
+                    details: [
+                        'Migrated: shiftHandoff, qc_technician, projectPipeline, project, support (3 sites), training',
+                        'Only notification.controller.ts itself still touches the raw Notification model (correct — that\'s the canonical CRUD endpoint serving the inbox UI)',
+                        'Migration policy: opportunistic only, never big-bang',
+                    ]
+                },
+                {
+                    type: 'improvement',
+                    title: 'Charts Unification',
+                    description: 'BarChart and DonutRing were duplicated 3× with diverging prop signatures across admin, customer-rep, qc-technician — unified under components/shared/charts/ with one permissive prop API.',
+                    details: [
+                        'Backwards-compatible with both the admin raw-array shape and the customer-rep {label,value}[] shape',
+                        'admin/analytics/BarChart.js and DonutRing.js converted to one-line re-exports so existing imports keep working',
+                    ]
+                },
+                {
+                    type: 'improvement',
+                    title: 'Architecture Audit Documented',
+                    description: 'Mapped current Concertina topology (70+ controllers, 65+ models, 60+ routes, 7 roles) and captured recommendations for incremental application.',
+                    details: [
+                        'Renamed notificationApi .js → notificationApi.js (trailing-space cross-platform footgun)',
+                        'Identified backend controllers/ as flat with 70+ files and no domain folders — recommended grouping into project/, qc/, operator/, customer-support/, system/, auth/ when next touching each file',
+                    ]
+                },
+            ],
+            operator: [
+                {
+                    type: 'feature',
+                    title: 'Offline Upload — Service Worker + IDB Foundation',
+                    description: 'Service worker registration (operator role only, scope=/api/uploads/) plus IndexedDB schema for the upload queue.',
+                    details: [
+                        'public/sw-uploads.js with install/activate handlers, skipWaiting, clients.claim, GET_VERSION handshake',
+                        'src/lib/uploadQueue.js with uploadQueue DB v1: uploads (keyPath id, indexes by_createdAt + by_status) + chunks (keyPath composite "<uploadId>:<chunkIndex>", index by_uploadId)',
+                        'Passthrough fetch handler forwards POST /api/uploads/start and PUT /api/uploads/:id/chunk/:n unchanged with logging so interception can be verified before queueing is enabled',
+                    ]
+                },
+                {
+                    type: 'feature',
+                    title: 'Maintenance Reporting Polish',
+                    description: 'Operator and admin storage stats now sum across both cloud providers; previously only counted one.',
+                },
+            ],
+            'qc-technician': [
+                {
+                    type: 'improvement',
+                    title: 'getMemberMetrics ?days Query Param',
+                    description: 'getMemberMetrics had no limit and no createdAt filter so the per-member 90-day sparkline was pulling all-time history per member-select.',
+                    details: [
+                        'Added optional ?days=<N> query (clamped to 1..3650, omitted preserves full history for other consumers)',
+                        'days value folded into the queryKey so cache doesn\'t collide between consumers',
+                    ]
+                },
+            ],
+            user: [
+                {
+                    type: 'security',
+                    title: 'Team-Lead Bulk Op Scoping',
+                    description: 'Team-lead callers can only act on their own managedMembers — out-of-scope ids land in the failed[] partial-success list rather than being mutated.',
+                    details: [
+                        'Same pattern across bulkUsers, bulkDeviceAction, and bulkProjects',
+                        'Team leads blocked from escalating role to admin/user (only operator/qc-technician allowed)',
+                        'Scoping logic extracted into pure helpers (deviceScoping, userScoping, projectScoping) and unit-tested',
+                    ]
+                },
+            ],
+            'customer-rep': [],
+            customer: [],
+            bugfixes: [],
+        }
+    },
+    {
+        id: "v2.4.1",
+        date: "April 27, 2026",
+        label: "Database Introspection + AI Control Plane + Project Module Overhaul",
+        isNew: false,
+        updates: {
+            admin: [
+                {
+                    type: 'feature',
+                    title: 'Models Explorer',
+                    description: 'Live Mongoose introspection across all 63 registered models surfaced under Admin → System Management → Database with a new Schemas section.',
+                    details: [
+                        'Dynamic eager-loading so introspection works even when a model hasn\'t been touched by any controller in the current process',
+                        '5-minute in-memory cache mirroring the existing db-stats TTL pattern',
+                        'Admin-only POST /api/system-health/models/refresh to invalidate the cache on demand',
+                        '12 domain groupings with declarative regex rules so future models classify automatically',
+                        'Global search across model/field/ref names, domain dropdown filter, expand/collapse-all toggles',
+                        'Per-model "Copy TS" generates a real TypeScript interface (export interface IModelName) with proper enum unions, optional markers, ref comments',
+                        'Per-model + header-level "Summary CSV" exports for offline review',
+                    ]
+                },
+                {
+                    type: 'feature',
+                    title: 'AI Model Control Plane',
+                    description: 'AiModelTab refactored into a real control surface with model version registry, per-class threshold sliders, and an A/B comparator.',
+                    details: [
+                        'New AIModelConfig collection (organizationId, modelVersion, per-class thresholds, isActive, deployedAt/By, accuracySnapshot, notes)',
+                        'Activate button does an atomic active-flip via Mongo transaction (two simultaneous activates can\'t double-write)',
+                        'Per-class Confidence Threshold Matrix for fractures/cracks/broken_pipes/roots/corrosion/blockages',
+                        'A/B Comparator renders grouped-bar Chart.js comparison of kept-detections per class over the last 50-500 detections',
+                        'Type-classifier maps free-form AIDetection.type strings to the 6 canonical class buckets so unmapped types are reported separately rather than silently dropped',
+                    ]
+                },
+                {
+                    type: 'feature',
+                    title: 'AI Model Health Card',
+                    description: 'Full-width ModelHealthCard above the Overview pie chart surfacing detection volume, avg confidence with month-over-month trend arrow, QC approval rate, false-positive rate, week-over-week drift, and the 3 lowest-confidence detection types.',
+                },
+                {
+                    type: 'feature',
+                    title: 'Project Health Score',
+                    description: 'New GET /api/projects/:project_id/health composite-risk-score endpoint scoring 0-100 from age, AI confidence drift vs cached global average, stuck QC, missing snapshots, and SLA breach.',
+                    details: [
+                        'New ProjectHealthBadge in shared ProjectCard header (admin role only): red/amber/green pip with hover tooltip showing factor breakdown',
+                        'Backed by useProjectHealth TanStack hook with 5-min staleTime',
+                    ]
+                },
+                {
+                    type: 'improvement',
+                    title: 'Bulk Project Actions — Polished Modals',
+                    description: 'Replaced the ugly prompt() bulk-action flow with BulkAssignModal / BulkStatusModal / BulkTagModal plus fire-and-forget audit logging on every bulk op.',
+                    details: [
+                        'Project model gained archived/archivedAt/tags fields (bulk archive op was already writing archived without it being declared, so writes were silently dropped)',
+                        'Compound index added: { archived, createdAt }',
+                        'project_bulk_<op> audit events with metadata for ids/payload/succeeded/failed counts',
+                        'Archive and delete classified at higher severity',
+                    ]
+                },
+                {
+                    type: 'bugfix',
+                    title: 'Admin Calendar Dark Mode Contrast',
+                    description: 'Event Filters heading and per-category checkbox labels now have dark variants. Month-view day cells get a #1a2332 fill in dark mode (was transparent and bleeding into the surface) with #243042 hover and brighter #3f4856 cell dividers so day numbers and event chips are legible.',
+                },
+            ],
+            operator: [],
+            'qc-technician': [],
+            user: [],
+            'customer-rep': [],
+            customer: [],
+            bugfixes: [],
+        }
+    },
+    {
         id: "v2.4.0",
         date: "April 23 – 24, 2026",
         label: "Overtime End-to-End + Dual Cloud Storage (B2 + S3) + AI Pipeline Hardening",
-        isNew: true,
+        isNew: false,
         updates: {
             admin: [
                 {

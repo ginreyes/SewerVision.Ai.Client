@@ -123,6 +123,48 @@ export const deleteAlert = async (alertId) => {
     return response;
 };
 
+/**
+ * Equipment Issues — admin / maintenance back-office queue.
+ * Reads the same /api/maintenance/equipment-issues endpoint operators write to,
+ * but with no operatorId scoping (callers with role=admin|maintenance see the full
+ * cross-operator list). Supports optional ?status=, ?operatorId=, ?limit=.
+ */
+export const listAdminEquipmentIssues = async ({ status, operatorId, limit = 200 } = {}) => {
+    const params = new URLSearchParams();
+    if (status && status !== 'all') params.append('status', status);
+    if (operatorId) params.append('operatorId', operatorId);
+    if (limit) params.append('limit', String(limit));
+    const qs = params.toString();
+    const response = await api(`/api/maintenance/equipment-issues${qs ? `?${qs}` : ''}`, 'GET');
+    if (!response.ok) throw new Error(response.data?.message || 'Failed to fetch equipment issues');
+    return response.data?.data ?? [];
+};
+
+export const acknowledgeEquipmentIssue = async (id) => {
+    if (!id) throw new Error('id is required');
+    const response = await api(`/api/maintenance/equipment-issues/${encodeURIComponent(id)}/ack`, 'PATCH');
+    if (!response.ok) throw new Error(response.data?.message || 'Failed to acknowledge issue');
+    return response.data?.data;
+};
+
+export const resolveEquipmentIssue = async (id, resolutionNotes) => {
+    if (!id) throw new Error('id is required');
+    const response = await api(
+        `/api/maintenance/equipment-issues/${encodeURIComponent(id)}/resolve`,
+        'PATCH',
+        resolutionNotes ? { resolutionNotes } : undefined,
+    );
+    if (!response.ok) throw new Error(response.data?.message || 'Failed to resolve issue');
+    return response.data?.data;
+};
+
+export const deleteEquipmentIssue = async (id) => {
+    if (!id) throw new Error('id is required');
+    const response = await api(`/api/maintenance/equipment-issues/${encodeURIComponent(id)}`, 'DELETE');
+    if (!response.ok) throw new Error(response.data?.message || 'Failed to delete issue');
+    return response.data;
+};
+
 // Export as named object
 export const maintenanceApi = {
     getOverview: getMaintenanceOverview,
@@ -138,6 +180,10 @@ export const maintenanceApi = {
     acknowledgeAlert,
     resolveAlert,
     deleteAlert,
+    listAdminEquipmentIssues,
+    acknowledgeEquipmentIssue,
+    resolveEquipmentIssue,
+    deleteEquipmentIssue,
 };
 
 export default maintenanceApi;

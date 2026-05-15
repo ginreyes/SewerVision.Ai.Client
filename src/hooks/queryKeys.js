@@ -112,6 +112,7 @@ export const queryKeys = {
     operatorOfflineStats: (operatorId) => ['operator', 'offline-stats', operatorId],
     operatorRecentShiftHandoffs: (operatorId, limit) => ['operator', 'shift-handoffs', operatorId, limit],
     operatorEquipmentIssues: (operatorId, filters) => ['operator', 'equipment-issues', operatorId, filters ?? {}],
+    adminEquipmentIssues: (filters) => ['admin', 'equipment-issues', filters ?? {}],
 
     // QC — New Modules
     qcPersonalDefectTrends: (qcId, range) => ['qc', 'personal-defect-trends', qcId, range],
