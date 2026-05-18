@@ -63,7 +63,8 @@ const NotificationPageQCTechnician = () => {
       };
       loadPreferences();
     }
-  }, [userId, fetchNotifications]);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [userId]);
 
   const togglePreference = async (key) => {
     const newPreferences = {

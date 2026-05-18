@@ -55,11 +55,15 @@ const NotificationPageOperator = () => {
     chatReaction: prefsData?.chatReaction ?? false,
   };
 
+  // fetchNotifications is a stable callback from NotificationProvider —
+  // including it in deps would re-trigger the initial fetch on every
+  // pagination state change upstream.
   useEffect(() => {
     if (userId) {
       fetchNotifications(true);
     }
-  }, [userId, fetchNotifications]);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [userId]);
 
   const togglePreference = async (key) => {
     const newPreferences = {

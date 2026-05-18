@@ -257,6 +257,12 @@ function NotificationCenter({
   const isLoading = externalIsLoading ?? providerNotifications?.isLoading ?? false;
   const fetchNotifications = providerNotifications?.fetchNotifications;
   const deleteAllNotifications = providerNotifications?.deleteAllNotifications;
+  // Destructure the mutation methods so handler callbacks depend on stable
+  // function refs instead of the whole provider object (which changes whenever
+  // any field in the notification context updates).
+  const providerMarkAsRead = providerNotifications?.markAsRead;
+  const providerMarkAllAsRead = providerNotifications?.markAllAsRead;
+  const providerDeleteNotification = providerNotifications?.deleteNotification;
 
   const { showAlert } = useAlert();
   const roleColors = buildRoleColors(role);
@@ -303,8 +309,8 @@ function NotificationCenter({
       try {
         if (externalMarkAsRead) {
           await externalMarkAsRead(notificationId);
-        } else if (providerNotifications?.markAsRead) {
-          await providerNotifications.markAsRead(notificationId);
+        } else if (providerMarkAsRead) {
+          await providerMarkAsRead(notificationId);
           showAlert('Notification marked as read', 'success');
         }
       } catch (err) {
@@ -312,30 +318,30 @@ function NotificationCenter({
         showAlert('Failed to mark notification as read', 'error');
       }
     },
-    [externalMarkAsRead, providerNotifications, showAlert]
+    [externalMarkAsRead, providerMarkAsRead, showAlert]
   );
 
   const handleMarkAllAsRead = useCallback(async () => {
     try {
       if (externalMarkAllAsRead) {
         await externalMarkAllAsRead();
-      } else if (providerNotifications?.markAllAsRead) {
-        await providerNotifications.markAllAsRead();
+      } else if (providerMarkAllAsRead) {
+        await providerMarkAllAsRead();
         showAlert('All notifications marked as read', 'success');
       }
     } catch (err) {
       console.error('Error marking all as read:', err);
       showAlert('Failed to mark notifications as read', 'error');
     }
-  }, [externalMarkAllAsRead, providerNotifications, showAlert]);
+  }, [externalMarkAllAsRead, providerMarkAllAsRead, showAlert]);
 
   const handleDelete = useCallback(
     async (notificationId) => {
       try {
         if (externalDelete) {
           await externalDelete(notificationId);
-        } else if (providerNotifications?.deleteNotification) {
-          await providerNotifications.deleteNotification(notificationId);
+        } else if (providerDeleteNotification) {
+          await providerDeleteNotification(notificationId);
           showAlert('Notification deleted', 'success');
         }
       } catch (err) {
@@ -343,7 +349,7 @@ function NotificationCenter({
         showAlert('Failed to delete notification', 'error');
       }
     },
-    [externalDelete, providerNotifications, showAlert]
+    [externalDelete, providerDeleteNotification, showAlert]
   );
 
   const handleDeleteAll = useCallback(async () => {

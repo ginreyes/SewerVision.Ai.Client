@@ -202,6 +202,9 @@ const NotificationPageTeamLeader = () => {
     chatReaction: false,
   });
 
+  // Intentionally omits fetchNotifications from deps — it's a stable callback
+  // from NotificationProvider, and including it would re-trigger the initial
+  // fetch every time pagination changes upstream.
   useEffect(() => {
     if (userId) {
       fetchNotifications(true);
@@ -231,7 +234,8 @@ const NotificationPageTeamLeader = () => {
       };
       loadPreferences();
     }
-  }, [userId, fetchNotifications]);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [userId]);
 
   const togglePreference = async (key) => {
     // Snapshot the previous value BEFORE the optimistic update so the
@@ -550,7 +554,7 @@ const NotificationPageTeamLeader = () => {
               ) : (
                 groupedInbox.map((item, i) => {
                   if (item.type === 'date') {
-                    return <DateSeparator key={`date-${i}`} label={item.label} />;
+                    return <DateSeparator key={`date-${item.label}`} label={item.label} />;
                   }
                   return (
                     <ChatBubble

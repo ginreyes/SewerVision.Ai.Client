@@ -15,6 +15,7 @@ import {
 import { Card, CardContent } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
+import { Checkbox } from "@/components/ui/checkbox";
 
 const SEVERITY_TONES = {
   critical: "bg-red-100 text-red-700 border-red-200 dark:bg-red-900/40 dark:text-red-300",
@@ -38,18 +39,41 @@ const CATEGORY_ICON = {
   other: Wrench,
 };
 
-export default function AdminEquipmentIssueRow({ issue, onAcknowledge, onResolve, busy }) {
+export default function AdminEquipmentIssueRow({
+  issue,
+  onAcknowledge,
+  onResolve,
+  busy,
+  selectable = false,
+  selected = false,
+  onToggleSelect,
+}) {
   const Icon = CATEGORY_ICON[issue.category] || Wrench;
   const sevClass = SEVERITY_TONES[issue.severity] || SEVERITY_TONES.medium;
   const statusClass = STATUS_TONES[issue.status] || STATUS_TONES.open;
   const canAcknowledge = issue.status === "open";
   const canResolve = issue.status !== "resolved";
+  const selectableHere = selectable && (canAcknowledge || canResolve);
 
   return (
-    <Card className="border border-gray-200 dark:border-gray-700 hover:shadow-md transition-shadow">
+    <Card
+      className={`border transition-shadow hover:shadow-md ${
+        selected
+          ? "border-rose-300 dark:border-rose-700 ring-1 ring-rose-200 dark:ring-rose-900/40"
+          : "border-gray-200 dark:border-gray-700"
+      }`}
+    >
       <CardContent className="p-4 space-y-3">
         <div className="flex items-start justify-between gap-3 flex-wrap">
           <div className="flex items-start gap-3 flex-1 min-w-0">
+            {selectableHere ? (
+              <Checkbox
+                checked={selected}
+                onCheckedChange={() => onToggleSelect?.(issue.id)}
+                aria-label={`Select issue ${issue.title}`}
+                className="mt-1.5"
+              />
+            ) : null}
             <div className="p-2 rounded-lg bg-gray-100 dark:bg-gray-800 shrink-0">
               <Icon className="w-5 h-5 text-gray-600 dark:text-gray-300" />
             </div>

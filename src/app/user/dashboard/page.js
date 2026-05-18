@@ -146,14 +146,26 @@ export default function UserDashboardPage() {
     };
   }, [chartReady, teamCounts]);
 
-  const upcomingEvents = [...events]
-    .filter((e) => new Date(e.start_date || e.start) >= new Date())
-    .sort((a, b) => new Date(a.start_date || a.start) - new Date(b.start_date || b.start))
-    .slice(0, 5);
+  // Memoize so the arrays keep referential equality across renders (the
+  // previous code recomputed `new Date()` inline, breaking memo of every
+  // downstream <EventRow> / <ProjectRow> child).
+  const upcomingEvents = useMemo(() => {
+    const now = Date.now();
+    return [...events]
+      .filter((e) => new Date(e.start_date || e.start).getTime() >= now)
+      .sort((a, b) => new Date(a.start_date || a.start) - new Date(b.start_date || b.start))
+      .slice(0, 5);
+  }, [events]);
 
-  const recentProjects = [...projects]
-    .sort((a, b) => new Date(b.createdAt || b.created_at || 0) - new Date(a.createdAt || a.created_at || 0))
-    .slice(0, 5);
+  const recentProjects = useMemo(() => {
+    return [...projects]
+      .sort(
+        (a, b) =>
+          new Date(b.createdAt || b.created_at || 0) -
+          new Date(a.createdAt || a.created_at || 0)
+      )
+      .slice(0, 5);
+  }, [projects]);
 
   if (loading && projects.length === 0 && events.length === 0) {
     return (

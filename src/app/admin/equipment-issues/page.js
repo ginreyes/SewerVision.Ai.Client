@@ -30,6 +30,7 @@ import {
 import {
   AdminEquipmentIssueRow,
   ResolveIssueDialog,
+  BulkActionsBar,
 } from "@/components/admin/equipment-issues";
 import { exportToCSV } from "@/lib/csvExport";
 
@@ -59,13 +60,26 @@ const CATEGORY_FILTERS = [
   { value: "other", label: "Other" },
 ];
 
+const STATUS_FILTERS = [
+  { value: "all", label: "Any status" },
+  { value: "open", label: "Open" },
+  { value: "acknowledged", label: "Acknowledged" },
+  { value: "in_repair", label: "In repair" },
+  { value: "resolved", label: "Resolved" },
+];
+
 export default function AdminEquipmentIssuesPage() {
   const { showAlert } = useAlert();
   const [tab, setTab] = useState("active");
   const [severityFilter, setSeverityFilter] = useState("all");
   const [categoryFilter, setCategoryFilter] = useState("all");
+  const [statusFilter, setStatusFilter] = useState("all");
   const [search, setSearch] = useState("");
   const [resolveTarget, setResolveTarget] = useState(null);
+  // Selection state for bulk actions. Stored as a Set for O(1) membership
+  // checks on every row render; the set itself is replaced (not mutated) on
+  // every change so React/Memo can detect updates.
+  const [selectedIds, setSelectedIds] = useState(() => new Set());
 
   // Pull everything once, filter client-side: lets the user flip tabs / filters
   // without thrashing the backend, and the data volume here is bounded (~hundreds).
@@ -101,6 +115,7 @@ export default function AdminEquipmentIssuesPage() {
     return issues.filter((issue) => {
       if (severityFilter !== "all" && issue.severity !== severityFilter) return false;
       if (categoryFilter !== "all" && issue.category !== categoryFilter) return false;
+      if (statusFilter !== "all" && issue.status !== statusFilter) return false;
       if (term) {
         const hay = [issue.title, issue.operatorName, issue.deviceName, issue.projectName, issue.description]
           .filter(Boolean)
@@ -110,7 +125,7 @@ export default function AdminEquipmentIssuesPage() {
       }
       return true;
     });
-  }, [issues, severityFilter, categoryFilter, search]);
+  }, [issues, severityFilter, categoryFilter, statusFilter, search]);
 
   const tabbed = useMemo(() => {
     const open = filtered.filter((i) => i.status === "open");
@@ -151,6 +166,69 @@ export default function AdminEquipmentIssuesPage() {
     [resolveMutation, showAlert]
   );
 
+  const toggleSelect = useCallback((id) => {
+    setSelectedIds((prev) => {
+      const next = new Set(prev);
+      if (next.has(id)) next.delete(id);
+      else next.add(id);
+      return next;
+    });
+  }, []);
+
+  const clearSelection = useCallback(() => {
+    setSelectedIds(new Set());
+  }, []);
+
+  // Bulk operations dispatch the existing single-row mutations in parallel.
+  // The backend doesn't expose a true bulk endpoint, and the per-row mutation
+  // already handles cache invalidation, so this stays consistent with single-
+  // row behavior. We tolerate partial failure: settle all, then report counts.
+  const runBulk = useCallback(
+    async (ids, op, kind) => {
+      const list = Array.from(ids);
+      if (list.length === 0) return;
+      const results = await Promise.allSettled(list.map(op));
+      const ok = results.filter((r) => r.status === "fulfilled").length;
+      const failed = results.length - ok;
+      if (failed === 0) {
+        showAlert(`${ok} ${kind}`, "success");
+      } else if (ok === 0) {
+        showAlert(`Failed to ${kind} (${failed})`, "error");
+      } else {
+        showAlert(`${ok} ${kind}, ${failed} failed`, "info");
+      }
+      clearSelection();
+    },
+    [showAlert, clearSelection]
+  );
+
+  const handleBulkAcknowledge = useCallback(() => {
+    // Skip issues that aren't in the acknowledgeable state.
+    const eligible = filtered
+      .filter((i) => selectedIds.has(i.id) && i.status === "open")
+      .map((i) => i.id);
+    if (eligible.length === 0) {
+      showAlert("No selected issues are in the open state", "info");
+      return;
+    }
+    runBulk(eligible, (id) => ackMutation.mutateAsync(id), "acknowledged");
+  }, [filtered, selectedIds, ackMutation, runBulk, showAlert]);
+
+  const handleBulkResolve = useCallback(() => {
+    const eligible = filtered
+      .filter((i) => selectedIds.has(i.id) && i.status !== "resolved")
+      .map((i) => i.id);
+    if (eligible.length === 0) {
+      showAlert("No selected issues need resolving", "info");
+      return;
+    }
+    runBulk(
+      eligible,
+      (id) => resolveMutation.mutateAsync({ id, resolutionNotes: "Bulk resolved" }),
+      "resolved"
+    );
+  }, [filtered, selectedIds, resolveMutation, runBulk, showAlert]);
+
   const handleExport = useCallback(() => {
     if (!filtered.length) {
       showAlert("Nothing to export in the current view", "info");
@@ -188,6 +266,16 @@ export default function AdminEquipmentIssuesPage() {
           onSeverity={setSeverityFilter}
           category={categoryFilter}
           onCategory={setCategoryFilter}
+          status={statusFilter}
+          onStatus={setStatusFilter}
+        />
+
+        <BulkActionsBar
+          selectedCount={selectedIds.size}
+          onClear={clearSelection}
+          onBulkAcknowledge={handleBulkAcknowledge}
+          onBulkResolve={handleBulkResolve}
+          busy={busy}
         />
 
         {isError ? (
@@ -212,6 +300,8 @@ export default function AdminEquipmentIssuesPage() {
                 onAcknowledge={handleAcknowledge}
                 onResolve={setResolveTarget}
                 busy={busy}
+                selectedIds={selectedIds}
+                onToggleSelect={toggleSelect}
                 emptyHint="No open issues — every reported failure is in progress or resolved."
               />
             </TabsContent>
@@ -222,6 +312,8 @@ export default function AdminEquipmentIssuesPage() {
                 onAcknowledge={handleAcknowledge}
                 onResolve={setResolveTarget}
                 busy={busy}
+                selectedIds={selectedIds}
+                onToggleSelect={toggleSelect}
                 emptyHint="No active issues. Maintenance queue is clear."
               />
             </TabsContent>
@@ -232,6 +324,8 @@ export default function AdminEquipmentIssuesPage() {
                 onAcknowledge={handleAcknowledge}
                 onResolve={setResolveTarget}
                 busy={busy}
+                selectedIds={selectedIds}
+                onToggleSelect={toggleSelect}
                 emptyHint="No resolved issues yet in the current filter."
               />
             </TabsContent>
@@ -242,6 +336,8 @@ export default function AdminEquipmentIssuesPage() {
                 onAcknowledge={handleAcknowledge}
                 onResolve={setResolveTarget}
                 busy={busy}
+                selectedIds={selectedIds}
+                onToggleSelect={toggleSelect}
                 emptyHint="No issues match the current filter."
               />
             </TabsContent>
@@ -355,7 +451,16 @@ function SummaryCards({ counts, loading }) {
   );
 }
 
-function FilterBar({ search, onSearch, severity, onSeverity, category, onCategory }) {
+function FilterBar({
+  search,
+  onSearch,
+  severity,
+  onSeverity,
+  category,
+  onCategory,
+  status,
+  onStatus,
+}) {
   return (
     <Card className="border-0 shadow-sm">
       <CardContent className="p-3 flex items-center gap-3 flex-wrap">
@@ -392,12 +497,33 @@ function FilterBar({ search, onSearch, severity, onSeverity, category, onCategor
             ))}
           </SelectContent>
         </Select>
+        <Select value={status} onValueChange={onStatus}>
+          <SelectTrigger className="w-[150px] h-9">
+            <SelectValue />
+          </SelectTrigger>
+          <SelectContent>
+            {STATUS_FILTERS.map((opt) => (
+              <SelectItem key={opt.value} value={opt.value}>
+                {opt.label}
+              </SelectItem>
+            ))}
+          </SelectContent>
+        </Select>
       </CardContent>
     </Card>
   );
 }
 
-function IssueList({ list, emptyHint, onAcknowledge, onResolve, busy, loading }) {
+function IssueList({
+  list,
+  emptyHint,
+  onAcknowledge,
+  onResolve,
+  busy,
+  loading,
+  selectedIds,
+  onToggleSelect,
+}) {
   if (loading) {
     return (
       <Card className="border-dashed">
@@ -427,6 +553,9 @@ function IssueList({ list, emptyHint, onAcknowledge, onResolve, busy, loading })
           busy={busy}
           onAcknowledge={onAcknowledge}
           onResolve={onResolve}
+          selectable
+          selected={selectedIds?.has(issue.id)}
+          onToggleSelect={onToggleSelect}
         />
       ))}
     </div>
