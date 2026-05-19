@@ -25,6 +25,8 @@ import {
   queueUpload,
   drain,
   listUploads,
+  listChunks,
+  markChunkUploaded,
   isLocalUploadId,
   newLocalUploadId,
   migrateUploadId,
@@ -62,13 +64,32 @@ function isNetworkError(err) {
 }
 
 /**
+ * Compute SHA-256 of a Blob as lowercase hex. Returns null when WebCrypto
+ * is unavailable (very old browsers, non-secure contexts) — putChunk then
+ * sends the chunk without a Content-SHA256 header and the server skips
+ * verification, matching pre-Day-6 behaviour.
+ */
+async function sha256Hex(blob) {
+  if (typeof crypto === 'undefined' || !crypto.subtle) return null;
+  const buf = await blob.arrayBuffer();
+  const digest = await crypto.subtle.digest('SHA-256', buf);
+  const bytes = new Uint8Array(digest);
+  let hex = '';
+  for (let i = 0; i < bytes.length; i++) {
+    hex += bytes[i].toString(16).padStart(2, '0');
+  }
+  return hex;
+}
+
+/**
  * Adapter that drain() will call once per pending chunk. We return the raw
  * Response so drain() can read .ok and headers.get('ETag') exactly like the
  * Fetch spec — uploadsApi.putChunk already returns one.
  */
 function makePutChunkAdapter({ onProgress, totalBytes, getProgressBase }) {
   return async function putChunk(uploadId, index, blob) {
-    const res = await uploadsApi.putChunk(uploadId, index, blob);
+    const sha256 = await sha256Hex(blob);
+    const res = await uploadsApi.putChunk(uploadId, index, blob, { sha256 });
     if (res?.ok && typeof onProgress === 'function') {
       const bytesDone = getProgressBase() + blob.size;
       getProgressBase(blob.size); // commit
@@ -249,7 +270,10 @@ async function resolveLocalStarts() {
  */
 async function drainAll() {
   const idMap = await resolveLocalStarts();
-  const adapter = async (uploadId, index, blob) => uploadsApi.putChunk(uploadId, index, blob);
+  const adapter = async (uploadId, index, blob) => {
+    const sha256 = await sha256Hex(blob);
+    return uploadsApi.putChunk(uploadId, index, blob, { sha256 });
+  };
   const result = await drain({ putChunk: adapter });
 
   // Anything that just migrated from local-start needs a /complete call
@@ -298,6 +322,55 @@ export async function resumeFailedUploads() {
   const requeued = await requeueFailedUploads();
   const result = await drainAll();
   return { requeued, ...result };
+}
+
+/**
+ * Day 6 — reconcile every locally-queued upload with what the server already
+ * has. On a page reload mid-upload, the IDB chunks store still says "pending"
+ * for chunks the server has actually persisted; without reconciliation
+ * drainAll() would re-PUT those bytes.
+ *
+ * For each non-local upload row:
+ *   1. GET /api/uploads/:id/status → { received: number[], complete }
+ *   2. For every chunk index in `received`, mark the IDB chunk row as
+ *      uploaded (etag stays null; reuse on /complete doesn't need it).
+ *   3. If the server reports `complete`, the next drainAll() will skip the
+ *      upload entirely (no pending chunks) and call /complete itself.
+ *
+ * Returns { reconciled, skipped } counts. Network failures are swallowed —
+ * the next online tick retries.
+ */
+export async function reconcileWithServer() {
+  const all = await listUploads();
+  let reconciled = 0;
+  let skipped = 0;
+  for (const upload of all) {
+    if (isLocalUploadId(upload.id)) {
+      skipped++;
+      continue; // /status requires the server-issued id
+    }
+    try {
+      const status = await uploadsApi.getChunkedUploadStatus(upload.id);
+      const received = Array.isArray(status?.received) ? status.received : [];
+      if (received.length === 0) {
+        skipped++;
+        continue;
+      }
+      const idbChunks = await listChunks(upload.id);
+      const byIndex = new Map(idbChunks.map((c) => [c.index, c]));
+      for (const i of received) {
+        const existing = byIndex.get(i);
+        if (existing && existing.status !== 'uploaded') {
+          await markChunkUploaded(upload.id, i, null);
+        }
+      }
+      reconciled++;
+    } catch {
+      // network / 401 — leave the upload to the next online tick
+      skipped++;
+    }
+  }
+  return { reconciled, skipped };
 }
 
 /**

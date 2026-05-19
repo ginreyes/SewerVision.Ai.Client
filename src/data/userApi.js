@@ -499,6 +499,39 @@ export const userApi = {
         if (!response.ok) throw new Error(response.data?.message || 'Failed to delete goal');
         return response.data;
     },
+
+    // ─── Team training & certifications (May 19) ──────────────────────────
+    async getTrainingRecords({ memberId, status, category, expiringWithin } = {}) {
+        const params = new URLSearchParams();
+        if (memberId) params.set('memberId', memberId);
+        if (status) params.set('status', status);
+        if (category) params.set('category', category);
+        if (expiringWithin != null) params.set('expiringWithin', String(expiringWithin));
+        const qs = params.toString();
+        const response = await api(`/api/user/training${qs ? `?${qs}` : ''}`, 'GET');
+        if (!response.ok) throw new Error(response.data?.message || 'Failed to fetch training records');
+        return response.data?.data || { records: [], counts: {} };
+    },
+    async createTrainingRecord(payload) {
+        const response = await api('/api/user/training', 'POST', payload);
+        if (!response.ok) throw new Error(response.data?.message || 'Failed to create training record');
+        return response.data?.data;
+    },
+    async updateTrainingRecord(id, payload) {
+        const response = await api(`/api/user/training/${encodeURIComponent(id)}`, 'PATCH', payload);
+        if (!response.ok) throw new Error(response.data?.message || 'Failed to update training record');
+        return response.data?.data;
+    },
+    async deleteTrainingRecord(id) {
+        const response = await api(`/api/user/training/${encodeURIComponent(id)}`, 'DELETE');
+        if (!response.ok) throw new Error(response.data?.message || 'Failed to delete training record');
+        return response.data;
+    },
+    async remindTrainingMember(id) {
+        const response = await api(`/api/user/training/${encodeURIComponent(id)}/remind`, 'POST');
+        if (!response.ok) throw new Error(response.data?.message || 'Failed to send reminder');
+        return response.data?.data;
+    },
 };
 
 export default userApi;

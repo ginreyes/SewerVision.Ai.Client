@@ -144,6 +144,7 @@ export const queryKeys = {
     userApprovalsQueue: (status) => ['user', 'approvals-queue', status ?? 'pending'],
     userTeamWorkload: (filters) => ['user', 'team-workload', filters ?? {}],
     userTeamGoals: (filters) => ['user', 'team-goals', filters ?? {}],
+    userTeamTraining: (filters) => ['user', 'team-training', filters ?? {}],
 
     // User (Team Lead)
     userDashboard: (userId) => ['user', 'dashboard', userId],

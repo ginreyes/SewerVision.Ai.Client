@@ -362,20 +362,42 @@ export const uploadsApi = {
    * Content-Type: application/octet-stream so the service-worker offline
    * branch and the express raw-body parser both see a Buffer/Blob.
    *
+   * If `sha256` is provided, attach it as Content-SHA256 — the server (Day 6)
+   * verifies the chunk bytes match and rejects with 422 on a mismatch, so a
+   * truncated/corrupt chunk is detected at PUT time rather than at /complete.
+   *
    * Returns the raw Response so the page-side drain() in uploadQueue.js can
    * inspect status + ETag header (its `putChunk` adapter expects a Response).
    */
-  async putChunk(uploadId, index, blob) {
+  async putChunk(uploadId, index, blob, { sha256 } = {}) {
     const authToken = getCookie('authToken');
+    const headers = {
+      'Content-Type': 'application/octet-stream',
+      ...(authToken ? { Authorization: `Bearer ${authToken}` } : {}),
+    };
+    if (sha256) headers['Content-SHA256'] = sha256;
     return fetch(`${API}/api/uploads/${encodeURIComponent(uploadId)}/chunk/${index}`, {
       method: 'PUT',
       body: blob,
-      headers: {
-        'Content-Type': 'application/octet-stream',
-        ...(authToken ? { Authorization: `Bearer ${authToken}` } : {}),
-      },
+      headers,
       credentials: 'include',
     });
+  },
+
+  /**
+   * Chunked upload: ask the server which chunks it has already persisted for
+   * this uploadId. Used on resume-after-reload (Day 6) so the client skips
+   * re-sending bytes the server already accepted.
+   *
+   * Returns { uploadId, totalChunks, receivedCount, received: number[],
+   * nextMissing: number|null, bytesReceived, sizeBytes, complete }.
+   */
+  async getChunkedUploadStatus(uploadId) {
+    const response = await api(`/api/uploads/${encodeURIComponent(uploadId)}/status`, 'GET');
+    if (!response.ok) {
+      throw new Error(response.data?.message || 'Failed to read chunked upload status');
+    }
+    return response.data.data;
   },
 
   /** Chunked upload: server stitches chunks, creates Upload row, returns it. */

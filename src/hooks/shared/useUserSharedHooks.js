@@ -612,3 +612,54 @@ export function useDeleteTeamGoal() {
         onSuccess: () => invalidateTeamGoals(qc),
     });
 }
+
+// ── Team training & certifications (May 19) ──
+export function useTeamTraining(filters = {}, options = {}) {
+    return useQuery({
+        queryKey: queryKeys.userTeamTraining(filters),
+        queryFn: () => userApi.getTrainingRecords(filters),
+        staleTime: 1000 * 60,
+        ...options,
+    });
+}
+
+function invalidateTeamTraining(qc) {
+    qc.invalidateQueries({
+        predicate: (query) =>
+            Array.isArray(query.queryKey) &&
+            query.queryKey[0] === 'user' &&
+            query.queryKey[1] === 'team-training',
+    });
+}
+
+export function useCreateTrainingRecord() {
+    const qc = useQueryClient();
+    return useMutation({
+        mutationFn: (payload) => userApi.createTrainingRecord(payload),
+        onSuccess: () => invalidateTeamTraining(qc),
+    });
+}
+
+export function useUpdateTrainingRecord() {
+    const qc = useQueryClient();
+    return useMutation({
+        mutationFn: ({ id, payload }) => userApi.updateTrainingRecord(id, payload),
+        onSuccess: () => invalidateTeamTraining(qc),
+    });
+}
+
+export function useDeleteTrainingRecord() {
+    const qc = useQueryClient();
+    return useMutation({
+        mutationFn: (id) => userApi.deleteTrainingRecord(id),
+        onSuccess: () => invalidateTeamTraining(qc),
+    });
+}
+
+export function useRemindTrainingMember() {
+    const qc = useQueryClient();
+    return useMutation({
+        mutationFn: (id) => userApi.remindTrainingMember(id),
+        onSuccess: () => invalidateTeamTraining(qc),
+    });
+}

@@ -21,6 +21,7 @@ import {
   wireGlobalOnlineDrain,
   getQueueSnapshot,
   resumeFailedUploads,
+  reconcileWithServer,
 } from "@/lib/chunkedUploader";
 
 export default function OperatorUploadsPage() {
@@ -99,13 +100,33 @@ export default function OperatorUploadsPage() {
     }
   }, []);
 
+  // Day 6 — reconcile-on-mount: before showing the queue badge, ask the
+  // server which chunks it already persisted for any uploads we kicked
+  // off in a previous session. Without this, a reload mid-upload would
+  // re-PUT bytes the server has already accepted (wasted bandwidth +
+  // an unnecessary chunk hash check). Failures fall through silently;
+  // the queue still renders with the local IDB state.
   useEffect(() => {
     if (typeof window === "undefined") return undefined;
-    refreshQueue();
+    let cancelled = false;
+    (async () => {
+      try {
+        if (navigator.onLine !== false) {
+          await reconcileWithServer();
+        }
+      } catch {
+        // network/auth — leave queue as-is; next online tick retries
+      }
+      if (!cancelled) await refreshQueue();
+    })();
     const unsubscribe = wireGlobalOnlineDrain();
-    const onOnline = () => refreshQueue();
+    const onOnline = async () => {
+      try { await reconcileWithServer(); } catch {}
+      await refreshQueue();
+    };
     window.addEventListener("online", onOnline);
     return () => {
+      cancelled = true;
       window.removeEventListener("online", onOnline);
       unsubscribe?.();
     };

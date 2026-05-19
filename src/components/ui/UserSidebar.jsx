@@ -20,6 +20,7 @@ import {
   CheckSquare,
   Activity,
   Target,
+  GraduationCap,
 } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import ModuleLoading from './SewerVisionLoadingAnimation';
@@ -52,6 +53,7 @@ const UserSidebar = ({ isOpen, role, userRoleMeta }) => {
       '/user/team': 'Team Management',
       '/user/workload': 'Team Workload',
       '/user/goals': 'Goals',
+      '/user/certifications': 'Training & Certifications',
       '/user/device-assignments': 'Device Assignments',
       '/user/inbox': 'Inbox',
       '/user/approvals': 'Approvals',
@@ -85,6 +87,7 @@ const UserSidebar = ({ isOpen, role, userRoleMeta }) => {
         { label: 'Device Assignments', icon: Monitor, path: '/user/device-assignments', module: 'device-assignments' },
         { label: 'Team Workload', icon: Activity, path: '/user/workload', module: 'team-workload' },
         { label: 'Goals', icon: Target, path: '/user/goals', module: 'team-goals' },
+        { label: 'Training & Certifications', icon: GraduationCap, path: '/user/certifications', module: 'team-training' },
       ],
     },
     {
