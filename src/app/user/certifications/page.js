@@ -366,7 +366,7 @@ function RecordRow({ record, onStatusChange, onDelete, onRemind, reminding }) {
               </Button>
             ) : null}
             <Select
-              value={record.status}
+              value={derived}
               onValueChange={(v) => onStatusChange(record._id, v)}
             >
               <SelectTrigger className="w-[120px] h-8 text-xs">

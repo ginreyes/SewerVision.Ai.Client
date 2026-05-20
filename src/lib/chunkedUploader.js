@@ -82,14 +82,34 @@ async function sha256Hex(blob) {
 }
 
 /**
+ * Day 7 — PUT one chunk with a single auto-retry on a 422 (chunk hash mismatch
+ * detected by the server). A 422 means bytes were corrupted in transit and the
+ * disk write was rejected, so the safe path is to re-compute the hash and PUT
+ * again before failing the upload. We retry exactly once: corrupting twice in
+ * a row is a signal that the source blob itself is bad (a faulty read on the
+ * input File), and looping forever would just stall the queue. The optional
+ * onHashMismatch callback lets the UI surface "chunk N corrupted in transit"
+ * without us having to re-plumb the error path.
+ */
+async function putChunkOnce(uploadId, index, blob, { onHashMismatch } = {}) {
+  let sha256 = await sha256Hex(blob);
+  let res = await uploadsApi.putChunk(uploadId, index, blob, { sha256 });
+  if (res?.status === 422) {
+    onHashMismatch?.({ uploadId, index });
+    sha256 = await sha256Hex(blob); // re-read the blob bytes from disk
+    res = await uploadsApi.putChunk(uploadId, index, blob, { sha256 });
+  }
+  return res;
+}
+
+/**
  * Adapter that drain() will call once per pending chunk. We return the raw
  * Response so drain() can read .ok and headers.get('ETag') exactly like the
  * Fetch spec — uploadsApi.putChunk already returns one.
  */
-function makePutChunkAdapter({ onProgress, totalBytes, getProgressBase }) {
+function makePutChunkAdapter({ onProgress, totalBytes, getProgressBase, onHashMismatch }) {
   return async function putChunk(uploadId, index, blob) {
-    const sha256 = await sha256Hex(blob);
-    const res = await uploadsApi.putChunk(uploadId, index, blob, { sha256 });
+    const res = await putChunkOnce(uploadId, index, blob, { onHashMismatch });
     if (res?.ok && typeof onProgress === 'function') {
       const bytesDone = getProgressBase() + blob.size;
       getProgressBase(blob.size); // commit
@@ -131,7 +151,7 @@ async function queueUploadOffline(file, meta, chunks) {
  * locally for drain-on-reconnect; throws on a non-recoverable failure
  * (the IDB row is preserved for inspection).
  */
-export async function uploadFileChunked(file, meta, { onProgress, onStatus } = {}) {
+export async function uploadFileChunked(file, meta, { onProgress, onStatus, onHashMismatch } = {}) {
   if (!file || typeof file.size !== 'number') {
     throw new Error('uploadFileChunked: file is required');
   }
@@ -212,7 +232,7 @@ export async function uploadFileChunked(file, meta, { onProgress, onStatus } = {
 
   onStatus?.('draining');
   const result = await drain({
-    putChunk: makePutChunkAdapter({ onProgress, totalBytes: file.size, getProgressBase }),
+    putChunk: makePutChunkAdapter({ onProgress, totalBytes: file.size, getProgressBase, onHashMismatch }),
   });
 
   if (result.failed > 0) {
@@ -268,12 +288,9 @@ async function resolveLocalStarts() {
  * for any rows that originated from an offline start. Used by the
  * online-event handler and the manual Resume action.
  */
-async function drainAll() {
+async function drainAll({ onHashMismatch } = {}) {
   const idMap = await resolveLocalStarts();
-  const adapter = async (uploadId, index, blob) => {
-    const sha256 = await sha256Hex(blob);
-    return uploadsApi.putChunk(uploadId, index, blob, { sha256 });
-  };
+  const adapter = (uploadId, index, blob) => putChunkOnce(uploadId, index, blob, { onHashMismatch });
   const result = await drain({ putChunk: adapter });
 
   // Anything that just migrated from local-start needs a /complete call
@@ -295,16 +312,21 @@ async function drainAll() {
 }
 
 /**
- * Bootstrap-time wiring: registers a window 'online' handler that drains any
- * leftover queued uploads from a previous session. Idempotent — repeated
- * calls return new unsubscribe fns but only one drain runs per 'online'
- * event because IDB transactions serialize. Safe to call from a top-level
- * provider's useEffect.
+ * Bootstrap-time wiring: registers a window 'online' handler that reconciles
+ * with the server FIRST and then drains any leftover queued uploads. The
+ * order matters — without reconcile-then-drain, drain re-PUTs bytes the
+ * server already has (the very thing /status was added to prevent). Safe to
+ * call from a top-level provider's useEffect.
  */
 export function wireGlobalOnlineDrain() {
   if (typeof window === 'undefined') return () => {};
-  const handler = () => {
+  const handler = async () => {
     if (navigator.onLine === false) return;
+    try {
+      await reconcileWithServer();
+    } catch {
+      // network/auth — drain may still pick up something, fall through
+    }
     drainAll().catch(() => {
       // swallow — failures are recorded per-upload via failUpload
     });
@@ -318,14 +340,14 @@ export function wireGlobalOnlineDrain() {
  * to 'queued', then runs the full drainAll cycle (local-start resolution
  * + chunk PUTs + /complete). Returns { requeued, drained, failed }.
  */
-export async function resumeFailedUploads() {
+export async function resumeFailedUploads({ onHashMismatch } = {}) {
   const requeued = await requeueFailedUploads();
-  const result = await drainAll();
+  const result = await drainAll({ onHashMismatch });
   return { requeued, ...result };
 }
 
 /**
- * Day 6 — reconcile every locally-queued upload with what the server already
+ * Day 6/7 — reconcile every locally-queued upload with what the server already
  * has. On a page reload mid-upload, the IDB chunks store still says "pending"
  * for chunks the server has actually persisted; without reconciliation
  * drainAll() would re-PUT those bytes.
@@ -333,18 +355,28 @@ export async function resumeFailedUploads() {
  * For each non-local upload row:
  *   1. GET /api/uploads/:id/status → { received: number[], complete }
  *   2. For every chunk index in `received`, mark the IDB chunk row as
- *      uploaded (etag stays null; reuse on /complete doesn't need it).
- *   3. If the server reports `complete`, the next drainAll() will skip the
- *      upload entirely (no pending chunks) and call /complete itself.
+ *      uploaded.
+ *   3. If the server reports `complete`, also POST /complete so the Upload
+ *      row lands in Mongo — otherwise the row gets deleted from IDB on the
+ *      final markChunkUploaded and the next drainAll() has nothing to /complete
+ *      against (silent stuck-on-disk staging).
  *
- * Returns { reconciled, skipped } counts. Network failures are swallowed —
- * the next online tick retries.
+ * The optional `onProgress` callback fires with { uploadId, total, scanned,
+ * reconciledChunks } so UploadSummaryCard can surface a "Syncing with
+ * server…" badge on mount instead of looking frozen during long reconciles.
+ *
+ * Returns { reconciled, skipped, completed }. Network failures are swallowed
+ * — the next online tick retries.
  */
-export async function reconcileWithServer() {
+export async function reconcileWithServer({ onProgress } = {}) {
   const all = await listUploads();
   let reconciled = 0;
   let skipped = 0;
+  let completed = 0;
+  let scanned = 0;
   for (const upload of all) {
+    scanned++;
+    onProgress?.({ uploadId: upload.id, total: all.length, scanned, reconciledChunks: 0 });
     if (isLocalUploadId(upload.id)) {
       skipped++;
       continue; // /status requires the server-issued id
@@ -358,19 +390,68 @@ export async function reconcileWithServer() {
       }
       const idbChunks = await listChunks(upload.id);
       const byIndex = new Map(idbChunks.map((c) => [c.index, c]));
+      let markedNow = 0;
       for (const i of received) {
         const existing = byIndex.get(i);
         if (existing && existing.status !== 'uploaded') {
           await markChunkUploaded(upload.id, i, null);
+          markedNow++;
+          onProgress?.({ uploadId: upload.id, total: all.length, scanned, reconciledChunks: markedNow });
         }
       }
       reconciled++;
+      // If the server already has every chunk, finalize the Upload row now —
+      // markChunkUploaded() deleted the IDB row when the last chunk landed,
+      // so a later drainAll() would never call /complete for this id.
+      if (status?.complete) {
+        try {
+          await uploadsApi.completeChunkedUpload(upload.id);
+          completed++;
+        } catch {
+          // /complete may race a concurrent caller or 409 if something is
+          // actually off — next online tick will retry via drainAll if the
+          // server still has the staging dir.
+        }
+      }
     } catch {
       // network / 401 — leave the upload to the next online tick
       skipped++;
     }
   }
-  return { reconciled, skipped };
+  return { reconciled, skipped, completed };
+}
+
+/**
+ * Day 8 — list every IDB-queued upload as a row shaped like a server-side
+ * Upload, so UploadHistoryTable can render local + server rows in a single
+ * list. Locally-staged uploads carry an `isLocal: true` flag so the table can
+ * show a "local" badge and skip server-only columns. Status values mirror the
+ * IDB state machine ('queued' | 'draining' | 'failed').
+ */
+export async function listIdbQueueRows() {
+  const all = await listUploads();
+  return all.map((u) => ({
+    _id: u.id,
+    isLocal: true,
+    originalName: u.originalName || 'upload.bin',
+    filename: u.originalName || 'upload.bin',
+    type: classifyMimeForUi(u.mimeType || u.mime),
+    sizeBytes: u.sizeBytes || 0,
+    status: u.status,
+    location: u.location || null,
+    uploadedAt: u.createdAt ? new Date(u.createdAt).toISOString() : null,
+    lastError: u.lastError || null,
+    totalChunks: u.totalChunks || 0,
+  }));
+}
+
+function classifyMimeForUi(mime) {
+  if (!mime) return 'data';
+  if (mime.startsWith('video/')) return 'video';
+  if (mime.startsWith('image/')) return 'image';
+  if (mime === 'application/pdf' || mime.startsWith('text/')) return 'document';
+  if (mime.includes('zip') || mime.includes('tar') || mime.includes('compressed')) return 'archive';
+  return 'data';
 }
 
 /**

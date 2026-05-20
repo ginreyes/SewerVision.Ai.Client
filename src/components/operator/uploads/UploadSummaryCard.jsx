@@ -1,7 +1,7 @@
 "use client";
 
 import React from "react";
-import { CloudUpload, Loader2, AlertTriangle, Inbox, RefreshCw, Play } from "lucide-react";
+import { CloudUpload, Loader2, AlertTriangle, Inbox, RefreshCw, Play, RefreshCcw } from "lucide-react";
 import { Card, CardContent } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { formatFileSize } from "./constants";
@@ -19,6 +19,8 @@ import { formatFileSize } from "./constants";
  *   queue?: { queued: number, draining: number, failed: number, total: number } | null,
  *   onRetryFailed?: () => void,
  *   resuming?: boolean,
+ *   reconcile?: { active: boolean, scanned: number, total: number } | null,
+ *   hashMismatch?: { count: number, lastChunk: number | null } | null,
  * }} props
  */
 export default function UploadSummaryCard({
@@ -31,6 +33,8 @@ export default function UploadSummaryCard({
   queue,
   onRetryFailed,
   resuming = false,
+  reconcile = null,
+  hashMismatch = null,
 }) {
   const totalSize = files.reduce((sum, file) => sum + file.size, 0);
   const queueLines = renderQueueLines(queue);
@@ -43,6 +47,27 @@ export default function UploadSummaryCard({
           <SummaryRow label="Files" value={`${files.length} file${files.length !== 1 ? "s" : ""}`} />
           <SummaryRow label="Total Size" value={formatFileSize(totalSize)} />
         </div>
+
+        {reconcile?.active && (
+          <div className="rounded-md border border-blue-200 bg-blue-50/60 p-3 text-xs flex items-center gap-2 text-blue-800">
+            <RefreshCcw className="w-3.5 h-3.5 animate-spin" />
+            <span className="flex-1">
+              Syncing offline queue with server
+              {reconcile.total > 0 ? ` (${reconcile.scanned}/${reconcile.total})` : "…"}
+            </span>
+          </div>
+        )}
+
+        {hashMismatch && hashMismatch.count > 0 && (
+          <div className="rounded-md border border-rose-200 bg-rose-50/60 p-3 text-xs flex items-start gap-2 text-rose-800">
+            <AlertTriangle className="w-3.5 h-3.5 mt-0.5 shrink-0" />
+            <span className="flex-1">
+              {hashMismatch.count === 1
+                ? `Chunk ${hashMismatch.lastChunk ?? "?"} corrupted in transit — auto-retried.`
+                : `${hashMismatch.count} chunks corrupted in transit — auto-retried; will fail upload if it happens again.`}
+            </span>
+          </div>
+        )}
 
         {queueLines && (
           <div className="rounded-md border border-amber-200 bg-amber-50/60 p-3 text-xs space-y-2">

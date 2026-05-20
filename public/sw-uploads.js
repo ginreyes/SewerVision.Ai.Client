@@ -18,7 +18,7 @@
 // IDB schema MUST stay in lockstep with src/lib/uploadQueue.js — both
 // open uploadQueue v1 with the same store names and indexes.
 
-const SW_VERSION = 'sw-uploads-v0.3.0-day3';
+const SW_VERSION = 'sw-uploads-v0.3.1-day8';
 
 const DB_NAME = 'uploadQueue';
 const DB_VERSION = 1;
@@ -86,32 +86,34 @@ function getRecord(db, storeName, key) {
   });
 }
 
+/**
+ * Persist a chunk into IDB on behalf of the page. Returns true on success,
+ * false when the page hasn't created the uploads row yet — in that case the
+ * caller should NOT synthesise a row, because the SW doesn't know
+ * totalChunks / originalName / mimeType and an orphan row with totalChunks=0
+ * would jam reconcileWithServer() and drain() (both treat 0 as "complete").
+ * Letting the fetch fall through to the network gives the page a real error
+ * it can react to instead of a phantom 202.
+ */
 async function persistChunk(uploadId, index, blob) {
   const db = await openDB();
-  const id = `${uploadId}:${index}`;
-  // Ensure an uploads row exists so drain() can find this chunk.
   const existing = await getRecord(db, STORE_UPLOADS, uploadId);
   if (!existing) {
-    await putRecord(db, STORE_UPLOADS, {
-      id: uploadId,
-      createdAt: Date.now(),
-      status: 'queued',
-      attempts: 0,
-      lastError: null,
-      totalChunks: 0, // unknown from SW context; page-side enqueue would set this
-    });
-  } else if (existing.status !== 'queued') {
+    return false;
+  }
+  if (existing.status !== 'queued') {
     // Re-queue — page may have marked it draining/failed before we went offline.
     await putRecord(db, STORE_UPLOADS, { ...existing, status: 'queued' });
   }
   await putRecord(db, STORE_CHUNKS, {
-    id,
+    id: `${uploadId}:${index}`,
     uploadId,
     index,
     blob,
     etag: null,
     status: 'pending',
   });
+  return true;
 }
 
 function syntheticQueuedResponse() {
@@ -130,8 +132,14 @@ function syntheticQueuedResponse() {
 
 // Match POST /api/uploads/start
 const START_RE = /\/api\/uploads\/start\/?$/;
-// Match PUT /api/uploads/:id/chunk/:n
-const CHUNK_RE = /\/api\/uploads\/([^/]+)\/chunk\/(\d+)\/?$/;
+// Match PUT /api/uploads/:id/chunk/:n. uploadId MUST be 32 hex chars — the
+// server issues these via crypto.randomBytes(16).toString('hex') and the
+// local-id path ('local-<uuid>') is intentionally never sent to the network.
+// Anchoring on the hex shape here prevents the SW from accidentally queueing
+// a chunk against a placeholder/local id if a future code path forgets to
+// migrate before PUTting — the chunk would otherwise persist under an id the
+// server will reject forever.
+const CHUNK_RE = /\/api\/uploads\/([a-f0-9]{32})\/chunk\/(\d+)\/?$/;
 
 self.addEventListener('fetch', (event) => {
   const req = event.request;
@@ -164,7 +172,11 @@ self.addEventListener('fetch', (event) => {
         (async () => {
           try {
             const blob = await req.clone().blob();
-            await persistChunk(uploadId, index, blob);
+            const persisted = await persistChunk(uploadId, index, blob);
+            if (!persisted) {
+              console.warn(`[sw-uploads] no page-side row for ${uploadId} — passthrough`);
+              return fetch(req);
+            }
             return syntheticQueuedResponse();
           } catch (err) {
             console.error('[sw-uploads] queue write failed', err);

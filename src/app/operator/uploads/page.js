@@ -22,6 +22,7 @@ import {
   getQueueSnapshot,
   resumeFailedUploads,
   reconcileWithServer,
+  listIdbQueueRows,
 } from "@/lib/chunkedUploader";
 
 export default function OperatorUploadsPage() {
@@ -100,37 +101,63 @@ export default function OperatorUploadsPage() {
     }
   }, []);
 
-  // Day 6 — reconcile-on-mount: before showing the queue badge, ask the
+  // Day 7 — reconcile-progress + hash-mismatch counter exposed to the
+  // summary card so the operator gets visible feedback during what was
+  // previously a silent on-mount sync.
+  const [reconcileState, setReconcileState] = useState({ active: false, scanned: 0, total: 0 });
+  const [hashMismatch, setHashMismatch] = useState({ count: 0, lastChunk: null });
+
+  // Day 8 — IDB queue rows mirrored into the history table so anything stuck
+  // locally (queued / draining / failed) is visible alongside server uploads.
+  // Refreshed whenever the queue snapshot changes; the table re-renders
+  // automatically because we feed the merged list through useMemo below.
+  const [idbRows, setIdbRows] = useState([]);
+  const refreshIdbRows = useCallback(async () => {
+    try {
+      setIdbRows(await listIdbQueueRows());
+    } catch {
+      setIdbRows([]);
+    }
+  }, []);
+
+  const onReconcileProgress = useCallback(({ total, scanned }) => {
+    setReconcileState({ active: true, scanned, total });
+  }, []);
+  const onHashMismatch = useCallback(({ index }) => {
+    setHashMismatch((prev) => ({ count: prev.count + 1, lastChunk: index }));
+  }, []);
+
+  // Day 6/7 — reconcile-on-mount: before showing the queue badge, ask the
   // server which chunks it already persisted for any uploads we kicked
   // off in a previous session. Without this, a reload mid-upload would
-  // re-PUT bytes the server has already accepted (wasted bandwidth +
-  // an unnecessary chunk hash check). Failures fall through silently;
-  // the queue still renders with the local IDB state.
+  // re-PUT bytes the server has already accepted. The wire fn also
+  // reconciles BEFORE draining on the global 'online' event — so we no
+  // longer install a duplicate online handler that races against it.
   useEffect(() => {
     if (typeof window === "undefined") return undefined;
     let cancelled = false;
     (async () => {
       try {
         if (navigator.onLine !== false) {
-          await reconcileWithServer();
+          setReconcileState({ active: true, scanned: 0, total: 0 });
+          await reconcileWithServer({ onProgress: onReconcileProgress });
         }
       } catch {
         // network/auth — leave queue as-is; next online tick retries
+      } finally {
+        if (!cancelled) {
+          setReconcileState({ active: false, scanned: 0, total: 0 });
+          await refreshQueue();
+      await refreshIdbRows();
+        }
       }
-      if (!cancelled) await refreshQueue();
     })();
     const unsubscribe = wireGlobalOnlineDrain();
-    const onOnline = async () => {
-      try { await reconcileWithServer(); } catch {}
-      await refreshQueue();
-    };
-    window.addEventListener("online", onOnline);
     return () => {
       cancelled = true;
-      window.removeEventListener("online", onOnline);
       unsubscribe?.();
     };
-  }, [refreshQueue]);
+  }, [refreshQueue, refreshIdbRows, onReconcileProgress]);
 
   // Upload handler — one file at a time, chunked, IDB-persisted.
   // Extracted into a per-file helper so the orchestrator loop stays linear
@@ -154,7 +181,7 @@ export default function OperatorUploadsPage() {
             uploadedBy: userId || userData?.username || "operator",
             type: getFileType(file),
           },
-          { onProgress }
+          { onProgress, onHashMismatch }
         );
         // null = deferred (offline-start); upload sits in IDB waiting for
         // connectivity. Mark the row's progress as queued (-2) so the UI
@@ -170,7 +197,7 @@ export default function OperatorUploadsPage() {
         return { ok: false, error };
       }
     },
-    [uploadData.projectId, uploadData.device, uploadData.location, userId, userData]
+    [uploadData.projectId, uploadData.device, uploadData.location, userId, userData, onHashMismatch]
   );
 
   const handleUpload = async () => {
@@ -191,6 +218,7 @@ export default function OperatorUploadsPage() {
         if (!result.ok) failures++;
         else if (result.deferred) deferred++;
         await refreshQueue();
+      await refreshIdbRows();
       }
 
       const successCount = files.length - failures - deferred;
@@ -210,6 +238,7 @@ export default function OperatorUploadsPage() {
           setUploadProgress({});
           setActiveTab("history");
           refreshQueue();
+          refreshIdbRows();
         }, 1500);
       }
     } finally {
@@ -227,7 +256,7 @@ export default function OperatorUploadsPage() {
     }
     setResuming(true);
     try {
-      const { requeued, drained, failed } = await resumeFailedUploads();
+      const { requeued, drained, failed } = await resumeFailedUploads({ onHashMismatch });
       if (drained > 0) {
         showAlert(`Resumed ${drained} upload${drained === 1 ? "" : "s"}`, "success");
       } else if (failed > 0) {
@@ -236,24 +265,30 @@ export default function OperatorUploadsPage() {
         showAlert("Nothing to resume", "info");
       }
       await refreshQueue();
+      await refreshIdbRows();
       refetchUploads();
     } catch (err) {
       showAlert(err?.message || "Resume failed", "error");
     } finally {
       setResuming(false);
     }
-  }, [resuming, showAlert, refreshQueue, refetchUploads]);
+  }, [resuming, showAlert, refreshQueue, refreshIdbRows, refetchUploads, onHashMismatch]);
 
+  // Day 8 — fold IDB-staged uploads in ahead of server rows so anything stuck
+  // locally is visible at the top of the history. Local rows carry the
+  // `isLocal` flag; UploadHistoryTable renders them with a distinct status
+  // tone + a "local" badge so they're not mistaken for server-side rows.
   const filteredUploads = useMemo(() => {
-    if (!searchQuery) return uploads;
+    const merged = [...idbRows, ...uploads];
+    if (!searchQuery) return merged;
     const q = searchQuery.toLowerCase();
-    return uploads.filter(
+    return merged.filter(
       (u) =>
         u.originalName?.toLowerCase().includes(q) ||
         u.filename?.toLowerCase().includes(q) ||
         u.location?.toLowerCase().includes(q)
     );
-  }, [uploads, searchQuery]);
+  }, [idbRows, uploads, searchQuery]);
 
   const completedCount = Object.values(uploadProgress).filter((v) => v === 100).length;
   const selectedProject = projects.find((p) => p._id === uploadData.projectId) || null;
@@ -343,6 +378,8 @@ export default function OperatorUploadsPage() {
                   queue={queueState}
                   onRetryFailed={handleRetryFailed}
                   resuming={resuming}
+                  reconcile={reconcileState}
+                  hashMismatch={hashMismatch}
                 />
               </div>
             </div>
