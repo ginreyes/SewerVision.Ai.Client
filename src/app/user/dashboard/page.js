@@ -21,6 +21,8 @@ import StatsCards from '@/components/user/dashboard/StatsCards';
 import WeeklyDigestWidget from '@/components/user/project/WeeklyDigestWidget';
 import TeamMemberList from '@/components/user/dashboard/TeamMemberList';
 import UserDashboardDetail from '@/components/user/dashboard/UserDashboardDetail';
+import ComplianceSummaryCard from '@/components/user/dashboard/ComplianceSummaryCard';
+import MemberComplianceSidePanel from '@/components/user/dashboard/MemberComplianceSidePanel';
 import { useUserDashboard, useUserTeamMemberDashboard } from '@/hooks/useQueryHooks';
 import { CHART_COLORS } from '@/components/user/constants';
 import { applyChartTheme } from '@/lib/chartTheme';
@@ -38,6 +40,7 @@ export default function UserDashboardPage() {
   const [chartReady, setChartReady] = useState(false);
   const [activeTab, setActiveTab] = useState('overview');
   const [selectedTeamUser, setSelectedTeamUser] = useState(null);
+  const [compliancePanel, setCompliancePanel] = useState({ open: false, memberId: null, memberName: null });
 
   const chartRef = useRef(null);
   const teamChartRef = useRef(null);
@@ -225,6 +228,9 @@ export default function UserDashboardPage() {
               teamList={teamList}
               selectedTeamUser={selectedTeamUser}
               onSelectUser={(user) => setSelectedTeamUser(user)}
+              onViewCompliance={(m) =>
+                setCompliancePanel({ open: true, memberId: m.memberId, memberName: m.memberName })
+              }
             />
             <div className="lg:col-span-2">
               {!selectedTeamUser ? (
@@ -264,6 +270,12 @@ export default function UserDashboardPage() {
           />
 
           <WeeklyDigestWidget managerId={userId} />
+
+          <ComplianceSummaryCard
+            onSelectMember={(m) =>
+              setCompliancePanel({ open: true, memberId: m.memberId, memberName: m.memberName })
+            }
+          />
 
           {/* Charts row */}
           <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
@@ -411,6 +423,15 @@ export default function UserDashboardPage() {
           </Card>
         </>
       )}
+
+      <MemberComplianceSidePanel
+        open={compliancePanel.open}
+        onOpenChange={(open) =>
+          setCompliancePanel((prev) => ({ ...prev, open }))
+        }
+        memberId={compliancePanel.memberId}
+        memberName={compliancePanel.memberName}
+      />
     </div>
   );
 }

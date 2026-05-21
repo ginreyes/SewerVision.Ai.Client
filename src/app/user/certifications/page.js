@@ -10,6 +10,9 @@ import {
   CalendarClock,
   AlertOctagon,
   BellRing,
+  Download,
+  CalendarPlus,
+  BellPlus,
 } from "lucide-react";
 import { Card, CardContent } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
@@ -17,6 +20,7 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
+import { Checkbox } from "@/components/ui/checkbox";
 import {
   Dialog,
   DialogContent,
@@ -39,6 +43,9 @@ import {
   useUpdateTrainingRecord,
   useDeleteTrainingRecord,
   useRemindTrainingMember,
+  useBulkRenewTraining,
+  useBulkRemind,
+  useExportTrainingRecords,
   useUserTeamMembers,
 } from "@/hooks/useSharedHooks";
 
@@ -84,15 +91,44 @@ const STATUS_FILTER_OPTIONS = [
   { value: "pending", label: "Pending" },
 ];
 
+// Category facets share the same list as the create modal — the "all"
+// sentinel here is filter-side only (the backend rejects unknown values).
+const CATEGORY_FILTER_OPTIONS = [
+  { value: "all", label: "All categories" },
+  ...[
+    { value: "safety", label: "Safety" },
+    { value: "qc_certification", label: "QC certification" },
+    { value: "device_certification", label: "Device certification" },
+    { value: "compliance", label: "Compliance" },
+    { value: "onboarding", label: "Onboarding" },
+    { value: "other", label: "Other" },
+  ],
+];
+
+const REMINDER_SCHEDULE_OPTIONS = [
+  { value: "immediate", label: "Immediate (notify members now)" },
+  { value: "daily", label: "Daily until renewed" },
+  { value: "weekly", label: "Weekly until renewed" },
+];
+
 export default function UserCertificationsPage() {
   const { showAlert } = useAlert();
   const [statusFilter, setStatusFilter] = useState("all");
+  const [categoryFilter, setCategoryFilter] = useState("all");
   const [modalOpen, setModalOpen] = useState(false);
+  const [renewModalOpen, setRenewModalOpen] = useState(false);
+  const [remindMenuOpen, setRemindMenuOpen] = useState(false);
+  // Selection is keyed by record _id; the Set is read-only outside the
+  // toggle/clear handlers so React skips re-renders on identity comparison.
+  const [selected, setSelected] = useState(() => new Set());
 
-  const filters = useMemo(
-    () => (statusFilter === "all" ? {} : { status: statusFilter }),
-    [statusFilter]
-  );
+  const filters = useMemo(() => {
+    const f = {};
+    if (statusFilter !== "all") f.status = statusFilter;
+    if (categoryFilter !== "all") f.category = categoryFilter;
+    return f;
+  }, [statusFilter, categoryFilter]);
+
   const { data, isLoading, isError, error } = useTeamTraining(filters);
   const { data: members = [] } = useUserTeamMembers();
 
@@ -100,6 +136,9 @@ export default function UserCertificationsPage() {
   const updateMutation = useUpdateTrainingRecord();
   const deleteMutation = useDeleteTrainingRecord();
   const remindMutation = useRemindTrainingMember();
+  const bulkRenewMutation = useBulkRenewTraining();
+  const bulkRemindMutation = useBulkRemind();
+  const exportMutation = useExportTrainingRecords();
 
   const records = data?.records || [];
   const counts = data?.counts || {
@@ -109,6 +148,31 @@ export default function UserCertificationsPage() {
     expired: 0,
     pending: 0,
   };
+
+  // Drop any selected ids that fell out of the visible set after a filter
+  // change — otherwise the bulk action would target records the user can
+  // no longer see, which is confusing UX and surprising telemetry.
+  const visibleIds = useMemo(() => new Set(records.map((r) => r._id)), [records]);
+  const selectedVisible = useMemo(
+    () => Array.from(selected).filter((id) => visibleIds.has(id)),
+    [selected, visibleIds]
+  );
+  const selectedCount = selectedVisible.length;
+
+  const toggleOne = (id) =>
+    setSelected((prev) => {
+      const next = new Set(prev);
+      if (next.has(id)) next.delete(id);
+      else next.add(id);
+      return next;
+    });
+  const toggleAll = () =>
+    setSelected((prev) => {
+      const allSelected = records.length > 0 && records.every((r) => prev.has(r._id));
+      if (allSelected) return new Set();
+      return new Set(records.map((r) => r._id));
+    });
+  const clearSelection = () => setSelected(new Set());
 
   const handleCreate = async (draft) => {
     try {
@@ -148,28 +212,91 @@ export default function UserCertificationsPage() {
     }
   };
 
+  const handleBulkRenew = async (newExpiryDate) => {
+    if (selectedVisible.length === 0) return;
+    try {
+      const result = await bulkRenewMutation.mutateAsync({
+        recordIds: selectedVisible,
+        newExpiryDate,
+      });
+      showAlert(
+        `Renewed ${result?.renewed ?? selectedVisible.length} record${result?.renewed === 1 ? "" : "s"}`,
+        "success"
+      );
+      setRenewModalOpen(false);
+      clearSelection();
+    } catch (err) {
+      showAlert(err?.message || "Bulk renewal failed", "error");
+    }
+  };
+
+  const handleBulkRemind = async (reminderSchedule) => {
+    if (selectedVisible.length === 0) return;
+    try {
+      const result = await bulkRemindMutation.mutateAsync({
+        recordIds: selectedVisible,
+        reminderSchedule,
+      });
+      const verb = reminderSchedule === "immediate" ? "sent" : "scheduled";
+      showAlert(
+        `${verb === "sent" ? result?.notified ?? selectedVisible.length : result?.scheduled ?? selectedVisible.length} reminder${selectedVisible.length === 1 ? "" : "s"} ${verb}`,
+        "success"
+      );
+      setRemindMenuOpen(false);
+      clearSelection();
+    } catch (err) {
+      showAlert(err?.message || "Bulk reminder failed", "error");
+    }
+  };
+
+  const handleExport = async () => {
+    try {
+      const csv = await exportMutation.mutateAsync(filters);
+      const blob = new Blob([csv], { type: "text/csv;charset=utf-8" });
+      const url = URL.createObjectURL(blob);
+      const a = document.createElement("a");
+      a.href = url;
+      a.download = `training-records-${new Date().toISOString().slice(0, 10)}.csv`;
+      document.body.appendChild(a);
+      a.click();
+      document.body.removeChild(a);
+      URL.revokeObjectURL(url);
+      showAlert("Export downloaded", "success");
+    } catch (err) {
+      showAlert(err?.message || "Export failed", "error");
+    }
+  };
+
+  const allSelectedOnPage =
+    records.length > 0 && records.every((r) => selected.has(r._id));
+
   return (
     <div className="min-h-screen">
       <div className="max-w-5xl mx-auto p-6 space-y-6">
-        <Header onAdd={() => setModalOpen(true)} />
+        <Header
+          onAdd={() => setModalOpen(true)}
+          onExport={handleExport}
+          exporting={exportMutation.isPending}
+        />
 
         <SummaryCards counts={counts} loading={isLoading} />
 
-        <div className="flex items-center gap-2">
-          <Label className="text-xs text-gray-500">Status</Label>
-          <Select value={statusFilter} onValueChange={setStatusFilter}>
-            <SelectTrigger className="w-[150px] h-8 text-xs">
-              <SelectValue />
-            </SelectTrigger>
-            <SelectContent>
-              {STATUS_FILTER_OPTIONS.map((opt) => (
-                <SelectItem key={opt.value} value={opt.value}>
-                  {opt.label}
-                </SelectItem>
-              ))}
-            </SelectContent>
-          </Select>
-        </div>
+        <FilterBar
+          statusFilter={statusFilter}
+          onStatusChange={setStatusFilter}
+          categoryFilter={categoryFilter}
+          onCategoryChange={setCategoryFilter}
+        />
+
+        {selectedCount > 0 && (
+          <BulkActionBar
+            count={selectedCount}
+            onRenew={() => setRenewModalOpen(true)}
+            onRemind={() => setRemindMenuOpen(true)}
+            onClear={clearSelection}
+            busy={bulkRenewMutation.isPending || bulkRemindMutation.isPending}
+          />
+        )}
 
         {isError ? (
           <Card className="border-rose-200 dark:border-rose-900/40">
@@ -195,10 +322,22 @@ export default function UserCertificationsPage() {
           </Card>
         ) : (
           <div className="space-y-3">
+            <div className="flex items-center gap-2 px-1">
+              <Checkbox
+                checked={allSelectedOnPage}
+                onCheckedChange={toggleAll}
+                aria-label="Select all visible"
+              />
+              <span className="text-xs text-gray-500">
+                Select all visible ({records.length})
+              </span>
+            </div>
             {records.map((record) => (
               <RecordRow
                 key={record._id}
                 record={record}
+                selected={selected.has(record._id)}
+                onToggleSelect={() => toggleOne(record._id)}
                 onStatusChange={handleStatusChange}
                 onDelete={handleDelete}
                 onRemind={handleRemind}
@@ -215,11 +354,25 @@ export default function UserCertificationsPage() {
         onCreate={handleCreate}
         members={members}
       />
+      <BulkRenewModal
+        open={renewModalOpen}
+        onOpenChange={setRenewModalOpen}
+        count={selectedCount}
+        onConfirm={handleBulkRenew}
+        busy={bulkRenewMutation.isPending}
+      />
+      <BulkRemindModal
+        open={remindMenuOpen}
+        onOpenChange={setRemindMenuOpen}
+        count={selectedCount}
+        onConfirm={handleBulkRemind}
+        busy={bulkRemindMutation.isPending}
+      />
     </div>
   );
 }
 
-function Header({ onAdd }) {
+function Header({ onAdd, onExport, exporting }) {
   return (
     <div className="flex items-center justify-between flex-wrap gap-4">
       <div className="flex items-center gap-3">
@@ -235,11 +388,100 @@ function Header({ onAdd }) {
           </p>
         </div>
       </div>
-      <Button onClick={onAdd} className="bg-cyan-600 hover:bg-cyan-700 text-white">
-        <Plus className="w-4 h-4 mr-2" />
-        Add record
-      </Button>
+      <div className="flex items-center gap-2">
+        <Button
+          variant="outline"
+          onClick={onExport}
+          disabled={exporting}
+          title="Export filtered records as CSV"
+        >
+          {exporting ? (
+            <Loader2 className="w-4 h-4 mr-2 animate-spin" />
+          ) : (
+            <Download className="w-4 h-4 mr-2" />
+          )}
+          Export
+        </Button>
+        <Button onClick={onAdd} className="bg-cyan-600 hover:bg-cyan-700 text-white">
+          <Plus className="w-4 h-4 mr-2" />
+          Add record
+        </Button>
+      </div>
     </div>
+  );
+}
+
+function FilterBar({ statusFilter, onStatusChange, categoryFilter, onCategoryChange }) {
+  return (
+    <div className="flex items-center gap-3 flex-wrap">
+      <div className="flex items-center gap-2">
+        <Label className="text-xs text-gray-500">Status</Label>
+        <Select value={statusFilter} onValueChange={onStatusChange}>
+          <SelectTrigger className="w-[150px] h-8 text-xs">
+            <SelectValue />
+          </SelectTrigger>
+          <SelectContent>
+            {STATUS_FILTER_OPTIONS.map((opt) => (
+              <SelectItem key={opt.value} value={opt.value}>
+                {opt.label}
+              </SelectItem>
+            ))}
+          </SelectContent>
+        </Select>
+      </div>
+      <div className="flex items-center gap-2">
+        <Label className="text-xs text-gray-500">Category</Label>
+        <Select value={categoryFilter} onValueChange={onCategoryChange}>
+          <SelectTrigger className="w-[180px] h-8 text-xs">
+            <SelectValue />
+          </SelectTrigger>
+          <SelectContent>
+            {CATEGORY_FILTER_OPTIONS.map((opt) => (
+              <SelectItem key={opt.value} value={opt.value}>
+                {opt.label}
+              </SelectItem>
+            ))}
+          </SelectContent>
+        </Select>
+      </div>
+    </div>
+  );
+}
+
+function BulkActionBar({ count, onRenew, onRemind, onClear, busy }) {
+  return (
+    <Card className="border-cyan-200 bg-cyan-50/50 dark:bg-cyan-900/10 dark:border-cyan-900/40">
+      <CardContent className="py-3 px-4 flex items-center gap-3 flex-wrap">
+        <span className="text-sm font-medium text-cyan-900 dark:text-cyan-100">
+          {count} record{count === 1 ? "" : "s"} selected
+        </span>
+        <div className="flex items-center gap-2 ml-auto">
+          <Button
+            size="sm"
+            variant="outline"
+            onClick={onRenew}
+            disabled={busy}
+            className="border-cyan-300 text-cyan-700 hover:bg-cyan-100 dark:border-cyan-800 dark:text-cyan-200"
+          >
+            <CalendarPlus className="w-3.5 h-3.5 mr-1.5" />
+            Renew selected
+          </Button>
+          <Button
+            size="sm"
+            variant="outline"
+            onClick={onRemind}
+            disabled={busy}
+            className="border-cyan-300 text-cyan-700 hover:bg-cyan-100 dark:border-cyan-800 dark:text-cyan-200"
+          >
+            <BellPlus className="w-3.5 h-3.5 mr-1.5" />
+            Schedule reminder
+          </Button>
+          <Button size="sm" variant="ghost" onClick={onClear} disabled={busy}>
+            Clear
+          </Button>
+        </div>
+      </CardContent>
+    </Card>
   );
 }
 
@@ -305,7 +547,15 @@ function formatExpiryLabel(daysUntilExpiry, derivedStatus) {
   return `Expires in ${daysUntilExpiry}d`;
 }
 
-function RecordRow({ record, onStatusChange, onDelete, onRemind, reminding }) {
+function RecordRow({
+  record,
+  selected,
+  onToggleSelect,
+  onStatusChange,
+  onDelete,
+  onRemind,
+  reminding,
+}) {
   const derived = record.derivedStatus || record.status;
   const tone = STATUS_TONES[derived] || STATUS_TONES.active;
   const memberName =
@@ -321,9 +571,21 @@ function RecordRow({ record, onStatusChange, onDelete, onRemind, reminding }) {
   const showRemind = derived === "expiring" || derived === "expired";
 
   return (
-    <Card className="border border-gray-200 dark:border-gray-700 hover:shadow-md transition-shadow">
+    <Card
+      className={`border transition-shadow hover:shadow-md ${
+        selected
+          ? "border-cyan-400 dark:border-cyan-600 ring-1 ring-cyan-200 dark:ring-cyan-900/40"
+          : "border-gray-200 dark:border-gray-700"
+      }`}
+    >
       <CardContent className="p-4 space-y-2">
         <div className="flex items-start justify-between gap-3">
+          <Checkbox
+            checked={selected}
+            onCheckedChange={onToggleSelect}
+            aria-label={`Select ${record.name}`}
+            className="mt-1 shrink-0"
+          />
           <div className="flex-1 min-w-0">
             <div className="flex items-center gap-2 flex-wrap">
               <h3 className="font-semibold text-gray-900 dark:text-gray-100 text-sm">
@@ -548,6 +810,139 @@ function CreateRecordModal({ open, onOpenChange, onCreate, members }) {
                 </>
               ) : (
                 "Add record"
+              )}
+            </Button>
+          </DialogFooter>
+        </form>
+      </DialogContent>
+    </Dialog>
+  );
+}
+
+function BulkRenewModal({ open, onOpenChange, count, onConfirm, busy }) {
+  // Default the renewal expiry to 12 months out — the most common cadence for
+  // safety + compliance certs. The team-lead can override per renewal.
+  const defaultExpiry = useMemo(() => {
+    const d = new Date();
+    d.setFullYear(d.getFullYear() + 1);
+    return d.toISOString().slice(0, 10);
+  }, []);
+  const [newExpiryDate, setNewExpiryDate] = useState(defaultExpiry);
+
+  const handleSubmit = async (e) => {
+    e.preventDefault();
+    if (!newExpiryDate) return;
+    await onConfirm(newExpiryDate);
+  };
+
+  return (
+    <Dialog open={open} onOpenChange={onOpenChange}>
+      <DialogContent className="sm:max-w-sm">
+        <DialogHeader>
+          <DialogTitle>Renew selected records</DialogTitle>
+          <DialogDescription>
+            Set a new expiry date for {count} selected record{count === 1 ? "" : "s"}. Status
+            is recomputed from the new expiry.
+          </DialogDescription>
+        </DialogHeader>
+        <form onSubmit={handleSubmit} className="space-y-3">
+          <div className="space-y-1.5">
+            <Label htmlFor="bulk-renew-expiry">New expiry date</Label>
+            <Input
+              id="bulk-renew-expiry"
+              type="date"
+              value={newExpiryDate}
+              onChange={(e) => setNewExpiryDate(e.target.value)}
+              disabled={busy}
+              required
+            />
+          </div>
+          <DialogFooter>
+            <Button
+              type="button"
+              variant="outline"
+              onClick={() => onOpenChange(false)}
+              disabled={busy}
+            >
+              Cancel
+            </Button>
+            <Button
+              type="submit"
+              disabled={busy || !newExpiryDate}
+              className="bg-cyan-600 hover:bg-cyan-700"
+            >
+              {busy ? (
+                <>
+                  <Loader2 className="w-4 h-4 mr-2 animate-spin" /> Renewing…
+                </>
+              ) : (
+                `Renew ${count}`
+              )}
+            </Button>
+          </DialogFooter>
+        </form>
+      </DialogContent>
+    </Dialog>
+  );
+}
+
+function BulkRemindModal({ open, onOpenChange, count, onConfirm, busy }) {
+  const [schedule, setSchedule] = useState("immediate");
+
+  const handleSubmit = async (e) => {
+    e.preventDefault();
+    await onConfirm(schedule);
+  };
+
+  return (
+    <Dialog open={open} onOpenChange={onOpenChange}>
+      <DialogContent className="sm:max-w-sm">
+        <DialogHeader>
+          <DialogTitle>Schedule reminder</DialogTitle>
+          <DialogDescription>
+            Send a notification to the members on {count} selected record{count === 1 ? "" : "s"}.
+            Daily and weekly cadences are stamped on the record and picked up by the reminder
+            job.
+          </DialogDescription>
+        </DialogHeader>
+        <form onSubmit={handleSubmit} className="space-y-3">
+          <div className="space-y-1.5">
+            <Label>Cadence</Label>
+            <Select value={schedule} onValueChange={setSchedule} disabled={busy}>
+              <SelectTrigger>
+                <SelectValue />
+              </SelectTrigger>
+              <SelectContent>
+                {REMINDER_SCHEDULE_OPTIONS.map((opt) => (
+                  <SelectItem key={opt.value} value={opt.value}>
+                    {opt.label}
+                  </SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
+          </div>
+          <DialogFooter>
+            <Button
+              type="button"
+              variant="outline"
+              onClick={() => onOpenChange(false)}
+              disabled={busy}
+            >
+              Cancel
+            </Button>
+            <Button
+              type="submit"
+              disabled={busy}
+              className="bg-cyan-600 hover:bg-cyan-700"
+            >
+              {busy ? (
+                <>
+                  <Loader2 className="w-4 h-4 mr-2 animate-spin" /> Scheduling…
+                </>
+              ) : schedule === "immediate" ? (
+                `Send ${count} reminder${count === 1 ? "" : "s"}`
+              ) : (
+                `Schedule ${count}`
               )}
             </Button>
           </DialogFooter>

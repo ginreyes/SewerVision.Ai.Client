@@ -4,6 +4,7 @@ import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { userApi } from '@/data/userApi';
 import { operatorApi } from '@/data/operatorApi';
 import { adminOvertimeApi } from '@/data/adminOvertimeApi';
+import { notesApi } from '@/data/notesApi';
 import { queryKeys } from '../queryKeys';
 
 /**
@@ -661,5 +662,82 @@ export function useRemindTrainingMember() {
     return useMutation({
         mutationFn: (id) => userApi.remindTrainingMember(id),
         onSuccess: () => invalidateTeamTraining(qc),
+    });
+}
+
+// ── Team training bulk actions + dashboard widgets (May 21) ──
+function invalidateTeamCompliance(qc) {
+    qc.invalidateQueries({
+        predicate: (query) =>
+            Array.isArray(query.queryKey) &&
+            query.queryKey[0] === 'user' &&
+            (query.queryKey[1] === 'team-training' ||
+                query.queryKey[1] === 'team-certification-summary' ||
+                query.queryKey[1] === 'member-training-detail'),
+    });
+}
+
+export function useBulkRenewTraining() {
+    const qc = useQueryClient();
+    return useMutation({
+        mutationFn: ({ recordIds, newExpiryDate }) =>
+            userApi.bulkRenewTrainingRecords({ recordIds, newExpiryDate }),
+        onSuccess: () => invalidateTeamCompliance(qc),
+    });
+}
+
+export function useBulkRemind() {
+    const qc = useQueryClient();
+    return useMutation({
+        mutationFn: ({ recordIds, reminderSchedule }) =>
+            userApi.bulkRemindTrainingRecords({ recordIds, reminderSchedule }),
+        onSuccess: () => invalidateTeamCompliance(qc),
+    });
+}
+
+export function useTeamCertificationSummary(options = {}) {
+    return useQuery({
+        queryKey: queryKeys.userTeamCertificationSummary(),
+        queryFn: () => userApi.getTeamCertificationSummary(),
+        staleTime: 1000 * 60,
+        ...options,
+    });
+}
+
+export function useTeamMemberTraining(memberId, options = {}) {
+    return useQuery({
+        queryKey: queryKeys.userMemberTrainingDetail(memberId),
+        queryFn: () => userApi.getMemberTrainingDetail(memberId),
+        enabled: !!memberId,
+        staleTime: 1000 * 60,
+        ...options,
+    });
+}
+
+/**
+ * One-shot CSV export. Not a useQuery — kicks off a fresh fetch every call and
+ * resolves to the raw CSV text so the page can trigger a browser download.
+ */
+export function useExportTrainingRecords() {
+    return useMutation({
+        mutationFn: (filters = {}) => userApi.exportTrainingRecords(filters),
+    });
+}
+
+/**
+ * Team-lead Notes view (May 21).
+ *
+ * Today notesApi.getNotes already filters by the supplied userId, so the
+ * team-lead's notes are scoped to their own ownership server-side. This hook
+ * gives the wrapper a stable surface so we can layer scope='team' (notes
+ * across direct reports) onto notesApi without rewiring callers.
+ */
+export function useUserNotes(userId, filters = {}, options = {}) {
+    return useQuery({
+        queryKey: ['user', 'notes', userId, filters],
+        queryFn: () => notesApi.getNotes(userId, filters),
+        enabled: !!userId,
+        staleTime: 1000 * 30,
+        ...options,
     });
 }

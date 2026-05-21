@@ -32,6 +32,10 @@ import {
   migrateUploadId,
   requeueFailedUploads,
   failUpload,
+  getUpload,
+  addUpload,
+  deleteUpload,
+  deleteChunksForUpload,
 } from './uploadQueue';
 
 // Chunk size matches the backend MAX_CHUNK_BYTES ceiling minus a small margin
@@ -452,6 +456,73 @@ function classifyMimeForUi(mime) {
   if (mime === 'application/pdf' || mime.startsWith('text/')) return 'document';
   if (mime.includes('zip') || mime.includes('tar') || mime.includes('compressed')) return 'archive';
   return 'data';
+}
+
+/**
+ * Day 8 — per-row Resume action for UploadHistoryTable. Targets a single
+ * IDB upload by id: re-runs drain just for it (drain itself walks every
+ * queued/failed row, so we reset the row to 'queued' first if it had
+ * previously failed). Returns the same shape as drainAll's per-call result
+ * so the caller can show "drained N chunks / failed M".
+ */
+export async function resumeOneUpload(uploadId, { onHashMismatch } = {}) {
+  const row = await getUpload(uploadId);
+  if (!row) return { requeued: 0, drained: 0, failed: 0 };
+  // drain() works off status; flip failed→queued so it picks the row back up.
+  // We don't synthesise this through requeueFailedUploads because that one
+  // is bulk-only and would also pick up rows the user didn't ask to resume.
+  if (row.status === 'failed') {
+    await addUpload({ ...row, status: 'queued', lastError: null });
+  }
+  const adapter = (id, index, blob) => putChunkOnce(id, index, blob, { onHashMismatch });
+  const result = await drain({ putChunk: adapter });
+  // Best-effort /complete in case this was an offline-start upload whose id
+  // just migrated; mirrors drainAll's behaviour but scoped to one row.
+  try {
+    await uploadsApi.completeChunkedUpload(uploadId);
+  } catch {
+    // see drainAll — non-fatal
+  }
+  return { requeued: row.status === 'queued' ? 1 : 0, ...result };
+}
+
+/**
+ * Day 8 — per-row Discard action. Removes the IDB row plus every staged
+ * chunk blob keyed to it. Best-effort POST /api/uploads/:id/abort cleans
+ * server-side staging if the row had migrated to a real uploadId. The
+ * abort failure is non-fatal: the staging dir gc job sweeps it anyway.
+ */
+export async function discardOneUpload(uploadId) {
+  if (!isLocalUploadId(uploadId)) {
+    try {
+      await uploadsApi.abortChunkedUpload(uploadId);
+    } catch {
+      // server may have already gc'd or never seen the id — non-fatal
+    }
+  }
+  await deleteChunksForUpload(uploadId);
+  await deleteUpload(uploadId);
+  return { uploadId, discarded: true };
+}
+
+/**
+ * Day 8 — fetch the per-row error details for the View-error popover.
+ * Pulls from IDB rather than the on-screen snapshot so the message is
+ * fresh even if the row hasn't been re-rendered since the last failure.
+ */
+export async function getUploadError(uploadId) {
+  const row = await getUpload(uploadId);
+  if (!row) return null;
+  return {
+    uploadId,
+    lastError: row.lastError || null,
+    // Best-effort: failUpload doesn't persist a per-chunk index today, so we
+    // surface what's actually in the row (status + attempts) and let the UI
+    // copy show the operator the raw lastError string.
+    attempts: row.attempts ?? 0,
+    status: row.status,
+    originalName: row.originalName || null,
+  };
 }
 
 /**

@@ -393,6 +393,11 @@ export default function OperatorUploadsPage() {
               search={searchQuery}
               onSearch={setSearchQuery}
               onRefresh={refetchUploads}
+              onRowAction={async () => {
+                await refreshQueue();
+                await refreshIdbRows();
+                refetchUploads();
+              }}
             />
           </TabsContent>
         </Tabs>

@@ -17,6 +17,7 @@ import {
   useUserProjects,
 } from "@/hooks/useQueryHooks";
 import { ScheduleCell, AssignmentDialog, DAYS } from "@/components/user/resource-scheduler";
+import { unwrapList } from "@/lib/unwrapList";
 
 function getWeekStart(offsetWeeks = 0) {
   const now = new Date();
@@ -54,7 +55,10 @@ export default function ResourceScheduler() {
   // Get team members — only show operator, qc-technician, user, and customer roles
   const ALLOWED_ROLES = ['operator', 'qc-technician', 'user', 'customer'];
   const team = useMemo(() => {
-    const raw = Array.isArray(teamData) ? teamData : (teamData?.data || teamData?.members || []);
+    const raw =
+      unwrapList(teamData).length > 0
+        ? unwrapList(teamData)
+        : (teamData?.members || []);
     return raw
       .filter(m => ALLOWED_ROLES.includes(m.role))
       .map(m => ({
@@ -91,7 +95,7 @@ export default function ResourceScheduler() {
 
   // Projects for assignment dropdown
   const { data: projectsData } = useUserProjects(userId);
-  const projectsList = useMemo(() => Array.isArray(projectsData) ? projectsData : (projectsData?.data || []), [projectsData]);
+  const projectsList = useMemo(() => unwrapList(projectsData), [projectsData]);
 
   const handleCellClick = useCallback(
     (member, dayIdx, assignment) => {

@@ -532,6 +532,46 @@ export const userApi = {
         if (!response.ok) throw new Error(response.data?.message || 'Failed to send reminder');
         return response.data?.data;
     },
+
+    // ─── Team training bulk actions + dashboard widgets (May 21) ──────────
+    async bulkRenewTrainingRecords({ recordIds, newExpiryDate }) {
+        const response = await api('/api/user/training/bulk-renew', 'POST', { recordIds, newExpiryDate });
+        if (!response.ok) throw new Error(response.data?.message || 'Failed to bulk renew records');
+        return response.data?.data;
+    },
+    async bulkRemindTrainingRecords({ recordIds, reminderSchedule = 'immediate' }) {
+        const response = await api('/api/user/training/bulk-remind', 'PATCH', { recordIds, reminderSchedule });
+        if (!response.ok) throw new Error(response.data?.message || 'Failed to schedule reminders');
+        return response.data?.data;
+    },
+    async getTeamCertificationSummary() {
+        const response = await api('/api/user/certifications/team-summary', 'GET');
+        if (!response.ok) throw new Error(response.data?.message || 'Failed to load compliance summary');
+        return response.data?.data;
+    },
+    async getMemberTrainingDetail(memberId) {
+        const response = await api(`/api/user/training/member/${encodeURIComponent(memberId)}`, 'GET');
+        if (!response.ok) throw new Error(response.data?.message || 'Failed to load member training detail');
+        return response.data?.data;
+    },
+    /**
+     * Streams the filtered training records as CSV. The backend returns
+     * text/csv so the api helper's contentType branch already gives us the
+     * raw string back through response.data.
+     */
+    async exportTrainingRecords({ status, category, memberId } = {}) {
+        const params = new URLSearchParams();
+        if (status) params.set('status', status);
+        if (category) params.set('category', category);
+        if (memberId) params.set('memberId', memberId);
+        params.set('format', 'csv');
+        const response = await api(`/api/user/training/export?${params.toString()}`, 'GET');
+        if (!response.ok) {
+            const msg = typeof response.data === 'string' ? 'Export failed' : (response.data?.message || 'Failed to export training records');
+            throw new Error(msg);
+        }
+        return typeof response.data === 'string' ? response.data : '';
+    },
 };
 
 export default userApi;

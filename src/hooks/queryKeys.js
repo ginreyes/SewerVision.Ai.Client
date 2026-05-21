@@ -145,6 +145,8 @@ export const queryKeys = {
     userTeamWorkload: (filters) => ['user', 'team-workload', filters ?? {}],
     userTeamGoals: (filters) => ['user', 'team-goals', filters ?? {}],
     userTeamTraining: (filters) => ['user', 'team-training', filters ?? {}],
+    userTeamCertificationSummary: () => ['user', 'team-certification-summary'],
+    userMemberTrainingDetail: (memberId) => ['user', 'member-training-detail', memberId],
 
     // User (Team Lead)
     userDashboard: (userId) => ['user', 'dashboard', userId],
