@@ -41,6 +41,7 @@ import ProgressTracker from '@/components/operator/ProgressTracker'
 import ActivityItem from '@/components/operator/dashboard/ActivityItem'
 import ProjectRow from '@/components/operator/dashboard/ProjectRow'
 import ActiveProjectsWidget from '@/components/operator/dashboard/ActiveProjectsWidget'
+import RecentHandoffsWidget from '@/components/operator/dashboard/RecentHandoffsWidget'
 import { formatRelativeTime } from '@/components/operator/constants'
 
 // Import query hooks
@@ -278,6 +279,9 @@ export default function OperatorDashboardContent() {
 
       {/* Active Projects Widget */}
       <ActiveProjectsWidget userId={userId} onProjectClick={(p) => router.push(`/operator/project?selectedProject=${p._id}`)} />
+
+      {/* Recent handoffs — incoming rows show an Acknowledge button inline */}
+      <RecentHandoffsWidget limit={3} />
 
       {/* Stats Grid */}
       <div className="grid grid-cols-2 md:grid-cols-4 gap-4">

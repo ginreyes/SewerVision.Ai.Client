@@ -110,6 +110,13 @@ export const queryKeys = {
     operatorCachedItems: (operatorId) => ['operator', 'cached-items', operatorId],
     operatorPendingSyncs: (operatorId) => ['operator', 'pending-syncs', operatorId],
     operatorOfflineStats: (operatorId) => ['operator', 'offline-stats', operatorId],
+    operatorRecentShiftHandoffs: (operatorId, limit) => ['operator', 'shift-handoffs', operatorId, limit],
+    operatorEquipmentIssues: (operatorId, filters) => ['operator', 'equipment-issues', operatorId, filters ?? {}],
+    adminEquipmentIssues: (filters) => ['admin', 'equipment-issues', filters ?? {}],
+
+    // QC — New Modules
+    qcPersonalDefectTrends: (qcId, range) => ['qc', 'personal-defect-trends', qcId, range],
+    qcPersonalSpeedTrends: (qcId, range) => ['qc', 'personal-speed-trends', qcId, range],
 
     // User — New Modules
     userWeekSchedule: (weekStart) => ['user', 'schedule', weekStart],
@@ -132,6 +139,16 @@ export const queryKeys = {
     // Devices (admin)
     devices: (params) => ['devices', params ?? {}],
     device: (deviceId) => ['devices', deviceId],
+
+    // User (Team Lead) — May 14 modules
+    userApprovalsQueue: (status) => ['user', 'approvals-queue', status ?? 'pending'],
+    userTeamWorkload: (filters) => ['user', 'team-workload', filters ?? {}],
+    userTeamGoals: (filters) => ['user', 'team-goals', filters ?? {}],
+    userTeamTraining: (filters) => ['user', 'team-training', filters ?? {}],
+    userTeamCertificationSummary: () => ['user', 'team-certification-summary'],
+    userMemberTrainingDetail: (memberId) => ['user', 'member-training-detail', memberId],
+    userTrainingAudit: (filters) => ['user', 'training-audit', filters ?? {}],
+    userProjectHealthRollup: (filters) => ['user', 'project-health-rollup', filters ?? {}],
 
     // User (Team Lead)
     userDashboard: (userId) => ['user', 'dashboard', userId],
@@ -227,4 +244,9 @@ export const queryKeys = {
 
     // Admin — Projects (admin-specific list)
     adminProjects: (filters) => ['admin', 'projects', filters ?? {}],
+    projectHealth: (id) => ['project', 'health', id],
+
+    // Admin — AI Model Configs (control plane)
+    aiModelConfigs: ['admin', 'ai-model-configs'],
+    aiModelCompare: (a, b, n) => ['admin', 'ai-model-compare', a, b, n],
 };

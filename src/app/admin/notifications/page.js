@@ -45,11 +45,15 @@ const NotificationPageAdmin = () => {
       }
     : DEFAULT_PREFS;
 
+  // Intentionally omits fetchNotifications from deps — it's a stable callback
+  // from NotificationProvider, and including it would re-trigger the initial
+  // fetch every time pagination state changes upstream.
   useEffect(() => {
     if (userId) {
       fetchNotifications(true);
     }
-  }, [userId, fetchNotifications]);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [userId]);
 
   const togglePreference = (key) => {
     const newPreferences = {

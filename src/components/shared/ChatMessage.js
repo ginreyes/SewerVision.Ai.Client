@@ -4,6 +4,7 @@ import React, { memo, useState, useRef, useMemo } from "react";
 import { Check, CheckCheck, File, Download, Smile, MoreHorizontal, Pencil, Trash2, X } from "lucide-react";
 import { avatarSrc, getAvatarColor, getInitials, API_URL } from "@/components/admin/constants";
 import { api } from "@/lib/helper";
+import { ROLE_BADGE_CLASSES, getRoleLabel } from "@/lib/roleThemes";
 import ImageLightbox from "./ImageLightbox";
 
 function resolveAttachmentUrl(url) {
@@ -23,6 +24,7 @@ const ChatMessage = memo(function ChatMessage({
   text,
   isMine,
   senderName,
+  senderRole,
   senderId,
   currentUserId,
   timestamp,
@@ -33,6 +35,7 @@ const ChatMessage = memo(function ChatMessage({
   edited,
   deleted,
   showAvatar = true,
+  showName = false, // Render the sender's name + role above the first bubble in a cluster (group chats)
   isFirst,
   isLast,
   theme = "emerald",
@@ -56,11 +59,42 @@ const ChatMessage = memo(function ChatMessage({
     !att.mimetype?.startsWith('image/') && !/\.(jpg|jpeg|png|gif|webp|bmp|svg)$/i.test(att.filename || att.url || '')
   ), [attachments]);
 
+  // Theme map — keep in sync with @/lib/roleThemes accent colors so the bubble
+  // matches each role's primary palette.
+  const THEME_BG = {
+    indigo: "bg-indigo-500",
+    emerald: "bg-emerald-500",
+    blue: "bg-blue-500",
+    rose: "bg-rose-500",
+    purple: "bg-purple-500",
+    teal: "bg-teal-500",
+    amber: "bg-amber-500",
+  };
+  const THEME_REACTION_ACTIVE = {
+    indigo: "bg-indigo-50 border-indigo-300",
+    emerald: "bg-emerald-50 border-emerald-300",
+    blue: "bg-blue-50 border-blue-300",
+    rose: "bg-rose-50 border-rose-300",
+    purple: "bg-purple-50 border-purple-300",
+    teal: "bg-teal-50 border-teal-300",
+    amber: "bg-amber-50 border-amber-300",
+  };
+  const THEME_RING = {
+    indigo: "focus:ring-indigo-400",
+    emerald: "focus:ring-emerald-400",
+    blue: "focus:ring-blue-400",
+    rose: "focus:ring-rose-400",
+    purple: "focus:ring-purple-400",
+    teal: "focus:ring-teal-400",
+    amber: "focus:ring-amber-400",
+  };
   const bg = isMine
-    ? theme === "indigo" ? "bg-indigo-500" : "bg-emerald-500"
+    ? THEME_BG[theme] || THEME_BG.emerald
     : "bg-white border border-gray-200";
   const textColor = isMine ? "text-white" : "text-gray-800";
   const timeColor = "text-gray-400";
+  const reactionActiveClass = THEME_REACTION_ACTIVE[theme] || THEME_REACTION_ACTIVE.emerald;
+  const ringClass = THEME_RING[theme] || THEME_RING.emerald;
 
   const initials = getInitials(senderName || "?");
   const avatarColor = getAvatarColor(senderName || "?");
@@ -70,10 +104,18 @@ const ChatMessage = memo(function ChatMessage({
     ? new Date(timestamp).toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" })
     : "";
 
+  // Edit/Delete/React: if a callback prop is provided, the parent owns the
+  // mutation (e.g. project chat uses TanStack mutations). Falls back to the
+  // hardcoded customer-conversations API for backwards compatibility with
+  // the existing customer ChatBubble call sites.
   async function handleEdit() {
     if (!editText.trim() || !messageId) return;
     try {
-      await api(`/api/client-conversations/messages/${messageId}/edit`, 'PUT', { text: editText.trim(), senderId: currentUserId });
+      if (onEdit) {
+        await onEdit(messageId, editText.trim());
+      } else {
+        await api(`/api/client-conversations/messages/${messageId}/edit`, 'PUT', { text: editText.trim(), senderId: currentUserId });
+      }
       setEditing(false);
       if (onRefresh) onRefresh();
     } catch (e) { console.error('Edit failed:', e); }
@@ -82,7 +124,11 @@ const ChatMessage = memo(function ChatMessage({
   async function handleDelete() {
     if (!messageId) return;
     try {
-      await api(`/api/client-conversations/messages/${messageId}`, 'DELETE', { senderId: currentUserId });
+      if (onDelete) {
+        await onDelete(messageId);
+      } else {
+        await api(`/api/client-conversations/messages/${messageId}`, 'DELETE', { senderId: currentUserId });
+      }
       setShowActions(false);
       if (onRefresh) onRefresh();
     } catch (e) { console.error('Delete failed:', e); }
@@ -91,7 +137,11 @@ const ChatMessage = memo(function ChatMessage({
   async function handleReact(emoji) {
     if (!messageId) return;
     try {
-      await api(`/api/client-conversations/messages/${messageId}/react`, 'POST', { emoji, userId: currentUserId });
+      if (onReact) {
+        await onReact(messageId, emoji);
+      } else {
+        await api(`/api/client-conversations/messages/${messageId}/react`, 'POST', { emoji, userId: currentUserId });
+      }
       setShowReactions(false);
       if (onRefresh) onRefresh();
     } catch (e) { console.error('React failed:', e); }
@@ -138,6 +188,22 @@ const ChatMessage = memo(function ChatMessage({
       </div>
 
       <div className={`flex flex-col ${isMine ? 'items-end' : 'items-start'} max-w-[72%] relative`}>
+        {/* Sender name + role label — only on the first bubble in a cluster
+            for theirs (group chats). Hidden for own messages and for DMs. */}
+        {showName && !isMine && isFirst && senderName && (
+          <div className="flex items-center gap-1.5 mb-0.5 px-1">
+            <span className="text-[11px] font-semibold text-gray-700 truncate max-w-[160px]">
+              {senderName}
+            </span>
+            {senderRole && (
+              <span
+                className={`text-[9px] font-medium px-1.5 py-0.5 rounded-md border ${ROLE_BADGE_CLASSES[senderRole] || 'bg-gray-100 text-gray-700 border-gray-200'}`}
+              >
+                {getRoleLabel(senderRole)}
+              </span>
+            )}
+          </div>
+        )}
         {/* Editing mode */}
         {editing ? (
           <div className="flex items-center gap-1.5 w-full">
@@ -266,7 +332,7 @@ const ChatMessage = memo(function ChatMessage({
                 {Object.entries(reactionGroups).map(([emoji, users]) => (
                   <button key={emoji} onClick={() => handleReact(emoji)}
                     className={`flex items-center gap-0.5 px-1.5 py-0.5 rounded-full text-[11px] border transition-colors ${
-                      users.includes(currentUserId) ? 'bg-emerald-50 border-emerald-300' : 'bg-gray-50 border-gray-200 hover:bg-gray-100'
+                      users.includes(currentUserId) ? reactionActiveClass : 'bg-gray-50 border-gray-200 hover:bg-gray-100'
                     }`}>
                     <span>{emoji}</span>
                     {users.length > 1 && <span className="text-gray-500">{users.length}</span>}

@@ -231,7 +231,7 @@ const AdminUploads = () => {
 
     if (activeTab === 'monitoring') {
       fetchMonitoringData(true);
-      const interval = setInterval(fetchMonitoringData, 5000); // Refresh every 5 seconds
+      const interval = setInterval(fetchMonitoringData, 15000); // Refresh every 15 seconds
       return () => clearInterval(interval);
     }
   }, [activeTab, fetchMonitoringData]);
@@ -253,16 +253,42 @@ const AdminUploads = () => {
     return () => clearInterval(interval);
   }, [uploads, refetchUploads, refetchStats]);
 
-  const filteredUploads = uploads.filter((upload) => {
-    const matchesSearch =
-      (upload.filename || '').toLowerCase().includes(searchQuery.toLowerCase()) ||
-      (typeof upload.uploadedBy === 'string' ? upload.uploadedBy : upload.uploadedBy?.email || '').toLowerCase().includes(searchQuery.toLowerCase()) ||
-      (upload.location || '').toLowerCase().includes(searchQuery.toLowerCase());
-    const matchesStatus =
-      filterStatus === "all" || upload.status === filterStatus;
-    const matchesType = filterType === "all" || upload.type === filterType;
-    return matchesSearch && matchesStatus && matchesType;
-  });
+  // Memoize so the filtered array keeps referential equality when none of the
+  // inputs changed — every consumer that takes filteredUploads as a prop
+  // (table, ExportButton, bulk-action bar) was previously re-rendering on
+  // every parent render.
+  const filteredUploads = useMemo(() => {
+    const q = searchQuery.toLowerCase();
+    return uploads.filter((upload) => {
+      const matchesSearch =
+        (upload.filename || '').toLowerCase().includes(q) ||
+        (typeof upload.uploadedBy === 'string'
+          ? upload.uploadedBy
+          : upload.uploadedBy?.email || ''
+        ).toLowerCase().includes(q) ||
+        (upload.location || '').toLowerCase().includes(q);
+      const matchesStatus = filterStatus === 'all' || upload.status === filterStatus;
+      const matchesType = filterType === 'all' || upload.type === filterType;
+      return matchesSearch && matchesStatus && matchesType;
+    });
+  }, [uploads, searchQuery, filterStatus, filterType]);
+
+  const exportRows = useMemo(
+    () =>
+      filteredUploads.map((u) => ({
+        filename: u.originalName || u.filename,
+        size: u.size,
+        status: u.status,
+        type: u.type,
+        uploadedBy:
+          typeof u.uploadedBy === 'object'
+            ? u.uploadedBy?.email || ''
+            : u.uploadedBy || '',
+        location: u.location || '',
+        uploadedAt: u.uploadedAt || '',
+      })),
+    [filteredUploads]
+  );
 
   const handleBulkAction = async (action) => {
     if (selectedFiles.length === 0) {
@@ -592,18 +618,7 @@ const AdminUploads = () => {
                 accentColor="rose"
               />
               <ExportButton
-                data={filteredUploads.map((u) => ({
-                  filename: u.originalName || u.filename,
-                  size: u.size,
-                  status: u.status,
-                  type: u.type,
-                  uploadedBy:
-                    typeof u.uploadedBy === "object"
-                      ? u.uploadedBy?.email || ""
-                      : u.uploadedBy || "",
-                  location: u.location || "",
-                  uploadedAt: u.uploadedAt || "",
-                }))}
+                data={exportRows}
                 columns={[
                   { key: "filename", label: "File" },
                   { key: "size", label: "Size" },

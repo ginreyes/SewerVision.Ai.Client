@@ -1,5 +1,6 @@
 "use client";
-import React, { useState, useEffect, useRef, Suspense } from "react";
+import React, { useState, useEffect, useRef, Suspense, useMemo } from "react";
+import { useQueryClient } from "@tanstack/react-query";
 import { Search, Plus, Loader2, LayoutGrid, Rows, MoreVertical, Eye, Pencil, MapPin, GitCompare, Columns3 } from "lucide-react";
 import dynamic from "next/dynamic";
 import StatusLegend from "@/components/shared/StatusLegend";
@@ -20,6 +21,9 @@ import {
 
 import ProjectCard from "@/components/admin/project/ProjectCard";
 import ProjectDetail from "@/components/admin/project/ProjectDetail";
+import ProjectChatDrawer from "@/components/shared/project-chat/ProjectChatDrawer";
+import ProjectHealthBadge from "@/components/admin/project/ProjectHealthBadge";
+import ProjectTimelineLauncher from "@/components/shared/project-timeline/ProjectTimelineLauncher";
 import { api } from "@/lib/helper";
 import { useAlert } from "@/components/providers/AlertProvider";
 import { useDebouncedValue } from '@/hooks/useDebouncedValue';
@@ -27,20 +31,25 @@ import { useRouter, useSearchParams, usePathname } from "next/navigation";
 import { useAdminProjects } from '@/hooks/useQueryHooks';
 import { PipelineBoard } from '@/components/shared/ProjectPipeline';
 import PipelineAnalyticsStrip from '@/components/admin/project/PipelineAnalyticsStrip';
-import BulkActionsToolbar from '@/components/admin/project/BulkActionsToolbar';
+import BulkActionsToolbar from '@/components/shared/bulk/BulkActionsToolbar';
 import { usePipeline } from '@/data/pipelineApi';
 import { SavedViewsDropdown, useSavedViewSync } from '@/components/shared/SavedViews';
 import { BulkActionBar, BulkResultToast } from '@/components/shared/bulk';
 import { useBulkMutation } from '@/data/bulkApi';
 import { useDialog } from '@/components/providers/DialogProvider';
+import { BulkAssignModal, BulkStatusModal, BulkTagModal } from '@/components/admin/project/BulkProjectModals';
 
 const SewerVisionInspectionModuleContent = () => {
   const [selectedProject, setSelectedProject] = useState(null);
   const [searchTerm, setSearchTerm] = useState("");
   const debouncedSearchValue = useDebouncedValue(searchTerm, 300);
   const [statusFilter, setStatusFilter] = useState("all");
+  const [priorityFilter, setPriorityFilter] = useState("all");
+  const [sortMode, setSortMode] = useState("newest"); // newest | oldest | priority-desc | priority-asc | name-asc | name-desc
   const [viewMode, setViewMode] = useState("grid"); // 'grid' | 'table' | 'tracker' | 'compare' | 'pipeline'
   const [selectedIds, setSelectedIds] = useState([]);
+  // Sort by health (only meaningful in table view). Cycles off → desc → asc.
+  const [healthSort, setHealthSort] = useState("off");
 
   // Saved Views: two-way bind current filters <-> selected SavedView + URL
   const {
@@ -80,10 +89,33 @@ const SewerVisionInspectionModuleContent = () => {
     limit,
     search: debouncedSearchValue,
     status: statusFilter === "all" ? "" : statusFilter,
+    priority: priorityFilter === "all" ? "" : priorityFilter,
+    sort: sortMode === "newest" ? "" : sortMode,
   });
 
-  const projects = projectsData?.data || [];
+  const projects = useMemo(() => projectsData?.data || [], [projectsData]);
   const totalPages = projectsData?.totalPages || 1;
+
+  // Health-sort wrapper. Looks up cached health scores from TanStack Query
+  // (populated as ProjectHealthBadge mounts). Rows without a cached score
+  // sort last so the toggle still feels responsive on first load.
+  const queryClient = useQueryClient();
+  const tableProjects = useMemo(() => {
+    if (healthSort === 'off') return projects;
+    const scoreFor = (p) => {
+      const cached = queryClient?.getQueryData(['projectHealth', p._id]);
+      return cached?.score ?? cached?.healthScore ?? null;
+    };
+    const dir = healthSort === 'asc' ? 1 : -1;
+    return [...projects].sort((a, b) => {
+      const sa = scoreFor(a);
+      const sb = scoreFor(b);
+      if (sa === null && sb === null) return 0;
+      if (sa === null) return 1;
+      if (sb === null) return -1;
+      return (sa - sb) * dir;
+    });
+  }, [projects, healthSort, queryClient]);
 
   const { data: pipelineData, isLoading: pipelineLoading } = usePipeline({});
 
@@ -91,6 +123,8 @@ const SewerVisionInspectionModuleContent = () => {
   const bulkMutation = useBulkMutation('project');
   const [bulkResult, setBulkResult] = useState(null);
   const { showDelete } = useDialog();
+  // Open modal: 'assign' | 'status' | 'tag' | null
+  const [bulkModal, setBulkModal] = useState(null);
 
   const runBulk = (op, payload) => {
     bulkMutation.mutate(
@@ -99,6 +133,7 @@ const SewerVisionInspectionModuleContent = () => {
         onSuccess: (result) => {
           setBulkResult(result);
           setSelectedIds([]);
+          setBulkModal(null);
           refetch();
         },
         onError: (err) => {
@@ -122,22 +157,8 @@ const SewerVisionInspectionModuleContent = () => {
       showAlert('Use the Export button in the toolbar for CSV export', 'info');
       return;
     }
-    if (op === 'status') {
-      const status = prompt('Status (planning|field-capture|uploading|ai-processing|qc-review|completed|on-hold):');
-      if (!status) return;
-      runBulk(op, { status });
-      return;
-    }
-    if (op === 'tag') {
-      const tag = prompt('Tag to add:');
-      if (!tag) return;
-      runBulk(op, { tag });
-      return;
-    }
-    if (op === 'assign') {
-      const assigneeId = prompt('Assignee user id:');
-      if (!assigneeId) return;
-      runBulk(op, { assigneeId });
+    if (op === 'status' || op === 'tag' || op === 'assign') {
+      setBulkModal(op);
       return;
     }
     // archive / unarchive need no payload
@@ -239,6 +260,8 @@ const SewerVisionInspectionModuleContent = () => {
                 allProjects={projects}
               />
             </div>
+            <ProjectChatDrawer projectId={selectedProject._id} />
+            <ProjectTimelineLauncher project={selectedProject} />
           </>
         ) : (
           <>
@@ -300,6 +323,32 @@ const SewerVisionInspectionModuleContent = () => {
                   <option value="completed">Completed</option>
                   <option value="customer-notified">Customer Notified</option>
                   <option value="planning">Planning</option>
+                </select>
+
+                <select
+                  value={priorityFilter}
+                  onChange={(e) => { setPriorityFilter(e.target.value); setPage(1); }}
+                  className="px-3 h-9 border border-gray-300 dark:border-[#27272a] rounded-lg focus:ring-2 focus:ring-rose-500 focus:border-transparent bg-white dark:bg-[#0c0c0e] text-gray-900 dark:text-gray-100 text-sm"
+                  aria-label="Filter by priority"
+                >
+                  <option value="all">All Priorities</option>
+                  <option value="high">High</option>
+                  <option value="medium">Medium</option>
+                  <option value="low">Low</option>
+                </select>
+
+                <select
+                  value={sortMode}
+                  onChange={(e) => { setSortMode(e.target.value); setPage(1); }}
+                  className="px-3 h-9 border border-gray-300 dark:border-[#27272a] rounded-lg focus:ring-2 focus:ring-rose-500 focus:border-transparent bg-white dark:bg-[#0c0c0e] text-gray-900 dark:text-gray-100 text-sm"
+                  aria-label="Sort projects"
+                >
+                  <option value="newest">Newest first</option>
+                  <option value="oldest">Oldest first</option>
+                  <option value="priority-desc">Priority (high → low)</option>
+                  <option value="priority-asc">Priority (low → high)</option>
+                  <option value="name-asc">Name (A → Z)</option>
+                  <option value="name-desc">Name (Z → A)</option>
                 </select>
               </div>
 
@@ -429,23 +478,39 @@ const SewerVisionInspectionModuleContent = () => {
                         <th className="px-4 py-3 text-left font-medium text-gray-600">
                           Videos
                         </th>
+                        <th className="px-4 py-3 text-left font-medium text-gray-600">
+                          <button
+                            type="button"
+                            onClick={() =>
+                              setHealthSort((s) =>
+                                s === "off" ? "desc" : s === "desc" ? "asc" : "off"
+                              )
+                            }
+                            className="flex items-center gap-1 hover:text-rose-700 transition-colors"
+                          >
+                            Health
+                            <span className="text-[10px]">
+                              {healthSort === "desc" ? "▼" : healthSort === "asc" ? "▲" : "↕"}
+                            </span>
+                          </button>
+                        </th>
                         <th className="px-4 py-3 text-right font-medium text-gray-600">
                           Actions
                         </th>
                       </tr>
                     </thead>
                     <tbody>
-                      {projects.length === 0 ? (
+                      {tableProjects.length === 0 ? (
                         <tr>
                           <td
                             className="px-4 py-6 text-center text-gray-500"
-                            colSpan={8}
+                            colSpan={9}
                           >
                             No projects found.
                           </td>
                         </tr>
                       ) : (
-                        projects.map((project) => {
+                        tableProjects.map((project) => {
                           const isPendingDelete = project.deleteStatus === "pending";
                           const mgr = project.managerId;
                           let leadName = "—";
@@ -527,6 +592,9 @@ const SewerVisionInspectionModuleContent = () => {
                               <td className="px-4 py-3 text-gray-700">
                                 {project.videoCount ??
                                   (project.videoUrl ? 1 : 0)}
+                              </td>
+                              <td className="px-4 py-3" onClick={(e) => e.stopPropagation()}>
+                                <ProjectHealthBadge projectId={project._id} compact />
                               </td>
                               <td
                                 className="px-4 py-3 text-right"
@@ -619,6 +687,28 @@ const SewerVisionInspectionModuleContent = () => {
           onDismiss={() => setBulkResult(null)}
         />
       )}
+
+      <BulkAssignModal
+        open={bulkModal === 'assign'}
+        onClose={() => setBulkModal(null)}
+        selectedCount={selectedIds.length}
+        isPending={bulkMutation.isPending}
+        onConfirm={(payload) => runBulk('assign', payload)}
+      />
+      <BulkStatusModal
+        open={bulkModal === 'status'}
+        onClose={() => setBulkModal(null)}
+        selectedCount={selectedIds.length}
+        isPending={bulkMutation.isPending}
+        onConfirm={(payload) => runBulk('status', payload)}
+      />
+      <BulkTagModal
+        open={bulkModal === 'tag'}
+        onClose={() => setBulkModal(null)}
+        selectedCount={selectedIds.length}
+        isPending={bulkMutation.isPending}
+        onConfirm={(payload) => runBulk('tag', payload)}
+      />
     </div>
   );
 };

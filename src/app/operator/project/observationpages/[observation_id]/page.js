@@ -786,6 +786,40 @@ const ObservationDetailsPageContent = () => {
               )}
             </EditableSection>
 
+            {/* GPS — captured at observation time */}
+            {(observation.latitude != null && observation.longitude != null) && (
+              <div className="bg-white rounded-lg shadow-sm p-6">
+                <h3 className="text-lg font-semibold text-gray-900 mb-4 flex items-center gap-2">
+                  <MapPin className="h-4 w-4 text-blue-600" />
+                  GPS Location
+                </h3>
+                <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+                  <div>
+                    <label className="block text-xs font-medium text-gray-500 mb-1">Latitude</label>
+                    <p className="text-sm font-mono text-gray-900">{observation.latitude.toFixed(6)}</p>
+                  </div>
+                  <div>
+                    <label className="block text-xs font-medium text-gray-500 mb-1">Longitude</label>
+                    <p className="text-sm font-mono text-gray-900">{observation.longitude.toFixed(6)}</p>
+                  </div>
+                  <div>
+                    <label className="block text-xs font-medium text-gray-500 mb-1">Accuracy</label>
+                    <p className="text-sm text-gray-900">
+                      {observation.gpsAccuracy != null ? `±${Math.round(observation.gpsAccuracy)}m` : '—'}
+                    </p>
+                  </div>
+                </div>
+                <a
+                  href={`https://www.google.com/maps?q=${observation.latitude},${observation.longitude}`}
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  className="inline-flex items-center gap-1 mt-3 text-sm text-blue-600 hover:text-blue-700 hover:underline"
+                >
+                  Open in Google Maps →
+                </a>
+              </div>
+            )}
+
             {/* Project Information */}
             <div className="bg-white rounded-lg shadow-sm p-6">
               <h3 className="text-lg font-semibold text-gray-900 mb-4">

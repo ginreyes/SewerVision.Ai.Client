@@ -242,6 +242,43 @@ export function useReviewDetection() {
 }
 
 /**
+ * Bulk approve/reject. Invalidates the relevant detection list so the rows
+ * disappear from the pending queue immediately. Returns { updated, undoToken,
+ * undoExpiresAt } so the caller can show an Undo toast.
+ */
+export function useBulkReviewDetections() {
+    const queryClient = useQueryClient();
+    return useMutation({
+        mutationFn: (payload) => qcApi.bulkReviewDetections(payload),
+        onSuccess: (_data, variables) => {
+            if (variables?.projectId) {
+                queryClient.invalidateQueries({
+                    queryKey: ['qc', 'detections', variables.projectId],
+                    exact: false,
+                });
+            }
+            queryClient.invalidateQueries({ queryKey: ['qc', 'assignments'] });
+        },
+    });
+}
+
+export function useBulkUndoReview() {
+    const queryClient = useQueryClient();
+    return useMutation({
+        mutationFn: (payload) => qcApi.bulkUndoReview(payload),
+        onSuccess: (_data, variables) => {
+            if (variables?.projectId) {
+                queryClient.invalidateQueries({
+                    queryKey: ['qc', 'detections', variables.projectId],
+                    exact: false,
+                });
+            }
+            queryClient.invalidateQueries({ queryKey: ['qc', 'assignments'] });
+        },
+    });
+}
+
+/**
  * Hook for creating a manual detection
  */
 export function useCreateManualDetection() {
@@ -632,6 +669,37 @@ export function useQCReviewStats(userId, options = {}) {
     return useQuery({
         queryKey: queryKeys.qcReviewStats(userId),
         queryFn: () => qcApi.getQCReviewStats(userId),
+        enabled: !!userId,
+        staleTime: 1000 * 60 * 5,
+        ...options,
+    });
+}
+
+/**
+ * Personal defect-type trends for the QC tech (30d/90d). Different shape
+ * from useQCReviewStats — this returns weeklyByType buckets + top-5
+ * defect types, used by the new /qc-technician/defect-trends page.
+ */
+export function useQCPersonalDefectTrends(userId, range = '30d', options = {}) {
+    return useQuery({
+        queryKey: queryKeys.qcPersonalDefectTrends(userId, range),
+        queryFn: () => qcApi.getPersonalDefectTrends(userId, range),
+        enabled: !!userId,
+        staleTime: 1000 * 60 * 5,
+        ...options,
+    });
+}
+
+/**
+ * Personal decision-speed trends for the QC tech. Sibling to
+ * useQCPersonalDefectTrends — same range/auth model but returns daily
+ * speed-bucket counts and p50/p90 estimates instead of defect mix.
+ * Powers the /qc-technician/speed-trends page.
+ */
+export function useQCPersonalSpeedTrends(userId, range = '30d', options = {}) {
+    return useQuery({
+        queryKey: queryKeys.qcPersonalSpeedTrends(userId, range),
+        queryFn: () => qcApi.getPersonalSpeedTrends(userId, range),
         enabled: !!userId,
         staleTime: 1000 * 60 * 5,
         ...options,

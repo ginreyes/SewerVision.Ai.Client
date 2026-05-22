@@ -3,14 +3,15 @@
 import React, { useState, useMemo, useCallback } from "react";
 import {
   TrendingUp, Star, Users, CheckCircle2, Clock, Award,
-  Target, BarChart2, Loader2,
+  Target, BarChart2, Loader2, CalendarDays, Activity,
 } from "lucide-react";
 import { Card, CardContent } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { useUser } from "@/components/providers/UserContext";
-import { useUserTeamMetrics, useUserTeamSummary } from "@/hooks/useQueryHooks";
+import { useUserTeamMetrics, useUserTeamSummary, useUserMemberMetrics } from "@/hooks/useQueryHooks";
 import { MemberCard, ScoreBar } from "@/components/user/performance-reviews";
 import { ListSkeleton } from '@/components/shared/SkeletonLoading';
+import { BarChart } from "@/components/shared/charts";
 
 function StarScore({ score }) {
   const stars = Math.round(score / 20);
@@ -28,6 +29,160 @@ function StarScore({ score }) {
   );
 }
 
+const AVATAR_COLORS = [
+  "bg-indigo-500", "bg-emerald-500", "bg-amber-500", "bg-rose-500",
+  "bg-sky-500", "bg-violet-500", "bg-orange-500", "bg-teal-500",
+];
+
+const fullName = (u) =>
+  [u?.first_name, u?.last_name].filter(Boolean).join(" ").trim() ||
+  u?.username || u?.email || "Unknown";
+
+const initials = (u) => {
+  const f = (u?.first_name || u?.username || "?").trim()[0] || "?";
+  const l = (u?.last_name || "").trim()[0] || "";
+  return (f + l).toUpperCase();
+};
+
+// Backend returns raw PerformanceMetrics docs with a populated `teamMember`.
+// MemberCard expects a flat shape — normalize here once so the rest of the
+// page can stay declarative.
+function normalizeMetric(doc, idx) {
+  const tm = doc.teamMember || {};
+  return {
+    id: String(doc._id),
+    memberId: tm._id ? String(tm._id) : null,
+    name: fullName(tm),
+    role: tm.role || "—",
+    avatar: initials(tm),
+    color: AVATAR_COLORS[idx % AVATAR_COLORS.length],
+    qualityScore: Number(doc.qualityScore) || 0,
+    completionRate: Number(doc.completionRate) || 0,
+    responseTime: doc.responseTime != null ? `${doc.responseTime}h` : "—",
+    reviews: Number(doc.totalReviews) || 0,
+    trend: doc.trend || "0%",
+    createdAt: doc.createdAt,
+  };
+}
+
+// Build a 90-day quality-score series (oldest → today) for a single member,
+// keyed by the day each metric was created. Days with no submission render
+// as zero-height bars so the calendar gaps stay visible.
+function build90DayQualitySeries(rawDocs) {
+  const days = [];
+  const today = new Date();
+  today.setHours(0, 0, 0, 0);
+  for (let i = 89; i >= 0; i--) {
+    const d = new Date(today);
+    d.setDate(d.getDate() - i);
+    days.push({
+      iso: d.toISOString().slice(0, 10),
+      label: d.toLocaleDateString("en-US", { month: "short", day: "numeric" }),
+      value: 0,
+      meta: null,
+    });
+  }
+  const idx = new Map(days.map((d, i) => [d.iso, i]));
+  for (const doc of rawDocs || []) {
+    const c = doc.createdAt;
+    if (!c) continue;
+    const iso = new Date(c).toISOString().slice(0, 10);
+    const i = idx.get(iso);
+    if (i == null) continue;
+    const score = Number(doc.qualityScore) || 0;
+    // If multiple submissions land on the same day, keep the highest score
+    // and aggregate completion + notes for the tooltip.
+    if (score >= days[i].value) {
+      days[i].value = score;
+      days[i].meta = {
+        period: days[i].label,
+        qualityScore: score,
+        completionRate: Number(doc.completionRate) || 0,
+        notes: doc.notes || "",
+      };
+    }
+  }
+  return days;
+}
+
+function MemberSparkline({ memberId }) {
+  // Sparkline reads the trailing 90-day window only — pass days=90 so the
+  // server caps the find by createdAt instead of returning all-time history.
+  const { data, isLoading } = useUserMemberMetrics(memberId, { days: 90 });
+  const docs = useMemo(
+    () => (Array.isArray(data) ? data : data?.data || []),
+    [data]
+  );
+  const series = useMemo(() => build90DayQualitySeries(docs), [docs]);
+  const totalSubmissions = series.reduce((s, d) => s + (d.value > 0 ? 1 : 0), 0);
+
+  if (isLoading) {
+    return (
+      <div className="mt-4 bg-gray-50 rounded-xl p-3">
+        <div className="text-xs text-gray-500 mb-2">90-day quality trend</div>
+        <div className="h-16 rounded-md bg-gray-100 animate-pulse" />
+      </div>
+    );
+  }
+
+  if (totalSubmissions === 0) {
+    return (
+      <div className="mt-4 bg-gray-50 rounded-xl p-3">
+        <div className="text-xs text-gray-500 mb-2">90-day quality trend</div>
+        <p className="text-xs text-gray-400 italic">
+          No submissions in the last 90 days yet — new hires show empty until their first review lands.
+        </p>
+      </div>
+    );
+  }
+
+  // BarChart's `title` tooltip is on the rendered bar element. Pack the
+  // period + score + completion + notes into the label so hovering the
+  // bar surfaces the per-submission detail.
+  const chartData = series.map((d) => ({
+    value: d.value,
+    label: d.meta
+      ? `${d.meta.period} — score ${d.meta.qualityScore}, completion ${d.meta.completionRate}%${d.meta.notes ? `\n${d.meta.notes}` : ""}`
+      : d.label,
+  }));
+
+  return (
+    <div className="mt-4 bg-gray-50 rounded-xl p-3">
+      <div className="flex items-center justify-between mb-2">
+        <div className="text-xs text-gray-500">90-day quality trend</div>
+        <div className="text-[10px] text-gray-400">
+          {totalSubmissions} submission{totalSubmissions === 1 ? "" : "s"}
+        </div>
+      </div>
+      <BarChart data={chartData} maxValue={100} colorClass="bg-indigo-500" height={64} />
+    </div>
+  );
+}
+
+// Build a 30-day submissions histogram (oldest → today) from raw metric docs.
+function build30DayTrend(rawDocs) {
+  const days = [];
+  const today = new Date();
+  today.setHours(0, 0, 0, 0);
+  for (let i = 29; i >= 0; i--) {
+    const d = new Date(today);
+    d.setDate(d.getDate() - i);
+    days.push({
+      iso: d.toISOString().slice(0, 10),
+      label: d.toLocaleDateString("en-US", { day: "numeric" }),
+      value: 0,
+    });
+  }
+  const idx = new Map(days.map((d, i) => [d.iso, i]));
+  for (const doc of rawDocs) {
+    const c = doc.createdAt;
+    if (!c) continue;
+    const iso = new Date(c).toISOString().slice(0, 10);
+    if (idx.has(iso)) days[idx.get(iso)].value += 1;
+  }
+  return days;
+}
+
 export default function PerformanceReviews() {
   const { userId } = useUser();
   const { data: metricsData, isLoading: metricsLoading } = useUserTeamMetrics(userId);
@@ -35,12 +190,37 @@ export default function PerformanceReviews() {
 
   const [selected, setSelected] = useState(null);
 
-  const team = useMemo(() => Array.isArray(metricsData) ? metricsData : (metricsData?.data || []), [metricsData]);
+  const rawTeam = useMemo(
+    () => (Array.isArray(metricsData) ? metricsData : metricsData?.data || []),
+    [metricsData]
+  );
+
+  const team = useMemo(() => rawTeam.map(normalizeMetric), [rawTeam]);
 
   const sortedTeam = useMemo(
     () => [...team].sort((a, b) => b.qualityScore - a.qualityScore),
     [team]
   );
+
+  const trend30d = useMemo(() => build30DayTrend(rawTeam), [rawTeam]);
+
+  // At-a-glance KPIs sourced from the existing /summary endpoint.
+  // Falls back to client-side derivation when summary hasn't loaded.
+  const ataGlance = useMemo(() => {
+    const summary = summaryData || {};
+    const fallbackQuality = team.length
+      ? team.reduce((s, m) => s + m.qualityScore, 0) / team.length
+      : 0;
+    const fallbackCompletion = team.length
+      ? team.reduce((s, m) => s + m.completionRate, 0) / team.length
+      : 0;
+    return {
+      avgScore: Math.round(summary.avgQualityScore ?? fallbackQuality),
+      onTimePct: Math.round(summary.avgCompletionRate ?? fallbackCompletion),
+      cycleCount: Number(summary.totalEntries ?? team.length) || 0,
+      submissions30d: trend30d.reduce((s, d) => s + d.value, 0),
+    };
+  }, [summaryData, team, trend30d]);
 
   const selectedMember = useMemo(
     () => sortedTeam.find(m => m.id === selected) ?? sortedTeam[0] ?? null,
@@ -108,6 +288,70 @@ export default function PerformanceReviews() {
           </Card>
         ))}
       </div>
+
+      {/* At a glance — sourced from /api/performance-reviews/summary */}
+      <Card className="border-gray-200 mb-5">
+        <CardContent className="p-5">
+          <div className="flex items-center justify-between mb-4">
+            <div className="flex items-center gap-2">
+              <Activity className="w-4 h-4 text-indigo-500" />
+              <h2 className="text-sm font-semibold text-gray-900">At a glance</h2>
+            </div>
+            <span className="text-[11px] text-gray-400">Last 30 days</span>
+          </div>
+
+          <div className="grid grid-cols-2 sm:grid-cols-4 gap-3 mb-5">
+            <div className="rounded-xl bg-gradient-to-br from-indigo-50 to-white border border-indigo-100/60 p-3">
+              <div className="flex items-center gap-1.5 text-[11px] text-indigo-700 font-medium mb-1">
+                <Target className="w-3 h-3" /> Avg score
+              </div>
+              <p className="text-xl font-bold text-gray-900">{ataGlance.avgScore}<span className="text-xs text-gray-400 font-medium">/100</span></p>
+            </div>
+            <div className="rounded-xl bg-gradient-to-br from-emerald-50 to-white border border-emerald-100/60 p-3">
+              <div className="flex items-center gap-1.5 text-[11px] text-emerald-700 font-medium mb-1">
+                <CheckCircle2 className="w-3 h-3" /> On-time
+              </div>
+              <p className="text-xl font-bold text-gray-900">{ataGlance.onTimePct}<span className="text-xs text-gray-400 font-medium">%</span></p>
+            </div>
+            <div className="rounded-xl bg-gradient-to-br from-amber-50 to-white border border-amber-100/60 p-3">
+              <div className="flex items-center gap-1.5 text-[11px] text-amber-700 font-medium mb-1">
+                <CalendarDays className="w-3 h-3" /> Cycles
+              </div>
+              <p className="text-xl font-bold text-gray-900">{ataGlance.cycleCount}</p>
+            </div>
+            <div className="rounded-xl bg-gradient-to-br from-violet-50 to-white border border-violet-100/60 p-3">
+              <div className="flex items-center gap-1.5 text-[11px] text-violet-700 font-medium mb-1">
+                <BarChart2 className="w-3 h-3" /> Submissions (30d)
+              </div>
+              <p className="text-xl font-bold text-gray-900">{ataGlance.submissions30d}</p>
+            </div>
+          </div>
+
+          <div className="mt-2">
+            <div className="flex items-center justify-between mb-2">
+              <span className="text-[11px] font-medium text-gray-500 uppercase tracking-wide">
+                Metrics submissions, last 30 days
+              </span>
+              <span className="text-[10px] text-gray-400">
+                {trend30d[0]?.iso} → {trend30d[trend30d.length - 1]?.iso}
+              </span>
+            </div>
+            {trend30d.every((d) => d.value === 0) ? (
+              <div className="h-20 flex items-center justify-center text-xs text-gray-400">
+                No submissions in the last 30 days.
+              </div>
+            ) : (
+              <BarChart
+                data={trend30d}
+                colorClass="bg-indigo-500"
+                height={80}
+                showValues={false}
+                showLabels={false}
+              />
+            )}
+          </div>
+        </CardContent>
+      </Card>
 
       {sortedTeam.length === 0 ? (
         <Card className="border-gray-200">
@@ -192,6 +436,9 @@ export default function PerformanceReviews() {
                         </p>
                       </div>
                     </div>
+                    {selectedMember.memberId && (
+                      <MemberSparkline memberId={selectedMember.memberId} />
+                    )}
                   </div>
                 </CardContent>
               </Card>

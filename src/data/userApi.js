@@ -41,11 +41,13 @@ export const userApi = {
 
     // ─── Projects ───
 
-    async getAllProjects(userId, { page = 1, limit = 20, search = '', status = '' } = {}) {
+    async getAllProjects(userId, { page = 1, limit = 20, search = '', status = '', priority = '', sort = '' } = {}) {
         const params = new URLSearchParams({ page, limit });
         if (userId) params.set('managerId', userId);
         if (search) params.set('search', search);
         if (status && status !== 'all') params.set('status', status);
+        if (priority && priority !== 'all') params.set('priority', priority);
+        if (sort) params.set('sort', sort);
 
         const response = await api(`/api/projects/get-all-projects?${params}`, 'GET');
         if (!response.ok) {
@@ -375,8 +377,9 @@ export const userApi = {
         if (!response.ok) throw new Error(response.data?.message || 'Failed to fetch metrics');
         return response.data?.data || [];
     },
-    async getMemberMetrics(memberId) {
-        const response = await api(`/api/performance-reviews/member/${memberId}`, 'GET');
+    async getMemberMetrics(memberId, { days } = {}) {
+        const qs = days ? `?days=${days}` : '';
+        const response = await api(`/api/performance-reviews/member/${memberId}${qs}`, 'GET');
         if (!response.ok) throw new Error(response.data?.message || 'Failed to fetch member metrics');
         return response.data?.data || [];
     },
@@ -428,6 +431,168 @@ export const userApi = {
         const response = await api(`/api/overtime-requests?${params}`, 'GET');
         if (!response.ok) throw new Error(response.data?.message || 'Failed to fetch approval queue');
         return response.data?.data || [];
+    },
+
+    // ─── Approvals queue (May 14) ─────────────────────────────────────────
+    async getApprovalsQueue(status = 'pending') {
+        const params = new URLSearchParams({ status });
+        const response = await api(`/api/user/approvals?${params}`, 'GET');
+        if (!response.ok) throw new Error(response.data?.message || 'Failed to fetch approvals queue');
+        return response.data?.data || { items: [], counts: {} };
+    },
+    async approveApprovalItem(kind, id, reviewNote) {
+        if (!kind || !id) throw new Error('kind and id are required');
+        const response = await api(
+            `/api/user/approvals/${encodeURIComponent(kind)}/${encodeURIComponent(id)}/approve`,
+            'PATCH',
+            reviewNote ? { reviewNote } : undefined,
+        );
+        if (!response.ok) throw new Error(response.data?.message || 'Failed to approve item');
+        return response.data?.data;
+    },
+    async rejectApprovalItem(kind, id, reviewNote) {
+        if (!kind || !id) throw new Error('kind and id are required');
+        const response = await api(
+            `/api/user/approvals/${encodeURIComponent(kind)}/${encodeURIComponent(id)}/reject`,
+            'PATCH',
+            reviewNote ? { reviewNote } : undefined,
+        );
+        if (!response.ok) throw new Error(response.data?.message || 'Failed to reject item');
+        return response.data?.data;
+    },
+
+    // ─── Team workload & capacity (May 14) ────────────────────────────────
+    async getTeamWorkload({ weekOf, overThreshold, underThreshold } = {}) {
+        const params = new URLSearchParams();
+        if (weekOf) params.set('weekOf', weekOf);
+        if (overThreshold != null) params.set('overThreshold', String(overThreshold));
+        if (underThreshold != null) params.set('underThreshold', String(underThreshold));
+        const qs = params.toString();
+        const response = await api(`/api/user/workload${qs ? `?${qs}` : ''}`, 'GET');
+        if (!response.ok) throw new Error(response.data?.message || 'Failed to fetch team workload');
+        return response.data?.data;
+    },
+
+    // ─── Team goals (May 14) ──────────────────────────────────────────────
+    async getTeamGoals({ quarter, status, memberId } = {}) {
+        const params = new URLSearchParams();
+        if (quarter) params.set('quarter', quarter);
+        if (status) params.set('status', status);
+        if (memberId) params.set('memberId', memberId);
+        const qs = params.toString();
+        const response = await api(`/api/user/goals${qs ? `?${qs}` : ''}`, 'GET');
+        if (!response.ok) throw new Error(response.data?.message || 'Failed to fetch goals');
+        return response.data?.data || { goals: [], counts: {} };
+    },
+    async createTeamGoal(payload) {
+        const response = await api('/api/user/goals', 'POST', payload);
+        if (!response.ok) throw new Error(response.data?.message || 'Failed to create goal');
+        return response.data?.data;
+    },
+    async updateTeamGoal(id, payload) {
+        const response = await api(`/api/user/goals/${encodeURIComponent(id)}`, 'PATCH', payload);
+        if (!response.ok) throw new Error(response.data?.message || 'Failed to update goal');
+        return response.data?.data;
+    },
+    async deleteTeamGoal(id) {
+        const response = await api(`/api/user/goals/${encodeURIComponent(id)}`, 'DELETE');
+        if (!response.ok) throw new Error(response.data?.message || 'Failed to delete goal');
+        return response.data;
+    },
+
+    // ─── Team training & certifications (May 19) ──────────────────────────
+    async getTrainingRecords({ memberId, status, category, expiringWithin } = {}) {
+        const params = new URLSearchParams();
+        if (memberId) params.set('memberId', memberId);
+        if (status) params.set('status', status);
+        if (category) params.set('category', category);
+        if (expiringWithin != null) params.set('expiringWithin', String(expiringWithin));
+        const qs = params.toString();
+        const response = await api(`/api/user/training${qs ? `?${qs}` : ''}`, 'GET');
+        if (!response.ok) throw new Error(response.data?.message || 'Failed to fetch training records');
+        return response.data?.data || { records: [], counts: {} };
+    },
+    async createTrainingRecord(payload) {
+        const response = await api('/api/user/training', 'POST', payload);
+        if (!response.ok) throw new Error(response.data?.message || 'Failed to create training record');
+        return response.data?.data;
+    },
+    async updateTrainingRecord(id, payload) {
+        const response = await api(`/api/user/training/${encodeURIComponent(id)}`, 'PATCH', payload);
+        if (!response.ok) throw new Error(response.data?.message || 'Failed to update training record');
+        return response.data?.data;
+    },
+    async deleteTrainingRecord(id) {
+        const response = await api(`/api/user/training/${encodeURIComponent(id)}`, 'DELETE');
+        if (!response.ok) throw new Error(response.data?.message || 'Failed to delete training record');
+        return response.data;
+    },
+    async remindTrainingMember(id) {
+        const response = await api(`/api/user/training/${encodeURIComponent(id)}/remind`, 'POST');
+        if (!response.ok) throw new Error(response.data?.message || 'Failed to send reminder');
+        return response.data?.data;
+    },
+
+    // ─── Team training bulk actions + dashboard widgets (May 21) ──────────
+    async bulkRenewTrainingRecords({ recordIds, newExpiryDate }) {
+        const response = await api('/api/user/training/bulk-renew', 'POST', { recordIds, newExpiryDate });
+        if (!response.ok) throw new Error(response.data?.message || 'Failed to bulk renew records');
+        return response.data?.data;
+    },
+    async bulkRemindTrainingRecords({ recordIds, reminderSchedule = 'immediate' }) {
+        const response = await api('/api/user/training/bulk-remind', 'PATCH', { recordIds, reminderSchedule });
+        if (!response.ok) throw new Error(response.data?.message || 'Failed to schedule reminders');
+        return response.data?.data;
+    },
+    async getTeamCertificationSummary() {
+        const response = await api('/api/user/certifications/team-summary', 'GET');
+        if (!response.ok) throw new Error(response.data?.message || 'Failed to load compliance summary');
+        return response.data?.data;
+    },
+    async getMemberTrainingDetail(memberId) {
+        const response = await api(`/api/user/training/member/${encodeURIComponent(memberId)}`, 'GET');
+        if (!response.ok) throw new Error(response.data?.message || 'Failed to load member training detail');
+        return response.data?.data;
+    },
+    /**
+     * Streams the filtered training records as CSV. The backend returns
+     * text/csv so the api helper's contentType branch already gives us the
+     * raw string back through response.data.
+     */
+    async exportTrainingRecords({ status, category, memberId } = {}) {
+        const params = new URLSearchParams();
+        if (status) params.set('status', status);
+        if (category) params.set('category', category);
+        if (memberId) params.set('memberId', memberId);
+        params.set('format', 'csv');
+        const response = await api(`/api/user/training/export?${params.toString()}`, 'GET');
+        if (!response.ok) {
+            const msg = typeof response.data === 'string' ? 'Export failed' : (response.data?.message || 'Failed to export training records');
+            throw new Error(msg);
+        }
+        return typeof response.data === 'string' ? response.data : '';
+    },
+
+    // ─── Training audit trail + project health rollup (May 22) ────────────
+    async getTrainingAudit({ action, recordId, memberId, limit } = {}) {
+        const params = new URLSearchParams();
+        if (action) params.set('action', action);
+        if (recordId) params.set('recordId', recordId);
+        if (memberId) params.set('memberId', memberId);
+        if (limit) params.set('limit', String(limit));
+        const qs = params.toString();
+        const response = await api(`/api/user/training/audit${qs ? `?${qs}` : ''}`, 'GET');
+        if (!response.ok) throw new Error(response.data?.message || 'Failed to load training audit');
+        return response.data?.data || { entries: [] };
+    },
+    async getProjectHealthRollup({ limit, worstFirst } = {}) {
+        const params = new URLSearchParams();
+        if (limit) params.set('limit', String(limit));
+        if (worstFirst === false) params.set('worstFirst', 'false');
+        const qs = params.toString();
+        const response = await api(`/api/user/project-health-rollup${qs ? `?${qs}` : ''}`, 'GET');
+        if (!response.ok) throw new Error(response.data?.message || 'Failed to load project health rollup');
+        return response.data?.data;
     },
 };
 

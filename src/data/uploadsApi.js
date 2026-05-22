@@ -1,6 +1,7 @@
 "use client";
 
-import { api, apiBlob } from "@/lib/helper";
+import { api, apiBlob, getCookie } from "@/lib/helper";
+import { BACKEND_URL as API } from "@/lib/config";
 
 /**
  * Uploads API functions
@@ -336,6 +337,83 @@ export const uploadsApi = {
     const response = await api('/api/uploads/migrate/list', 'GET');
     if (!response.ok) {
       throw new Error(response.data?.message || 'Failed to list migrations');
+    }
+    return response.data.data;
+  },
+
+  /**
+   * Chunked upload: start. Server returns { uploadId, totalChunks }.
+   * Caller passes the SAME meta into queueUpload(meta, chunkBlobs) so the
+   * IDB row uses the server-issued id as its primary key.
+   */
+  async startChunkedUpload({ originalName, mimeType, sizeBytes, totalChunks, projectId, device, location }) {
+    const response = await api('/api/uploads/start', 'POST', {
+      originalName, mimeType, sizeBytes, totalChunks, projectId, device, location,
+    });
+    if (!response.ok) {
+      throw new Error(response.data?.message || 'Failed to start chunked upload');
+    }
+    return response.data.data;
+  },
+
+  /**
+   * Chunked upload: PUT one chunk. Uses raw fetch directly because the api()
+   * helper auto-JSON-serializes the body; chunk PUTs must send a Blob with
+   * Content-Type: application/octet-stream so the service-worker offline
+   * branch and the express raw-body parser both see a Buffer/Blob.
+   *
+   * If `sha256` is provided, attach it as Content-SHA256 — the server (Day 6)
+   * verifies the chunk bytes match and rejects with 422 on a mismatch, so a
+   * truncated/corrupt chunk is detected at PUT time rather than at /complete.
+   *
+   * Returns the raw Response so the page-side drain() in uploadQueue.js can
+   * inspect status + ETag header (its `putChunk` adapter expects a Response).
+   */
+  async putChunk(uploadId, index, blob, { sha256 } = {}) {
+    const authToken = getCookie('authToken');
+    const headers = {
+      'Content-Type': 'application/octet-stream',
+      ...(authToken ? { Authorization: `Bearer ${authToken}` } : {}),
+    };
+    if (sha256) headers['Content-SHA256'] = sha256;
+    return fetch(`${API}/api/uploads/${encodeURIComponent(uploadId)}/chunk/${index}`, {
+      method: 'PUT',
+      body: blob,
+      headers,
+      credentials: 'include',
+    });
+  },
+
+  /**
+   * Chunked upload: ask the server which chunks it has already persisted for
+   * this uploadId. Used on resume-after-reload (Day 6) so the client skips
+   * re-sending bytes the server already accepted.
+   *
+   * Returns { uploadId, totalChunks, receivedCount, received: number[],
+   * nextMissing: number|null, bytesReceived, sizeBytes, complete }.
+   */
+  async getChunkedUploadStatus(uploadId) {
+    const response = await api(`/api/uploads/${encodeURIComponent(uploadId)}/status`, 'GET');
+    if (!response.ok) {
+      throw new Error(response.data?.message || 'Failed to read chunked upload status');
+    }
+    return response.data.data;
+  },
+
+  /** Chunked upload: server stitches chunks, creates Upload row, returns it. */
+  async completeChunkedUpload(uploadId) {
+    const response = await api(`/api/uploads/${encodeURIComponent(uploadId)}/complete`, 'POST');
+    if (!response.ok) {
+      throw new Error(response.data?.message || 'Failed to complete chunked upload');
+    }
+    return response.data.data;
+  },
+
+  /** Chunked upload: discard server-side staging without creating a row. */
+  async abortChunkedUpload(uploadId) {
+    const response = await api(`/api/uploads/${encodeURIComponent(uploadId)}/abort`, 'POST');
+    if (!response.ok) {
+      throw new Error(response.data?.message || 'Failed to abort chunked upload');
     }
     return response.data.data;
   },

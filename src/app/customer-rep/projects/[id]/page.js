@@ -14,6 +14,10 @@ import { useQuery } from "@tanstack/react-query";
 import { api } from "@/lib/helper";
 import { DashboardSkeleton } from "@/components/shared/SkeletonLoading";
 import { getVideoUrl } from "@/lib/getVideoUrl";
+import ProjectTimelineLauncher from "@/components/shared/project-timeline/ProjectTimelineLauncher";
+import ProjectChatDrawer from "@/components/shared/project-chat/ProjectChatDrawer";
+import ProjectStatusTimeline from "@/components/shared/project/ProjectStatusTimeline";
+import ProjectMetadataPanel from "@/components/shared/project/ProjectMetadataPanel";
 
 const STATUS_COLORS = {
   planning: "bg-blue-100 text-blue-700",
@@ -75,6 +79,7 @@ export default function CustomerRepProjectDetailPage() {
 
   return (
     <div className="max-w-6xl mx-auto p-6 space-y-6">
+      <ProjectTimelineLauncher project={project} />
       {/* Header */}
       <div className="flex items-center gap-4">
         <Button variant="ghost" size="icon" onClick={() => router.push("/customer-rep/projects")} className="rounded-xl">
@@ -233,24 +238,13 @@ export default function CustomerRepProjectDetailPage() {
             </CardContent>
           </Card>
 
-          {/* Recording Info */}
-          {project.metadata && Object.keys(project.metadata).length > 0 && (
-            <Card className="border-0 shadow-sm">
-              <CardHeader className="pb-2">
-                <CardTitle className="text-xs font-bold uppercase tracking-wider text-gray-400">Recording Info</CardTitle>
-              </CardHeader>
-              <CardContent className="pt-0 space-y-2">
-                {Object.entries(project.metadata).map(([key, value]) => (
-                  <div key={key} className="flex justify-between text-xs">
-                    <span className="text-gray-400 capitalize">{key.replace(/([A-Z])/g, " $1").trim()}</span>
-                    <span className="text-gray-700 font-medium text-right">{String(value)}</span>
-                  </div>
-                ))}
-              </CardContent>
-            </Card>
-          )}
+          <ProjectMetadataPanel metadata={project.metadata} role="customer-rep" />
+
+          <ProjectStatusTimeline statusHistory={project.statusHistory} role="customer-rep" />
         </div>
       </div>
+
+      <ProjectChatDrawer projectId={id} />
     </div>
   );
 }

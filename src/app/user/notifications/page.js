@@ -24,11 +24,12 @@ import { useNotifications } from '@/components/providers/NotificationProvider';
 import { useAlert } from '@/components/providers/AlertProvider';
 import { api } from '@/lib/helper';
 import { useUserInbox, useUserUnreadCount } from '@/hooks/useQueryHooks';
-import notificationApi from '@/data/notificationApi ';
+import notificationApi from '@/data/notificationApi';
 import ChatBubble from '@/components/user/inbox/ChatBubble';
 import DateSeparator from '@/components/user/inbox/DateSeparator';
 import { typeConfig, getDateLabel } from '@/components/user/inbox/inboxConfig';
 import NotificationCenter from '@/components/shared/NotificationCenter';
+import ChatNotificationPreferences from '@/components/shared/notifications/ChatNotificationPreferences';
 
 const NotificationPageTeamLeader = () => {
   const { userId } = useUser();
@@ -194,8 +195,16 @@ const NotificationPageTeamLeader = () => {
     statusUpdate: true,
     taskAssignment: true,
     deleteRequest: true,
+    chatMention: true,
+    chatReply: true,
+    chatPin: true,
+    chatMessage: false,
+    chatReaction: false,
   });
 
+  // Intentionally omits fetchNotifications from deps — it's a stable callback
+  // from NotificationProvider, and including it would re-trigger the initial
+  // fetch every time pagination changes upstream.
   useEffect(() => {
     if (userId) {
       fetchNotifications(true);
@@ -212,6 +221,11 @@ const NotificationPageTeamLeader = () => {
               statusUpdate: prefs.statusUpdate ?? true,
               taskAssignment: prefs.taskAssignment ?? true,
               deleteRequest: prefs.deleteRequest ?? true,
+              chatMention: prefs.chatMention ?? true,
+              chatReply: prefs.chatReply ?? true,
+              chatPin: prefs.chatPin ?? true,
+              chatMessage: prefs.chatMessage ?? false,
+              chatReaction: prefs.chatReaction ?? false,
             });
           }
         } catch (err) {
@@ -220,9 +234,16 @@ const NotificationPageTeamLeader = () => {
       };
       loadPreferences();
     }
-  }, [userId, fetchNotifications]);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [userId]);
 
   const togglePreference = async (key) => {
+    // Snapshot the previous value BEFORE the optimistic update so the
+    // rollback path doesn't read a stale closure if multiple toggles fire
+    // in quick succession (the original code re-saved `preferences` from
+    // the closure, which already pointed at the new state by the time the
+    // catch block ran).
+    const previous = preferences;
     const newPreferences = {
       ...preferences,
       [key]: !preferences[key],
@@ -240,7 +261,7 @@ const NotificationPageTeamLeader = () => {
     } catch (err) {
       console.error('Error updating preferences:', err);
       showAlert('Failed to update preferences', 'error');
-      setPreferences(preferences);
+      setPreferences(previous);
     }
   };
 
@@ -382,6 +403,12 @@ const NotificationPageTeamLeader = () => {
                 </div>
               </CardContent>
             </Card>
+
+            <ChatNotificationPreferences
+              preferences={preferences}
+              onToggle={togglePreference}
+              accent="indigo"
+            />
           </NotificationCenter>
         </TabsContent>
 
@@ -527,7 +554,7 @@ const NotificationPageTeamLeader = () => {
               ) : (
                 groupedInbox.map((item, i) => {
                   if (item.type === 'date') {
-                    return <DateSeparator key={`date-${i}`} label={item.label} />;
+                    return <DateSeparator key={`date-${item.label}`} label={item.label} />;
                   }
                   return (
                     <ChatBubble

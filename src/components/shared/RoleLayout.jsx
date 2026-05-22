@@ -36,6 +36,22 @@ const SyncProgressBubble = dynamic(
   { ssr: false }
 );
 
+import MotionProvider from "@/components/shared/motion/MotionProvider";
+import PageTransition from "@/components/shared/motion/PageTransition";
+import { ProjectChatLauncherProvider } from "@/components/providers/ProjectChatLauncherProvider";
+
+const ProjectChatBubble = dynamic(
+  () => import("@/components/shared/project-chat/ProjectChatBubble"),
+  { ssr: false }
+);
+
+// Roles that get the floating Messenger-style project chat bubble. The
+// customer chat surface uses a different backend so customer keeps its
+// existing ChatBubble; admin/customer-rep don't get the bubble (admin has
+// other surfaces, customer-rep uses the per-project drawer mounted on
+// `/customer-rep/projects/[id]`).
+const PROJECT_CHAT_ROLES = new Set(["user", "operator", "qc-technician"]);
+
 export default function RoleLayout({ role: expectedRole, children }) {
   const [openSidebar, setOpenSidebar] = useState(true);
   const [role, setRole] = useState(null);
@@ -92,9 +108,11 @@ export default function RoleLayout({ role: expectedRole, children }) {
   if (!role) return null;
 
   const syncEnabled = SYNC_BUBBLE_ROLES.has(expectedRole);
+  const projectChatEnabled = PROJECT_CHAT_ROLES.has(expectedRole);
 
   return (
     <RoleThemeProvider role={expectedRole}>
+      <ProjectChatLauncherProvider>
       <SyncProvider enabled={syncEnabled}>
         <div className="flex">
           {/* Mobile sidebar overlay */}
@@ -116,15 +134,19 @@ export default function RoleLayout({ role: expectedRole, children }) {
             <Navbar openSideBar={handleToggleSidebar} role={expectedRole} />
             <main className="p-3 sm:p-4 dark:bg-[#09090b] min-h-screen transition-colors">
               <AnnouncementBanner role={expectedRole} />
-              {children}
+              <MotionProvider>
+                <PageTransition>{children}</PageTransition>
+              </MotionProvider>
             </main>
           </div>
 
           <TourGuide isOpen={showTour} onClose={closeTour} role={expectedRole} />
           <CommandPalette role={expectedRole} />
           {syncEnabled && <SyncProgressBubble />}
+          {projectChatEnabled && <ProjectChatBubble />}
         </div>
       </SyncProvider>
+      </ProjectChatLauncherProvider>
     </RoleThemeProvider>
   );
 }

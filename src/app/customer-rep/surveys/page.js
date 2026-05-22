@@ -18,6 +18,7 @@ import {
   useSupportAllTickets,
 } from "@/hooks/useQueryHooks";
 import { ListSkeleton } from '@/components/shared/SkeletonLoading';
+import { DonutRing } from "@/components/shared/charts";
 
 function StarRating({ rating, size = "w-4 h-4" }) {
   return (
@@ -26,20 +27,6 @@ function StarRating({ rating, size = "w-4 h-4" }) {
         <Star key={i} className={`${size} ${i <= rating ? "text-amber-400 fill-amber-400" : "text-gray-200 fill-gray-200"}`} />
       ))}
     </div>
-  );
-}
-
-function DonutRing({ pct, color, size = 60 }) {
-  const r = 22, circ = 2 * Math.PI * r;
-  const dash = (pct / 100) * circ;
-  return (
-    <svg width={size} height={size} viewBox="0 0 50 50">
-      <circle cx="25" cy="25" r={r} fill="none" stroke="#f3f4f6" strokeWidth="6" />
-      <circle cx="25" cy="25" r={r} fill="none" stroke={color} strokeWidth="6"
-        strokeDasharray={`${dash} ${circ}`} strokeDashoffset={circ / 4}
-        strokeLinecap="round" style={{ transition: "stroke-dasharray 0.5s" }} />
-      <text x="25" y="29" textAnchor="middle" fontSize="10" fontWeight="bold" fill="#111">{pct}%</text>
-    </svg>
   );
 }
 

@@ -15,6 +15,7 @@ import {
   useMarkConversationRead, useUserProjects,
 } from "@/hooks/useQueryHooks";
 import { api } from "@/lib/helper";
+import { unwrapList } from "@/lib/unwrapList";
 import { avatarSrc, getAvatarColor, getInitials } from "@/components/admin/constants";
 import ChatMessage, { ChatDateSeparator } from "@/components/shared/ChatMessage";
 import EmojiPicker from "@/components/shared/EmojiPicker";
@@ -36,7 +37,7 @@ export default function ClientHub() {
 
   const { data: convoData, isLoading: convosLoading, refetch: refetchConvos } = useUserConversations(userId);
   const conversations = useMemo(() => {
-    const raw = Array.isArray(convoData) ? convoData : (convoData?.data || []);
+    const raw = unwrapList(convoData);
     return raw.map(c => ({
       ...c,
       id: c._id,
@@ -48,7 +49,7 @@ export default function ClientHub() {
 
   const { data: msgData, isLoading: msgsLoading, refetch: refetchMsgs } = useUserMessages(selected);
   const messages = useMemo(() => {
-    const apiMsgs = Array.isArray(msgData) ? msgData : (msgData?.data || []);
+    const apiMsgs = unwrapList(msgData);
     // Merge with local optimistic messages
     const apiIds = new Set(apiMsgs.map(m => m._id));
     const unique = [...apiMsgs, ...localMessages.filter(m => !apiIds.has(m._id))];
@@ -59,7 +60,7 @@ export default function ClientHub() {
   const markRead = useMarkConversationRead();
 
   const { data: projectsData } = useUserProjects(userId);
-  const projects = useMemo(() => Array.isArray(projectsData) ? projectsData : (projectsData?.data || []), [projectsData]);
+  const projects = useMemo(() => unwrapList(projectsData), [projectsData]);
 
   const filtered = useMemo(() =>
     conversations.filter(c => !search || c.customer?.toLowerCase().includes(search.toLowerCase()) || c.project?.toLowerCase().includes(search.toLowerCase())),

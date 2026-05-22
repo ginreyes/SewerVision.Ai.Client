@@ -436,3 +436,100 @@ export function useSyncAll() {
     const qc = useQueryClient();
     return useMutation({ mutationFn: (operatorId) => operatorApi.syncAll(operatorId), onSuccess: () => { qc.invalidateQueries({ queryKey: ['operator', 'pending-syncs'] }); qc.invalidateQueries({ queryKey: ['operator', 'offline-stats'] }); } });
 }
+
+/**
+ * Shift handoff list — the operator's own outgoing handoffs PLUS any
+ * incoming handoffs a teammate left for them. The hook does not pass an
+ * operatorId to the API because the backend scopes results to the caller's
+ * own user id (an operator can only ever see their own handoffs anyway).
+ *
+ * The operatorId arg here is only used as part of the query key so React
+ * Query invalidates per-user when the logged-in user changes.
+ */
+export function useOperatorRecentShiftHandoffs(operatorId, limit = 10, options = {}) {
+    return useQuery({
+        queryKey: queryKeys.operatorRecentShiftHandoffs(operatorId, limit),
+        queryFn: () => operatorApi.getRecentShiftHandoffs(limit),
+        enabled: !!operatorId,
+        staleTime: 1000 * 60,
+        ...options,
+    });
+}
+
+/**
+ * Acknowledge an incoming shift handoff. Invalidates the recent-handoffs
+ * lists for every cached operator so the "Acknowledge" badge flips
+ * immediately without a manual refetch.
+ */
+export function useAcknowledgeShiftHandoff() {
+    const queryClient = useQueryClient();
+    return useMutation({
+        mutationFn: (handoffId) => operatorApi.acknowledgeShiftHandoff(handoffId),
+        onSuccess: () => {
+            queryClient.invalidateQueries({
+                predicate: (query) =>
+                    Array.isArray(query.queryKey) &&
+                    query.queryKey[0] === 'operator' &&
+                    query.queryKey[1] === 'shift-handoffs',
+            });
+        },
+    });
+}
+
+/**
+ * Equipment Issues — operator-side log of broken field gear that
+ * maintenance picks up. Backend scopes by role: operators see their own,
+ * admin/maintenance sees all. The operatorId arg is only used in the query
+ * key so React Query invalidates per-user when the logged-in user changes.
+ */
+export function useOperatorEquipmentIssues(operatorId, { status } = {}, options = {}) {
+    return useQuery({
+        queryKey: queryKeys.operatorEquipmentIssues(operatorId, { status: status ?? 'all' }),
+        queryFn: () => operatorApi.getEquipmentIssues({ status }),
+        enabled: !!operatorId,
+        staleTime: 1000 * 30,
+        ...options,
+    });
+}
+
+function invalidateEquipmentIssues(queryClient) {
+    queryClient.invalidateQueries({
+        predicate: (query) =>
+            Array.isArray(query.queryKey) &&
+            query.queryKey[0] === 'operator' &&
+            query.queryKey[1] === 'equipment-issues',
+    });
+}
+
+export function useCreateEquipmentIssue() {
+    const queryClient = useQueryClient();
+    return useMutation({
+        mutationFn: (payload) => operatorApi.createEquipmentIssue(payload),
+        onSuccess: () => invalidateEquipmentIssues(queryClient),
+    });
+}
+
+export function useAcknowledgeEquipmentIssue() {
+    const queryClient = useQueryClient();
+    return useMutation({
+        mutationFn: (id) => operatorApi.acknowledgeEquipmentIssue(id),
+        onSuccess: () => invalidateEquipmentIssues(queryClient),
+    });
+}
+
+export function useResolveEquipmentIssue() {
+    const queryClient = useQueryClient();
+    return useMutation({
+        mutationFn: ({ id, resolutionNotes }) =>
+            operatorApi.resolveEquipmentIssue(id, resolutionNotes),
+        onSuccess: () => invalidateEquipmentIssues(queryClient),
+    });
+}
+
+export function useDeleteEquipmentIssue() {
+    const queryClient = useQueryClient();
+    return useMutation({
+        mutationFn: (id) => operatorApi.deleteEquipmentIssue(id),
+        onSuccess: () => invalidateEquipmentIssues(queryClient),
+    });
+}

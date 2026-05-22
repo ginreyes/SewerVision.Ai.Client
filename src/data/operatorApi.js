@@ -476,6 +476,69 @@ export const operatorApi = {
         if (!response.ok) throw new Error(response.data?.message || 'Failed to fetch stats');
         return response.data?.data;
     },
+
+    // ─── Shift handoff ────────────────────────────────────────────────────
+    // Recent end-of-shift summaries the operator was a party to — either
+    // they wrote the handoff OR a teammate handed off to them. Backend
+    // scopes by req.user.id, so no operatorId param is needed for ops.
+    async getRecentShiftHandoffs(limit = 10) {
+        const response = await api(`/api/operations/shift-handoff/recent?limit=${limit}`, 'GET');
+        if (!response.ok) throw new Error(response.data?.message || 'Failed to fetch handoffs');
+        return response.data?.data ?? [];
+    },
+
+    // Acknowledge an incoming shift handoff. Only the row's nextShiftFor
+    // (or an admin) can call this; the backend enforces.
+    async acknowledgeShiftHandoff(handoffId) {
+        if (!handoffId) throw new Error('handoffId is required');
+        const response = await api(`/api/operations/shift-handoff/${encodeURIComponent(handoffId)}/acknowledge`, 'PATCH');
+        if (!response.ok) throw new Error(response.data?.message || 'Failed to acknowledge handoff');
+        return response.data?.data;
+    },
+
+    // ─── Equipment Issues ─────────────────────────────────────────────────
+    // Operator-side log of broken field gear. Backend scopes by role —
+    // operators see their own; admin/maintenance sees all.
+    async getEquipmentIssues({ status, limit = 100 } = {}) {
+        const params = new URLSearchParams();
+        if (status && status !== 'all') params.append('status', status);
+        if (limit) params.append('limit', String(limit));
+        const qs = params.toString();
+        const response = await api(`/api/maintenance/equipment-issues${qs ? `?${qs}` : ''}`, 'GET');
+        if (!response.ok) throw new Error(response.data?.message || 'Failed to fetch equipment issues');
+        return response.data?.data ?? [];
+    },
+
+    async createEquipmentIssue(payload) {
+        const response = await api('/api/maintenance/equipment-issues', 'POST', payload);
+        if (!response.ok) throw new Error(response.data?.message || 'Failed to create equipment issue');
+        return response.data?.data;
+    },
+
+    async acknowledgeEquipmentIssue(id) {
+        if (!id) throw new Error('id is required');
+        const response = await api(`/api/maintenance/equipment-issues/${encodeURIComponent(id)}/ack`, 'PATCH');
+        if (!response.ok) throw new Error(response.data?.message || 'Failed to acknowledge issue');
+        return response.data?.data;
+    },
+
+    async resolveEquipmentIssue(id, resolutionNotes) {
+        if (!id) throw new Error('id is required');
+        const response = await api(
+            `/api/maintenance/equipment-issues/${encodeURIComponent(id)}/resolve`,
+            'PATCH',
+            resolutionNotes ? { resolutionNotes } : undefined,
+        );
+        if (!response.ok) throw new Error(response.data?.message || 'Failed to resolve issue');
+        return response.data?.data;
+    },
+
+    async deleteEquipmentIssue(id) {
+        if (!id) throw new Error('id is required');
+        const response = await api(`/api/maintenance/equipment-issues/${encodeURIComponent(id)}`, 'DELETE');
+        if (!response.ok) throw new Error(response.data?.message || 'Failed to delete issue');
+        return response.data;
+    },
 };
 
 export default operatorApi;

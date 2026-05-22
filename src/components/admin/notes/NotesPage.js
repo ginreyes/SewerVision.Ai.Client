@@ -29,12 +29,117 @@ import { Input } from '@/components/ui/input';
 import { Select, SelectTrigger, SelectValue, SelectContent, SelectItem } from '@/components/ui/select';
 import { Card, CardContent } from '@/components/ui/card';
 import {
+    Dialog,
+    DialogContent,
+    DialogHeader,
+    DialogTitle,
+    DialogDescription,
+    DialogFooter,
+} from '@/components/ui/dialog';
+import {
     DropdownMenu,
     DropdownMenuContent,
     DropdownMenuItem,
     DropdownMenuSeparator,
     DropdownMenuTrigger,
 } from '@/components/ui/dropdown-menu';
+
+// Pure helpers — kept at module scope so React doesn't re-create them per render
+// and so the detail dialog subcomponent can share them.
+const CATEGORY_COLORS = {
+    defect: 'bg-gradient-to-br from-red-500 to-red-700',
+    review: 'bg-gradient-to-br from-blue-500 to-purple-600',
+    observation: 'bg-gradient-to-br from-green-500 to-emerald-600',
+    maintenance: 'bg-gradient-to-br from-orange-500 to-red-600',
+    general: 'bg-gradient-to-br from-gray-500 to-gray-700',
+};
+
+const CATEGORY_ICONS = {
+    defect: AlertTriangle,
+    review: CheckCircle,
+    observation: Eye,
+    maintenance: Settings,
+    general: FileText,
+};
+
+const categoryColor = (category) => CATEGORY_COLORS[category] || CATEGORY_COLORS.general;
+const categoryIcon = (category) => CATEGORY_ICONS[category] || FileText;
+
+const formatDateTime = (value) => {
+    if (!value) return '';
+    const d = new Date(value);
+    return Number.isNaN(d.getTime()) ? '' : d.toLocaleString();
+};
+
+function NoteDetailDialog({ note, open, onClose, onEdit }) {
+    if (!note) return null;
+    const Icon = categoryIcon(note.category);
+
+    return (
+        <Dialog open={open} onOpenChange={(v) => (!v ? onClose?.() : null)}>
+            <DialogContent className="sm:max-w-lg max-h-[80vh] overflow-y-auto">
+                <DialogHeader>
+                    <div className="flex items-start gap-3">
+                        <div className={`p-2 rounded-lg ${categoryColor(note.category)} text-white`}>
+                            <Icon className="w-5 h-5" />
+                        </div>
+                        <div className="flex-1 min-w-0">
+                            <DialogTitle className="text-lg font-bold text-gray-900">{note.title}</DialogTitle>
+                            <DialogDescription className="text-sm text-gray-500 capitalize">
+                                {note.category} Note
+                            </DialogDescription>
+                        </div>
+                    </div>
+                </DialogHeader>
+
+                <div className="space-y-4">
+                    <div>
+                        <p className="text-sm font-medium text-gray-700 mb-1">Content</p>
+                        <p className="text-sm text-gray-600 whitespace-pre-wrap leading-relaxed">{note.content}</p>
+                    </div>
+                    {note.tags && note.tags.length > 0 && (
+                        <div>
+                            <p className="text-sm font-medium text-gray-700 mb-2">Tags</p>
+                            <div className="flex flex-wrap gap-1.5">
+                                {note.tags.map((tag, i) => (
+                                    <span key={i} className="px-2.5 py-1 bg-gray-100 text-gray-700 rounded-full text-xs">#{tag}</span>
+                                ))}
+                            </div>
+                        </div>
+                    )}
+                    <div className="grid grid-cols-2 gap-4 pt-3 border-t border-gray-100">
+                        <div>
+                            <p className="text-xs text-gray-500">Created</p>
+                            <p className="text-sm text-gray-700">{formatDateTime(note.createdAt)}</p>
+                        </div>
+                        <div>
+                            <p className="text-xs text-gray-500">Updated</p>
+                            <p className="text-sm text-gray-700">{formatDateTime(note.updatedAt)}</p>
+                        </div>
+                        {note.projectId && (
+                            <div className="col-span-2">
+                                <p className="text-xs text-gray-500">Location</p>
+                                <p className="text-sm text-gray-700 flex items-center gap-1">
+                                    <MapPin className="w-3 h-3" />
+                                    {note.projectId.location || 'Unknown'}
+                                </p>
+                            </div>
+                        )}
+                    </div>
+                </div>
+
+                <DialogFooter>
+                    <Button variant="outline" size="sm" onClick={() => { onClose?.(); onEdit?.(note); }}>
+                        <Pencil className="w-3 h-3 mr-1" /> Edit
+                    </Button>
+                    <Button variant="outline" size="sm" onClick={onClose}>
+                        Close
+                    </Button>
+                </DialogFooter>
+            </DialogContent>
+        </Dialog>
+    );
+}
 
 const NotesPage = () => {
     const { userId, userData } = useUser();
@@ -186,27 +291,8 @@ const NotesPage = () => {
 
     const filteredNotes = getFilteredNotes();
 
-    const getCategoryColor = (category) => {
-        const colors = {
-            'defect': 'bg-gradient-to-br from-red-500 to-red-700',
-            'review': 'bg-gradient-to-br from-blue-500 to-purple-600',
-            'observation': 'bg-gradient-to-br from-green-500 to-emerald-600',
-            'maintenance': 'bg-gradient-to-br from-orange-500 to-red-600',
-            'general': 'bg-gradient-to-br from-gray-500 to-gray-700'
-        };
-        return colors[category] || colors['general'];
-    };
-
-    const getCategoryIcon = (category) => {
-        const icons = {
-            'defect': AlertTriangle,
-            'review': CheckCircle,
-            'observation': Eye,
-            'maintenance': Settings,
-            'general': FileText
-        };
-        return icons[category] || FileText;
-    };
+    const getCategoryColor = categoryColor;
+    const getCategoryIcon = categoryIcon;
 
 
     return (
@@ -463,70 +549,12 @@ const NotesPage = () => {
                 editData={editingNote}
             />
 
-            {/* View Details Modal */}
-            {showDetailModal && selectedNote && (
-                <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50" onClick={() => setShowDetailModal(false)}>
-                    <div className="bg-white rounded-xl shadow-xl max-w-lg w-full mx-4 max-h-[80vh] overflow-y-auto" onClick={(e) => e.stopPropagation()}>
-                        <div className="p-6 border-b border-gray-200">
-                            <div className="flex items-start justify-between">
-                                <div className="flex items-start gap-3">
-                                    <div className={`p-2 rounded-lg ${getCategoryColor(selectedNote.category)} text-white`}>
-                                        {React.createElement(getCategoryIcon(selectedNote.category), { className: "w-5 h-5" })}
-                                    </div>
-                                    <div>
-                                        <h2 className="text-lg font-bold text-gray-900">{selectedNote.title}</h2>
-                                        <p className="text-sm text-gray-500 capitalize">{selectedNote.category} Note</p>
-                                    </div>
-                                </div>
-                                <button onClick={() => setShowDetailModal(false)} className="text-gray-400 hover:text-gray-600 text-xl font-bold">&times;</button>
-                            </div>
-                        </div>
-                        <div className="p-6 space-y-4">
-                            <div>
-                                <p className="text-sm font-medium text-gray-700 mb-1">Content</p>
-                                <p className="text-sm text-gray-600 whitespace-pre-wrap leading-relaxed">{selectedNote.content}</p>
-                            </div>
-                            {selectedNote.tags && selectedNote.tags.length > 0 && (
-                                <div>
-                                    <p className="text-sm font-medium text-gray-700 mb-2">Tags</p>
-                                    <div className="flex flex-wrap gap-1.5">
-                                        {selectedNote.tags.map((tag, i) => (
-                                            <span key={i} className="px-2.5 py-1 bg-gray-100 text-gray-700 rounded-full text-xs">#{tag}</span>
-                                        ))}
-                                    </div>
-                                </div>
-                            )}
-                            <div className="grid grid-cols-2 gap-4 pt-3 border-t border-gray-100">
-                                <div>
-                                    <p className="text-xs text-gray-500">Created</p>
-                                    <p className="text-sm text-gray-700">{new Date(selectedNote.createdAt).toLocaleString()}</p>
-                                </div>
-                                <div>
-                                    <p className="text-xs text-gray-500">Updated</p>
-                                    <p className="text-sm text-gray-700">{new Date(selectedNote.updatedAt).toLocaleString()}</p>
-                                </div>
-                                {selectedNote.projectId && (
-                                    <div className="col-span-2">
-                                        <p className="text-xs text-gray-500">Location</p>
-                                        <p className="text-sm text-gray-700 flex items-center gap-1">
-                                            <MapPin className="w-3 h-3" />
-                                            {selectedNote.projectId.location || 'Unknown'}
-                                        </p>
-                                    </div>
-                                )}
-                            </div>
-                        </div>
-                        <div className="p-4 border-t border-gray-200 flex justify-end gap-2">
-                            <Button variant="outline" size="sm" onClick={() => { setShowDetailModal(false); handleEditNote(selectedNote); }}>
-                                <Pencil className="w-3 h-3 mr-1" /> Edit
-                            </Button>
-                            <Button variant="outline" size="sm" onClick={() => setShowDetailModal(false)}>
-                                Close
-                            </Button>
-                        </div>
-                    </div>
-                </div>
-            )}
+            <NoteDetailDialog
+                note={selectedNote}
+                open={showDetailModal}
+                onClose={() => setShowDetailModal(false)}
+                onEdit={handleEditNote}
+            />
         </div>
     );
 };

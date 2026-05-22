@@ -24,6 +24,8 @@ import {
   FolderOpen,
   HardDrive,
   Cloud,
+  ClipboardCheck,
+  AlertTriangle,
 } from 'lucide-react';
 import ModuleLoading from './SewerVisionLoadingAnimation';
 import { useLoadingModuleSetting } from '@/hooks/useLoadingModuleSettings';
@@ -58,6 +60,8 @@ const OperatorSidebar = ({ isOpen, role }) => {
       '/operator/equipement': 'Equipment',
       '/operator/connect-device': 'Connect Device',
       '/operator/maintenance': 'Maintenance',
+      '/operator/equipment-issues': 'Equipment Issues',
+      '/operator/handoffs': 'Shift Handoffs',
       '/operator/logs': 'Logs',
       '/operator/reports': 'Reports',
       '/operator/notifications': 'Notifications',
@@ -97,6 +101,7 @@ const OperatorSidebar = ({ isOpen, role }) => {
         { label: 'Equipment', icon: HardDrive, path: '/operator/equipement', module: 'equipment' },
         { label: 'Connect Device', icon: Link2, path: '/operator/connect-device', module: 'connect-device' },
         { label: 'Maintenance', icon: Wrench, path: '/operator/maintenance', module: 'maintenance' },
+        { label: 'Equipment Issues', icon: AlertTriangle, path: '/operator/equipment-issues', module: 'equipment-issues' },
       ],
     },
     {
@@ -104,6 +109,7 @@ const OperatorSidebar = ({ isOpen, role }) => {
       items: [
         { label: 'Logs', icon: BookOpen, path: '/operator/logs', module: 'logs' },
         { label: 'Reports', icon: BarChart2, path: '/operator/reports', module: 'reports' },
+        { label: 'Shift Handoffs', icon: ClipboardCheck, path: '/operator/handoffs', module: 'shift-handoffs' },
       ],
     },
     {

@@ -1,10 +1,10 @@
 'use client';
 
 import React from 'react';
-import NotesPage from '@/components/admin/notes/NotesPage';
+import UserNotesPage from '@/components/user/notes/UserNotesPage';
 
 const UserNotes = () => {
-  return <NotesPage />;
-}
+  return <UserNotesPage />;
+};
 
 export default UserNotes;

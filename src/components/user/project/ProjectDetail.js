@@ -48,6 +48,7 @@ import {
   UploadProgressDialog,
 } from '@/components/shared/project-dialogs';
 import { ProjectInfoBanner, UploadStatusBanners, ProjectVideoList } from '@/components/shared/project-detail';
+import ProjectStatusTimeline from '@/components/shared/project/ProjectStatusTimeline';
 import { useUser } from '@/components/providers/UserContext';
 import { useAlert } from '@/components/providers/AlertProvider';
 import { api } from '@/lib/helper';
@@ -1175,6 +1176,8 @@ const ProjectDetail = ({ project, setSelectedProject, allProjects = [] }) => {
                 </div>
               )}
             </div>
+
+            <ProjectStatusTimeline statusHistory={project?.statusHistory} role="user" />
           </div>
 
           {/* Dialogs - Outside flex container */}

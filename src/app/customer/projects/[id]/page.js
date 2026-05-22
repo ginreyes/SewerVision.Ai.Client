@@ -44,6 +44,8 @@ import SnapshotGrid from '@/components/customer/project-detail/SnapshotGrid';
 import VideoModal from '@/components/customer/project-detail/VideoModal';
 import DefectSummary from '@/components/customer/project-detail/DefectSummary';
 import ProjectTimeline from '@/components/customer/ProjectTimeline';
+import ProjectStatusTimeline from '@/components/shared/project/ProjectStatusTimeline';
+import ProjectMetadataPanel from '@/components/shared/project/ProjectMetadataPanel';
 import ActivityFeed from '@/components/customer/project-detail/ActivityFeed';
 import ProgressPipeline from '@/components/customer/projects/ProgressPipeline';
 
@@ -362,7 +364,7 @@ export default function ProjectPageViewDetails() {
         </TabsContent>
 
         {/* Timeline Tab */}
-        <TabsContent value="timeline">
+        <TabsContent value="timeline" className="space-y-4">
           <Card>
             <CardHeader>
               <CardTitle className="text-base">Project Timeline</CardTitle>
@@ -372,6 +374,7 @@ export default function ProjectPageViewDetails() {
               <ProjectTimeline project={project} />
             </CardContent>
           </Card>
+          <ProjectStatusTimeline statusHistory={project.statusHistory} role="customer" />
         </TabsContent>
 
         {/* Details Tab */}
@@ -432,29 +435,10 @@ export default function ProjectPageViewDetails() {
                 </div>
               </div>
 
-              {project.metadata && (
-                <div className="border-t pt-4">
-                  <h4 className="font-semibold mb-3">Inspection Metadata</h4>
-                  <div className="grid gap-4 md:grid-cols-2">
-                    <div>
-                      <p className="text-sm font-medium text-muted-foreground">Upstream Manhole</p>
-                      <p className="text-base mt-1">{project.metadata.upstreamMH}</p>
-                    </div>
-                    <div>
-                      <p className="text-sm font-medium text-muted-foreground">Downstream Manhole</p>
-                      <p className="text-base mt-1">{project.metadata.downstreamMH}</p>
-                    </div>
-                    {project.metadata.remarks && (
-                      <div className="md:col-span-2">
-                        <p className="text-sm font-medium text-muted-foreground">Remarks</p>
-                        <p className="text-base mt-1">{project.metadata.remarks}</p>
-                      </div>
-                    )}
-                  </div>
-                </div>
-              )}
             </CardContent>
           </Card>
+
+          <ProjectMetadataPanel metadata={project.metadata} role="customer" />
 
           <DefectSummary project={project} observations={observations} />
         </TabsContent>

@@ -1,6 +1,6 @@
 'use client';
 
-import React, { useState } from 'react';
+import React from 'react';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import {
@@ -9,7 +9,7 @@ import {
   DropdownMenuItem,
   DropdownMenuTrigger,
 } from '@/components/ui/dropdown-menu';
-import { X, ArrowRight, UserPlus, Bell, Loader2, CheckSquare } from 'lucide-react';
+import { X, ArrowRight, Loader2, CheckSquare } from 'lucide-react';
 import { useBatchUpdateStatus, useBatchAssign } from '@/data/pipelineApi';
 import { useAlert } from '@/components/providers/AlertProvider';
 import { useUser } from '@/components/providers/UserContext';

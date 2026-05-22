@@ -26,6 +26,7 @@ import {
   Ticket,
   Activity,
   MessageSquareWarning,
+  MessageSquareText,
   Headphones,
   // New module icons
   BookMarked,
@@ -85,6 +86,7 @@ export const ICON_MAP = {
   Ticket,
   Activity,
   MessageSquareWarning,
+  MessageSquareText,
   Headphones,
   // New module icons
   BookMarked,
@@ -284,6 +286,7 @@ export const FALLBACK_MENUS = {
       { label: 'Equipment', icon: 'HardDrive', path: '/operator/equipement', key: 'equipment' },
       { label: 'Connect Device', icon: 'Link2', path: '/operator/connect-device', key: 'connect-device' },
       { label: 'Maintenance', icon: 'Wrench', path: '/operator/maintenance', key: 'maintenance' },
+      { label: 'Equipment Issues', icon: 'AlertTriangle', path: '/operator/equipment-issues', key: 'equipment-issues' },
       { label: 'Offline Mode', icon: 'WifiOff', path: '/operator/offline', key: 'offline' },
     ]},
     { label: 'Records', items: [
@@ -291,6 +294,7 @@ export const FALLBACK_MENUS = {
       { label: 'Reports', icon: 'BarChart2', path: '/operator/reports', key: 'reports' },
       { label: 'Incidents', icon: 'AlertTriangle', path: '/operator/incidents', key: 'incidents' },
       { label: 'Time Tracking', icon: 'Clock', path: '/operator/time-tracking', key: 'time-tracking' },
+      { label: 'Shift Handoffs', icon: 'ClipboardCheck', path: '/operator/handoffs', key: 'handoffs' },
       { label: 'Analytics', icon: 'BarChart2', path: '/operator/analytics', key: 'analytics' },
     ]},
     { label: 'Account', items: [
@@ -308,12 +312,15 @@ export const FALLBACK_MENUS = {
       { label: 'Review Queue', icon: 'ListChecks', path: '/qc-technician/review-queue', key: 'review-queue' },
       { label: 'Review Workspace', icon: 'ClipboardCheck', path: '/qc-technician/quality-control', key: 'quality-control' },
       { label: 'Review Templates', icon: 'FileText', path: '/qc-technician/review-templates', key: 'review-templates' },
+      { label: 'Chat Templates', icon: 'MessageSquareText', path: '/qc-technician/chat-templates', key: 'chat-templates' },
       { label: 'Devices', icon: 'Monitor', path: '/qc-technician/devices', key: 'devices' },
     ]},
     { label: 'Knowledge', items: [
       { label: 'Defect Library', icon: 'BookMarked', path: '/qc-technician/defect-library', key: 'defect-library' },
       { label: 'Training', icon: 'GraduationCap', path: '/qc-technician/training', key: 'training' },
       { label: 'Review Analytics', icon: 'BarChart2', path: '/qc-technician/review-analytics', key: 'review-analytics' },
+      { label: 'Defect Trends', icon: 'TrendingUp', path: '/qc-technician/defect-trends', key: 'defect-trends' },
+      { label: 'Speed Trends', icon: 'Gauge', path: '/qc-technician/speed-trends', key: 'speed-trends' },
     ]},
     { label: 'Records', items: [
       { label: 'Reports', icon: 'FileText', path: '/qc-technician/reports', key: 'reports' },
@@ -335,6 +342,7 @@ export const FALLBACK_MENUS = {
     ]},
     { label: 'Team & Assets', items: [
       { label: 'Team Management', icon: 'Users', path: '/user/team', key: 'team' },
+      { label: 'Team Analytics', icon: 'BarChart3', path: '/user/analytics', key: 'analytics' },
       { label: 'Device Assignments', icon: 'Monitor', path: '/user/device-assignments', key: 'device-assignments' },
       { label: 'Resource Scheduler', icon: 'CalendarDays', path: '/user/resource-scheduler', key: 'resource-scheduler' },
       { label: 'Performance Reviews', icon: 'TrendingUp', path: '/user/performance-reviews', key: 'performance-reviews' },

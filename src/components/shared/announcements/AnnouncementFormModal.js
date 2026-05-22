@@ -12,7 +12,7 @@ import { Textarea } from "@/components/ui/textarea";
 import {
   Select, SelectContent, SelectItem, SelectTrigger, SelectValue,
 } from "@/components/ui/select";
-import { ALL_ROLES, ROLE_LABELS, ANNOUNCEMENT_TYPE_CONFIG } from "../constants";
+import { ALL_ROLES, ROLE_LABELS, ANNOUNCEMENT_TYPE_CONFIG } from "@/components/admin/constants";
 
 const TYPE_ICONS = {
   maintenance: Wrench,
@@ -30,8 +30,11 @@ export default function AnnouncementFormModal({
   saving,
   onSave,
   onClose,
+  allowedRoles,
 }) {
   if (!open) return null;
+
+  const roleOptions = allowedRoles && allowedRoles.length > 0 ? allowedRoles : ALL_ROLES;
 
   function toggleRole(role) {
     setForm(f => ({
@@ -41,7 +44,7 @@ export default function AnnouncementFormModal({
   }
 
   function selectAllRoles() {
-    setForm(f => ({ ...f, roles: [...ALL_ROLES] }));
+    setForm(f => ({ ...f, roles: [...roleOptions] }));
   }
 
   return (
@@ -120,7 +123,7 @@ export default function AnnouncementFormModal({
               <button onClick={selectAllRoles} className="text-[11px] text-rose-600 hover:text-rose-700 font-medium">Select All</button>
             </div>
             <div className="grid grid-cols-3 gap-2">
-              {ALL_ROLES.map(r => {
+              {roleOptions.map(r => {
                 const active = form.roles.includes(r);
                 return (
                   <button key={r} onClick={() => toggleRole(r)}
@@ -145,7 +148,7 @@ export default function AnnouncementFormModal({
         <div className="px-6 py-4 bg-gray-50/80 border-t border-gray-100 flex items-center justify-between">
           <div className="flex items-center gap-2 text-xs text-gray-400">
             <Users className="w-3.5 h-3.5" />
-            <span>{form.roles.length} of {ALL_ROLES.length} roles selected</span>
+            <span>{form.roles.length} of {roleOptions.length} roles selected</span>
           </div>
           <div className="flex items-center gap-2">
             <Button variant="outline" onClick={onClose} className="px-5">Cancel</Button>

@@ -21,6 +21,7 @@ import {
   Settings,
   ChevronRight,
   ShieldCheck,
+  Wrench,
 } from 'lucide-react';
 import ModuleLoading from './SewerVisionLoadingAnimation';
 import { useLoadingModuleSetting } from '@/hooks/useLoadingModuleSettings';
@@ -48,6 +49,7 @@ const AdminSidebar = ({ isOpen }) => {
       '/admin/calendar': 'Calendar',
       '/admin/uploads': 'Uploads',
       '/admin/devices': 'Devices',
+      '/admin/equipment-issues': 'Equipment Issues',
       '/admin/task': 'Tasks',
       '/admin/report': 'Reports',
       '/admin/notes': 'Notes',
@@ -80,6 +82,7 @@ const AdminSidebar = ({ isOpen }) => {
         { label: 'Users', icon: Users, path: '/admin/users' },
         { label: 'Uploads', icon: CloudUpload, path: '/admin/uploads' },
         { label: 'Devices', icon: Monitor, path: '/admin/devices' },
+        { label: 'Equipment Issues', icon: Wrench, path: '/admin/equipment-issues' },
         { label: 'Tasks', icon: ClipboardList, path: '/admin/task' },
       ],
     },

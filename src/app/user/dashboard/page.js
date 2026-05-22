@@ -1,6 +1,7 @@
 'use client';
 
-import React, { useEffect, useState, useRef, useMemo } from 'react';
+import React, { useEffect, useState, useRef, useMemo, useCallback } from 'react';
+import { useSearchParams, useRouter, usePathname } from 'next/navigation';
 import {
   LayoutDashboard,
   FolderOpen,
@@ -21,6 +22,9 @@ import StatsCards from '@/components/user/dashboard/StatsCards';
 import WeeklyDigestWidget from '@/components/user/project/WeeklyDigestWidget';
 import TeamMemberList from '@/components/user/dashboard/TeamMemberList';
 import UserDashboardDetail from '@/components/user/dashboard/UserDashboardDetail';
+import ComplianceSummaryCard from '@/components/user/dashboard/ComplianceSummaryCard';
+import MemberComplianceSidePanel from '@/components/user/dashboard/MemberComplianceSidePanel';
+import ProjectHealthRow from '@/components/user/dashboard/ProjectHealthRow';
 import { useUserDashboard, useUserTeamMemberDashboard } from '@/hooks/useQueryHooks';
 import { CHART_COLORS } from '@/components/user/constants';
 import { applyChartTheme } from '@/lib/chartTheme';
@@ -38,6 +42,26 @@ export default function UserDashboardPage() {
   const [chartReady, setChartReady] = useState(false);
   const [activeTab, setActiveTab] = useState('overview');
   const [selectedTeamUser, setSelectedTeamUser] = useState(null);
+  const [compliancePanel, setCompliancePanel] = useState({ open: false, memberId: null, memberName: null });
+
+  // Deep-link from a "Certification reminder" notification (May 22).
+  // /user/dashboard?compliance=<memberId>&memberName=<name> auto-opens the
+  // compliance side-panel for that member. The query string is wiped from
+  // the URL bar once consumed so a refresh doesn't re-open it.
+  const searchParams = useSearchParams();
+  const router = useRouter();
+  const pathname = usePathname();
+  useEffect(() => {
+    const memberId = searchParams?.get('compliance');
+    if (!memberId) return;
+    const memberName = searchParams?.get('memberName') || null;
+    setCompliancePanel({ open: true, memberId, memberName });
+    const next = new URLSearchParams(searchParams.toString());
+    next.delete('compliance');
+    next.delete('memberName');
+    const qs = next.toString();
+    router.replace(qs ? `${pathname}?${qs}` : pathname, { scroll: false });
+  }, [searchParams, router, pathname]);
 
   const chartRef = useRef(null);
   const teamChartRef = useRef(null);
@@ -146,14 +170,43 @@ export default function UserDashboardPage() {
     };
   }, [chartReady, teamCounts]);
 
-  const upcomingEvents = [...events]
-    .filter((e) => new Date(e.start_date || e.start) >= new Date())
-    .sort((a, b) => new Date(a.start_date || a.start) - new Date(b.start_date || b.start))
-    .slice(0, 5);
+  // Memoize so the arrays keep referential equality across renders (the
+  // previous code recomputed `new Date()` inline, breaking memo of every
+  // downstream <EventRow> / <ProjectRow> child).
+  const upcomingEvents = useMemo(() => {
+    const now = Date.now();
+    return [...events]
+      .filter((e) => new Date(e.start_date || e.start).getTime() >= now)
+      .sort((a, b) => new Date(a.start_date || a.start) - new Date(b.start_date || b.start))
+      .slice(0, 5);
+  }, [events]);
 
-  const recentProjects = [...projects]
-    .sort((a, b) => new Date(b.createdAt || b.created_at || 0) - new Date(a.createdAt || a.created_at || 0))
-    .slice(0, 5);
+  const recentProjects = useMemo(() => {
+    return [...projects]
+      .sort(
+        (a, b) =>
+          new Date(b.createdAt || b.created_at || 0) -
+          new Date(a.createdAt || a.created_at || 0)
+      )
+      .slice(0, 5);
+  }, [projects]);
+
+  // Stable handler refs (May 22) — without useCallback, every dashboard
+  // re-render (parent prop change, ANY upstream query refetch) recreated
+  // onSelectMember / onViewCompliance, busting the memo on ComplianceSummaryCard
+  // and TeamMemberList and producing the triple-render the plan called out.
+  const openCompliancePanel = useCallback((m) => {
+    setCompliancePanel({ open: true, memberId: m.memberId, memberName: m.memberName });
+  }, []);
+  const onPanelOpenChange = useCallback((open) => {
+    setCompliancePanel((prev) => ({ ...prev, open }));
+  }, []);
+  const onSelectTeamUser = useCallback((u) => setSelectedTeamUser(u), []);
+  const clearSelectedTeamUser = useCallback(() => setSelectedTeamUser(null), []);
+  const switchToOverview = useCallback(() => {
+    setActiveTab('overview');
+    setSelectedTeamUser(null);
+  }, []);
 
   if (loading && projects.length === 0 && events.length === 0) {
     return (
@@ -212,7 +265,8 @@ export default function UserDashboardPage() {
             <TeamMemberList
               teamList={teamList}
               selectedTeamUser={selectedTeamUser}
-              onSelectUser={(user) => setSelectedTeamUser(user)}
+              onSelectUser={onSelectTeamUser}
+              onViewCompliance={openCompliancePanel}
             />
             <div className="lg:col-span-2">
               {!selectedTeamUser ? (
@@ -232,8 +286,8 @@ export default function UserDashboardPage() {
                   user={selectedTeamUser}
                   data={teamMemberData}
                   isOperator={selectedTeamUser.role === 'operator'}
-                  onBack={() => setSelectedTeamUser(null)}
-                  onBackToDashboard={() => { setActiveTab('overview'); setSelectedTeamUser(null); }}
+                  onBack={clearSelectedTeamUser}
+                  onBackToDashboard={switchToOverview}
                 />
               )}
             </div>
@@ -252,6 +306,10 @@ export default function UserDashboardPage() {
           />
 
           <WeeklyDigestWidget managerId={userId} />
+
+          <ComplianceSummaryCard onSelectMember={openCompliancePanel} />
+
+          <ProjectHealthRow limit={5} />
 
           {/* Charts row */}
           <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
@@ -399,6 +457,13 @@ export default function UserDashboardPage() {
           </Card>
         </>
       )}
+
+      <MemberComplianceSidePanel
+        open={compliancePanel.open}
+        onOpenChange={onPanelOpenChange}
+        memberId={compliancePanel.memberId}
+        memberName={compliancePanel.memberName}
+      />
     </div>
   );
 }

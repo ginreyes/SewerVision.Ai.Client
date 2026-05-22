@@ -13,10 +13,12 @@ import {
   UserCog,
   Check,
   X,
+  MessageCircle,
 } from "lucide-react";
 import { useRouter } from "next/navigation";
 import { useAlert } from "@/components/providers/AlertProvider";
 import { useDialog } from "@/components/providers/DialogProvider";
+import { useProjectChatLauncher } from "@/components/providers/ProjectChatLauncherProvider";
 import { api } from "@/lib/helper";
 import {
   avatarSrc,
@@ -24,6 +26,7 @@ import {
   getInitials as getAdminInitials,
 } from "@/components/admin/constants";
 import { STATUS_GRADIENTS, EDIT_ROUTE_PREFIX } from "./projectCard.constants";
+import ProjectHealthBadge from "@/components/admin/project/ProjectHealthBadge";
 
 // ---------------------------------------------------------------------------
 // Default status-color & priority-color helpers (used when the caller does NOT
@@ -82,6 +85,7 @@ const ProjectCard = memo((props) => {
   const router = useRouter();
   const { showAlert } = useAlert();
   const { showDelete } = useDialog();
+  const chatLauncher = useProjectChatLauncher();
 
   // Resolve colour helpers – prefer prop, fallback to built-in
   const getStatusColor = getStatusColorProp || defaultGetStatusColor;
@@ -306,7 +310,28 @@ const ProjectCard = memo((props) => {
           </div>
 
           {/* Action buttons */}
-          <div className="flex gap-1" onClick={(e) => e.stopPropagation()}>
+          <div className="flex items-center gap-1" onClick={(e) => e.stopPropagation()}>
+            {role === "admin" && project?._id && (
+              <div className="mr-1">
+                <ProjectHealthBadge projectId={project._id} compact />
+              </div>
+            )}
+            {/* Chat button — only for roles that have the project chat bubble */}
+            {(role === "user" || role === "operator" || role === "qc-technician") && project?._id && chatLauncher && (
+              <Button
+                variant="ghost"
+                size="icon"
+                className="text-white hover:bg-white/20 h-8 w-8"
+                onClick={(e) => {
+                  e.stopPropagation();
+                  chatLauncher.openChatForProject(project._id);
+                }}
+                title="Open project chat"
+                aria-label="Open project chat"
+              >
+                <MessageCircle size={16} />
+              </Button>
+            )}
             {canEdit && (
               <Button
                 variant="ghost"

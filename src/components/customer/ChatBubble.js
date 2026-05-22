@@ -214,7 +214,9 @@ export default function ChatBubble() {
       } catch { /* silent */ }
     };
     fetch();
-    const iv = setInterval(fetch, 15000);
+    // 60s safety poll — new messages already arrive via socket; this only
+    // backstops dropped connections / multi-device sync.
+    const iv = setInterval(fetch, 60000);
     return () => clearInterval(iv);
   }, [userId]);
 

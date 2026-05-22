@@ -1,6 +1,6 @@
 'use client';
 
-import { createContext, useContext, useEffect, useRef, useState, useCallback } from 'react';
+import { createContext, useContext, useEffect, useMemo, useRef, useState, useCallback } from 'react';
 import { io } from 'socket.io-client';
 import { useUser } from './UserContext';
 import { BACKEND_URL } from '@/lib/config';
@@ -82,8 +82,16 @@ export function SocketProvider({ children }) {
     }
   }, []);
 
+  // Memoize the context value so every admin/operator/qc/user page that reads
+  // from useSocket() doesn't re-render on every SocketProvider render — only
+  // when `connected` or a callback identity actually changes.
+  const value = useMemo(
+    () => ({ connected, joinConversation, leaveConversation, sendTyping, on, off }),
+    [connected, joinConversation, leaveConversation, sendTyping, on, off]
+  );
+
   return (
-    <SocketContext.Provider value={{ connected, joinConversation, leaveConversation, sendTyping, on, off }}>
+    <SocketContext.Provider value={value}>
       {children}
     </SocketContext.Provider>
   );

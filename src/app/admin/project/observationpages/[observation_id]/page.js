@@ -90,10 +90,8 @@ const ObservationDetailsPageContent = () => {
         setEditingSections((prev) => ({ ...prev, [section]: false }));
       } else {
         showAlert(`Failed to save ${section}`, "error");
-        console.error("❌ API returned not ok:", data);
       }
     } catch (err) {
-      console.error(`❌ Failed to save ${section}:`, err);
       setError(`Failed to save ${section}`);
     } finally {
       setSavingStates((prev) => ({ ...prev, [section]: false }));

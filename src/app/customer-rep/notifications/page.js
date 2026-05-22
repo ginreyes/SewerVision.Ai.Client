@@ -42,10 +42,13 @@ export default function CustomerRepNotifications() {
     loadPrefs();
   }, [userId]);
 
-  // Fetch notifications on mount
+  // Fetch notifications on mount — fetchNotifications is a stable callback
+  // from NotificationProvider; including it in deps would re-trigger this
+  // effect on every pagination change upstream.
   useEffect(() => {
     if (userId) fetchNotifications(true);
-  }, [userId, fetchNotifications]);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [userId]);
 
   const togglePreference = async (key) => {
     const newPreferences = {

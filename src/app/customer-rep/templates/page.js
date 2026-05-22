@@ -78,6 +78,7 @@ export default function CustomerRepTemplates() {
 
   const [search, setSearch] = useState("");
   const [filterCategory, setFilterCategory] = useState("all");
+  const [filterScope, setFilterScope] = useState("mine");
   const [showDialog, setShowDialog] = useState(false);
   const [editingTemplate, setEditingTemplate] = useState(null);
 
@@ -96,7 +97,13 @@ export default function CustomerRepTemplates() {
   const filteredTemplates = (Array.isArray(templates) ? templates : []).filter((t) => {
     const matchSearch = !search || t.title.toLowerCase().includes(search.toLowerCase()) || t.body.toLowerCase().includes(search.toLowerCase());
     const matchCategory = filterCategory === "all" || t.category === filterCategory;
-    return matchSearch && matchCategory;
+    const ownerId = typeof t.createdBy === "object" ? t.createdBy?._id : t.createdBy;
+    const isMine = String(ownerId) === String(userId);
+    const matchScope =
+      filterScope === "all" ||
+      (filterScope === "mine" && isMine) ||
+      (filterScope === "shared" && t.isShared && !isMine);
+    return matchSearch && matchCategory && matchScope;
   });
 
   const openCreate = useCallback(() => {
@@ -209,6 +216,16 @@ export default function CustomerRepTemplates() {
               {CATEGORIES.map((c) => (
                 <SelectItem key={c.value} value={c.value}>{c.label}</SelectItem>
               ))}
+            </SelectContent>
+          </Select>
+          <Select value={filterScope} onValueChange={setFilterScope}>
+            <SelectTrigger className="w-36 h-9">
+              <SelectValue placeholder="Scope" />
+            </SelectTrigger>
+            <SelectContent>
+              <SelectItem value="mine">Mine</SelectItem>
+              <SelectItem value="shared">Shared</SelectItem>
+              <SelectItem value="all">All</SelectItem>
             </SelectContent>
           </Select>
         </div>

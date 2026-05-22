@@ -9,9 +9,10 @@ import { Input } from "@/components/ui/input"
 import { Select, SelectTrigger, SelectValue, SelectContent, SelectItem } from "@/components/ui/select"
 import {
   ArrowLeft, Search, Shield, AlertTriangle, CheckCircle, Clock,
-  Eye, XCircle, Loader2, FileText, Camera, X, ZoomIn,
+  Eye, XCircle, Loader2, FileText, Camera, ZoomIn,
   CheckCheck, Ban, Filter,
 } from "lucide-react"
+import { Dialog, DialogContent, DialogTitle } from "@/components/ui/dialog"
 import { API_URL, getSeverityColor } from '@/components/admin/constants'
 
 const QCReviewPage = () => {
@@ -359,16 +360,18 @@ const QCReviewPage = () => {
       </div>
 
       {/* Lightbox */}
-      {lightboxUrl && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/80" onClick={() => setLightboxUrl(null)}>
-          <div className="relative max-w-4xl max-h-[90vh] m-4" onClick={(e) => e.stopPropagation()}>
-            <img src={lightboxUrl} alt="Detection" className="max-w-full max-h-[85vh] object-contain rounded-lg" />
-            <button onClick={() => setLightboxUrl(null)} className="absolute -top-3 -right-3 p-1.5 bg-white rounded-full shadow-lg hover:bg-gray-100">
-              <X className="h-4 w-4 text-gray-700" />
-            </button>
-          </div>
-        </div>
-      )}
+      <Dialog open={Boolean(lightboxUrl)} onOpenChange={(open) => !open && setLightboxUrl(null)}>
+        <DialogContent className="max-w-4xl bg-black/90 border-none p-0 sm:rounded-xl overflow-hidden [&>button]:text-white">
+          <DialogTitle className="sr-only">Detection snapshot</DialogTitle>
+          {lightboxUrl && (
+            <img
+              src={lightboxUrl}
+              alt="Detection"
+              className="w-full max-h-[85vh] object-contain"
+            />
+          )}
+        </DialogContent>
+      </Dialog>
     </div>
   )
 }

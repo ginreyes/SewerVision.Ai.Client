@@ -34,6 +34,13 @@ import {
   RotateCcw,
 } from "lucide-react";
 import { Textarea } from "@/components/ui/textarea";
+import {
+  Dialog,
+  DialogContent,
+  DialogHeader,
+  DialogTitle,
+  DialogDescription,
+} from "@/components/ui/dialog";
 import { useRouter } from "next/navigation";
 import { useUser } from "@/components/providers/UserContext";
 import { useParams } from "next/navigation";
@@ -69,6 +76,7 @@ export default function EditProjectPage() {
   const [operators, setOperators] = useState([]);
   const [qcTechnicians, setQcTechnicians] = useState([]);
   const [leads, setLeads] = useState([]);
+  const [customerReps, setCustomerReps] = useState([]);
   const [loadingUsers, setLoadingUsers] = useState(false);
   const [customers, setCustomers] = useState([]);
   const [loadingCustomers, setLoadingCustomers] = useState(false);
@@ -103,6 +111,7 @@ export default function EditProjectPage() {
       email: "",
       certification: "",
     },
+    customerRep: "",
     assignedDevice: "",
     metadata: {
       recordingDate: "",
@@ -147,6 +156,8 @@ export default function EditProjectPage() {
 
       const customerIdVal = project.customerId?._id?.toString?.() || project.customerId?.toString?.() || project.customerId || "";
 
+      const customerRepVal = project.customerRep?._id?.toString?.() || project.customerRep?.toString?.() || project.customerRep || "";
+
       // Initialize form with project data
       setFormData({
         name: project.name || "",
@@ -178,6 +189,7 @@ export default function EditProjectPage() {
           email: project.qcTechnician?.email || "",
           certification: project.qcTechnician?.certification || "",
         },
+        customerRep: customerRepVal,
         assignedDevice: project.assignedDevice?._id?.toString?.() || project.assignedDevice?.toString?.() || "",
         metadata: {
           recordingDate: project.metadata?.recordingDate || "",
@@ -220,6 +232,9 @@ export default function EditProjectPage() {
         const leadUsers = data.users.filter(
           (u) => u.role === "user" || u.role === "User"
         );
+        const customerRepUsers = data.users.filter(
+          (u) => u.role === "customer-rep" || u.role === "Customer-Rep"
+        );
 
         if (isUserRole && Array.isArray(userData?.managedMembers) && userData.managedMembers.length > 0) {
           const managedIds = new Set(userData.managedMembers.map((id) => String(id)));
@@ -230,6 +245,7 @@ export default function EditProjectPage() {
         setOperators(operatorUsers);
         setQcTechnicians(qcUsers);
         setLeads(leadUsers);
+        setCustomerReps(customerRepUsers);
       }
     } catch (error) {
       showAlert("Failed to fetch users", "error");
@@ -447,6 +463,7 @@ export default function EditProjectPage() {
           email: originalProject.qcTechnician?.email || "",
           certification: originalProject.qcTechnician?.certification || "",
         },
+        customerRep: originalProject.customerRep?._id?.toString?.() || originalProject.customerRep?.toString?.() || originalProject.customerRep || "",
         assignedDevice: originalProject.assignedDevice?._id?.toString?.() || originalProject.assignedDevice?.toString?.() || "",
         metadata: {
           recordingDate: originalProject.metadata?.recordingDate || "",
@@ -920,58 +937,117 @@ export default function EditProjectPage() {
 
               <div className="space-y-6">
                 {!isUserRole ? (
-                  /* Admin: Assigned Lead (user role only) */
-                  <div className="border border-purple-200 rounded-lg p-4 bg-purple-50">
-                    <h4 className="font-semibold text-gray-900 mb-4">
-                      Assigned Lead
-                    </h4>
-                    <div className="space-y-4">
+                  <>
+                    {/* Admin: Assigned Lead (user role only) */}
+                    <div className="border border-purple-200 rounded-lg p-4 bg-purple-50">
+                      <h4 className="font-semibold text-gray-900 mb-4">
+                        Assigned Lead
+                      </h4>
+                      <div className="space-y-4">
+                        <div className="space-y-2">
+                          <Label className="text-sm font-medium text-gray-700">
+                            Select Lead (user) *
+                          </Label>
+                          <Select
+                            value={formData.managerId}
+                            onValueChange={handleLeadSelect}
+                          >
+                            <SelectTrigger
+                              className={`h-10 ${
+                                errors.managerId ? "border-red-500" : ""
+                              }`}
+                            >
+                              <SelectValue placeholder="Choose an assigned lead..." />
+                            </SelectTrigger>
+                            <SelectContent>
+                              {leads.length === 0 ? (
+                                <div className="px-4 py-6 text-center text-gray-500 text-sm">
+                                  No users (lead) available
+                                </div>
+                              ) : (
+                                leads.map((lead) => (
+                                  <SelectItem
+                                    key={lead.user_id}
+                                    value={lead.user_id}
+                                  >
+                                    <div className="flex items-center gap-3">
+                                      <UserCheck className="h-4 w-4 text-purple-600" />
+                                      <div>
+                                        <div className="font-medium">{lead.name}</div>
+                                        <div className="text-xs text-gray-500">{lead.email}</div>
+                                      </div>
+                                    </div>
+                                  </SelectItem>
+                                ))
+                              )}
+                            </SelectContent>
+                          </Select>
+                          {errors.managerId && (
+                            <span className="text-red-500 text-sm">
+                              {errors.managerId}
+                            </span>
+                          )}
+                        </div>
+                      </div>
+                    </div>
+
+                    {/* Admin: Customer Representative (optional) */}
+                    <div className="border border-teal-200 rounded-lg p-4 bg-teal-50">
+                      <h4 className="font-semibold text-gray-900 mb-4">
+                        Customer Representative <span className="text-xs font-normal text-gray-500">(optional)</span>
+                      </h4>
                       <div className="space-y-2">
                         <Label className="text-sm font-medium text-gray-700">
-                          Select Lead (user) *
+                          Select Customer Rep
                         </Label>
                         <Select
-                          value={formData.managerId}
-                          onValueChange={handleLeadSelect}
+                          value={formData.customerRep || "__none__"}
+                          onValueChange={(v) =>
+                            setFormData((prev) => ({
+                              ...prev,
+                              customerRep: v === "__none__" ? "" : v,
+                            }))
+                          }
                         >
-                          <SelectTrigger
-                            className={`h-10 ${
-                              errors.managerId ? "border-red-500" : ""
-                            }`}
-                          >
-                            <SelectValue placeholder="Choose an assigned lead..." />
+                          <SelectTrigger className="h-10">
+                            <SelectValue placeholder="Choose a customer rep..." />
                           </SelectTrigger>
                           <SelectContent>
-                            {leads.length === 0 ? (
+                            <SelectItem value="__none__">
+                              <span className="text-gray-500">— No customer rep —</span>
+                            </SelectItem>
+                            {customerReps.length === 0 ? (
                               <div className="px-4 py-6 text-center text-gray-500 text-sm">
-                                No users (lead) available
+                                No customer reps available
                               </div>
                             ) : (
-                              leads.map((lead) => (
-                                <SelectItem
-                                  key={lead.user_id}
-                                  value={lead.user_id}
-                                >
-                                  <div className="flex items-center gap-3">
-                                    <UserCheck className="h-4 w-4 text-purple-600" />
-                                    <div>
-                                      <div className="font-medium">{lead.name}</div>
-                                      <div className="text-xs text-gray-500">{lead.email}</div>
+                              customerReps.map((rep) => {
+                                const repId = rep._id || rep.user_id;
+                                const repName =
+                                  rep.name ||
+                                  [rep.first_name, rep.last_name].filter(Boolean).join(" ").trim() ||
+                                  rep.email;
+                                return (
+                                  <SelectItem key={repId} value={String(repId)}>
+                                    <div className="flex items-center gap-3">
+                                      <UserCheck className="h-4 w-4 text-teal-600" />
+                                      <div>
+                                        <div className="font-medium">{repName}</div>
+                                        <div className="text-xs text-gray-500">{rep.email}</div>
+                                      </div>
                                     </div>
-                                  </div>
-                                </SelectItem>
-                              ))
+                                  </SelectItem>
+                                );
+                              })
                             )}
                           </SelectContent>
                         </Select>
-                        {errors.managerId && (
-                          <span className="text-red-500 text-sm">
-                            {errors.managerId}
-                          </span>
-                        )}
+                        <p className="text-xs text-gray-500">
+                          Adds the rep to the project chat group and surfaces this project on their dashboard.
+                        </p>
                       </div>
                     </div>
-                  </div>
+                  </>
                 ) : (
                   <>
                     {/* User role: Operator */}
@@ -1501,47 +1577,61 @@ export default function EditProjectPage() {
       </div>
 
       {/* Upload Progress Dialog */}
-      {isUploading && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50">
-          <div className="bg-white rounded-2xl shadow-2xl p-8 w-[420px] text-center">
-            <div className="flex items-center gap-2 mb-2 justify-center">
+      <Dialog open={isUploading}>
+        <DialogContent
+          className="max-w-[420px] text-center [&>button]:hidden"
+          onInteractOutside={(e) => e.preventDefault()}
+          onEscapeKeyDown={(e) => e.preventDefault()}
+        >
+          <DialogHeader className="items-center text-center">
+            <DialogTitle className="flex items-center gap-2 justify-center">
               <Video className="w-5 h-5 text-blue-600" />
-              <h3 className="text-lg font-bold text-gray-900">Uploading Video</h3>
-            </div>
-            <p className="text-sm text-blue-600 mb-6">Please wait while your video is being uploaded...</p>
+              Uploading Video
+            </DialogTitle>
+            <DialogDescription className="text-blue-600">
+              Please wait while your video is being uploaded...
+            </DialogDescription>
+          </DialogHeader>
 
-            {/* Circular progress */}
-            <div className="relative w-24 h-24 mx-auto mb-6">
-              <svg className="w-full h-full -rotate-90" viewBox="0 0 96 96">
-                <circle cx="48" cy="48" r="42" fill="none" stroke="#e5e7eb" strokeWidth="6" />
-                <circle cx="48" cy="48" r="42" fill="none" stroke="#3b82f6" strokeWidth="6" strokeLinecap="round"
-                  strokeDasharray={2 * Math.PI * 42}
-                  strokeDashoffset={2 * Math.PI * 42 * (1 - uploadProgress / 100)}
-                  className="transition-all duration-300"
-                />
-              </svg>
-              <span className="absolute inset-0 flex items-center justify-center text-xl font-bold text-blue-600">
-                {uploadProgress}%
-              </span>
-            </div>
-
-            {/* Linear progress bar */}
-            <div className="w-full h-2.5 bg-gray-200 rounded-full overflow-hidden mb-3">
-              <div className="h-full bg-gradient-to-r from-blue-500 to-indigo-600 rounded-full transition-all duration-300"
-                style={{ width: `${uploadProgress}%` }}
+          <div className="relative w-24 h-24 mx-auto mb-2">
+            <svg className="w-full h-full -rotate-90" viewBox="0 0 96 96">
+              <circle cx="48" cy="48" r="42" fill="none" stroke="#e5e7eb" strokeWidth="6" />
+              <circle
+                cx="48"
+                cy="48"
+                r="42"
+                fill="none"
+                stroke="#3b82f6"
+                strokeWidth="6"
+                strokeLinecap="round"
+                strokeDasharray={2 * Math.PI * 42}
+                strokeDashoffset={2 * Math.PI * 42 * (1 - uploadProgress / 100)}
+                className="transition-all duration-300"
               />
-            </div>
-            <p className="text-xs text-gray-500 mb-2">Uploading... {uploadProgress}% complete</p>
-
-            {uploadProgress === 100 && (
-              <div className="flex items-center gap-2 justify-center text-green-600 mt-3">
-                <CheckCircle className="w-4 h-4" />
-                <span className="text-sm font-medium">Processing video...</span>
-              </div>
-            )}
+            </svg>
+            <span className="absolute inset-0 flex items-center justify-center text-xl font-bold text-blue-600">
+              {uploadProgress}%
+            </span>
           </div>
-        </div>
-      )}
+
+          <div className="w-full h-2.5 bg-gray-200 rounded-full overflow-hidden mb-2">
+            <div
+              className="h-full bg-gradient-to-r from-blue-500 to-indigo-600 rounded-full transition-all duration-300"
+              style={{ width: `${uploadProgress}%` }}
+            />
+          </div>
+          <p className="text-xs text-gray-500">
+            Uploading... {uploadProgress}% complete
+          </p>
+
+          {uploadProgress === 100 && (
+            <div className="flex items-center gap-2 justify-center text-green-600 mt-2">
+              <CheckCircle className="w-4 h-4" />
+              <span className="text-sm font-medium">Processing video...</span>
+            </div>
+          )}
+        </DialogContent>
+      </Dialog>
     </div>
   );
 }

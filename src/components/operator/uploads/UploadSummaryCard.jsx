@@ -1,7 +1,7 @@
 "use client";
 
 import React from "react";
-import { CloudUpload, Loader2 } from "lucide-react";
+import { CloudUpload, Loader2, AlertTriangle, Inbox, RefreshCw, Play, RefreshCcw } from "lucide-react";
 import { Card, CardContent } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { formatFileSize } from "./constants";
@@ -16,6 +16,11 @@ import { formatFileSize } from "./constants";
  *   completedCount: number,
  *   canSubmit: boolean,
  *   onUpload: () => void,
+ *   queue?: { queued: number, draining: number, failed: number, total: number } | null,
+ *   onRetryFailed?: () => void,
+ *   resuming?: boolean,
+ *   reconcile?: { active: boolean, scanned: number, total: number } | null,
+ *   hashMismatch?: { count: number, lastChunk: number | null } | null,
  * }} props
  */
 export default function UploadSummaryCard({
@@ -25,34 +30,88 @@ export default function UploadSummaryCard({
   completedCount,
   canSubmit,
   onUpload,
+  queue,
+  onRetryFailed,
+  resuming = false,
+  reconcile = null,
+  hashMismatch = null,
 }) {
   const totalSize = files.reduce((sum, file) => sum + file.size, 0);
+  const queueLines = renderQueueLines(queue);
 
   return (
     <Card className={`border-0 shadow-sm ${files.length > 0 ? "ring-1 ring-blue-100 bg-blue-50/30" : ""}`}>
       <CardContent className="p-4 space-y-4">
         <div className="space-y-2 text-sm">
-          <div className="flex justify-between">
-            <span className="text-gray-500">Project</span>
-            <span
-              className={`font-medium ${
-                selectedProject ? "text-gray-900" : "text-gray-400"
-              }`}
-            >
-              {selectedProject?.name || "Not selected"}
-            </span>
-          </div>
-          <div className="flex justify-between">
-            <span className="text-gray-500">Files</span>
-            <span className="font-medium text-gray-900">
-              {files.length} file{files.length !== 1 ? "s" : ""}
-            </span>
-          </div>
-          <div className="flex justify-between">
-            <span className="text-gray-500">Total Size</span>
-            <span className="font-medium text-gray-900">{formatFileSize(totalSize)}</span>
-          </div>
+          <SummaryRow label="Project" value={selectedProject?.name} placeholder="Not selected" />
+          <SummaryRow label="Files" value={`${files.length} file${files.length !== 1 ? "s" : ""}`} />
+          <SummaryRow label="Total Size" value={formatFileSize(totalSize)} />
         </div>
+
+        {reconcile?.active && (
+          <div className="rounded-md border border-blue-200 bg-blue-50/60 p-3 text-xs flex items-center gap-2 text-blue-800">
+            <RefreshCcw className="w-3.5 h-3.5 animate-spin" />
+            <span className="flex-1">
+              Syncing offline queue with server
+              {reconcile.total > 0 ? ` (${reconcile.scanned}/${reconcile.total})` : "…"}
+            </span>
+          </div>
+        )}
+
+        {hashMismatch && hashMismatch.count > 0 && (
+          <div className="rounded-md border border-rose-200 bg-rose-50/60 p-3 text-xs flex items-start gap-2 text-rose-800">
+            <AlertTriangle className="w-3.5 h-3.5 mt-0.5 shrink-0" />
+            <span className="flex-1">
+              {hashMismatch.count === 1
+                ? `Chunk ${hashMismatch.lastChunk ?? "?"} corrupted in transit — auto-retried.`
+                : `${hashMismatch.count} chunks corrupted in transit — auto-retried; will fail upload if it happens again.`}
+            </span>
+          </div>
+        )}
+
+        {queueLines && (
+          <div className="rounded-md border border-amber-200 bg-amber-50/60 p-3 text-xs space-y-2">
+            <div className="flex items-center gap-2 text-amber-800 font-medium">
+              <Inbox className="w-3.5 h-3.5" />
+              Offline queue
+            </div>
+            <div className="space-y-1 text-amber-900">
+              {queueLines.map((line) => (
+                <div key={line.label} className="flex justify-between">
+                  <span>{line.label}</span>
+                  <span className="font-semibold tabular-nums">{line.value}</span>
+                </div>
+              ))}
+            </div>
+            {(queue?.failed > 0 || queue?.queued > 0) && onRetryFailed && (
+              <Button
+                type="button"
+                onClick={onRetryFailed}
+                disabled={resuming}
+                variant="outline"
+                size="sm"
+                className="w-full mt-1 h-7 text-xs border-amber-300 hover:bg-amber-100"
+              >
+                {resuming ? (
+                  <>
+                    <Loader2 className="w-3 h-3 mr-1.5 animate-spin" />
+                    Resuming…
+                  </>
+                ) : queue?.failed > 0 ? (
+                  <>
+                    <RefreshCw className="w-3 h-3 mr-1.5" />
+                    Resume failed uploads
+                  </>
+                ) : (
+                  <>
+                    <Play className="w-3 h-3 mr-1.5" />
+                    Resume queued uploads
+                  </>
+                )}
+              </Button>
+            )}
+          </div>
+        )}
 
         <Button
           onClick={onUpload}
@@ -71,7 +130,37 @@ export default function UploadSummaryCard({
             </>
           )}
         </Button>
+
+        {queue?.failed > 0 && !uploading && (
+          <div className="flex items-start gap-2 text-xs text-amber-700">
+            <AlertTriangle className="w-3.5 h-3.5 mt-0.5 shrink-0" />
+            <span>
+              {queue.failed} upload{queue.failed === 1 ? "" : "s"} failed and stayed in the local queue. They will retry automatically when you go back online.
+            </span>
+          </div>
+        )}
       </CardContent>
     </Card>
   );
+}
+
+function SummaryRow({ label, value, placeholder }) {
+  const hasValue = value !== undefined && value !== null && value !== "";
+  return (
+    <div className="flex justify-between">
+      <span className="text-gray-500">{label}</span>
+      <span className={`font-medium ${hasValue ? "text-gray-900" : "text-gray-400"}`}>
+        {hasValue ? value : placeholder}
+      </span>
+    </div>
+  );
+}
+
+function renderQueueLines(queue) {
+  if (!queue || queue.total === 0) return null;
+  const lines = [];
+  if (queue.queued > 0) lines.push({ label: "Queued", value: queue.queued });
+  if (queue.draining > 0) lines.push({ label: "Draining", value: queue.draining });
+  if (queue.failed > 0) lines.push({ label: "Failed", value: queue.failed });
+  return lines.length > 0 ? lines : null;
 }

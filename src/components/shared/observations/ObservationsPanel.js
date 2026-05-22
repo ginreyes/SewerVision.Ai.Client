@@ -22,6 +22,14 @@ import {
   PopoverTrigger,
   PopoverContent,
 } from "@/components/ui/popover";
+import {
+  Dialog,
+  DialogContent,
+  DialogDescription,
+  DialogFooter,
+  DialogHeader,
+  DialogTitle,
+} from "@/components/ui/dialog";
 import ObservationFilterPopover from "./ObservationFilter";
 import ObservationAction from "./ObservationAction";
 import { api } from "@/lib/helper";
@@ -357,34 +365,62 @@ const ObservationsPanel = (props) => {
         </div>
       )}
 
-      {/* Delete Confirmation Dialog */}
-      {deleteConfirm && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40">
-          <div className="bg-white rounded-xl shadow-xl p-6 w-[400px]">
-            <div className="flex items-center gap-3 mb-4">
-              <div className="w-10 h-10 rounded-full bg-red-100 flex items-center justify-center">
-                <AlertTriangle className="h-5 w-5 text-red-600" />
-              </div>
-              <div>
-                <h3 className="text-sm font-semibold text-gray-900">Delete Observation</h3>
-                <p className="text-xs text-gray-500">This action cannot be undone.</p>
-              </div>
+      <DeleteObservationDialog
+        observation={deleteConfirm}
+        deleting={deleting}
+        onCancel={() => setDeleteConfirm(null)}
+        onConfirm={handleDelete}
+      />
+    </div>
+  );
+};
+
+const DeleteObservationDialog = ({ observation, deleting, onCancel, onConfirm }) => {
+  const handleOpenChange = (open) => {
+    if (!open && !deleting) onCancel();
+  };
+
+  return (
+    <Dialog open={!!observation} onOpenChange={handleOpenChange}>
+      <DialogContent size="sm">
+        <DialogHeader>
+          <div className="flex items-center gap-3">
+            <div className="w-10 h-10 rounded-full bg-red-100 flex items-center justify-center">
+              <AlertTriangle className="h-5 w-5 text-red-600" />
             </div>
-            <p className="text-sm text-gray-600 mb-5">
-              Are you sure you want to delete the observation <strong>{deleteConfirm.pacpCode}</strong> at distance {deleteConfirm.distance}?
-            </p>
-            <div className="flex justify-end gap-2">
-              <Button variant="outline" size="sm" onClick={() => setDeleteConfirm(null)} disabled={deleting}>
-                Cancel
-              </Button>
-              <Button size="sm" className="bg-red-600 hover:bg-red-700 text-white" onClick={() => handleDelete(deleteConfirm)} disabled={deleting}>
-                {deleting ? "Deleting..." : "Delete"}
-              </Button>
+            <div className="text-left">
+              <DialogTitle className="text-sm font-semibold text-gray-900">
+                Delete Observation
+              </DialogTitle>
+              <DialogDescription className="text-xs text-gray-500">
+                This action cannot be undone.
+              </DialogDescription>
             </div>
           </div>
-        </div>
-      )}
-    </div>
+        </DialogHeader>
+
+        {observation && (
+          <p className="text-sm text-gray-600">
+            Are you sure you want to delete the observation{" "}
+            <strong>{observation.pacpCode}</strong> at distance {observation.distance}?
+          </p>
+        )}
+
+        <DialogFooter>
+          <Button variant="outline" size="sm" onClick={onCancel} disabled={deleting}>
+            Cancel
+          </Button>
+          <Button
+            size="sm"
+            className="bg-red-600 hover:bg-red-700 text-white"
+            onClick={() => observation && onConfirm(observation)}
+            disabled={deleting}
+          >
+            {deleting ? "Deleting..." : "Delete"}
+          </Button>
+        </DialogFooter>
+      </DialogContent>
+    </Dialog>
   );
 };
 

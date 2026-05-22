@@ -125,11 +125,33 @@ export const qcApi = {
    */
   async reviewDetection(detectionId, reviewData) {
     const response = await api(`/api/qc-technicians/detections/${detectionId}`, 'PATCH', reviewData);
-    
+
     if (!response.ok) {
       throw new Error(response.data?.error || 'Failed to review detection');
     }
-    
+
+    return response.data.data;
+  },
+
+  /**
+   * Bulk approve/reject detections. Returns { updated, undoToken, undoExpiresAt }.
+   */
+  async bulkReviewDetections(payload) {
+    const response = await api('/api/qc-technicians/detections/bulk-review', 'POST', payload);
+    if (!response.ok) {
+      throw new Error(response.data?.error || 'Failed to bulk-review detections');
+    }
+    return response.data.data;
+  },
+
+  /**
+   * Undo a bulk-review action. Token is valid for 5 minutes and single-use.
+   */
+  async bulkUndoReview(payload) {
+    const response = await api('/api/qc-technicians/detections/bulk-undo', 'POST', payload);
+    if (!response.ok) {
+      throw new Error(response.data?.error || 'Failed to undo bulk review');
+    }
     return response.data.data;
   },
 
@@ -492,6 +514,35 @@ export const qcApi = {
   async getQCReviewStats(userId) {
     const response = await api(`/api/qc-analytics/review-stats/${userId}`, 'GET');
     if (!response.ok) throw new Error(response.data?.error || 'Failed to fetch review stats');
+    return response.data?.data;
+  },
+
+  /**
+   * Personal defect-type trends for the logged-in QC tech. Returns weekly
+   * defect-type counts, top-5 defect types, and review-pace summary.
+   * range: '7d' | '30d' | '90d' (defaults to 30d server-side).
+   */
+  async getPersonalDefectTrends(userId, range = '30d') {
+    const response = await api(
+      `/api/qc-analytics/personal-defect-trends/${userId}?range=${encodeURIComponent(range)}`,
+      'GET'
+    );
+    if (!response.ok) throw new Error(response.data?.error || 'Failed to fetch personal defect trends');
+    return response.data?.data;
+  },
+
+  /**
+   * Personal decision-speed trends for the logged-in QC tech. Returns
+   * daily bucket counts (<30s, 30s-2m, 2m-5m, 5m+), p50/p90 estimates,
+   * long-tail percentage, and the fastest/slowest review in the range.
+   * range: '7d' | '30d' | '90d' (defaults to 30d server-side).
+   */
+  async getPersonalSpeedTrends(userId, range = '30d') {
+    const response = await api(
+      `/api/qc-analytics/personal-speed-trends/${userId}?range=${encodeURIComponent(range)}`,
+      'GET'
+    );
+    if (!response.ok) throw new Error(response.data?.error || 'Failed to fetch personal speed trends');
     return response.data?.data;
   },
 };

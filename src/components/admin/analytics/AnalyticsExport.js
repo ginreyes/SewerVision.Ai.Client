@@ -1,10 +1,18 @@
 "use client";
 
 import { useState } from "react";
-import { Download, X, FileText, Table, Calendar } from "lucide-react";
+import { Download, FileText, Table } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Checkbox } from "@/components/ui/checkbox";
 import { Label } from "@/components/ui/label";
+import {
+  Dialog,
+  DialogContent,
+  DialogDescription,
+  DialogFooter,
+  DialogHeader,
+  DialogTitle,
+} from "@/components/ui/dialog";
 import { exportToExcel } from "@/lib/csvExport";
 
 const DATE_RANGES = [
@@ -21,28 +29,51 @@ const SECTIONS = [
   { key: "team", label: "Team Productivity", desc: "Completion counts, average scores" },
 ];
 
-const AnalyticsExport = ({ open, onClose, analyticsData, kpiData }) => {
-  const [dateRange, setDateRange] = useState("month");
-  const [selectedSections, setSelectedSections] = useState(new Set(["kpis", "projects", "aiPerformance", "team"]));
-  const [format, setFormat] = useState("pdf");
+const DEFAULT_SELECTED = SECTIONS.map((s) => s.key);
+const EXCEL_FILE_NAME = "sewervision-analytics";
+const EXCEL_COLUMNS = ["Section", "Metric", "Value"];
 
-  if (!open) return null;
+const FORMATS = {
+  pdf: { key: "pdf", label: "PDF", icon: FileText, activeClass: "bg-red-50 text-red-700 border border-red-200" },
+  excel: { key: "excel", label: "Excel", icon: Table, activeClass: "bg-emerald-50 text-emerald-700 border border-emerald-200" },
+};
 
-  const toggleSection = (key) => {
-    setSelectedSections((prev) => {
-      const next = new Set(prev);
-      next.has(key) ? next.delete(key) : next.add(key);
-      return next;
-    });
-  };
+const buildKpiSection = (kpiData) => `
+  <div class="section-title">Key Performance Indicators</div>
+  <div class="grid">
+    ${(kpiData || [])
+      .map((k) => `<div class="card"><div class="card-value">${k.value}</div><div class="card-label">${k.label}</div></div>`)
+      .join("")}
+  </div>
+`;
 
-  const handleExportPDF = () => {
-    const printWindow = window.open("", "_blank");
-    if (!printWindow) return;
+const buildProjectsSection = (projects) => `
+  <div class="section-title">Project Statistics</div>
+  <div class="grid">
+    <div class="card"><div class="card-value">${projects.total}</div><div class="card-label">Total Projects</div></div>
+    ${Object.entries(projects.statusBreakdown || {})
+      .map(([k, v]) => `<div class="card"><div class="card-value">${v}</div><div class="card-label">${k}</div></div>`)
+      .join("")}
+  </div>
+`;
 
-    const rangeLabel = DATE_RANGES.find((r) => r.value === dateRange)?.label || dateRange;
+const buildAiPerformanceSection = (detections) => `
+  <div class="section-title">AI Performance</div>
+  <div class="grid">
+    <div class="card"><div class="card-value">${detections.total}</div><div class="card-label">Total Detections</div></div>
+    ${Object.entries(detections.qcStatusBreakdown || {})
+      .map(([k, v]) => `<div class="card"><div class="card-value">${v}</div><div class="card-label">${k}</div></div>`)
+      .join("")}
+  </div>
+`;
 
-    printWindow.document.write(`<!DOCTYPE html><html><head><title>SewerVision.ai Analytics Report</title>
+const buildPdfHtml = ({ rangeLabel, selectedSections, analyticsData, kpiData }) => {
+  const sections = [];
+  if (selectedSections.has("kpis") && kpiData) sections.push(buildKpiSection(kpiData));
+  if (selectedSections.has("projects") && analyticsData?.projects) sections.push(buildProjectsSection(analyticsData.projects));
+  if (selectedSections.has("aiPerformance") && analyticsData?.detections) sections.push(buildAiPerformanceSection(analyticsData.detections));
+
+  return `<!DOCTYPE html><html><head><title>SewerVision.ai Analytics Report</title>
     <style>
       @page { size: landscape; margin: 15mm; }
       body { font-family: 'Segoe UI', system-ui, sans-serif; color: #1a1a2e; margin: 0; }
@@ -59,116 +90,169 @@ const AnalyticsExport = ({ open, onClose, analyticsData, kpiData }) => {
     <div class="header">
       <div class="logo">SewerVision.ai</div>
       <h1>Analytics Report — ${rangeLabel}</h1>
-      <p>Generated ${new Date().toLocaleDateString('en-US', { year: 'numeric', month: 'long', day: 'numeric' })}</p>
+      <p>Generated ${new Date().toLocaleDateString("en-US", { year: "numeric", month: "long", day: "numeric" })}</p>
     </div>
     <div class="content">
-      ${selectedSections.has("kpis") && kpiData ? `
-        <div class="section-title">Key Performance Indicators</div>
-        <div class="grid">
-          ${(kpiData || []).map((k) => `<div class="card"><div class="card-value">${k.value}</div><div class="card-label">${k.label}</div></div>`).join('')}
-        </div>
-      ` : ''}
-      ${selectedSections.has("projects") && analyticsData?.projects ? `
-        <div class="section-title">Project Statistics</div>
-        <div class="grid">
-          <div class="card"><div class="card-value">${analyticsData.projects.total}</div><div class="card-label">Total Projects</div></div>
-          ${Object.entries(analyticsData.projects.statusBreakdown || {}).map(([k, v]) => `<div class="card"><div class="card-value">${v}</div><div class="card-label">${k}</div></div>`).join('')}
-        </div>
-      ` : ''}
-      ${selectedSections.has("aiPerformance") && analyticsData?.detections ? `
-        <div class="section-title">AI Performance</div>
-        <div class="grid">
-          <div class="card"><div class="card-value">${analyticsData.detections.total}</div><div class="card-label">Total Detections</div></div>
-          ${Object.entries(analyticsData.detections.qcStatusBreakdown || {}).map(([k, v]) => `<div class="card"><div class="card-value">${v}</div><div class="card-label">${k}</div></div>`).join('')}
-        </div>
-      ` : ''}
+      ${sections.join("")}
       <div class="footer">SewerVision.ai — Confidential Analytics Report — ${new Date().toLocaleString()}</div>
     </div>
-    </body></html>`);
-    printWindow.document.close();
-    setTimeout(() => printWindow.print(), 500);
-    onClose();
+    </body></html>`;
+};
+
+const buildExcelRows = ({ selectedSections, analyticsData, kpiData }) => {
+  const rows = [];
+  if (selectedSections.has("kpis") && kpiData) {
+    kpiData.forEach((k) => rows.push({ Section: "KPI", Metric: k.label, Value: k.value }));
+  }
+  if (selectedSections.has("projects") && analyticsData?.projects) {
+    rows.push({ Section: "Projects", Metric: "Total", Value: analyticsData.projects.total });
+    Object.entries(analyticsData.projects.statusBreakdown || {}).forEach(([k, v]) => {
+      rows.push({ Section: "Projects", Metric: k, Value: v });
+    });
+  }
+  return rows;
+};
+
+const printPdf = ({ rangeLabel, selectedSections, analyticsData, kpiData }) => {
+  const printWindow = window.open("", "_blank");
+  if (!printWindow) return;
+
+  const html = buildPdfHtml({ rangeLabel, selectedSections, analyticsData, kpiData });
+  printWindow.document.write(html);
+  printWindow.document.close();
+  setTimeout(() => printWindow.print(), 500);
+};
+
+const FormatButton = ({ format, isActive, onClick }) => {
+  const Icon = format.icon;
+  const inactiveClass = "bg-gray-100 text-gray-600";
+  return (
+    <button
+      type="button"
+      onClick={onClick}
+      className={`flex items-center gap-1.5 px-4 py-2 rounded-lg text-xs font-medium transition-all ${
+        isActive ? format.activeClass : inactiveClass
+      }`}
+    >
+      <Icon className="w-3 h-3" /> {format.label}
+    </button>
+  );
+};
+
+const AnalyticsExport = ({ open, onClose, analyticsData, kpiData }) => {
+  const [dateRange, setDateRange] = useState("month");
+  const [selectedSections, setSelectedSections] = useState(new Set(DEFAULT_SELECTED));
+  const [format, setFormat] = useState("pdf");
+
+  const toggleSection = (key) => {
+    setSelectedSections((prev) => {
+      const next = new Set(prev);
+      if (next.has(key)) {
+        next.delete(key);
+      } else {
+        next.add(key);
+      }
+      return next;
+    });
   };
 
-  const handleExportExcel = () => {
-    const rows = [];
-    if (selectedSections.has("kpis") && kpiData) {
-      kpiData.forEach((k) => rows.push({ Section: "KPI", Metric: k.label, Value: k.value }));
+  const handleOpenChange = (nextOpen) => {
+    if (!nextOpen) onClose?.();
+  };
+
+  const handleExport = () => {
+    if (format === "pdf") {
+      const rangeLabel = DATE_RANGES.find((r) => r.value === dateRange)?.label || dateRange;
+      printPdf({ rangeLabel, selectedSections, analyticsData, kpiData });
+    } else {
+      const rows = buildExcelRows({ selectedSections, analyticsData, kpiData });
+      exportToExcel(rows, EXCEL_COLUMNS, EXCEL_FILE_NAME);
     }
-    if (selectedSections.has("projects") && analyticsData?.projects) {
-      rows.push({ Section: "Projects", Metric: "Total", Value: analyticsData.projects.total });
-      Object.entries(analyticsData.projects.statusBreakdown || {}).forEach(([k, v]) => {
-        rows.push({ Section: "Projects", Metric: k, Value: v });
-      });
-    }
-    exportToExcel(rows, ["Section", "Metric", "Value"], "sewervision-analytics");
-    onClose();
+    onClose?.();
   };
 
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50" onClick={onClose}>
-      <div className="bg-white rounded-2xl shadow-2xl w-[480px] max-w-[95vw] overflow-hidden" onClick={(e) => e.stopPropagation()}>
-        <div className="px-6 py-4 border-b border-gray-100 flex items-center justify-between">
-          <div>
-            <h3 className="text-sm font-bold text-gray-900">Export Analytics Report</h3>
-            <p className="text-[10px] text-gray-400">Choose sections and format</p>
-          </div>
-          <button onClick={onClose}><X className="w-4 h-4 text-gray-400" /></button>
-        </div>
+    <Dialog open={!!open} onOpenChange={handleOpenChange}>
+      <DialogContent size="md" className="p-0 overflow-hidden">
+        <DialogHeader className="px-6 py-4 border-b border-gray-100">
+          <DialogTitle className="text-sm font-bold text-gray-900">
+            Export Analytics Report
+          </DialogTitle>
+          <DialogDescription className="text-[10px] text-gray-400">
+            Choose sections and format
+          </DialogDescription>
+        </DialogHeader>
 
         <div className="p-6 space-y-5">
-          {/* Date Range */}
           <div>
             <Label className="text-xs font-medium text-gray-600 mb-2 block">Date Range</Label>
             <div className="flex gap-2">
-              {DATE_RANGES.map((r) => (
-                <button key={r.value} onClick={() => setDateRange(r.value)}
-                  className={`px-3 py-1.5 rounded-lg text-xs font-medium transition-all ${dateRange === r.value ? 'bg-indigo-600 text-white' : 'bg-gray-100 text-gray-600 hover:bg-gray-200'}`}>
-                  {r.label}
-                </button>
-              ))}
+              {DATE_RANGES.map((r) => {
+                const isActive = dateRange === r.value;
+                return (
+                  <button
+                    key={r.value}
+                    type="button"
+                    onClick={() => setDateRange(r.value)}
+                    className={`px-3 py-1.5 rounded-lg text-xs font-medium transition-all ${
+                      isActive ? "bg-indigo-600 text-white" : "bg-gray-100 text-gray-600 hover:bg-gray-200"
+                    }`}
+                  >
+                    {r.label}
+                  </button>
+                );
+              })}
             </div>
           </div>
 
-          {/* Sections */}
           <div>
             <Label className="text-xs font-medium text-gray-600 mb-2 block">Include Sections</Label>
             <div className="space-y-2">
-              {SECTIONS.map((s) => (
-                <div key={s.key} className="flex items-center gap-3 p-2.5 rounded-lg hover:bg-gray-50">
-                  <Checkbox checked={selectedSections.has(s.key)} onCheckedChange={() => toggleSection(s.key)} />
-                  <div><p className="text-xs font-medium text-gray-800">{s.label}</p><p className="text-[10px] text-gray-400">{s.desc}</p></div>
+              {SECTIONS.map((section) => (
+                <div key={section.key} className="flex items-center gap-3 p-2.5 rounded-lg hover:bg-gray-50">
+                  <Checkbox
+                    checked={selectedSections.has(section.key)}
+                    onCheckedChange={() => toggleSection(section.key)}
+                  />
+                  <div>
+                    <p className="text-xs font-medium text-gray-800">{section.label}</p>
+                    <p className="text-[10px] text-gray-400">{section.desc}</p>
+                  </div>
                 </div>
               ))}
             </div>
           </div>
 
-          {/* Format */}
           <div>
             <Label className="text-xs font-medium text-gray-600 mb-2 block">Format</Label>
             <div className="flex gap-2">
-              <button onClick={() => setFormat("pdf")}
-                className={`flex items-center gap-1.5 px-4 py-2 rounded-lg text-xs font-medium transition-all ${format === 'pdf' ? 'bg-red-50 text-red-700 border border-red-200' : 'bg-gray-100 text-gray-600'}`}>
-                <FileText className="w-3 h-3" /> PDF
-              </button>
-              <button onClick={() => setFormat("excel")}
-                className={`flex items-center gap-1.5 px-4 py-2 rounded-lg text-xs font-medium transition-all ${format === 'excel' ? 'bg-emerald-50 text-emerald-700 border border-emerald-200' : 'bg-gray-100 text-gray-600'}`}>
-                <Table className="w-3 h-3" /> Excel
-              </button>
+              {Object.values(FORMATS).map((f) => (
+                <FormatButton
+                  key={f.key}
+                  format={f}
+                  isActive={format === f.key}
+                  onClick={() => setFormat(f.key)}
+                />
+              ))}
             </div>
           </div>
         </div>
 
-        <div className="px-6 py-4 border-t border-gray-100 flex justify-end gap-2">
-          <Button variant="outline" size="sm" className="text-xs" onClick={onClose}>Cancel</Button>
-          <Button size="sm" className="text-xs bg-indigo-600 hover:bg-indigo-700 text-white"
-            onClick={format === "pdf" ? handleExportPDF : handleExportExcel}
-            disabled={selectedSections.size === 0}>
+        <DialogFooter className="px-6 py-4 border-t border-gray-100">
+          <Button variant="outline" size="sm" className="text-xs" onClick={onClose}>
+            Cancel
+          </Button>
+          <Button
+            size="sm"
+            className="text-xs bg-indigo-600 hover:bg-indigo-700 text-white"
+            onClick={handleExport}
+            disabled={selectedSections.size === 0}
+          >
             <Download className="w-3 h-3 mr-1" /> Export {format.toUpperCase()}
           </Button>
-        </div>
-      </div>
-    </div>
+        </DialogFooter>
+      </DialogContent>
+    </Dialog>
   );
 };
 

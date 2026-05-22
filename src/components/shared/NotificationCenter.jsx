@@ -1,6 +1,7 @@
 'use client';
 
 import { memo, useState, useMemo, useCallback } from 'react';
+import { useRouter } from 'next/navigation';
 import {
   Bell,
   Check,
@@ -12,20 +13,39 @@ import {
   RefreshCw,
   CheckCheck,
   BellRing,
+  BellOff,
   Brain,
   Upload,
   ClipboardList,
   Ticket,
   MessageSquare,
+  MessageCircle,
+  AtSign,
+  Pin,
+  Reply,
+  Smile,
   Zap,
+  ChevronDown,
+  ChevronUp,
+  ExternalLink,
 } from 'lucide-react';
 
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuLabel,
+  DropdownMenuSeparator,
+  DropdownMenuTrigger,
+} from '@/components/ui/dropdown-menu';
 import { useNotifications } from '@/components/providers/NotificationProvider';
 import { useAlert } from '@/components/providers/AlertProvider';
+import { useUser } from '@/components/providers/UserContext';
 import { ROLE_BADGE_CLASSES, getRoleTheme } from '@/lib/roleThemes';
+import notificationApi from '@/data/notificationApi';
 
 // ── Role accent color mapping (derives from central roleThemes) ──
 function buildRoleColors(role) {
@@ -53,6 +73,12 @@ const DEFAULT_TYPE_CONFIG = {
   ticket_updated: { icon: Clock, color: 'bg-cyan-100 text-cyan-600', label: 'Updated' },
   new_ticket: { icon: MessageSquare, color: 'bg-blue-100 text-blue-600', label: 'New Ticket' },
   sla_breach: { icon: AlertTriangle, color: 'bg-red-100 text-red-600', label: 'SLA' },
+  // Chat notification types (added April 29 2026)
+  chat_message: { icon: MessageCircle, color: 'bg-blue-100 text-blue-600', label: 'Chat' },
+  chat_mention: { icon: AtSign, color: 'bg-rose-100 text-rose-600', label: 'Mention' },
+  chat_reply: { icon: Reply, color: 'bg-indigo-100 text-indigo-600', label: 'Reply' },
+  chat_pin: { icon: Pin, color: 'bg-amber-100 text-amber-600', label: 'Pinned' },
+  chat_reaction: { icon: Smile, color: 'bg-pink-100 text-pink-600', label: 'Reaction' },
   system: { icon: Zap, color: 'bg-gray-100 text-gray-600', label: 'System' },
   default: { icon: Bell, color: 'bg-gray-100 text-gray-600', label: 'Info' },
 };
@@ -73,15 +99,50 @@ function formatDate(dateString) {
   return date.toLocaleDateString();
 }
 
+// ── Priority styling ──
+// Reads notification.priority ('low' | 'normal' | 'high'); 'high' adds a
+// left ring so the user spots it before reading the text.
+const PRIORITY_RING = {
+  high: 'ring-2 ring-red-300 dark:ring-red-700',
+  normal: '',
+  low: '',
+};
+
+function rollupBody(notification) {
+  const count = notification.rollupCount;
+  if (typeof count !== 'number' || count <= 1) return notification.message;
+  const projectName = notification.projectName || notification.metadata?.projectName;
+  const noun = inferRollupNoun(notification.type);
+  return projectName
+    ? `${count} new ${noun} in ${projectName}`
+    : `${count} new ${noun}`;
+}
+
+function inferRollupNoun(type) {
+  if (!type) return 'updates';
+  if (type.startsWith('chat_')) return 'messages';
+  if (type === 'task_assignment') return 'tasks';
+  if (type === 'upload_complete') return 'uploads';
+  if (type === 'qc_review') return 'reviews';
+  return 'updates';
+}
+
 // ── Single Notification Item ──
 /** memo'd — rendered many times in a notification list */
-const NotificationRow = memo(function NotificationRow({ notification, roleColors, onMarkAsRead, onDelete }) {
+const NotificationRow = memo(function NotificationRow({ notification, roleColors, onMarkAsRead, onDelete, onOpen }) {
   const config = DEFAULT_TYPE_CONFIG[notification.type] || DEFAULT_TYPE_CONFIG.default;
   const Icon = config.icon;
+  const priorityClass = PRIORITY_RING[notification.priority] || '';
+  const body = rollupBody(notification);
+  const isRollup = typeof notification.rollupCount === 'number' && notification.rollupCount > 1;
+  // A row is "openable" when the backend stamped an actionUrl on it. Training
+  // reminders deep-link to /user/dashboard?compliance=<memberId> so a click on
+  // the row lands the team-lead on the side-panel for that member (May 22).
+  const canOpen = !!notification.actionUrl;
 
   return (
     <div
-      className={`flex items-start gap-3 p-4 rounded-xl transition-all ${
+      className={`flex items-start gap-3 p-4 rounded-xl transition-all ${priorityClass} ${
         !notification.read
           ? roleColors.unreadBg
           : 'bg-gray-50 hover:bg-gray-100 dark:bg-[#2b2a33] dark:hover:bg-[#32313b]'
@@ -96,16 +157,26 @@ const NotificationRow = memo(function NotificationRow({ notification, roleColors
       <div className="flex-1 min-w-0">
         <div className="flex items-start justify-between gap-2">
           <div className="flex-1 min-w-0">
-            <div className="flex items-center gap-2 mb-1">
+            <div className="flex items-center gap-2 mb-1 flex-wrap">
               <h4 className="font-semibold text-gray-900 dark:text-gray-200 text-sm truncate">
                 {notification.title}
               </h4>
               {!notification.read && (
                 <span className="w-2 h-2 rounded-full bg-blue-500 shrink-0" />
               )}
+              {notification.priority === 'high' && (
+                <Badge variant="destructive" className="text-[10px] px-1.5 py-0 h-4">
+                  High priority
+                </Badge>
+              )}
+              {isRollup && (
+                <Badge variant="outline" className="text-[10px] px-1.5 py-0 h-4">
+                  ×{notification.rollupCount}
+                </Badge>
+              )}
             </div>
             <p className="text-sm text-gray-600 dark:text-gray-400 line-clamp-2">
-              {notification.message}
+              {body}
             </p>
           </div>
           <span className="text-xs text-gray-400 dark:text-gray-500 whitespace-nowrap">
@@ -119,6 +190,17 @@ const NotificationRow = memo(function NotificationRow({ notification, roleColors
             {config.label}
           </Badge>
           <div className="flex-1" />
+          {canOpen && (
+            <Button
+              variant="ghost"
+              size="sm"
+              className="h-7 px-2 text-xs text-indigo-600 hover:text-indigo-700 hover:bg-indigo-50 dark:text-indigo-400 dark:hover:bg-indigo-950"
+              onClick={() => onOpen?.(notification)}
+            >
+              <ExternalLink className="w-3 h-3 mr-1" />
+              Open
+            </Button>
+          )}
           {!notification.read && (
             <Button
               variant="ghost"
@@ -192,13 +274,40 @@ function NotificationCenter({
   const isLoading = externalIsLoading ?? providerNotifications?.isLoading ?? false;
   const fetchNotifications = providerNotifications?.fetchNotifications;
   const deleteAllNotifications = providerNotifications?.deleteAllNotifications;
+  // Destructure the mutation methods so handler callbacks depend on stable
+  // function refs instead of the whole provider object (which changes whenever
+  // any field in the notification context updates).
+  const providerMarkAsRead = providerNotifications?.markAsRead;
+  const providerMarkAllAsRead = providerNotifications?.markAllAsRead;
+  const providerDeleteNotification = providerNotifications?.deleteNotification;
 
   const { showAlert } = useAlert();
+  const router = useRouter();
   const roleColors = buildRoleColors(role);
 
   const [filter, setFilter] = useState('all');
   const [refreshing, setRefreshing] = useState(false);
   const [deletingAll, setDeletingAll] = useState(false);
+  const [snoozedUntil, setSnoozedUntilState] = useState(null);
+  const { userId } = useUser();
+
+  // Snooze options — durations relative to now.
+  const handleSnooze = useCallback(async (durationMinutes) => {
+    if (!userId) return;
+    try {
+      const until = durationMinutes
+        ? new Date(Date.now() + durationMinutes * 60 * 1000)
+        : null;
+      const result = await notificationApi.setSnooze(userId, until);
+      setSnoozedUntilState(result?.snoozedUntil ? new Date(result.snoozedUntil) : null);
+      showAlert(
+        until ? `Snoozed for ${durationMinutes >= 60 ? `${durationMinutes / 60}h` : `${durationMinutes}m`}` : 'Snooze cleared',
+        'success'
+      );
+    } catch (err) {
+      showAlert(err?.message || 'Failed to set snooze', 'error');
+    }
+  }, [userId, showAlert]);
 
   const filteredNotifications = useMemo(() => {
     if (filter === 'unread') return notifications.filter((n) => !n.read);
@@ -218,8 +327,8 @@ function NotificationCenter({
       try {
         if (externalMarkAsRead) {
           await externalMarkAsRead(notificationId);
-        } else if (providerNotifications?.markAsRead) {
-          await providerNotifications.markAsRead(notificationId);
+        } else if (providerMarkAsRead) {
+          await providerMarkAsRead(notificationId);
           showAlert('Notification marked as read', 'success');
         }
       } catch (err) {
@@ -227,30 +336,30 @@ function NotificationCenter({
         showAlert('Failed to mark notification as read', 'error');
       }
     },
-    [externalMarkAsRead, providerNotifications, showAlert]
+    [externalMarkAsRead, providerMarkAsRead, showAlert]
   );
 
   const handleMarkAllAsRead = useCallback(async () => {
     try {
       if (externalMarkAllAsRead) {
         await externalMarkAllAsRead();
-      } else if (providerNotifications?.markAllAsRead) {
-        await providerNotifications.markAllAsRead();
+      } else if (providerMarkAllAsRead) {
+        await providerMarkAllAsRead();
         showAlert('All notifications marked as read', 'success');
       }
     } catch (err) {
       console.error('Error marking all as read:', err);
       showAlert('Failed to mark notifications as read', 'error');
     }
-  }, [externalMarkAllAsRead, providerNotifications, showAlert]);
+  }, [externalMarkAllAsRead, providerMarkAllAsRead, showAlert]);
 
   const handleDelete = useCallback(
     async (notificationId) => {
       try {
         if (externalDelete) {
           await externalDelete(notificationId);
-        } else if (providerNotifications?.deleteNotification) {
-          await providerNotifications.deleteNotification(notificationId);
+        } else if (providerDeleteNotification) {
+          await providerDeleteNotification(notificationId);
           showAlert('Notification deleted', 'success');
         }
       } catch (err) {
@@ -258,7 +367,7 @@ function NotificationCenter({
         showAlert('Failed to delete notification', 'error');
       }
     },
-    [externalDelete, providerNotifications, showAlert]
+    [externalDelete, providerDeleteNotification, showAlert]
   );
 
   const handleDeleteAll = useCallback(async () => {
@@ -287,6 +396,34 @@ function NotificationCenter({
     setRefreshing(false);
   }, [fetchNotifications]);
 
+  // Open a notification — mark-as-read silently and navigate to actionUrl.
+  // Training-reminder notifications stamp /user/dashboard?compliance=<memberId>
+  // so this single handler also lands the user on the side-panel for the
+  // member named in the alert (May 22 deep-link wiring).
+  const handleOpen = useCallback(
+    (notification) => {
+      if (!notification?.actionUrl) return;
+      if (!notification.read) {
+        if (externalMarkAsRead) {
+          externalMarkAsRead(notification._id).catch(() => {});
+        } else if (providerMarkAsRead) {
+          providerMarkAsRead(notification._id).catch(() => {});
+        }
+      }
+      try {
+        const url = notification.actionUrl;
+        if (typeof url === 'string' && (url.startsWith('http://') || url.startsWith('https://'))) {
+          window.open(url, '_blank', 'noopener');
+        } else {
+          router.push(url);
+        }
+      } catch {
+        // navigation failure is non-fatal — the row remains in place
+      }
+    },
+    [externalMarkAsRead, providerMarkAsRead, router]
+  );
+
   return (
     <div className={`space-y-6 ${className}`}>
       {/* ── Header ── */}
@@ -307,6 +444,34 @@ function NotificationCenter({
           </p>
         </div>
         <div className="flex items-center gap-2">
+          <DropdownMenu>
+            <DropdownMenuTrigger asChild>
+              <Button variant="outline" size="sm" className="gap-2">
+                {snoozedUntil && new Date(snoozedUntil) > new Date() ? (
+                  <BellOff className="w-4 h-4" />
+                ) : (
+                  <BellRing className="w-4 h-4" />
+                )}
+                {snoozedUntil && new Date(snoozedUntil) > new Date() ? 'Snoozed' : 'Snooze'}
+              </Button>
+            </DropdownMenuTrigger>
+            <DropdownMenuContent align="end" className="w-48">
+              <DropdownMenuLabel>Snooze notifications</DropdownMenuLabel>
+              <DropdownMenuSeparator />
+              <DropdownMenuItem onClick={() => handleSnooze(30)}>30 minutes</DropdownMenuItem>
+              <DropdownMenuItem onClick={() => handleSnooze(60)}>1 hour</DropdownMenuItem>
+              <DropdownMenuItem onClick={() => handleSnooze(60 * 4)}>4 hours</DropdownMenuItem>
+              <DropdownMenuItem onClick={() => handleSnooze(60 * 24)}>Until tomorrow</DropdownMenuItem>
+              {snoozedUntil && new Date(snoozedUntil) > new Date() && (
+                <>
+                  <DropdownMenuSeparator />
+                  <DropdownMenuItem onClick={() => handleSnooze(null)} className="text-rose-600">
+                    Clear snooze
+                  </DropdownMenuItem>
+                </>
+              )}
+            </DropdownMenuContent>
+          </DropdownMenu>
           <Button
             onClick={handleMarkAllAsRead}
             variant="outline"
@@ -436,6 +601,7 @@ function NotificationCenter({
                     roleColors={roleColors}
                     onMarkAsRead={handleMarkAsRead}
                     onDelete={handleDelete}
+                    onOpen={handleOpen}
                   />
                 ))
               )}

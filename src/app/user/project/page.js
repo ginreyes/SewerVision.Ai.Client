@@ -27,6 +27,7 @@ import PipelineSummaryBar from '@/components/user/project/PipelineSummaryBar';
 import TeamWorkloadGrid from '@/components/user/project/TeamWorkloadGrid';
 import { usePipeline } from '@/data/pipelineApi';
 import { SavedViewsDropdown, useSavedViewSync } from '@/components/shared/SavedViews';
+import ProjectTimelineLauncher from '@/components/shared/project-timeline/ProjectTimelineLauncher';
 
 const UserProjectModuleContent = () => {
   const { userId } = useUser();
@@ -34,6 +35,8 @@ const UserProjectModuleContent = () => {
   const [searchTerm, setSearchTerm] = useState("");
   const debouncedSearchValue = useDebouncedValue(searchTerm, 300);
   const [statusFilter, setStatusFilter] = useState("all");
+  const [priorityFilter, setPriorityFilter] = useState("all");
+  const [sortMode, setSortMode] = useState("newest");
   const [viewMode, setViewMode] = useState("grid");
   const [pipelineFilter, setPipelineFilter] = useState(null);
 
@@ -65,7 +68,14 @@ const UserProjectModuleContent = () => {
     data: projectsData,
     isLoading: loading,
     refetch,
-  } = useUserProjects(userId, { page, limit, search: searchTerm, status: statusFilter });
+  } = useUserProjects(userId, {
+    page,
+    limit,
+    search: searchTerm,
+    status: statusFilter,
+    priority: priorityFilter === "all" ? "" : priorityFilter,
+    sort: sortMode === "newest" ? "" : sortMode,
+  });
 
   const { data: pipelineData, isLoading: pipelineLoading } = usePipeline({ managerId: userId });
 
@@ -261,6 +271,7 @@ const UserProjectModuleContent = () => {
               setSelectedProject={setSelectedProject}
               allProjects={projects}
             />
+            <ProjectTimelineLauncher project={selectedProject} />
           </div>
         ) : (
           <>
@@ -333,6 +344,38 @@ const UserProjectModuleContent = () => {
                     <SelectItem value="completed">Completed</SelectItem>
                     <SelectItem value="customer-notified">Customer Notified</SelectItem>
                     <SelectItem value="on-hold">On Hold</SelectItem>
+                  </SelectContent>
+                </Select>
+
+                <Select
+                  value={priorityFilter}
+                  onValueChange={(val) => { setPriorityFilter(val); setPage(1); }}
+                >
+                  <SelectTrigger className="w-[150px]">
+                    <SelectValue placeholder="All Priorities" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="all">All Priorities</SelectItem>
+                    <SelectItem value="high">High</SelectItem>
+                    <SelectItem value="medium">Medium</SelectItem>
+                    <SelectItem value="low">Low</SelectItem>
+                  </SelectContent>
+                </Select>
+
+                <Select
+                  value={sortMode}
+                  onValueChange={(val) => { setSortMode(val); setPage(1); }}
+                >
+                  <SelectTrigger className="w-[200px]">
+                    <SelectValue placeholder="Sort" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="newest">Newest first</SelectItem>
+                    <SelectItem value="oldest">Oldest first</SelectItem>
+                    <SelectItem value="priority-desc">Priority (high → low)</SelectItem>
+                    <SelectItem value="priority-asc">Priority (low → high)</SelectItem>
+                    <SelectItem value="name-asc">Name (A → Z)</SelectItem>
+                    <SelectItem value="name-desc">Name (Z → A)</SelectItem>
                   </SelectContent>
                 </Select>
               </div>

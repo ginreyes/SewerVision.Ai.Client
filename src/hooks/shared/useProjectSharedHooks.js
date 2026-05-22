@@ -68,10 +68,10 @@ export function usePacpCodes(options = {}) {
  * ============ USER PROJECT HOOKS ============
  */
 
-export function useUserProjects(userId, { page = 1, limit = 20, search = '', status = '' } = {}, options = {}) {
+export function useUserProjects(userId, { page = 1, limit = 20, search = '', status = '', priority = '', sort = '' } = {}, options = {}) {
     return useQuery({
-        queryKey: queryKeys.userProjects(userId, { page, limit, search, status }),
-        queryFn: () => userApi.getAllProjects(userId, { page, limit, search, status }),
+        queryKey: queryKeys.userProjects(userId, { page, limit, search, status, priority, sort }),
+        queryFn: () => userApi.getAllProjects(userId, { page, limit, search, status, priority, sort }),
         enabled: !!userId,
         staleTime: 1000 * 60 * 5,
         ...options,

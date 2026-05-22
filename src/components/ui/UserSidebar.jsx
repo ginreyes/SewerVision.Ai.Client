@@ -17,6 +17,10 @@ import {
   Calendar,
   Settings2,
   Cloud,
+  CheckSquare,
+  Activity,
+  Target,
+  GraduationCap,
 } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import ModuleLoading from './SewerVisionLoadingAnimation';
@@ -47,8 +51,12 @@ const UserSidebar = ({ isOpen, role, userRoleMeta }) => {
       '/user/project': 'My Projects',
       '/user/tasks': 'Track Tasks',
       '/user/team': 'Team Management',
+      '/user/workload': 'Team Workload',
+      '/user/goals': 'Goals',
+      '/user/certifications': 'Training & Certifications',
       '/user/device-assignments': 'Device Assignments',
       '/user/inbox': 'Inbox',
+      '/user/approvals': 'Approvals',
       '/user/reports': 'Reports',
       '/user/calendar': 'Calendar',
       '/user/backups': 'Storage & Backups',
@@ -77,11 +85,15 @@ const UserSidebar = ({ isOpen, role, userRoleMeta }) => {
       items: [
         { label: 'Team Management', icon: Users, path: '/user/team', module: 'team' },
         { label: 'Device Assignments', icon: Monitor, path: '/user/device-assignments', module: 'device-assignments' },
+        { label: 'Team Workload', icon: Activity, path: '/user/workload', module: 'team-workload' },
+        { label: 'Goals', icon: Target, path: '/user/goals', module: 'team-goals' },
+        { label: 'Training & Certifications', icon: GraduationCap, path: '/user/certifications', module: 'team-training' },
       ],
     },
     {
       label: 'Tools & Settings',
       items: [
+        { label: 'Approvals', icon: CheckSquare, path: '/user/approvals', module: 'approvals' },
         { label: 'Reports', icon: BookOpen, path: '/user/reports', module: 'reports' },
         { label: 'Calendar', icon: Calendar, path: '/user/calendar', module: 'calendar' },
         { label: 'Storage & Backups', icon: Cloud, path: '/user/backups', module: 'backups' },

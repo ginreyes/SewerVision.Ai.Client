@@ -9,6 +9,8 @@ import {
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
 import { Badge } from '@/components/ui/badge'
 import GenericStatCard from '@/components/shared/GenericStatCard'
+import ModelHealthCard from './ModelHealthCard'
+import TeamActivityCard from './TeamActivityCard'
 
 const getStatusColor = (status) => {
   switch (status) {
@@ -68,6 +70,9 @@ const OverviewTab = ({ projectStats, recentProjects, getCanvasRef }) => {
           color="green"
         />
       </div>
+
+      {/* Model Health (full width) */}
+      <ModelHealthCard />
 
       {/* Main Grid */}
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
@@ -216,6 +221,8 @@ const OverviewTab = ({ projectStats, recentProjects, getCanvasRef }) => {
 
         {/* Right: 1/3 — quick actions + secondary charts */}
         <div className="space-y-6">
+          <TeamActivityCard projects={recentProjects} />
+
           {/* Quick Actions */}
           <Card className={DASHBOARD_CARD}>
             <CardHeader className="pb-3">

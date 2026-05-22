@@ -1,12 +1,11 @@
 "use client";
 
-import React, { useState, useCallback, useMemo } from "react";
+import React, { useState, useCallback, useMemo, useEffect, useRef } from "react";
 import { CloudUpload } from "lucide-react";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { useUser } from "@/components/providers/UserContext";
 import { useAlert } from "@/components/providers/AlertProvider";
 import { useSearchParams } from "next/navigation";
-import uploadsApi from "@/data/uploadsApi";
 import { useOperatorProjects, useOperatorDevices, useOperatorUploads } from "@/hooks/useQueryHooks";
 import ExportButton from "@/components/shared/ExportButton";
 import {
@@ -17,6 +16,14 @@ import {
   UploadHistoryTable,
   getFileType,
 } from "@/components/operator/uploads";
+import {
+  uploadFileChunked,
+  wireGlobalOnlineDrain,
+  getQueueSnapshot,
+  resumeFailedUploads,
+  reconcileWithServer,
+  listIdbQueueRows,
+} from "@/lib/chunkedUploader";
 
 export default function OperatorUploadsPage() {
   const { userId, userData } = useUser();
@@ -82,87 +89,206 @@ export default function OperatorUploadsPage() {
     setUploadProgress({});
   }, []);
 
-  // Upload handler
-  const handleUpload = async () => {
-    if (files.length === 0) {
-      showAlert("Please select at least one file", "error");
-      return;
-    }
-    if (!uploadData.projectId) {
-      showAlert("Please select a project", "error");
-      return;
-    }
-    if (!uploadData.device || !uploadData.location) {
-      showAlert("Please fill in device and location", "error");
-      return;
-    }
-
-    setUploading(true);
-    const errors = [];
-
+  // Queue state — IDB-backed badge. Mounted in useEffect to keep the SSR
+  // render hydration-safe (IDB is window-only; reading it during the render
+  // pass would diverge the server/client trees).
+  const [queueState, setQueueState] = useState(null);
+  const refreshQueue = useCallback(async () => {
     try {
-      for (let i = 0; i < files.length; i++) {
-        const file = files[i];
-        try {
-          const fileType = getFileType(file);
-          const timestamp = Date.now();
-          const filename = `${timestamp}-${file.name}`;
+      setQueueState(await getQueueSnapshot());
+    } catch {
+      setQueueState(null);
+    }
+  }, []);
 
-          setUploadProgress((prev) => ({ ...prev, [i]: 50 }));
+  // Day 7 — reconcile-progress + hash-mismatch counter exposed to the
+  // summary card so the operator gets visible feedback during what was
+  // previously a silent on-mount sync.
+  const [reconcileState, setReconcileState] = useState({ active: false, scanned: 0, total: 0 });
+  const [hashMismatch, setHashMismatch] = useState({ count: 0, lastChunk: null });
 
-          await uploadsApi.createUpload({
-            filename,
-            originalName: file.name,
-            type: fileType,
-            sizeBytes: file.size,
-            uploadedBy: userId || userData?.username || "operator",
-            device: uploadData.device,
-            location: uploadData.location,
-            projectId: uploadData.projectId,
-            mimeType: file.type,
-            filePath: `uploads/${filename}`,
-            status: "completed",
-          });
+  // Day 8 — IDB queue rows mirrored into the history table so anything stuck
+  // locally (queued / draining / failed) is visible alongside server uploads.
+  // Refreshed whenever the queue snapshot changes; the table re-renders
+  // automatically because we feed the merged list through useMemo below.
+  const [idbRows, setIdbRows] = useState([]);
+  const refreshIdbRows = useCallback(async () => {
+    try {
+      setIdbRows(await listIdbQueueRows());
+    } catch {
+      setIdbRows([]);
+    }
+  }, []);
 
-          setUploadProgress((prev) => ({ ...prev, [i]: 100 }));
-        } catch (error) {
-          errors.push({ file: file.name, error: error.message });
-          setUploadProgress((prev) => ({ ...prev, [i]: -1 }));
+  const onReconcileProgress = useCallback(({ total, scanned }) => {
+    setReconcileState({ active: true, scanned, total });
+  }, []);
+  const onHashMismatch = useCallback(({ index }) => {
+    setHashMismatch((prev) => ({ count: prev.count + 1, lastChunk: index }));
+  }, []);
+
+  // Day 6/7 — reconcile-on-mount: before showing the queue badge, ask the
+  // server which chunks it already persisted for any uploads we kicked
+  // off in a previous session. Without this, a reload mid-upload would
+  // re-PUT bytes the server has already accepted. The wire fn also
+  // reconciles BEFORE draining on the global 'online' event — so we no
+  // longer install a duplicate online handler that races against it.
+  useEffect(() => {
+    if (typeof window === "undefined") return undefined;
+    let cancelled = false;
+    (async () => {
+      try {
+        if (navigator.onLine !== false) {
+          setReconcileState({ active: true, scanned: 0, total: 0 });
+          await reconcileWithServer({ onProgress: onReconcileProgress });
+        }
+      } catch {
+        // network/auth — leave queue as-is; next online tick retries
+      } finally {
+        if (!cancelled) {
+          setReconcileState({ active: false, scanned: 0, total: 0 });
+          await refreshQueue();
+      await refreshIdbRows();
         }
       }
+    })();
+    const unsubscribe = wireGlobalOnlineDrain();
+    return () => {
+      cancelled = true;
+      unsubscribe?.();
+    };
+  }, [refreshQueue, refreshIdbRows, onReconcileProgress]);
 
-      const successCount = files.length - errors.length;
-      if (successCount > 0) {
-        showAlert(`Successfully uploaded ${successCount} file(s)`, "success");
+  // Upload handler — one file at a time, chunked, IDB-persisted.
+  // Extracted into a per-file helper so the orchestrator loop stays linear
+  // and the page renders progress consistently regardless of which file in
+  // the batch is currently active.
+  const uploadingRef = useRef(false);
+
+  const uploadOneFile = useCallback(
+    async (file, index) => {
+      const onProgress = ({ bytesDone, bytesTotal }) => {
+        const pct = Math.min(99, Math.floor((bytesDone / Math.max(1, bytesTotal)) * 100));
+        setUploadProgress((prev) => ({ ...prev, [index]: pct }));
+      };
+      try {
+        const row = await uploadFileChunked(
+          file,
+          {
+            projectId: uploadData.projectId,
+            device: uploadData.device,
+            location: uploadData.location,
+            uploadedBy: userId || userData?.username || "operator",
+            type: getFileType(file),
+          },
+          { onProgress, onHashMismatch }
+        );
+        // null = deferred (offline-start); upload sits in IDB waiting for
+        // connectivity. Mark the row's progress as queued (-2) so the UI
+        // distinguishes it from completed (100) or failed (-1).
+        if (row === null) {
+          setUploadProgress((prev) => ({ ...prev, [index]: -2 }));
+          return { ok: true, deferred: true };
+        }
+        setUploadProgress((prev) => ({ ...prev, [index]: 100 }));
+        return { ok: true };
+      } catch (error) {
+        setUploadProgress((prev) => ({ ...prev, [index]: -1 }));
+        return { ok: false, error };
       }
-      if (errors.length > 0) {
-        showAlert(`${errors.length} file(s) failed`, "error");
+    },
+    [uploadData.projectId, uploadData.device, uploadData.location, userId, userData, onHashMismatch]
+  );
+
+  const handleUpload = async () => {
+    if (uploadingRef.current) return;
+    if (files.length === 0) return showAlert("Please select at least one file", "error");
+    if (!uploadData.projectId) return showAlert("Please select a project", "error");
+    if (!uploadData.device || !uploadData.location) {
+      return showAlert("Please fill in device and location", "error");
+    }
+
+    uploadingRef.current = true;
+    setUploading(true);
+    let failures = 0;
+    let deferred = 0;
+    try {
+      for (let i = 0; i < files.length; i++) {
+        const result = await uploadOneFile(files[i], i);
+        if (!result.ok) failures++;
+        else if (result.deferred) deferred++;
+        await refreshQueue();
+      await refreshIdbRows();
       }
-      if (errors.length === 0) {
+
+      const successCount = files.length - failures - deferred;
+      if (successCount > 0) showAlert(`Successfully uploaded ${successCount} file(s)`, "success");
+      if (deferred > 0) {
+        showAlert(
+          `${deferred} file(s) staged locally — will upload when you reconnect`,
+          "info"
+        );
+      }
+      if (failures > 0) showAlert(`${failures} file(s) failed — they remain in the offline queue`, "error");
+
+      if (failures === 0 && deferred === 0) {
         setTimeout(() => {
           setFiles([]);
           setUploadData({ device: "", location: "", projectId: "" });
           setUploadProgress({});
           setActiveTab("history");
+          refreshQueue();
+          refreshIdbRows();
         }, 1500);
       }
-    } catch (error) {
-      showAlert("Upload failed", "error");
     } finally {
       setUploading(false);
+      uploadingRef.current = false;
     }
   };
 
+  const [resuming, setResuming] = useState(false);
+  const handleRetryFailed = useCallback(async () => {
+    if (resuming) return;
+    if (typeof navigator !== "undefined" && navigator.onLine === false) {
+      showAlert("You're offline — resume will run automatically when you reconnect", "info");
+      return;
+    }
+    setResuming(true);
+    try {
+      const { requeued, drained, failed } = await resumeFailedUploads({ onHashMismatch });
+      if (drained > 0) {
+        showAlert(`Resumed ${drained} upload${drained === 1 ? "" : "s"}`, "success");
+      } else if (failed > 0) {
+        showAlert(`${failed} upload${failed === 1 ? "" : "s"} still failing — check connectivity`, "error");
+      } else if (requeued === 0) {
+        showAlert("Nothing to resume", "info");
+      }
+      await refreshQueue();
+      await refreshIdbRows();
+      refetchUploads();
+    } catch (err) {
+      showAlert(err?.message || "Resume failed", "error");
+    } finally {
+      setResuming(false);
+    }
+  }, [resuming, showAlert, refreshQueue, refreshIdbRows, refetchUploads, onHashMismatch]);
+
+  // Day 8 — fold IDB-staged uploads in ahead of server rows so anything stuck
+  // locally is visible at the top of the history. Local rows carry the
+  // `isLocal` flag; UploadHistoryTable renders them with a distinct status
+  // tone + a "local" badge so they're not mistaken for server-side rows.
   const filteredUploads = useMemo(() => {
-    if (!searchQuery) return uploads;
+    const merged = [...idbRows, ...uploads];
+    if (!searchQuery) return merged;
     const q = searchQuery.toLowerCase();
-    return uploads.filter(
+    return merged.filter(
       (u) =>
         u.originalName?.toLowerCase().includes(q) ||
         u.filename?.toLowerCase().includes(q) ||
         u.location?.toLowerCase().includes(q)
     );
-  }, [uploads, searchQuery]);
+  }, [idbRows, uploads, searchQuery]);
 
   const completedCount = Object.values(uploadProgress).filter((v) => v === 100).length;
   const selectedProject = projects.find((p) => p._id === uploadData.projectId) || null;
@@ -249,6 +375,11 @@ export default function OperatorUploadsPage() {
                   completedCount={completedCount}
                   canSubmit={canSubmit}
                   onUpload={handleUpload}
+                  queue={queueState}
+                  onRetryFailed={handleRetryFailed}
+                  resuming={resuming}
+                  reconcile={reconcileState}
+                  hashMismatch={hashMismatch}
                 />
               </div>
             </div>
@@ -262,6 +393,11 @@ export default function OperatorUploadsPage() {
               search={searchQuery}
               onSearch={setSearchQuery}
               onRefresh={refetchUploads}
+              onRowAction={async () => {
+                await refreshQueue();
+                await refreshIdbRows();
+                refetchUploads();
+              }}
             />
           </TabsContent>
         </Tabs>

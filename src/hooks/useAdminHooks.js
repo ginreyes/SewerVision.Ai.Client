@@ -426,11 +426,26 @@ export function useAdminProjects(filters = {}, options = {}) {
             if (filters.limit) params.set('limit', filters.limit);
             if (filters.search) params.set('search', filters.search);
             if (filters.status) params.set('status', filters.status);
+            if (filters.priority) params.set('priority', filters.priority);
+            if (filters.sort) params.set('sort', filters.sort);
             const qs = params.toString();
             const { data } = await api(`/api/projects/get-all-projects${qs ? '?' + qs : ''}`);
             return data || {};
         },
         staleTime: 1000 * 60,
+        ...options,
+    });
+}
+
+export function useProjectHealth(projectId, options = {}) {
+    return useQuery({
+        queryKey: queryKeys.projectHealth(projectId),
+        queryFn: async () => {
+            const { data } = await api(`/api/projects/${projectId}/health`);
+            return data?.data || null;
+        },
+        enabled: !!projectId,
+        staleTime: 1000 * 60 * 5,
         ...options,
     });
 }
@@ -591,5 +606,142 @@ export function useAdminAnalytics(options = {}) {
         queryFn: () => dashboardApi.getAnalyticsOverview(),
         staleTime: 1000 * 60 * 5,
         ...options,
+    });
+}
+
+/**
+ * ============ AI MODEL CONFIG (CONTROL PLANE) ============
+ */
+
+export function useAIModelConfigs(options = {}) {
+    return useQuery({
+        queryKey: queryKeys.aiModelConfigs,
+        queryFn: async () => {
+            const { data } = await api('/api/ai-models/configs');
+            return data?.data || [];
+        },
+        staleTime: 1000 * 30,
+        ...options,
+    });
+}
+
+export function useCreateAIModelConfig() {
+    const queryClient = useQueryClient();
+    return useMutation({
+        mutationFn: async (payload) => {
+            const res = await api('/api/ai-models/configs', 'POST', payload);
+            if (!res.ok) throw new Error(res.data?.message || 'Failed to create config');
+            return res.data?.data;
+        },
+        onSuccess: () => {
+            queryClient.invalidateQueries({ queryKey: queryKeys.aiModelConfigs });
+        },
+    });
+}
+
+export function useUpdateAIModelConfig() {
+    const queryClient = useQueryClient();
+    return useMutation({
+        mutationFn: async ({ id, ...payload }) => {
+            const res = await api(`/api/ai-models/configs/${id}`, 'PUT', payload);
+            if (!res.ok) throw new Error(res.data?.message || 'Failed to update config');
+            return res.data?.data;
+        },
+        onSuccess: () => {
+            queryClient.invalidateQueries({ queryKey: queryKeys.aiModelConfigs });
+        },
+    });
+}
+
+export function useActivateAIModelConfig() {
+    const queryClient = useQueryClient();
+    return useMutation({
+        mutationFn: async (id) => {
+            const res = await api(`/api/ai-models/configs/${id}/activate`, 'POST');
+            if (!res.ok) throw new Error(res.data?.message || 'Failed to activate config');
+            return res.data?.data;
+        },
+        onSuccess: () => {
+            queryClient.invalidateQueries({ queryKey: queryKeys.aiModelConfigs });
+        },
+    });
+}
+
+export function useRollbackAIModelConfig() {
+    const queryClient = useQueryClient();
+    return useMutation({
+        mutationFn: async (id) => {
+            const res = await api(`/api/ai-models/configs/${id}/rollback`, 'POST');
+            if (!res.ok) throw new Error(res.data?.message || 'Failed to rollback config');
+            return res.data?.data;
+        },
+        onSuccess: () => {
+            queryClient.invalidateQueries({ queryKey: queryKeys.aiModelConfigs });
+        },
+    });
+}
+
+export function useCompareAIModelConfigs() {
+    return useMutation({
+        mutationFn: async ({ configIdA, configIdB, sampleSize = 200 }) => {
+            const res = await api('/api/ai-models/configs/compare', 'POST', {
+                configIdA,
+                configIdB,
+                sampleSize,
+            });
+            if (!res.ok) throw new Error(res.data?.message || 'Comparison failed');
+            return res.data?.data;
+        },
+    });
+}
+
+/**
+ * ============ ADMIN EQUIPMENT ISSUES HOOKS ============
+ *
+ * Back-office maintenance queue across all operators. Pulls from the same
+ * /api/maintenance/equipment-issues endpoint the operator page writes to,
+ * but with no operator scoping (admin/maintenance roles see the full list).
+ */
+
+export function useAdminEquipmentIssues(filters = {}, options = {}) {
+    return useQuery({
+        queryKey: queryKeys.adminEquipmentIssues(filters),
+        queryFn: () => maintenanceApi.listAdminEquipmentIssues(filters),
+        staleTime: 1000 * 30,
+        ...options,
+    });
+}
+
+function invalidateEquipmentIssues(queryClient) {
+    queryClient.invalidateQueries({
+        predicate: (q) =>
+            Array.isArray(q.queryKey) &&
+            ((q.queryKey[0] === 'admin' && q.queryKey[1] === 'equipment-issues') ||
+                (q.queryKey[0] === 'operator' && q.queryKey[1] === 'equipment-issues')),
+    });
+}
+
+export function useAdminAcknowledgeEquipmentIssue() {
+    const queryClient = useQueryClient();
+    return useMutation({
+        mutationFn: (id) => maintenanceApi.acknowledgeEquipmentIssue(id),
+        onSuccess: () => invalidateEquipmentIssues(queryClient),
+    });
+}
+
+export function useAdminResolveEquipmentIssue() {
+    const queryClient = useQueryClient();
+    return useMutation({
+        mutationFn: ({ id, resolutionNotes }) =>
+            maintenanceApi.resolveEquipmentIssue(id, resolutionNotes),
+        onSuccess: () => invalidateEquipmentIssues(queryClient),
+    });
+}
+
+export function useAdminDeleteEquipmentIssue() {
+    const queryClient = useQueryClient();
+    return useMutation({
+        mutationFn: (id) => maintenanceApi.deleteEquipmentIssue(id),
+        onSuccess: () => invalidateEquipmentIssues(queryClient),
     });
 }

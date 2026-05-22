@@ -102,6 +102,7 @@ export default function TicketDetail({ ticketId, onBack }) {
   const [showReview, setShowReview] = useState(false);
   const [showTemplatePicker, setShowTemplatePicker] = useState(false);
   const [templateSearch, setTemplateSearch] = useState("");
+  const [templateMineOnly, setTemplateMineOnly] = useState(true);
   const textareaRef = useRef(null);
 
   const { data: ticket, isLoading } = useSupportTicket(ticketId);
@@ -406,14 +407,38 @@ export default function TicketDetail({ ticketId, onBack }) {
                             <X className="w-4 h-4" />
                           </button>
                         </div>
+                        <div className="px-3 pt-2 pb-1.5 flex items-center gap-2 border-b border-gray-100">
+                          <button
+                            type="button"
+                            onClick={() => setTemplateMineOnly(true)}
+                            className={`text-[10px] px-2 py-0.5 rounded-md border transition-colors ${templateMineOnly ? "bg-teal-50 border-teal-200 text-teal-700" : "bg-white border-gray-200 text-gray-500 hover:border-teal-200"}`}
+                          >
+                            Mine
+                          </button>
+                          <button
+                            type="button"
+                            onClick={() => setTemplateMineOnly(false)}
+                            className={`text-[10px] px-2 py-0.5 rounded-md border transition-colors ${!templateMineOnly ? "bg-teal-50 border-teal-200 text-teal-700" : "bg-white border-gray-200 text-gray-500 hover:border-teal-200"}`}
+                          >
+                            All
+                          </button>
+                        </div>
                         <div className="max-h-56 overflow-y-auto divide-y divide-gray-50">
                           {(() => {
                             const list = (Array.isArray(cannedResponses) ? cannedResponses : [])
-                              .filter(t => !templateSearch ||
-                                t.title.toLowerCase().includes(templateSearch.toLowerCase()) ||
-                                (t.shortcut && t.shortcut.includes(templateSearch.toLowerCase())) ||
-                                t.body.toLowerCase().includes(templateSearch.toLowerCase())
-                              );
+                              .filter(t => {
+                                if (templateMineOnly) {
+                                  const ownerId = typeof t.createdBy === "object" ? t.createdBy?._id : t.createdBy;
+                                  if (String(ownerId) !== String(userId)) return false;
+                                }
+                                if (!templateSearch) return true;
+                                const q = templateSearch.toLowerCase();
+                                return (
+                                  t.title.toLowerCase().includes(q) ||
+                                  (t.shortcut && t.shortcut.includes(q)) ||
+                                  t.body.toLowerCase().includes(q)
+                                );
+                              });
                             if (!list.length) return (
                               <div className="px-4 py-5 text-center text-xs text-gray-400">
                                 No templates found. <a href="/customer-rep/templates" className="text-teal-600 hover:underline">Manage templates →</a>

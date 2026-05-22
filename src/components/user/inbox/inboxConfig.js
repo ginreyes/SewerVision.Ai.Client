@@ -1,4 +1,4 @@
-import { FileText, Zap, Activity, Settings, Shield, AlertTriangle } from 'lucide-react';
+import { FileText, Zap, Activity, Settings, Shield, AlertTriangle, AtSign } from 'lucide-react';
 
 export const typeConfig = {
     report_ready: {
@@ -36,6 +36,12 @@ export const typeConfig = {
         color: 'bg-rose-50 text-rose-700',
         avatar: 'from-rose-400 to-pink-500',
         icon: AlertTriangle,
+    },
+    chat_mention: {
+        label: 'Mention',
+        color: 'bg-rose-50 text-rose-700',
+        avatar: 'from-rose-400 to-pink-500',
+        icon: AtSign,
     },
 };
 

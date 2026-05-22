@@ -14,6 +14,7 @@ import {
   useUpdateOperatorNotificationPreferences,
 } from '@/hooks/useQueryHooks';
 import NotificationCenter from '@/components/shared/NotificationCenter';
+import ChatNotificationPreferences from '@/components/shared/notifications/ChatNotificationPreferences';
 
 // Toggle Setting Component
 const ToggleSetting = ({ id, label, description, checked, onChange }) => (
@@ -47,13 +48,22 @@ const NotificationPageOperator = () => {
     statusUpdate: prefsData?.statusUpdate ?? true,
     qcReview: prefsData?.qcReview ?? true,
     defectFound: prefsData?.defectFound ?? true,
+    chatMention: prefsData?.chatMention ?? true,
+    chatReply: prefsData?.chatReply ?? true,
+    chatPin: prefsData?.chatPin ?? true,
+    chatMessage: prefsData?.chatMessage ?? false,
+    chatReaction: prefsData?.chatReaction ?? false,
   };
 
+  // fetchNotifications is a stable callback from NotificationProvider —
+  // including it in deps would re-trigger the initial fetch on every
+  // pagination state change upstream.
   useEffect(() => {
     if (userId) {
       fetchNotifications(true);
     }
-  }, [userId, fetchNotifications]);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [userId]);
 
   const togglePreference = async (key) => {
     const newPreferences = {
@@ -139,6 +149,12 @@ const NotificationPageOperator = () => {
             />
           </CardContent>
         </Card>
+
+        <ChatNotificationPreferences
+          preferences={preferences}
+          onToggle={togglePreference}
+          accent="blue"
+        />
       </NotificationCenter>
     </div>
   );

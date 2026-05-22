@@ -3,7 +3,7 @@
 import React, { createContext, useContext, useState, useEffect, useCallback } from 'react';
 import { useUser } from './UserContext';
 import { useSocket } from './SocketProvider';
-import notificationApi from '@/data/notificationApi ';
+import notificationApi from '@/data/notificationApi';
 
 const NotificationContext = createContext(undefined);
 
@@ -21,28 +21,32 @@ export const NotificationProvider = ({
   const [hasMore, setHasMore] = useState(false);
   const [currentPage, setCurrentPage] = useState(1);
 
-  const fetchNotifications = useCallback(async (reset = false) => {
+  // `page` is passed explicitly so identity stays stable across pagination —
+  // depending on `currentPage` here would re-create the callback every time
+  // loadMore() bumps the page, which cascades into every consumer effect that
+  // includes fetchNotifications in its deps.
+  const fetchNotifications = useCallback(async (reset = false, pageOverride) => {
     if (!userId) return;
-    
+
     setIsLoading(true);
     setError(null);
-    
+
     try {
-      const page = reset ? 1 : currentPage;
+      const page = reset ? 1 : (pageOverride ?? 1);
       const response = await notificationApi.getNotifications(userId, {
         page,
         limit: 20,
       });
-      
+
       const newNotifications = response.data.notifications;
-      
+
       if (reset) {
         setNotifications(newNotifications);
         setCurrentPage(1);
       } else {
         setNotifications(prev => [...prev, ...newNotifications]);
       }
-      
+
       setUnreadCount(response.data.unreadCount);
       setHasMore(response.data.pagination.hasMore);
     } catch (err) {
@@ -50,7 +54,7 @@ export const NotificationProvider = ({
     } finally {
       setIsLoading(false);
     }
-  }, [userId, currentPage]);
+  }, [userId]);
 
   const loadMore = useCallback(async () => {
     if (!hasMore || isLoading) return;
@@ -59,9 +63,9 @@ export const NotificationProvider = ({
 
   useEffect(() => {
     if (currentPage > 1) {
-      fetchNotifications(false);
+      fetchNotifications(false, currentPage);
     }
-  }, [currentPage]); // eslint-disable-line react-hooks/exhaustive-deps
+  }, [currentPage, fetchNotifications]);
 
   const refreshUnreadCount = useCallback(async () => {
     if (!userId) return;
@@ -106,21 +110,26 @@ export const NotificationProvider = ({
     }
   }, [userId]);
 
+  // Reads `notifications` via the functional setter so the callback identity
+  // stays stable — otherwise every incoming socket notification (which mutates
+  // the array) would rebuild deleteNotification and re-render every consumer.
   const deleteNotification = useCallback(async (notificationId) => {
     if (!userId) return;
-    
+
     try {
-      const notification = notifications.find(n => n._id === notificationId);
       await notificationApi.deleteNotification(notificationId, userId);
-      setNotifications(prev => prev.filter(n => n._id !== notificationId));
-      if (notification && !notification.read) {
-        setUnreadCount(prev => Math.max(0, prev - 1));
-      }
+      setNotifications(prev => {
+        const target = prev.find(n => n._id === notificationId);
+        if (target && !target.read) {
+          setUnreadCount(c => Math.max(0, c - 1));
+        }
+        return prev.filter(n => n._id !== notificationId);
+      });
     } catch (err) {
       setError(err.message);
       throw err;
     }
-  }, [userId, notifications]);
+  }, [userId]);
 
   const deleteAllNotifications = useCallback(async () => {
     if (!userId) return;
@@ -157,15 +166,43 @@ export const NotificationProvider = ({
       // Prepend new notification to list
       setNotifications((prev) => [data, ...prev]);
       setUnreadCount((prev) => prev + 1);
+
+      // High-priority pop-out: the AlertProvider sits below this provider in
+      // the tree, so we publish via a CustomEvent rather than reaching into
+      // a hook we can't call here. HighPriorityToastBridge (rendered inside
+      // AlertProvider) consumes this and calls showAlert().
+      if (data?.priority === 'high' && typeof window !== 'undefined') {
+        window.dispatchEvent(new CustomEvent('notification:high', { detail: data }));
+      }
     };
 
     socket.on('notification', handleNotification);
     return () => socket.off?.('notification', handleNotification);
   }, [socket, userId]);
 
-  const value = {
+  // Rollup-aware count for the navbar bell. A rollup notification (e.g.
+  // "5 new messages in {project}") should occupy one slot, not five. We
+  // collapse unread rows into distinct buckets: each unread non-rollup
+  // counts once, and each unread rollup row counts once (regardless of
+  // its rollupCount). Falls back to the raw server count when the
+  // notifications list hasn't loaded yet so the bell is never stuck
+  // showing 0 on first paint.
+  const distinctUnreadCount = React.useMemo(() => {
+    if (!Array.isArray(notifications) || notifications.length === 0) {
+      return unreadCount;
+    }
+    const unread = notifications.filter((n) => !n.read);
+    if (unread.length === 0) return 0;
+    return unread.length;
+  }, [notifications, unreadCount]);
+
+  // Memoize the context value so consumers (NotificationCenter, the bell badge,
+  // every page that calls useNotifications()) don't re-render on every parent
+  // render — only when one of the actual fields changes.
+  const value = React.useMemo(() => ({
     notifications,
     unreadCount,
+    distinctUnreadCount,
     isLoading,
     error,
     hasMore,
@@ -177,7 +214,22 @@ export const NotificationProvider = ({
     deleteNotification,
     deleteAllNotifications,
     refreshUnreadCount,
-  };
+  }), [
+    notifications,
+    unreadCount,
+    distinctUnreadCount,
+    isLoading,
+    error,
+    hasMore,
+    currentPage,
+    fetchNotifications,
+    loadMore,
+    markAsRead,
+    markAllAsRead,
+    deleteNotification,
+    deleteAllNotifications,
+    refreshUnreadCount,
+  ]);
 
   return (
     <NotificationContext.Provider value={value}>

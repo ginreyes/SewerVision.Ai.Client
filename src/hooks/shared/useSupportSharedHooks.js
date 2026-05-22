@@ -182,11 +182,31 @@ export function usePendingDeletionRequests(options = {}) {
  * ============ CANNED RESPONSE HOOKS ============
  */
 
-export function useCannedResponses(userId, options = {}) {
+/**
+ * @param {string} userId
+ * @param {{ type?: 'customer'|'qc', category?: string }} [opts]
+ */
+export function useCannedResponses(userId, opts = {}, options = {}) {
+    const type = opts?.type || 'customer';
+    const category = opts?.category;
     return useQuery({
-        queryKey: ['canned-responses', userId],
-        queryFn: () => cannedResponseApi.getAll(userId),
+        queryKey: ['canned-responses', userId, type, category || 'all'],
+        queryFn: () => cannedResponseApi.getAll(userId, { type, category }),
         staleTime: 1000 * 60 * 2,
+        ...options,
+    });
+}
+
+/**
+ * Auto-suggest QC templates ranked for the given detection. Used by the QC
+ * chat composer when a detection is selected.
+ */
+export function useCannedResponseSuggestions(userId, { detectionType, severity } = {}, options = {}) {
+    return useQuery({
+        queryKey: ['canned-responses', 'suggest', userId, detectionType || null, severity || null],
+        queryFn: () => cannedResponseApi.suggest(userId, { detectionType, severity }),
+        enabled: Boolean(userId && detectionType),
+        staleTime: 1000 * 30,
         ...options,
     });
 }

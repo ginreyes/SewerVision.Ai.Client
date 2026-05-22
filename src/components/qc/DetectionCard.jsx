@@ -1,8 +1,9 @@
 'use client'
 
 import React, { memo, useCallback, useState } from 'react'
-import { AlertTriangle, CheckCircle, XCircle, ChevronDown, ChevronRight, Video, Clock, MapPin, Camera, X, ZoomIn } from 'lucide-react'
+import { AlertTriangle, CheckCircle, XCircle, ChevronDown, ChevronRight, Video, Clock, MapPin, Camera, ZoomIn } from 'lucide-react'
 import { getSnapshotUrl } from '@/lib/getVideoUrl'
+import { Dialog, DialogContent, DialogTitle } from '@/components/ui/dialog'
 
 /**
  * @typedef {Object} Detection
@@ -305,30 +306,26 @@ const DetectionCard = memo(({
       )}
 
       {/* Snapshot Lightbox */}
-      {showLightbox && snapshotUrl && (
-        <div
-          className="fixed inset-0 z-50 flex items-center justify-center bg-black/80"
-          onClick={(e) => { e.stopPropagation(); setShowLightbox(false) }}
+      <Dialog open={Boolean(showLightbox && snapshotUrl)} onOpenChange={(open) => !open && setShowLightbox(false)}>
+        <DialogContent
+          className="max-w-4xl bg-black/90 border-none p-0 sm:rounded-xl overflow-hidden [&>button]:text-white"
+          onClick={(e) => e.stopPropagation()}
         >
-          <div className="relative max-w-4xl max-h-[90vh] m-4" onClick={(e) => e.stopPropagation()}>
+          <DialogTitle className="sr-only">
+            Detection snapshot — {detection.type}
+          </DialogTitle>
+          <div className="relative">
             <img
               src={snapshotUrl}
               alt={`Detection snapshot - ${detection.type}`}
-              className="max-w-full max-h-[85vh] object-contain rounded-lg"
+              className="w-full max-h-[85vh] object-contain"
             />
-            <button
-              onClick={(e) => { e.stopPropagation(); setShowLightbox(false) }}
-              className="absolute -top-3 -right-3 p-1.5 bg-white rounded-full shadow-lg hover:bg-gray-100 transition-colors"
-              aria-label="Close"
-            >
-              <X className="h-4 w-4 text-gray-700" />
-            </button>
             <div className="absolute bottom-4 left-4 px-3 py-1.5 bg-black/60 rounded-lg text-white text-sm">
               {detection.type} — {detection.severity} — {detection.confidence}% confidence
             </div>
           </div>
-        </div>
-      )}
+        </DialogContent>
+      </Dialog>
     </div>
   )
 })

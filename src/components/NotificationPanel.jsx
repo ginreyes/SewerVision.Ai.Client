@@ -190,8 +190,12 @@ const NotificationItem = ({
 };
 
 export const NotificationBell = ({ className }) => {
-  const { unreadCount } = useNotifications();
+  const { unreadCount, distinctUnreadCount } = useNotifications();
   const [isOpen, setIsOpen] = useState(false);
+  // Prefer rollup-aware distinct count when the provider exposes it; fall
+  // back to the raw server unreadCount so older callers still render.
+  const displayCount =
+    typeof distinctUnreadCount === 'number' ? distinctUnreadCount : unreadCount;
 
   return (
     <Popover open={isOpen} onOpenChange={setIsOpen}>
@@ -200,14 +204,14 @@ export const NotificationBell = ({ className }) => {
           variant="ghost"
           size="icon"
           className={`relative ${className}`}
-          aria-label={`Notifications${unreadCount > 0 ? ` (${unreadCount} unread)` : ''}`}
+          aria-label={`Notifications${displayCount > 0 ? ` (${displayCount} unread)` : ''}`}
         >
           <Bell className="h-5 w-5" />
-          {unreadCount > 0 && (
+          {displayCount > 0 && (
             <span className="absolute -top-1 -right-1 h-5 w-5 flex items-center justify-center">
               <span className="absolute inline-flex h-full w-full rounded-full bg-red-400 opacity-75 animate-ping" />
               <span className="relative inline-flex items-center justify-center h-5 w-5 rounded-full bg-gradient-to-r from-red-500 to-rose-500 text-[10px] font-bold text-white">
-                {unreadCount > 99 ? '99+' : unreadCount}
+                {displayCount > 99 ? '99+' : displayCount}
               </span>
             </span>
           )}

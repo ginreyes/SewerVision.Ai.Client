@@ -10,10 +10,13 @@ export const customerApi = {
     /**
      * Get all projects for a customer
      */
-    async getAllProjects(userId, { page = 1, limit = 20, status = '' } = {}) {
-        const statusParam = status && status !== 'all' ? `&status=${status}` : '';
+    async getAllProjects(userId, { page = 1, limit = 20, status = '', priority = '', sort = '' } = {}) {
+        const params = new URLSearchParams({ page, limit });
+        if (status && status !== 'all') params.set('status', status);
+        if (priority && priority !== 'all') params.set('priority', priority);
+        if (sort) params.set('sort', sort);
         const response = await api(
-            `/api/customer/get-all-projects/${userId}?page=${page}&limit=${limit}${statusParam}`,
+            `/api/customer/get-all-projects/${userId}?${params}`,
             'GET'
         );
 

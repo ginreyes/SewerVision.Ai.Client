@@ -7,6 +7,7 @@ import { useUserProjects } from "@/hooks/useQueryHooks";
 import { ClockWorkspace } from "@/components/shared/time-tracking";
 import { OvertimePanel } from "@/components/shared/overtime";
 import FadeIn from "@/components/shared/FadeIn";
+import { unwrapList } from "@/lib/unwrapList";
 
 const TABS = [
   { key: "clock", label: "Clock In/Out", icon: Clock },
@@ -17,10 +18,7 @@ export default function UserTimeTracking() {
   const { userId } = useUser();
   const [tab, setTab] = useState("clock");
   const { data: projectsData } = useUserProjects(userId, { page: 1, limit: 100 });
-  const projects = useMemo(() => {
-    const raw = projectsData?.data || projectsData || [];
-    return Array.isArray(raw) ? raw : [];
-  }, [projectsData]);
+  const projects = useMemo(() => unwrapList(projectsData), [projectsData]);
 
   return (
     <div>
