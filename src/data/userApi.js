@@ -572,6 +572,28 @@ export const userApi = {
         }
         return typeof response.data === 'string' ? response.data : '';
     },
+
+    // ─── Training audit trail + project health rollup (May 22) ────────────
+    async getTrainingAudit({ action, recordId, memberId, limit } = {}) {
+        const params = new URLSearchParams();
+        if (action) params.set('action', action);
+        if (recordId) params.set('recordId', recordId);
+        if (memberId) params.set('memberId', memberId);
+        if (limit) params.set('limit', String(limit));
+        const qs = params.toString();
+        const response = await api(`/api/user/training/audit${qs ? `?${qs}` : ''}`, 'GET');
+        if (!response.ok) throw new Error(response.data?.message || 'Failed to load training audit');
+        return response.data?.data || { entries: [] };
+    },
+    async getProjectHealthRollup({ limit, worstFirst } = {}) {
+        const params = new URLSearchParams();
+        if (limit) params.set('limit', String(limit));
+        if (worstFirst === false) params.set('worstFirst', 'false');
+        const qs = params.toString();
+        const response = await api(`/api/user/project-health-rollup${qs ? `?${qs}` : ''}`, 'GET');
+        if (!response.ok) throw new Error(response.data?.message || 'Failed to load project health rollup');
+        return response.data?.data;
+    },
 };
 
 export default userApi;

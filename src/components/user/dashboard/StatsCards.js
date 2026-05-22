@@ -1,5 +1,6 @@
 'use client';
 
+import { memo } from 'react';
 import { FolderOpen, User, UserCheck, FileText } from 'lucide-react';
 import { Card, CardContent } from '@/components/ui/card';
 
@@ -10,7 +11,10 @@ const STATS = [
     { key: 'reports', label: 'Reports', icon: FileText, gradient: 'from-amber-50 to-orange-50', iconColor: 'text-amber-500' },
 ];
 
-export default function StatsCards({ projectCount = 0, operatorCount = 0, qcCount = 0, reportsCount = 0 }) {
+// memo'd (May 22) so the dashboard's neighbouring widgets refetching (compliance
+// summary, project-health rollup) don't drag StatsCards through their re-render
+// cycle. Props are scalar counts so shallow-equal works out of the box.
+function StatsCards({ projectCount = 0, operatorCount = 0, qcCount = 0, reportsCount = 0 }) {
     const values = { projects: projectCount, operators: operatorCount, qc: qcCount, reports: reportsCount };
 
     return (
@@ -31,3 +35,5 @@ export default function StatsCards({ projectCount = 0, operatorCount = 0, qcCoun
         </div>
     );
 }
+
+export default memo(StatsCards);

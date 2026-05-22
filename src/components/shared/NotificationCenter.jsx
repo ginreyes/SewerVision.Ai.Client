@@ -1,6 +1,7 @@
 'use client';
 
 import { memo, useState, useMemo, useCallback } from 'react';
+import { useRouter } from 'next/navigation';
 import {
   Bell,
   Check,
@@ -26,6 +27,7 @@ import {
   Zap,
   ChevronDown,
   ChevronUp,
+  ExternalLink,
 } from 'lucide-react';
 
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
@@ -127,12 +129,16 @@ function inferRollupNoun(type) {
 
 // ── Single Notification Item ──
 /** memo'd — rendered many times in a notification list */
-const NotificationRow = memo(function NotificationRow({ notification, roleColors, onMarkAsRead, onDelete }) {
+const NotificationRow = memo(function NotificationRow({ notification, roleColors, onMarkAsRead, onDelete, onOpen }) {
   const config = DEFAULT_TYPE_CONFIG[notification.type] || DEFAULT_TYPE_CONFIG.default;
   const Icon = config.icon;
   const priorityClass = PRIORITY_RING[notification.priority] || '';
   const body = rollupBody(notification);
   const isRollup = typeof notification.rollupCount === 'number' && notification.rollupCount > 1;
+  // A row is "openable" when the backend stamped an actionUrl on it. Training
+  // reminders deep-link to /user/dashboard?compliance=<memberId> so a click on
+  // the row lands the team-lead on the side-panel for that member (May 22).
+  const canOpen = !!notification.actionUrl;
 
   return (
     <div
@@ -184,6 +190,17 @@ const NotificationRow = memo(function NotificationRow({ notification, roleColors
             {config.label}
           </Badge>
           <div className="flex-1" />
+          {canOpen && (
+            <Button
+              variant="ghost"
+              size="sm"
+              className="h-7 px-2 text-xs text-indigo-600 hover:text-indigo-700 hover:bg-indigo-50 dark:text-indigo-400 dark:hover:bg-indigo-950"
+              onClick={() => onOpen?.(notification)}
+            >
+              <ExternalLink className="w-3 h-3 mr-1" />
+              Open
+            </Button>
+          )}
           {!notification.read && (
             <Button
               variant="ghost"
@@ -265,6 +282,7 @@ function NotificationCenter({
   const providerDeleteNotification = providerNotifications?.deleteNotification;
 
   const { showAlert } = useAlert();
+  const router = useRouter();
   const roleColors = buildRoleColors(role);
 
   const [filter, setFilter] = useState('all');
@@ -377,6 +395,34 @@ function NotificationCenter({
     await fetchNotifications(true);
     setRefreshing(false);
   }, [fetchNotifications]);
+
+  // Open a notification — mark-as-read silently and navigate to actionUrl.
+  // Training-reminder notifications stamp /user/dashboard?compliance=<memberId>
+  // so this single handler also lands the user on the side-panel for the
+  // member named in the alert (May 22 deep-link wiring).
+  const handleOpen = useCallback(
+    (notification) => {
+      if (!notification?.actionUrl) return;
+      if (!notification.read) {
+        if (externalMarkAsRead) {
+          externalMarkAsRead(notification._id).catch(() => {});
+        } else if (providerMarkAsRead) {
+          providerMarkAsRead(notification._id).catch(() => {});
+        }
+      }
+      try {
+        const url = notification.actionUrl;
+        if (typeof url === 'string' && (url.startsWith('http://') || url.startsWith('https://'))) {
+          window.open(url, '_blank', 'noopener');
+        } else {
+          router.push(url);
+        }
+      } catch {
+        // navigation failure is non-fatal — the row remains in place
+      }
+    },
+    [externalMarkAsRead, providerMarkAsRead, router]
+  );
 
   return (
     <div className={`space-y-6 ${className}`}>
@@ -555,6 +601,7 @@ function NotificationCenter({
                     roleColors={roleColors}
                     onMarkAsRead={handleMarkAsRead}
                     onDelete={handleDelete}
+                    onOpen={handleOpen}
                   />
                 ))
               )}

@@ -1,10 +1,198 @@
 
 export const whatsNewData = [
     {
+        id: "v2.6.0",
+        date: "May 18 – 22, 2026",
+        label: "Team-Lead Compliance Suite + Render-Stability Sweep + Chunked Upload Hardening",
+        isNew: true,
+        updates: {
+            admin: [
+                {
+                    type: 'feature',
+                    title: 'Equipment Issues Bulk Actions + Status Filter',
+                    description: 'Selection checkboxes on every /admin/equipment-issues row unlock bulk Acknowledge and bulk Resolve, with per-item success/failure tallying via Promise.allSettled.',
+                    details: [
+                        'New BulkActionsBar component appears once any row is selected — bulk Acknowledge for Open issues and bulk Resolve with optional shared resolution notes',
+                        'Per-item Promise.allSettled fan-out so a single failing row doesn\'t abort the batch — toast reports "Acknowledged N · failed M"',
+                        'Status filter Select added to FilterBar (Open / Acknowledged / In repair / Resolved / Any) so cross-status search-and-bulk works without round-tripping through tabs',
+                    ]
+                },
+                {
+                    type: 'improvement',
+                    title: 'Team Activity Card on Dashboard Overview',
+                    description: 'New per-inspector workload aggregation card on /admin/dashboard Overview — active project count, pending-QC badge, total defects, and over-loaded / idle highlights derived client-side from recentProjects.',
+                    details: [
+                        'Drop-in widget — no new backend endpoint needed (today\'s ship), follow-up wires it to /api/admin/team-workload-overview',
+                        'Highlights overloaded inspectors in amber and idle inspectors in muted grey so admin spots capacity drift at a glance',
+                    ]
+                },
+                {
+                    type: 'security',
+                    title: 'Audit Log ReDoS Hardening (storage + 8 other controllers)',
+                    description: 'User-supplied search input is now escaped via the new src/utils/escapeRegex.ts helper before reaching new RegExp(...) — a single `[` no longer throws SyntaxError mid-request and `.+` no longer scans the full collection as a wildcard.',
+                    details: [
+                        'Swept across storage, audit, device, complaint, incident, clientConversation, customerDocument, qc_notes, qc_reports, reports controllers',
+                        '5-test vitest pinning the helper itself (regression: `[` throws unescaped, parses escaped; `.+` matches literally)',
+                        'Storage audit endpoint additionally constrained to STORAGE_ACTIONS allow-list so the action filter can\'t be repurposed to read non-storage AuditLog rows',
+                        'endDate=YYYY-MM-DD now pushed to T23:59:59.999Z so audit windows include the full final day',
+                    ]
+                },
+            ],
+            operator: [
+                {
+                    type: 'fix',
+                    title: 'Chunked Upload Pipeline Hardening (C3 Day 7-8)',
+                    description: 'End-to-end fixes across the offline upload stack so resumed uploads, hash mismatches, and stale sessions all behave predictably under the conditions that were biting us in dev.',
+                    details: [
+                        'completeChunkedUpload now ends the concat writestream explicitly and awaits its `finish` event — previously the buffer could be read mid-flush on fast disks and ship a truncated payload to storageService',
+                        'reconcileWithServer now POSTs /complete when status.complete is true — finishes uploads whose chunks the server already has',
+                        'gcStaleChunkedUploads no longer wipes in-flight sessions on a transient manifest JSON parse hiccup — manifest-less staging dirs are only deleted when their mtime exceeds STALE_SESSION_MS',
+                        'Collapsed the double window `online` listener race on the operator uploads page — drain handler no longer fires before reconcile finishes',
+                    ]
+                },
+                {
+                    type: 'feature',
+                    title: 'Reconcile Progress + Hash-Mismatch Retry',
+                    description: 'Operator uploads page now surfaces what the offline-queue reconciliation is doing on mount, and a single chunk corruption auto-retries instead of failing the upload.',
+                    details: [
+                        'reconcileWithServer accepts onProgress({ total, scanned, reconciledChunks }) and UploadSummaryCard renders "Syncing offline queue with server (N/M)" while it runs',
+                        'New putChunkOnce wraps both live-upload and resume paths — auto-retries exactly once on a 422 chunk hash mismatch by re-reading the blob and re-PUTting',
+                        'onHashMismatch callback bubbles { uploadId, index } to the UI which renders a rose-bordered "Chunk N corrupted in transit — auto-retried" inline notice',
+                    ]
+                },
+                {
+                    type: 'feature',
+                    title: 'Per-Row Local-Queue Actions in Upload History',
+                    description: 'IDB-staged local rows in UploadHistoryTable are no longer read-only — Resume retries the queue for just that uploadId, Discard removes the row and its staged blobs, View-error pops the lastError + chunk index + timestamp.',
+                    details: [
+                        'listIdbQueueRows() projects local IDB rows into the server-Upload shape so they merge inline with server rows',
+                        'Local rows show a "local" badge with amber/blue/rose tone for queued/draining/failed states',
+                        'lastError surfaces inline so stuck rows are self-explaining without opening DevTools',
+                    ]
+                },
+                {
+                    type: 'security',
+                    title: 'Service Worker Chunk Persistence Tightened',
+                    description: 'The SW\'s chunk-PUT regex now requires the 32-hex shape the server actually issues — a stray local-<uuid> id can no longer be persisted under an id the server will reject forever.',
+                    details: [
+                        'When the SW sees a chunk PUT for an uploadId the page hasn\'t enqueued, it now returns false from persistChunk and falls through to the network — no more phantom 202 with totalChunks=0',
+                        'SW_VERSION bumped to v0.3.1-day8',
+                    ]
+                },
+            ],
+            qcTechnician: [
+                {
+                    type: 'feature',
+                    title: 'Speed Trends — Per-Reviewer Module',
+                    description: 'New /qc-technician/speed-trends page graphing defects-per-hour and review-throughput over 7/30/90-day windows with role-themed accents.',
+                    details: [
+                        'Backed by the new /api/qc-technician/speed-trends endpoint',
+                        'CSV export of the current window for offline analysis',
+                    ]
+                },
+            ],
+            user: [
+                {
+                    type: 'feature',
+                    title: 'Training & Certifications — Compliance Suite Complete',
+                    description: 'The team-lead Training & Certifications module gains bulk actions, dashboard widgets, side-panel drill-down, audit history, and CSV export — closing the loop on "I need to manage 30 expiring certs without a spreadsheet".',
+                    details: [
+                        'Bulk Renew: multi-select rows then push a new expiry date forward; status is recomputed from the new expiry so already-expired rows roll back to active/expiring automatically',
+                        'Bulk Remind: choose immediate / daily / weekly cadence; immediate fires NotificationService alerts now, the others stamp the schedule on the row for the reminder job',
+                        'Category facets (Safety, QC Cert, Device Cert, Compliance, Onboarding) joining the status filter row',
+                        'Export filtered records as CSV via the new GET /api/user/training/export endpoint — filter state preserved in the download',
+                        'New History tab showing the audit trail of bulk-renew / bulk-remind / per-member remind actions — who did it, when, how many records, what schedule, with action-filter dropdown (TRAINING_ACTIONS allow-list enforced server-side)',
+                    ]
+                },
+                {
+                    type: 'feature',
+                    title: 'Dashboard Compliance Summary + Member Side-Panel',
+                    description: 'A red/amber/green compliance pill card now sits above Recent Projects so the team-lead sees the team\'s certification health on dashboard load — and clicking any member name slides in a per-member drill-down.',
+                    details: [
+                        'New /api/user/certifications/team-summary endpoint returning totalRecords / activeCount / expiringCount / expiredCount / riskMembersList',
+                        'MemberComplianceSidePanel sheet renders records grouped by category (Safety / QC Cert / Device Cert / Compliance / Onboarding / Other) with the same tone palette as the certifications page',
+                        '"View compliance" affordance on every TeamMemberList row plus a clickable "Members to triage" list in the summary card',
+                    ]
+                },
+                {
+                    type: 'feature',
+                    title: 'Certification Reminder Deep-Link → Side-Panel',
+                    description: 'Per-record and bulk reminder actions now ALSO fire an owner-side notification stamped with a /user/dashboard?compliance=<memberId> deep-link, so clicking the bell entry lands the team-lead on the member\'s compliance side-panel without hunting through the page.',
+                    details: [
+                        'New resolveOwnerComplianceUrl helper on the backend centralises the deep-link shape',
+                        'NotificationCenter rows now render an "Open" action when actionUrl is present, navigating via next/router and marking the row read in the same click',
+                        'Dashboard reads ?compliance= on mount, auto-opens MemberComplianceSidePanel, and wipes the query string so a refresh doesn\'t re-open it',
+                    ]
+                },
+                {
+                    type: 'feature',
+                    title: 'Project Health Rollup on Dashboard',
+                    description: 'New ProjectHealthRow card lists the team-lead\'s active projects sorted worst-first with a one-line "why is this red" (SLA breach / QC stuck >48h / confidence drift / no snapshots / aging).',
+                    details: [
+                        'Backed by new GET /api/user/project-health-rollup endpoint — scopes the admin Project Health Score (May 11-15) to managerId, reuses the same factor weights so the score lines up across views',
+                        'Snapshot counts batched into a single aggregation so a team with 50+ projects doesn\'t fan out to 50 N+1 queries',
+                        'Score badge (Healthy / Watch / At risk / Critical) plus 0-100 number on every row, click to deep-link into /user/project?selectedProject=<id>',
+                    ]
+                },
+                {
+                    type: 'improvement',
+                    title: 'Notes — Team-Lead Scope Wiring',
+                    description: 'UserNotesPage now injects scope=team and routes through the new useUserNotes(userId) hook so the team-lead sees notes for their direct reports rather than the admin-wide list.',
+                    details: [
+                        'New src/components/user/notes/UserNotesPage replaces the bare re-export of the admin NotesPage',
+                        'Hook composes existing notesApi.list with the team-lead userId — no new backend endpoint needed',
+                    ]
+                },
+            ],
+            general: [
+                {
+                    type: 'fix',
+                    title: 'Render-Stability Sweep (NotificationProvider + Dashboards + Socket)',
+                    description: 'A cross-role audit of high-traffic frontend pages eliminated the cascade re-renders that were burning frames every time a socket event arrived — bell badge, notification center, and dashboards now only update when an actual field changes.',
+                    details: [
+                        'NotificationProvider context value is now memoized so the bell badge and every page calling useNotifications() only re-render when a field actually changes',
+                        'fetchNotifications no longer takes currentPage from the useCallback dep list — paginating no longer rebuilds the callback and cascade-invalidates every consumer',
+                        'deleteNotification reads via the functional setNotifications updater so the callback ref stays stable across socket events',
+                        'SocketProvider context value memoized so every page calling useSocket() (admin, operator, qc, user, customer-rep) stops re-rendering on every provider tick',
+                        '/user/dashboard compliance widget triple-render fixed — onSelectMember and onViewCompliance wrapped in useCallback, StatsCards and ComplianceSummaryCard memoized so neighbouring widget refetches don\'t cascade',
+                        'Identical fetchNotifications-deps fix applied to admin, operator, qc-technician, and customer-rep notifications pages',
+                    ]
+                },
+                {
+                    type: 'fix',
+                    title: 'NotificationService Rollup Coalesce Bug',
+                    description: 'The debounce/coalesce branch was dropping newer actionUrl, title, and priority on the floor — chat-mention rollups landed on the FIRST conversation that triggered the badge rather than the most recent.',
+                    details: [
+                        'Now refreshes actionUrl/title on every hit and escalates priority to high when a high-priority event arrives inside the 30s coalesce window',
+                        'notification:updated socket emit now carries the new fields so the bell badge stays consistent with the row',
+                    ]
+                },
+                {
+                    type: 'improvement',
+                    title: 'Training Reminder Audit Trail',
+                    description: 'Bulk-renew / bulk-remind / per-record remind now append AuditLog rows under a constrained TRAINING_ACTIONS allow-list, so the new History tab can replay exactly who did what and when.',
+                    details: [
+                        'New /api/user/training/audit endpoint reads the rows, enriches actor + member display names server-side, and refuses any action outside TRAINING_ACTIONS so it can\'t be repurposed to read other AuditLog entries',
+                        'AuditLog.create() is fire-and-forget — a flaky audit write never blocks the user action that produced it',
+                    ]
+                },
+                {
+                    type: 'improvement',
+                    title: 'Notification Template Parity',
+                    description: 'Training reminder mobile push + email templates now render the corrected /user/certifications actionUrl, derived from a single resolveActionUrl helper so future route renames break in one place.',
+                    details: [
+                        '2-case vitest in NotificationService.test.ts pinning the actionUrl shape',
+                        'Email template CTA href is now a single helper call — no more hand-coded path strings drifting from the backend',
+                    ]
+                },
+            ],
+        }
+    },
+    {
         id: "v2.5.0",
         date: "May 11 – 15, 2026",
         label: "Equipment Issues End-to-End + Team-Lead Modules + Offline Upload Resilience",
-        isNew: true,
+        isNew: false,
         updates: {
             admin: [
                 {

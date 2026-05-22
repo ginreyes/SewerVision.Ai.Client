@@ -1,6 +1,6 @@
 'use client';
 
-import React from 'react';
+import React, { memo } from 'react';
 import Link from 'next/link';
 import { Card, CardContent } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
@@ -26,7 +26,7 @@ import { useTeamCertificationSummary } from '@/hooks/useSharedHooks';
  * `onSelectMember` (optional) opens the dashboard's per-member compliance
  * side-panel; falls back to a Link to /user/certifications if not supplied.
  */
-export default function ComplianceSummaryCard({ onSelectMember }) {
+function ComplianceSummaryCard({ onSelectMember }) {
   const { data, isLoading, isError, error } = useTeamCertificationSummary();
 
   const active = data?.activeCount ?? 0;
@@ -152,3 +152,9 @@ function Pill({ tone, label, value, Icon }) {
     </div>
   );
 }
+
+// memo'd (May 22) so neighbouring widgets refetching upstream (useUserDashboard
+// + useProjectHealthRollup) don't cascade a re-render into this card just to
+// re-paint the same useTeamCertificationSummary data. Callers need to wrap
+// onSelectMember in useCallback for the memo to actually hold.
+export default memo(ComplianceSummaryCard);

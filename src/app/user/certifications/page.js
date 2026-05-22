@@ -36,6 +36,8 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
+import { Tabs, TabsList, TabsTrigger, TabsContent } from "@/components/ui/tabs";
+import TrainingHistoryTab from "@/components/user/certifications/TrainingHistoryTab";
 import { useAlert } from "@/components/providers/AlertProvider";
 import {
   useTeamTraining,
@@ -281,71 +283,82 @@ export default function UserCertificationsPage() {
 
         <SummaryCards counts={counts} loading={isLoading} />
 
-        <FilterBar
-          statusFilter={statusFilter}
-          onStatusChange={setStatusFilter}
-          categoryFilter={categoryFilter}
-          onCategoryChange={setCategoryFilter}
-        />
+        <Tabs defaultValue="records" className="space-y-4">
+          <TabsList>
+            <TabsTrigger value="records">Records</TabsTrigger>
+            <TabsTrigger value="history">History</TabsTrigger>
+          </TabsList>
+          <TabsContent value="records" className="space-y-4">
+            <FilterBar
+              statusFilter={statusFilter}
+              onStatusChange={setStatusFilter}
+              categoryFilter={categoryFilter}
+              onCategoryChange={setCategoryFilter}
+            />
 
-        {selectedCount > 0 && (
-          <BulkActionBar
-            count={selectedCount}
-            onRenew={() => setRenewModalOpen(true)}
-            onRemind={() => setRemindMenuOpen(true)}
-            onClear={clearSelection}
-            busy={bulkRenewMutation.isPending || bulkRemindMutation.isPending}
-          />
-        )}
+            {selectedCount > 0 && (
+              <BulkActionBar
+                count={selectedCount}
+                onRenew={() => setRenewModalOpen(true)}
+                onRemind={() => setRemindMenuOpen(true)}
+                onClear={clearSelection}
+                busy={bulkRenewMutation.isPending || bulkRemindMutation.isPending}
+              />
+            )}
 
-        {isError ? (
-          <Card className="border-rose-200 dark:border-rose-900/40">
-            <CardContent className="py-6 text-sm text-rose-700 dark:text-rose-300">
-              Failed to load training records — {error?.message || "unknown error"}.
-            </CardContent>
-          </Card>
-        ) : isLoading ? (
-          <Card className="border-dashed">
-            <CardContent className="py-10 flex items-center justify-center gap-2 text-gray-500">
-              <Loader2 className="w-5 h-5 animate-spin" />
-              <span className="text-sm">Loading training records…</span>
-            </CardContent>
-          </Card>
-        ) : records.length === 0 ? (
-          <Card className="border-dashed">
-            <CardContent className="py-10 flex flex-col items-center gap-2 text-gray-500">
-              <Inbox className="w-6 h-6" />
-              <span className="text-sm text-center">
-                No training records yet. Click &ldquo;Add record&rdquo; to track a member&apos;s certification.
-              </span>
-            </CardContent>
-          </Card>
-        ) : (
-          <div className="space-y-3">
-            <div className="flex items-center gap-2 px-1">
-              <Checkbox
-                checked={allSelectedOnPage}
-                onCheckedChange={toggleAll}
-                aria-label="Select all visible"
-              />
-              <span className="text-xs text-gray-500">
-                Select all visible ({records.length})
-              </span>
-            </div>
-            {records.map((record) => (
-              <RecordRow
-                key={record._id}
-                record={record}
-                selected={selected.has(record._id)}
-                onToggleSelect={() => toggleOne(record._id)}
-                onStatusChange={handleStatusChange}
-                onDelete={handleDelete}
-                onRemind={handleRemind}
-                reminding={remindMutation.isPending}
-              />
-            ))}
-          </div>
-        )}
+            {isError ? (
+              <Card className="border-rose-200 dark:border-rose-900/40">
+                <CardContent className="py-6 text-sm text-rose-700 dark:text-rose-300">
+                  Failed to load training records — {error?.message || "unknown error"}.
+                </CardContent>
+              </Card>
+            ) : isLoading ? (
+              <Card className="border-dashed">
+                <CardContent className="py-10 flex items-center justify-center gap-2 text-gray-500">
+                  <Loader2 className="w-5 h-5 animate-spin" />
+                  <span className="text-sm">Loading training records…</span>
+                </CardContent>
+              </Card>
+            ) : records.length === 0 ? (
+              <Card className="border-dashed">
+                <CardContent className="py-10 flex flex-col items-center gap-2 text-gray-500">
+                  <Inbox className="w-6 h-6" />
+                  <span className="text-sm text-center">
+                    No training records yet. Click &ldquo;Add record&rdquo; to track a member&apos;s certification.
+                  </span>
+                </CardContent>
+              </Card>
+            ) : (
+              <div className="space-y-3">
+                <div className="flex items-center gap-2 px-1">
+                  <Checkbox
+                    checked={allSelectedOnPage}
+                    onCheckedChange={toggleAll}
+                    aria-label="Select all visible"
+                  />
+                  <span className="text-xs text-gray-500">
+                    Select all visible ({records.length})
+                  </span>
+                </div>
+                {records.map((record) => (
+                  <RecordRow
+                    key={record._id}
+                    record={record}
+                    selected={selected.has(record._id)}
+                    onToggleSelect={() => toggleOne(record._id)}
+                    onStatusChange={handleStatusChange}
+                    onDelete={handleDelete}
+                    onRemind={handleRemind}
+                    reminding={remindMutation.isPending}
+                  />
+                ))}
+              </div>
+            )}
+          </TabsContent>
+          <TabsContent value="history">
+            <TrainingHistoryTab />
+          </TabsContent>
+        </Tabs>
       </div>
 
       <CreateRecordModal

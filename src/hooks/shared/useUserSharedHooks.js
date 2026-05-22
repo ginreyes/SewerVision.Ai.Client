@@ -666,6 +666,9 @@ export function useRemindTrainingMember() {
 }
 
 // ── Team training bulk actions + dashboard widgets (May 21) ──
+// Bulk-renew/bulk-remind/remind also append AuditLog rows (May 22) so the
+// History tab predicate is in the same prefix-match — invalidate together
+// to keep the History tab in sync with the actions that produced its rows.
 function invalidateTeamCompliance(qc) {
     qc.invalidateQueries({
         predicate: (query) =>
@@ -673,7 +676,8 @@ function invalidateTeamCompliance(qc) {
             query.queryKey[0] === 'user' &&
             (query.queryKey[1] === 'team-training' ||
                 query.queryKey[1] === 'team-certification-summary' ||
-                query.queryKey[1] === 'member-training-detail'),
+                query.queryKey[1] === 'member-training-detail' ||
+                query.queryKey[1] === 'training-audit'),
     });
 }
 
@@ -721,6 +725,25 @@ export function useTeamMemberTraining(memberId, options = {}) {
 export function useExportTrainingRecords() {
     return useMutation({
         mutationFn: (filters = {}) => userApi.exportTrainingRecords(filters),
+    });
+}
+
+// ── Training audit trail + project health rollup (May 22) ──
+export function useTrainingAudit(filters = {}, options = {}) {
+    return useQuery({
+        queryKey: queryKeys.userTrainingAudit(filters),
+        queryFn: () => userApi.getTrainingAudit(filters),
+        staleTime: 1000 * 30,
+        ...options,
+    });
+}
+
+export function useProjectHealthRollup(filters = {}, options = {}) {
+    return useQuery({
+        queryKey: queryKeys.userProjectHealthRollup(filters),
+        queryFn: () => userApi.getProjectHealthRollup(filters),
+        staleTime: 1000 * 60 * 2,
+        ...options,
     });
 }
 
