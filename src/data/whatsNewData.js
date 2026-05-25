@@ -1,10 +1,53 @@
 
 export const whatsNewData = [
     {
+        id: "v2.7.0",
+        date: "May 26, 2026",
+        label: "Admin Bulk-Op Audit Trail + Reminder Cooldown Override + Health Rollup Polling",
+        isNew: true,
+        updates: {
+            admin: [
+                {
+                    type: 'feature',
+                    title: 'Bulk Operations Audit Trail',
+                    description: 'Admin bulk actions on devices and uploads now write AuditLog rows (projects already did), and /admin/audit-log gains a "Bulk Operations" tab showing only the bulk-op trail across all three resources.',
+                    details: [
+                        'bulkDeviceAction and bulkUploadAction now emit device_bulk_<op> / upload_bulk_<op> audit rows with requested/succeeded/failed counts and a capped id sample — matching the existing project_bulk_<op> convention',
+                        'New GET /api/audit/bulk endpoint constrained to an ADMIN_BULK_ACTIONS allow-list (admin-only via authorizeRoles) so the History tab can\'t be repurposed to read arbitrary AuditLog rows; the action-filter dropdown is driven by the server\'s allowedActions list',
+                        'Audit-log page gets an All Events / Bulk Operations tab switch; destructive *_delete rows keep the red delete styling in either view',
+                        'Bulk view gets its own scoped stat cards via a $facet severity/today/total rollup on /audit/bulk, and a constrained /audit/bulk/export endpoint (shares the allow-list query builder so the CSV can never spill non-bulk rows)',
+                        'Click any audit row to open a detail drawer showing the full metadata the table truncates — succeeded/failed ids, payload, and per-op counts',
+                    ]
+                },
+            ],
+            user: [
+                {
+                    type: 'feature',
+                    title: 'Reminder Cooldown Override',
+                    description: 'A freshly-renewed cert sometimes needs an immediate re-reminder. The owning team-lead (or admin) can now override the 24h reminder cooldown from the certifications page — the override is recorded in the audit log.',
+                    details: [
+                        'POST /api/user/training/:id/remind accepts ?force=true; within the cooldown window a non-forced call returns 429 with canForce:true so the UI can offer a confirm-and-override',
+                        'Forced reminders are stamped cooldownOverridden in the audit metadata and bumped to medium severity so they stand out in the trail',
+                        '/user/certifications "Remind" now shows a "Send anyway?" confirm dialog on cooldown instead of dead-ending on the error toast',
+                        'The History tab tags forced reminders with an orange "Forced" badge and adds a "Forced only" toggle (server-side ?overridden=true filter) so overrides are visible where the actions live',
+                    ]
+                },
+                {
+                    type: 'improvement',
+                    title: 'Project Health Rollup Auto-Refresh',
+                    description: 'The team-lead dashboard Project Health row now polls every 30s like the admin equivalent, so a project sliding into the red surfaces without a manual refresh.',
+                    details: [
+                        'useProjectHealthRollup gains refetchInterval 30s with staleTime tracking the interval so window-focus doesn\'t double-fire on top of the poll',
+                    ]
+                },
+            ],
+        },
+    },
+    {
         id: "v2.6.0",
         date: "May 18 – 22, 2026",
         label: "Team-Lead Compliance Suite + Render-Stability Sweep + Chunked Upload Hardening",
-        isNew: true,
+        isNew: false,
         updates: {
             admin: [
                 {

@@ -527,9 +527,20 @@ export const userApi = {
         if (!response.ok) throw new Error(response.data?.message || 'Failed to delete training record');
         return response.data;
     },
-    async remindTrainingMember(id) {
-        const response = await api(`/api/user/training/${encodeURIComponent(id)}/remind`, 'POST');
-        if (!response.ok) throw new Error(response.data?.message || 'Failed to send reminder');
+    // `force: true` asks the server to bypass the 24h reminder cooldown for a
+    // deliberate re-reminder (e.g. just after a renewal). The server still
+    // gates who may force and audits the override.
+    async remindTrainingMember(id, { force = false } = {}) {
+        const qs = force ? '?force=true' : '';
+        const response = await api(`/api/user/training/${encodeURIComponent(id)}/remind${qs}`, 'POST', { force });
+        if (!response.ok) {
+            const err = new Error(response.data?.message || 'Failed to send reminder');
+            // Surface the server's "you may retry with force" hint so the UI can
+            // offer a confirm-and-force affordance instead of a dead-end error.
+            err.canForce = response.data?.canForce === true;
+            err.status = response.status;
+            throw err;
+        }
         return response.data?.data;
     },
 
@@ -574,12 +585,13 @@ export const userApi = {
     },
 
     // ─── Training audit trail + project health rollup (May 22) ────────────
-    async getTrainingAudit({ action, recordId, memberId, limit } = {}) {
+    async getTrainingAudit({ action, recordId, memberId, limit, overridden } = {}) {
         const params = new URLSearchParams();
         if (action) params.set('action', action);
         if (recordId) params.set('recordId', recordId);
         if (memberId) params.set('memberId', memberId);
         if (limit) params.set('limit', String(limit));
+        if (overridden) params.set('overridden', 'true');
         const qs = params.toString();
         const response = await api(`/api/user/training/audit${qs ? `?${qs}` : ''}`, 'GET');
         if (!response.ok) throw new Error(response.data?.message || 'Failed to load training audit');

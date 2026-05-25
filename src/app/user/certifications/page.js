@@ -114,7 +114,7 @@ const REMINDER_SCHEDULE_OPTIONS = [
 ];
 
 export default function UserCertificationsPage() {
-  const { showAlert } = useAlert();
+  const { showAlert, showConfirm } = useAlert();
   const [statusFilter, setStatusFilter] = useState("all");
   const [categoryFilter, setCategoryFilter] = useState("all");
   const [modalOpen, setModalOpen] = useState(false);
@@ -210,6 +210,27 @@ export default function UserCertificationsPage() {
       const result = await remindMutation.mutateAsync(id);
       showAlert(`Reminder sent (${result?.reminderCount ?? 1} total)`, "success");
     } catch (err) {
+      // Within the 24h cooldown the server returns canForce — offer a
+      // confirm-and-override instead of dead-ending on the error toast.
+      if (err?.canForce) {
+        const confirmed = await showConfirm({
+          title: "Send reminder anyway?",
+          message:
+            (err.message || "This member was reminded recently.") +
+            " Override the 24h cooldown and send another reminder now? This is recorded in the audit log.",
+          confirmText: "Send anyway",
+          cancelText: "Cancel",
+          type: "warning",
+        });
+        if (!confirmed) return;
+        try {
+          const result = await remindMutation.mutateAsync({ id, force: true });
+          showAlert(`Reminder sent (${result?.reminderCount ?? 1} total)`, "success");
+        } catch (forceErr) {
+          showAlert(forceErr?.message || "Failed to send reminder", "error");
+        }
+        return;
+      }
       showAlert(err?.message || "Failed to send reminder", "error");
     }
   };

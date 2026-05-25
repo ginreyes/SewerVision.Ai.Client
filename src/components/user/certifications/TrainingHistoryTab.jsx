@@ -6,6 +6,7 @@ import {
   CalendarPlus,
   BellPlus,
   BellRing,
+  Zap,
   Loader2,
   Inbox,
 } from 'lucide-react';
@@ -89,11 +90,16 @@ function describeAction(entry) {
 
 export default function TrainingHistoryTab() {
   const [actionFilter, setActionFilter] = useState('all');
+  // Show only forced reminders (24h cooldown overridden). Server-side filter
+  // via ?overridden=true so the count reflects all matching rows, not just the
+  // current page.
+  const [overriddenOnly, setOverriddenOnly] = useState(false);
   const filters = useMemo(() => {
     const f = { limit: 100 };
     if (actionFilter !== 'all') f.action = actionFilter;
+    if (overriddenOnly) f.overridden = true;
     return f;
-  }, [actionFilter]);
+  }, [actionFilter, overriddenOnly]);
   const { data, isLoading, isError, error } = useTrainingAudit(filters);
   const entries = data?.entries || [];
 
@@ -115,6 +121,19 @@ export default function TrainingHistoryTab() {
             </SelectContent>
           </Select>
         </div>
+        <button
+          type="button"
+          onClick={() => setOverriddenOnly((v) => !v)}
+          aria-pressed={overriddenOnly}
+          className={`flex items-center gap-1 h-8 px-2.5 rounded-md border text-xs transition-colors ${
+            overriddenOnly
+              ? 'border-orange-300 bg-orange-50 text-orange-700 dark:border-orange-900/50 dark:bg-orange-900/30 dark:text-orange-300'
+              : 'border-gray-200 text-gray-500 hover:bg-gray-50 dark:border-gray-700 dark:hover:bg-gray-800'
+          }`}
+        >
+          <Zap className="w-3.5 h-3.5" />
+          Forced only
+        </button>
         <span className="text-xs text-gray-500">
           {entries.length} entr{entries.length === 1 ? 'y' : 'ies'} · most recent first
         </span>
@@ -163,6 +182,16 @@ export default function TrainingHistoryTab() {
                         <Badge variant="outline" className={`text-[10px] h-4 px-1.5 ${cfg.tone}`}>
                           {cfg.label}
                         </Badge>
+                        {entry.cooldownOverridden ? (
+                          <Badge
+                            variant="outline"
+                            className="text-[10px] h-4 px-1.5 gap-0.5 bg-orange-100 text-orange-700 border-orange-200 dark:bg-orange-900/40 dark:text-orange-300 dark:border-orange-900/50"
+                            title="24h reminder cooldown was overridden"
+                          >
+                            <Zap className="w-2.5 h-2.5" />
+                            Forced
+                          </Badge>
+                        ) : null}
                         <span className="text-xs text-gray-500">
                           {formatTimestamp(entry.createdAt)}
                         </span>

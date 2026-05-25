@@ -657,10 +657,15 @@ export function useDeleteTrainingRecord() {
     });
 }
 
+// Accepts either a bare record id or { id, force } so a caller can request a
+// cooldown override (e.g. after the server returned a 429 with canForce).
 export function useRemindTrainingMember() {
     const qc = useQueryClient();
     return useMutation({
-        mutationFn: (id) => userApi.remindTrainingMember(id),
+        mutationFn: (arg) => {
+            const { id, force } = typeof arg === 'object' && arg !== null ? arg : { id: arg, force: false };
+            return userApi.remindTrainingMember(id, { force });
+        },
         onSuccess: () => invalidateTeamTraining(qc),
     });
 }
@@ -742,7 +747,12 @@ export function useProjectHealthRollup(filters = {}, options = {}) {
     return useQuery({
         queryKey: queryKeys.userProjectHealthRollup(filters),
         queryFn: () => userApi.getProjectHealthRollup(filters),
-        staleTime: 1000 * 60 * 2,
+        // This is effectively a triage list — poll every 30s like the admin
+        // Project Health widget so a project sliding into the red surfaces
+        // without a manual refresh. staleTime tracks the interval so a refetch
+        // isn't also fired on every window-focus on top of the poll.
+        staleTime: 1000 * 30,
+        refetchInterval: 1000 * 30,
         ...options,
     });
 }

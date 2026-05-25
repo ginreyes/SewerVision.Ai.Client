@@ -5,7 +5,7 @@ import { useQuery } from "@tanstack/react-query";
 import {
   Shield, Search, Download, User, Settings, Trash2,
   LogIn, LogOut, Edit, Plus, AlertTriangle, Clock,
-  Eye, Loader2, ChevronLeft, ChevronRight,
+  Eye, Loader2, ChevronLeft, ChevronRight, Layers,
 } from "lucide-react";
 import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
@@ -14,6 +14,9 @@ import { Card, CardContent } from "@/components/ui/card";
 import {
   Select, SelectContent, SelectItem, SelectTrigger, SelectValue,
 } from "@/components/ui/select";
+import {
+  Sheet, SheetContent, SheetHeader, SheetTitle, SheetDescription,
+} from "@/components/ui/sheet";
 import { api } from "@/lib/helper";
 import { useAlert } from "@/components/providers/AlertProvider";
 
@@ -50,6 +53,20 @@ const SEVERITY_COLORS = {
   critical: "bg-red-100 text-red-700 border-red-200",
 };
 
+// Color hint for the bulk-op action chips. Falls back to a neutral gray, and
+// the *_delete actions inherit the red delete styling so destructive ops still
+// read as destructive in the Bulk Operations view.
+const BULK_ACTION_COLORS = {
+  device_bulk_delete: "bg-red-100 text-red-700",
+  project_bulk_delete: "bg-red-100 text-red-700",
+  upload_bulk_delete: "bg-red-100 text-red-700",
+  device_bulk_assign: "bg-blue-100 text-blue-700",
+  project_bulk_assign: "bg-blue-100 text-blue-700",
+  device_bulk_status: "bg-amber-100 text-amber-700",
+  project_bulk_status: "bg-amber-100 text-amber-700",
+  upload_bulk_status: "bg-amber-100 text-amber-700",
+};
+
 function formatTime(ts) {
   if (!ts) return "";
   return new Date(ts).toLocaleString("en-US", { month: "short", day: "numeric", hour: "2-digit", minute: "2-digit" });
@@ -61,10 +78,17 @@ function formatAction(action) {
 
 export default function AuditLogPage() {
   const { showAlert } = useAlert();
+  // 'all' → full audit trail (/audit/all); 'bulk' → constrained admin bulk-op
+  // trail (/audit/bulk, ADMIN_BULK_ACTIONS allow-list enforced server-side).
+  const [view, setView] = useState("all");
   const [search, setSearch] = useState("");
   const [actionFilter, setActionFilter] = useState("all");
   const [severityFilter, setSeverityFilter] = useState("all");
   const [page, setPage] = useState(1);
+  // Row clicked open in the detail drawer (full metadata: ids / payload / counts).
+  const [selectedLog, setSelectedLog] = useState(null);
+
+  const isBulk = view === "bulk";
 
   const buildParams = () => {
     const params = new URLSearchParams();
@@ -77,9 +101,10 @@ export default function AuditLogPage() {
   };
 
   const { data: auditData, isLoading: loading } = useQuery({
-    queryKey: ["admin", "audit-logs", { page, actionFilter, severityFilter, search }],
+    queryKey: ["admin", "audit-logs", view, { page, actionFilter, severityFilter, search }],
     queryFn: async () => {
-      const res = await api(`/api/audit/all?${buildParams()}`, "GET");
+      const endpoint = isBulk ? "/api/audit/bulk" : "/api/audit/all";
+      const res = await api(`${endpoint}?${buildParams()}`, "GET");
       if (!res.ok) throw new Error("Failed to fetch audit logs");
       return res.data;
     },
@@ -91,9 +116,15 @@ export default function AuditLogPage() {
   const total = auditData?.pagination?.total || 0;
   const totalPages = auditData?.pagination?.totalPages || 1;
   const stats = auditData?.stats || { total: 0, today: 0, critical: 0, high: 0 };
+  // In the bulk view the action dropdown is driven by the server's allow-list
+  // so the client never hard-codes ADMIN_BULK_ACTIONS.
+  const bulkActions = auditData?.allowedActions || [];
+  const actionOptions = isBulk ? bulkActions : ACTION_TYPES;
 
-  // Reset page when filters change
-  useEffect(() => { setPage(1); }, [actionFilter, severityFilter, search]);
+  // Reset page when filters or view change. Switching view also clears the
+  // action filter since the two views have disjoint action vocabularies.
+  useEffect(() => { setPage(1); }, [actionFilter, severityFilter, search, view]);
+  useEffect(() => { setActionFilter("all"); }, [view]);
 
   const handleExport = async () => {
     try {
@@ -102,7 +133,10 @@ export default function AuditLogPage() {
       if (severityFilter !== "all") params.append("severity", severityFilter);
       if (search) params.append("search", search);
 
-      const res = await api(`/api/audit/export?${params}`, "GET");
+      // Export from the matching endpoint so the bulk view's CSV stays
+      // constrained to ADMIN_BULK_ACTIONS rather than dumping the full trail.
+      const endpoint = isBulk ? "/api/audit/bulk/export" : "/api/audit/export";
+      const res = await api(`${endpoint}?${params}`, "GET");
       if (!res.ok) { showAlert("Failed to export", "error"); return; }
 
       const data = res.data?.data || [];
@@ -127,7 +161,7 @@ export default function AuditLogPage() {
       const url = URL.createObjectURL(blob);
       const a = document.createElement("a");
       a.href = url;
-      a.download = `audit-log-${new Date().toISOString().slice(0, 10)}.csv`;
+      a.download = `${isBulk ? "bulk-audit" : "audit"}-log-${new Date().toISOString().slice(0, 10)}.csv`;
       a.click();
       URL.revokeObjectURL(url);
       showAlert("Audit log exported", "success");
@@ -146,7 +180,11 @@ export default function AuditLogPage() {
           </div>
           <div>
             <h1 className="text-xl font-bold text-gray-900">Audit Log</h1>
-            <p className="text-sm text-gray-500">Searchable log of all user actions across the platform</p>
+            <p className="text-sm text-gray-500">
+              {isBulk
+                ? "Bulk operations across devices, projects, and uploads"
+                : "Searchable log of all user actions across the platform"}
+            </p>
           </div>
         </div>
         <Button variant="outline" size="sm" className="gap-1.5" onClick={handleExport}>
@@ -154,7 +192,28 @@ export default function AuditLogPage() {
         </Button>
       </div>
 
-      {/* Stats */}
+      {/* View tabs */}
+      <div className="flex items-center gap-1 mb-5 border-b border-gray-200">
+        {[
+          { key: "all", label: "All Events", icon: Shield },
+          { key: "bulk", label: "Bulk Operations", icon: Layers },
+        ].map(tab => (
+          <button
+            key={tab.key}
+            onClick={() => setView(tab.key)}
+            className={`flex items-center gap-1.5 px-4 py-2 text-sm font-medium border-b-2 -mb-px transition-colors ${
+              view === tab.key
+                ? "border-rose-600 text-rose-700"
+                : "border-transparent text-gray-500 hover:text-gray-700"
+            }`}
+          >
+            <tab.icon className="w-4 h-4" /> {tab.label}
+          </button>
+        ))}
+      </div>
+
+      {/* Stats — both endpoints now return a severity/today/total rollup
+          ({/audit/all} global, {/audit/bulk} scoped to the bulk-op trail). */}
       <div className="grid grid-cols-4 gap-3 mb-5">
         {[
           { label: "Total Events", value: stats.total, color: "text-rose-600", bg: "bg-rose-50", icon: Shield },
@@ -183,10 +242,10 @@ export default function AuditLogPage() {
           <Input placeholder="Search by user, resource, IP…" value={search} onChange={e => setSearch(e.target.value)} className="pl-9 h-9 text-sm" />
         </div>
         <Select value={actionFilter} onValueChange={setActionFilter}>
-          <SelectTrigger className="w-44 h-9 text-sm"><SelectValue placeholder="Action" /></SelectTrigger>
+          <SelectTrigger className="w-52 h-9 text-sm"><SelectValue placeholder="Action" /></SelectTrigger>
           <SelectContent>
             <SelectItem value="all">All Actions</SelectItem>
-            {ACTION_TYPES.map(a => <SelectItem key={a} value={a} className="capitalize">{formatAction(a)}</SelectItem>)}
+            {actionOptions.map(a => <SelectItem key={a} value={a} className="capitalize">{formatAction(a)}</SelectItem>)}
           </SelectContent>
         </Select>
         <Select value={severityFilter} onValueChange={setSeverityFilter}>
@@ -221,14 +280,15 @@ export default function AuditLogPage() {
                 </thead>
                 <tbody>
                   {logs.map((log, i) => {
-                    const Icon = ACTION_ICONS[log.action] || Eye;
+                    const Icon = ACTION_ICONS[log.action]
+                      || (log.action?.includes("_delete") ? Trash2 : isBulk ? Layers : Eye);
                     const actorDisplay = log.actor || "system";
                     const resource = log.resource || log.targetSnapshot?.username || "";
                     const targetInfo = log.targetSnapshot?.email
                       ? `${log.targetSnapshot.username || ""} (${log.targetSnapshot.email})`
                       : resource;
                     return (
-                      <tr key={log._id || i} className={`border-b border-gray-50 hover:bg-gray-50/60 transition-colors ${i % 2 === 0 ? "" : "bg-gray-50/20"}`}>
+                      <tr key={log._id || i} onClick={() => setSelectedLog(log)} className={`border-b border-gray-50 hover:bg-gray-50/60 transition-colors cursor-pointer ${i % 2 === 0 ? "" : "bg-gray-50/20"}`}>
                         <td className="px-4 py-3 text-xs text-gray-500 whitespace-nowrap">{formatTime(log.createdAt)}</td>
                         <td className="px-4 py-3">
                           <div className="flex items-center gap-2">
@@ -242,7 +302,7 @@ export default function AuditLogPage() {
                           </div>
                         </td>
                         <td className="px-4 py-3">
-                          <span className={`inline-flex items-center gap-1 text-[10px] font-medium rounded-full px-2 py-0.5 capitalize ${ACTION_COLORS[log.action] || "bg-gray-100 text-gray-600"}`}>
+                          <span className={`inline-flex items-center gap-1 text-[10px] font-medium rounded-full px-2 py-0.5 capitalize ${ACTION_COLORS[log.action] || BULK_ACTION_COLORS[log.action] || "bg-gray-100 text-gray-600"}`}>
                             <Icon className="w-2.5 h-2.5" />{formatAction(log.action)}
                           </span>
                         </td>
@@ -285,6 +345,48 @@ export default function AuditLogPage() {
           )}
         </CardContent>
       </Card>
+
+      {/* Row detail drawer — full metadata the table truncates (succeeded /
+          failed ids, payload, counts) for the selected audit row. */}
+      <Sheet open={!!selectedLog} onOpenChange={(open) => { if (!open) setSelectedLog(null); }}>
+        <SheetContent className="w-full sm:max-w-md overflow-y-auto">
+          {selectedLog && (
+            <>
+              <SheetHeader>
+                <SheetTitle className="capitalize">{formatAction(selectedLog.action)}</SheetTitle>
+                <SheetDescription>{formatTime(selectedLog.createdAt)}</SheetDescription>
+              </SheetHeader>
+              <div className="mt-4 space-y-3 text-sm">
+                <DetailRow label="Actor" value={`${selectedLog.actor || "system"}${selectedLog.actorRole ? ` (${selectedLog.actorRole})` : ""}`} />
+                <DetailRow label="Resource" value={selectedLog.resource || "—"} />
+                <DetailRow label="Resource ID" value={selectedLog.resourceId || "—"} mono />
+                <DetailRow label="Severity" value={selectedLog.severity || "low"} />
+                <DetailRow label="IP" value={selectedLog.ipAddress || "—"} mono />
+                {selectedLog.targetSnapshot?.username && (
+                  <DetailRow label="Target" value={`${selectedLog.targetSnapshot.username}${selectedLog.targetSnapshot.email ? ` · ${selectedLog.targetSnapshot.email}` : ""}`} />
+                )}
+                {selectedLog.metadata && Object.keys(selectedLog.metadata).length > 0 && (
+                  <div>
+                    <p className="text-xs font-semibold text-gray-500 mb-1">Metadata</p>
+                    <pre className="text-[11px] leading-relaxed bg-gray-50 border border-gray-100 rounded-lg p-3 overflow-x-auto whitespace-pre-wrap break-words">
+                      {JSON.stringify(selectedLog.metadata, null, 2)}
+                    </pre>
+                  </div>
+                )}
+              </div>
+            </>
+          )}
+        </SheetContent>
+      </Sheet>
+    </div>
+  );
+}
+
+function DetailRow({ label, value, mono = false }) {
+  return (
+    <div className="flex items-start justify-between gap-3">
+      <span className="text-xs font-semibold text-gray-500 shrink-0">{label}</span>
+      <span className={`text-xs text-gray-800 text-right break-all ${mono ? "font-mono" : ""}`}>{value}</span>
     </div>
   );
 }
