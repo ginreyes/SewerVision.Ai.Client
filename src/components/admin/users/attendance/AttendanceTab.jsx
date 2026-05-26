@@ -1,7 +1,7 @@
 "use client";
 
 import React, { useState, useMemo, useRef, useEffect } from "react";
-import { useQuery } from "@tanstack/react-query";
+import { useQuery, keepPreviousData } from "@tanstack/react-query";
 import {
   Clock, Users, Search, Calendar, ChevronLeft, ChevronRight,
   Loader2, UserCheck, Timer, TrendingUp, BarChart3, Filter,
@@ -49,7 +49,9 @@ export default function AttendanceTab() {
       return data || { data: [], pagination: {} };
     },
     staleTime: 1000 * 60,
-    keepPreviousData: true,
+    // v5: function form keeps the prior page on screen across page/role changes
+    // (the bare keepPreviousData:true flag was removed in v5).
+    placeholderData: keepPreviousData,
   });
 
   const entries = useMemo(() => {

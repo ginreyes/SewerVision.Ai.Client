@@ -27,6 +27,7 @@ import UploadStatsGrid from "@/components/admin/uploads/UploadStatsGrid";
 import { getFileTypeIcon, getStatusColor } from "@/lib/utils";
 import { useAlert } from "@/components/providers/AlertProvider";
 import { api } from "@/lib/helper";
+import { keepPreviousData } from "@tanstack/react-query";
 import { useAdminUploads, useAdminUploadStats } from "@/hooks/useQueryHooks";
 import OverviewTab from "@/components/admin/uploads/tabs/OverviewTab";
 import StorageTab from "@/components/admin/uploads/tabs/StorageTab";
@@ -118,7 +119,9 @@ const AdminUploads = () => {
       search: searchQuery || undefined,
     },
     {
-      keepPreviousData: true,
+      // v5: function form keeps the prior uploads page visible across
+      // status/type/search changes (bare keepPreviousData:true is a no-op in v5).
+      placeholderData: keepPreviousData,
     }
   );
 

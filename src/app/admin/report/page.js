@@ -1,6 +1,7 @@
 'use client'
 import React, { useState, useEffect, useCallback } from 'react'
 import { useRouter } from 'next/navigation'
+import { keepPreviousData } from '@tanstack/react-query'
 import * as XLSX from 'xlsx'
 import {
   FileText, Download, Share2, Plus, Search, Filter, Calendar, MapPin,
@@ -82,7 +83,9 @@ const Reports = () => {
       ...(filterLeaderId ? { managerId: filterLeaderId } : {}),
     },
     {
-      keepPreviousData: true,
+      // v5: function form keeps the prior report list visible while filters
+      // change (the bare keepPreviousData:true flag is a no-op in v5).
+      placeholderData: keepPreviousData,
     }
   )
 

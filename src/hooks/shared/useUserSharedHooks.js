@@ -749,10 +749,13 @@ export function useProjectHealthRollup(filters = {}, options = {}) {
         queryFn: () => userApi.getProjectHealthRollup(filters),
         // This is effectively a triage list — poll every 30s like the admin
         // Project Health widget so a project sliding into the red surfaces
-        // without a manual refresh. staleTime tracks the interval so a refetch
-        // isn't also fired on every window-focus on top of the poll.
+        // without a manual refresh. The 30s poll is the single refresh signal:
+        // staleTime matches it and window-focus refetch is disabled so a tab
+        // re-focus doesn't fire an extra request on top of the scheduled poll
+        // (the previous comment claimed this but never set the flag).
         staleTime: 1000 * 30,
         refetchInterval: 1000 * 30,
+        refetchOnWindowFocus: false,
         ...options,
     });
 }

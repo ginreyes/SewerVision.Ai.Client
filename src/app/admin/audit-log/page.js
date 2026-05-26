@@ -1,7 +1,7 @@
 "use client";
 
 import React, { useState, useEffect } from "react";
-import { useQuery } from "@tanstack/react-query";
+import { useQuery, keepPreviousData } from "@tanstack/react-query";
 import {
   Shield, Search, Download, User, Settings, Trash2,
   LogIn, LogOut, Edit, Plus, AlertTriangle, Clock,
@@ -109,7 +109,9 @@ export default function AuditLogPage() {
       return res.data;
     },
     staleTime: 1000 * 60,
-    keepPreviousData: true,
+    // v5: keepPreviousData:true is a no-op; the function form keeps the prior
+    // page on screen while paginating/filtering instead of flashing the spinner.
+    placeholderData: keepPreviousData,
   });
 
   const logs = auditData?.logs || [];

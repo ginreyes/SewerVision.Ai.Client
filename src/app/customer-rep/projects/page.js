@@ -6,7 +6,7 @@ import { Input } from "@/components/ui/input";
 import { Badge } from "@/components/ui/badge";
 import { Card, CardContent } from "@/components/ui/card";
 import { useRouter } from "next/navigation";
-import { useQuery } from "@tanstack/react-query";
+import { useQuery, keepPreviousData } from "@tanstack/react-query";
 import { api } from "@/lib/helper";
 import { useDebouncedValue } from "@/hooks/useDebouncedValue";
 import ProjectsSkeleton from "@/components/customer-rep/skeletons/ProjectsSkeleton";
@@ -62,7 +62,9 @@ export default function CustomerRepProjectsPage() {
       return data || {};
     },
     staleTime: 1000 * 60 * 2,
-    keepPreviousData: true,
+    // v5: keep the prior page visible while paginating/filtering (the bare
+    // keepPreviousData:true flag was removed in v5 and silently did nothing).
+    placeholderData: keepPreviousData,
   });
 
   const projects = useMemo(() => {
