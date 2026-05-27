@@ -1,6 +1,7 @@
 "use client";
 
-import { api } from "@/lib/helper";
+import { api, getCookie } from "@/lib/helper";
+import { BACKEND_URL } from "@/lib/config";
 
 /**
  * QC Technician API functions
@@ -457,6 +458,50 @@ export const qcApi = {
     const response = await api(`/api/training/all-assignments${params}`, 'GET');
     if (!response.ok) throw new Error(response.data?.error || 'Failed to fetch assignments');
     return response.data?.data || [];
+  },
+
+  // ─── Training Center — admin analytics, overdue tracking, certs, export ──
+  async getTrainingAnalytics() {
+    const response = await api('/api/training/analytics', 'GET');
+    if (!response.ok) throw new Error(response.data?.error || 'Failed to fetch analytics');
+    return response.data?.data;
+  },
+  async getTrainingAssignmentsOverview() {
+    const response = await api('/api/training/assignments-overview', 'GET');
+    if (!response.ok) throw new Error(response.data?.error || 'Failed to fetch assignments overview');
+    return response.data?.data;
+  },
+  async remindTrainingAssignment(id) {
+    const response = await api(`/api/training/assignments/${id}/remind`, 'POST');
+    if (!response.ok) throw new Error(response.data?.message || 'Failed to send reminder');
+    return response.data;
+  },
+  async getUserCertificates(userId) {
+    const response = await api(`/api/training/certificates/${userId}`, 'GET');
+    if (!response.ok) throw new Error(response.data?.error || 'Failed to fetch certificates');
+    return response.data?.data || [];
+  },
+  // CSV export streams a file, not JSON — fetch the blob directly with auth and
+  // trigger a browser download. Returns true on success.
+  async exportTeamProgressCsv() {
+    const authToken = getCookie('authToken');
+    const res = await fetch(`${BACKEND_URL}/api/training/team-progress/export`, {
+      method: 'GET',
+      headers: authToken ? { Authorization: `Bearer ${authToken}` } : {},
+      credentials: 'include',
+    });
+    if (!res.ok) throw new Error('Failed to export team progress');
+    const blob = await res.blob();
+    const url = window.URL.createObjectURL(blob);
+    const a = document.createElement('a');
+    a.href = url;
+    const today = new Date().toISOString().slice(0, 10);
+    a.download = `team-training-progress-${today}.csv`;
+    document.body.appendChild(a);
+    a.click();
+    a.remove();
+    window.URL.revokeObjectURL(url);
+    return true;
   },
 
   // ─── Onboarding ─────────────────────────────────────────

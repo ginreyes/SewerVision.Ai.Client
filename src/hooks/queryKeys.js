@@ -196,6 +196,9 @@ export const queryKeys = {
     trainingTeamProgress: ['training', 'team-progress'],
     trainingAssignments: (userId) => ['training', 'assignments', userId],
     trainingAllAssignments: (status) => ['training', 'all-assignments', status ?? 'all'],
+    trainingAnalytics: ['training', 'analytics'],
+    trainingAssignmentsOverview: ['training', 'assignments-overview'],
+    trainingCertificates: (userId) => ['training', 'certificates', userId],
     onboarding: (userId) => ['onboarding', userId],
     onboardingAll: (role) => ['onboarding', 'all', role ?? 'all'],
 

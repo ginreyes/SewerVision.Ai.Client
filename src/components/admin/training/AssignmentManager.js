@@ -3,7 +3,7 @@
 import React, { useState, useMemo, memo } from "react";
 import {
   Send, Users, CheckCircle2, Clock, AlertTriangle, Loader2,
-  Calendar, BookOpen, Trash2,
+  Calendar, BookOpen, Trash2, Bell,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
@@ -11,6 +11,7 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { useAlert } from "@/components/providers/AlertProvider";
+import { useTrainingAssignmentsOverview, useRemindTrainingAssignment } from "@/hooks/useQueryHooks";
 
 const STATUS_COLORS = {
   assigned: "bg-blue-100 text-blue-700 border-blue-200",
@@ -19,15 +20,47 @@ const STATUS_COLORS = {
   overdue: "bg-red-100 text-red-700 border-red-200",
 };
 
+const STATUS_FILTERS = ["all", "assigned", "in-progress", "completed", "overdue"];
+
 export default function AssignmentManager({ modules, progress, assignments, assignMutation, isLoading }) {
   const { showAlert } = useAlert();
   const [selectedModules, setSelectedModules] = useState([]);
   const [selectedUsers, setSelectedUsers] = useState([]);
   const [dueDate, setDueDate] = useState("");
+  const [statusFilter, setStatusFilter] = useState("all");
+  const [remindingId, setRemindingId] = useState(null);
+
+  // Live overview (computes isOverdue + promotes past-due rows) and the
+  // reminder fan-out. Falls back to the prop list if the overview is loading.
+  const { data: overview } = useTrainingAssignmentsOverview();
+  const remindMutation = useRemindTrainingAssignment();
 
   const mods = Array.isArray(modules) ? modules : [];
   const team = Array.isArray(progress) ? progress : [];
-  const allAssignments = Array.isArray(assignments) ? assignments : [];
+  const counts = overview?.counts;
+
+  const allAssignments = useMemo(() => {
+    const overviewAssignments = Array.isArray(overview?.assignments) ? overview.assignments : null;
+    return overviewAssignments ?? (Array.isArray(assignments) ? assignments : []);
+  }, [overview, assignments]);
+
+  const visibleAssignments = useMemo(() => {
+    if (statusFilter === "all") return allAssignments;
+    if (statusFilter === "overdue") return allAssignments.filter((a) => a.isOverdue || a.status === "overdue");
+    return allAssignments.filter((a) => a.status === statusFilter);
+  }, [allAssignments, statusFilter]);
+
+  async function handleRemind(id) {
+    setRemindingId(id);
+    try {
+      await remindMutation.mutateAsync(id);
+      showAlert("Reminder sent", "success");
+    } catch (e) {
+      showAlert(e?.message || "Failed to send reminder", "error");
+    } finally {
+      setRemindingId(null);
+    }
+  }
 
   function toggleModule(id) {
     setSelectedModules(prev => prev.includes(id) ? prev.filter(m => m !== id) : [...prev, id]);
@@ -128,15 +161,38 @@ export default function AssignmentManager({ modules, progress, assignments, assi
         </CardContent>
       </Card>
 
-      {/* Assignment list */}
+      {/* Assignment list + overdue tracking */}
       <Card className="border-gray-200">
         <CardHeader className="pb-2">
-          <CardTitle className="text-sm flex items-center gap-2">
-            <BookOpen className="w-4 h-4 text-rose-500" /> Active Assignments ({allAssignments.length})
-          </CardTitle>
+          <div className="flex items-center justify-between flex-wrap gap-2">
+            <CardTitle className="text-sm flex items-center gap-2">
+              <BookOpen className="w-4 h-4 text-rose-500" /> Assignments ({allAssignments.length})
+            </CardTitle>
+            {counts?.overdue > 0 && (
+              <Badge variant="outline" className="text-[10px] bg-red-50 text-red-700 border-red-200 gap-1">
+                <AlertTriangle className="w-3 h-3" /> {counts.overdue} overdue
+              </Badge>
+            )}
+          </div>
+          {/* Status filter chips */}
+          <div className="flex items-center gap-1 mt-2 flex-wrap">
+            {STATUS_FILTERS.map((s) => {
+              const n = s === "all" ? counts?.total
+                : s === "in-progress" ? counts?.inProgress
+                : counts?.[s];
+              return (
+                <button key={s} onClick={() => setStatusFilter(s)}
+                  className={`px-2.5 py-1 rounded-md text-[11px] font-medium capitalize transition-colors ${
+                    statusFilter === s ? "bg-rose-100 text-rose-700" : "text-gray-500 hover:bg-gray-100"
+                  }`}>
+                  {s}{typeof n === "number" ? ` (${n})` : ""}
+                </button>
+              );
+            })}
+          </div>
         </CardHeader>
         <CardContent className="p-0">
-          {allAssignments.length > 0 ? (
+          {visibleAssignments.length > 0 ? (
             <table className="w-full text-sm">
               <thead>
                 <tr className="border-b border-gray-100 bg-gray-50/60">
@@ -144,27 +200,44 @@ export default function AssignmentManager({ modules, progress, assignments, assi
                   <th className="text-left text-xs font-semibold text-gray-500 px-4 py-3">Assigned To</th>
                   <th className="text-center text-xs font-semibold text-gray-500 px-4 py-3">Status</th>
                   <th className="text-right text-xs font-semibold text-gray-500 px-4 py-3">Due</th>
+                  <th className="text-right text-xs font-semibold text-gray-500 px-4 py-3"></th>
                 </tr>
               </thead>
               <tbody>
-                {allAssignments.map(a => (
-                  <tr key={a._id} className="border-b border-gray-50 hover:bg-gray-50/60">
-                    <td className="px-4 py-3 text-xs font-medium text-gray-900">{a.moduleId?.title || "Unknown"}</td>
-                    <td className="px-4 py-3 text-xs text-gray-700">
-                      {a.assignedTo?.first_name ? `${a.assignedTo.first_name} ${a.assignedTo.last_name || ""}` : "Unknown"}
-                    </td>
-                    <td className="px-4 py-3 text-center">
-                      <Badge variant="outline" className={`text-[10px] capitalize ${STATUS_COLORS[a.status] || ""}`}>{a.status}</Badge>
-                    </td>
-                    <td className="px-4 py-3 text-right text-xs text-gray-400">
-                      {a.dueDate ? new Date(a.dueDate).toLocaleDateString() : "—"}
-                    </td>
-                  </tr>
-                ))}
+                {visibleAssignments.map(a => {
+                  const isOverdue = a.isOverdue || a.status === "overdue";
+                  const canRemind = a.status !== "completed";
+                  return (
+                    <tr key={a._id} className={`border-b border-gray-50 hover:bg-gray-50/60 ${isOverdue ? "bg-red-50/30" : ""}`}>
+                      <td className="px-4 py-3 text-xs font-medium text-gray-900">{a.moduleId?.title || "Unknown"}</td>
+                      <td className="px-4 py-3 text-xs text-gray-700">
+                        {a.assignedTo?.first_name ? `${a.assignedTo.first_name} ${a.assignedTo.last_name || ""}` : "Unknown"}
+                      </td>
+                      <td className="px-4 py-3 text-center">
+                        <Badge variant="outline" className={`text-[10px] capitalize ${STATUS_COLORS[isOverdue ? "overdue" : a.status] || ""}`}>
+                          {isOverdue ? "overdue" : a.status}
+                        </Badge>
+                      </td>
+                      <td className="px-4 py-3 text-right text-xs text-gray-400">
+                        {a.dueDate ? new Date(a.dueDate).toLocaleDateString() : "—"}
+                      </td>
+                      <td className="px-4 py-3 text-right">
+                        {canRemind && (
+                          <Button variant="ghost" size="sm" onClick={() => handleRemind(a._id)}
+                            disabled={remindingId === a._id}
+                            className="h-7 px-2 text-[11px] text-rose-600 hover:text-rose-700 hover:bg-rose-50 gap-1">
+                            {remindingId === a._id ? <Loader2 className="w-3 h-3 animate-spin" /> : <Bell className="w-3 h-3" />}
+                            Remind
+                          </Button>
+                        )}
+                      </td>
+                    </tr>
+                  );
+                })}
               </tbody>
             </table>
           ) : (
-            <div className="text-center py-8 text-gray-400"><p className="text-xs">No assignments yet</p></div>
+            <div className="text-center py-8 text-gray-400"><p className="text-xs">No assignments{statusFilter !== "all" ? ` with status "${statusFilter}"` : " yet"}</p></div>
           )}
         </CardContent>
       </Card>

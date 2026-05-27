@@ -1,2 +1,6 @@
 export { default as TrainingOverview } from './TrainingOverview'
 export { default as AssignmentManager } from './AssignmentManager'
+export { default as ModulesManager } from './ModulesManager'
+export { default as ModuleFormModal } from './ModuleFormModal'
+export { default as AnalyticsTab } from './AnalyticsTab'
+export { default as CertificatesPanel } from './CertificatesPanel'

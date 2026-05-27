@@ -30,10 +30,39 @@ import {
 } from 'lucide-react';
 import { formatDistanceToNow } from 'date-fns';
 import { whatsNewData } from '@/data/whatsNewData';
+import { useUser } from '@/components/providers/UserContext';
+import { getRoleTheme } from '@/lib/roleThemes';
 
 const WHATS_NEW_VERSION_KEY = 'sewervision_whats_new_last_viewed_version';
 
-// Notification type configurations
+// ── Per-role accent palette for the notification panel ──
+// The base color tokens come from @/lib/roleThemes (admin=rose, operator=blue,
+// qc-technician=purple, user/team-lead=indigo, customer=emerald,
+// customer-rep=teal). Tailwind only ships classes it can see as literals, so
+// the full class strings are spelled out per role here rather than templated.
+// Used for: the "What's New" (new_update) notification accent, the unread
+// left-bar gradient, the unread-row tint, and the "Mark read"/unread-dot color
+// — everything that was previously a hardcoded purple/blue/violet.
+const ROLE_ACCENTS = {
+  admin: { text: 'text-rose-600', bg: 'bg-rose-50', border: 'border-rose-200', dot: 'bg-rose-500', bar: 'from-rose-500 to-red-500', unreadRow: 'from-rose-50/50', markRead: 'text-rose-600 hover:text-rose-800 hover:bg-rose-50' },
+  operator: { text: 'text-blue-600', bg: 'bg-blue-50', border: 'border-blue-200', dot: 'bg-blue-500', bar: 'from-blue-500 to-indigo-500', unreadRow: 'from-blue-50/50', markRead: 'text-blue-600 hover:text-blue-800 hover:bg-blue-50' },
+  'qc-technician': { text: 'text-purple-600', bg: 'bg-purple-50', border: 'border-purple-200', dot: 'bg-purple-500', bar: 'from-purple-500 to-pink-500', unreadRow: 'from-purple-50/50', markRead: 'text-purple-600 hover:text-purple-800 hover:bg-purple-50' },
+  user: { text: 'text-indigo-600', bg: 'bg-indigo-50', border: 'border-indigo-200', dot: 'bg-indigo-500', bar: 'from-indigo-500 to-purple-500', unreadRow: 'from-indigo-50/50', markRead: 'text-indigo-600 hover:text-indigo-800 hover:bg-indigo-50' },
+  customer: { text: 'text-emerald-600', bg: 'bg-emerald-50', border: 'border-emerald-200', dot: 'bg-emerald-500', bar: 'from-emerald-500 to-green-500', unreadRow: 'from-emerald-50/50', markRead: 'text-emerald-600 hover:text-emerald-800 hover:bg-emerald-50' },
+  'customer-rep': { text: 'text-teal-600', bg: 'bg-teal-50', border: 'border-teal-200', dot: 'bg-teal-500', bar: 'from-teal-500 to-cyan-500', unreadRow: 'from-teal-50/50', markRead: 'text-teal-600 hover:text-teal-800 hover:bg-teal-50' },
+};
+
+function getRoleAccent(role) {
+  // Keep getRoleTheme as the source of truth for which roles exist; map to the
+  // literal-class accent table above (defaulting to admin like roleThemes does).
+  const key = getRoleTheme(role)?.key || 'admin';
+  return ROLE_ACCENTS[key] || ROLE_ACCENTS.admin;
+}
+
+// Notification type configurations.
+// Semantic types (report=green, defect=red, etc.) keep their meaning-based
+// color. `new_update` ("What's New") is intentionally role-tinted at render
+// time so it matches the signed-in role instead of a fixed purple.
 const notificationTypeConfig = {
   report_ready: {
     icon: FileText,
@@ -84,8 +113,15 @@ const NotificationItem = ({
   onMarkAsRead,
   onDelete,
   onNavigate,
+  accent,
 }) => {
-  const config = notificationTypeConfig[notification.type] || notificationTypeConfig.system;
+  const baseConfig = notificationTypeConfig[notification.type] || notificationTypeConfig.system;
+  // The "What's New" pseudo-notification follows the active role's accent
+  // instead of a fixed purple so the bell matches the rest of the role theme.
+  const config =
+    notification.type === 'new_update'
+      ? { ...baseConfig, color: accent.text, bgColor: accent.bg, borderColor: accent.border }
+      : baseConfig;
   const IconComponent = config.icon;
 
   const handleClick = () => {
@@ -104,13 +140,13 @@ const NotificationItem = ({
       className={`
         group relative p-4 border-b border-gray-100 dark:border-[#1e1e22] transition-all duration-200
         hover:bg-gray-50/80 dark:hover:bg-[#18181b] cursor-pointer
-        ${!notification.read ? 'bg-gradient-to-r from-blue-50/50 dark:from-blue-500/10 to-transparent' : ''}
+        ${!notification.read ? `bg-gradient-to-r ${accent.unreadRow} to-transparent` : ''}
       `}
       onClick={handleClick}
     >
-      {/* Unread indicator bar */}
+      {/* Unread indicator bar — role-tinted */}
       {!notification.read && (
-        <div className="absolute left-0 top-0 bottom-0 w-1 bg-gradient-to-b from-blue-500 to-violet-500 rounded-r" />
+        <div className={`absolute left-0 top-0 bottom-0 w-1 bg-gradient-to-b ${accent.bar} rounded-r`} />
       )}
 
       <div className="flex items-start gap-3 pl-1">
@@ -150,9 +186,9 @@ const NotificationItem = ({
               <p className="text-xs text-gray-400 mt-1.5">{timeAgo}</p>
             </div>
 
-            {/* Unread dot */}
+            {/* Unread dot — role-tinted */}
             {!notification.read && (
-              <div className="w-2.5 h-2.5 bg-blue-500 rounded-full flex-shrink-0 mt-1 animate-pulse" />
+              <div className={`w-2.5 h-2.5 ${accent.dot} rounded-full flex-shrink-0 mt-1 animate-pulse`} />
             )}
           </div>
 
@@ -164,8 +200,7 @@ const NotificationItem = ({
                   e.stopPropagation();
                   onMarkAsRead(notification._id);
                 }}
-                className="inline-flex items-center px-2 py-1 text-xs font-medium text-blue-600 dark:text-blue-400
-                         hover:text-blue-800 dark:hover:text-blue-300 hover:bg-blue-50 dark:hover:bg-blue-500/10 rounded-md transition-colors"
+                className={`inline-flex items-center px-2 py-1 text-xs font-medium rounded-md transition-colors ${accent.markRead}`}
               >
                 <Check className="w-3 h-3 mr-1" />
                 Mark read
@@ -231,6 +266,12 @@ export const NotificationBell = ({ className }) => {
 const NotificationPanel = ({ onClose }) => {
   const router = useRouter();
   const pathname = usePathname();
+  // Theme the panel to the signed-in role. Prefer the user record, but fall
+  // back to deriving the role from the URL base (/admin, /operator, …) so the
+  // accent is still correct before userData resolves.
+  const { userData } = useUser();
+  const roleFromPath = pathname?.split('/')?.[1];
+  const accent = getRoleAccent(userData?.role || roleFromPath);
   const {
     notifications,
     unreadCount,
@@ -449,7 +490,7 @@ const NotificationPanel = ({ onClose }) => {
                 variant="outline"
                 size="sm"
                 onClick={handleMarkAllAsRead}
-                className="text-xs h-7 px-3 rounded-lg hover:bg-blue-50 hover:text-blue-600 hover:border-blue-200"
+                className={`text-xs h-7 px-3 rounded-lg ${accent.markRead}`}
               >
                 <CheckCheck className="w-3.5 h-3.5 mr-1.5" />
                 Mark all read
@@ -498,6 +539,7 @@ const NotificationPanel = ({ onClose }) => {
                 onMarkAsRead={handleMarkAsRead}
                 onDelete={handleDelete}
                 onNavigate={handleNavigate}
+                accent={accent}
               />
             ))}
             {isLoading && (

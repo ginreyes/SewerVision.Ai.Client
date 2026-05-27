@@ -583,7 +583,48 @@ export function useAssignTrainingModules() {
         onSuccess: () => {
             queryClient.invalidateQueries({ queryKey: ['training', 'assignments'] });
             queryClient.invalidateQueries({ queryKey: ['training', 'all-assignments'] });
+            queryClient.invalidateQueries({ queryKey: ['training', 'assignments-overview'] });
             queryClient.invalidateQueries({ queryKey: ['training', 'team-progress'] });
+        },
+    });
+}
+
+// ── Training Center — admin analytics, overdue tracking, certificates ──
+
+export function useTrainingAnalytics(options = {}) {
+    return useQuery({
+        queryKey: queryKeys.trainingAnalytics,
+        queryFn: () => qcApi.getTrainingAnalytics(),
+        staleTime: 1000 * 60 * 5,
+        ...options,
+    });
+}
+
+export function useTrainingAssignmentsOverview(options = {}) {
+    return useQuery({
+        queryKey: queryKeys.trainingAssignmentsOverview,
+        queryFn: () => qcApi.getTrainingAssignmentsOverview(),
+        staleTime: 1000 * 60 * 2,
+        ...options,
+    });
+}
+
+export function useUserCertificates(userId, options = {}) {
+    return useQuery({
+        queryKey: queryKeys.trainingCertificates(userId),
+        queryFn: () => qcApi.getUserCertificates(userId),
+        enabled: !!userId,
+        staleTime: 1000 * 60 * 5,
+        ...options,
+    });
+}
+
+export function useRemindTrainingAssignment() {
+    const queryClient = useQueryClient();
+    return useMutation({
+        mutationFn: (id) => qcApi.remindTrainingAssignment(id),
+        onSuccess: () => {
+            queryClient.invalidateQueries({ queryKey: ['training', 'assignments-overview'] });
         },
     });
 }
