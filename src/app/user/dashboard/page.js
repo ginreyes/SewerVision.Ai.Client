@@ -25,6 +25,7 @@ import UserDashboardDetail from '@/components/user/dashboard/UserDashboardDetail
 import ComplianceSummaryCard from '@/components/user/dashboard/ComplianceSummaryCard';
 import MemberComplianceSidePanel from '@/components/user/dashboard/MemberComplianceSidePanel';
 import ProjectHealthRow from '@/components/user/dashboard/ProjectHealthRow';
+import SLASummaryStrip from '@/components/user/dashboard/SLASummaryStrip';
 import { useUserDashboard, useUserTeamMemberDashboard } from '@/hooks/useQueryHooks';
 import { CHART_COLORS } from '@/components/user/constants';
 import { applyChartTheme } from '@/lib/chartTheme';
@@ -306,6 +307,8 @@ export default function UserDashboardPage() {
           />
 
           <WeeklyDigestWidget managerId={userId} />
+
+          <SLASummaryStrip managerId={userId} />
 
           <ComplianceSummaryCard onSelectMember={openCompliancePanel} />
 
