@@ -556,6 +556,34 @@ export function useDuplicateTrainingModule() {
     });
 }
 
+export function useTrainingOverdueConfig(options = {}) {
+    return useQuery({
+        queryKey: ['training', 'overdue-config'],
+        queryFn: () => qcApi.getTrainingOverdueConfig(),
+        staleTime: 1000 * 60 * 2,
+        ...options,
+    });
+}
+
+export function useUpdateTrainingOverdueConfig() {
+    const queryClient = useQueryClient();
+    return useMutation({
+        mutationFn: (patch) => qcApi.updateTrainingOverdueConfig(patch),
+        onSuccess: () => { queryClient.invalidateQueries({ queryKey: ['training', 'overdue-config'] }); },
+    });
+}
+
+export function useRunTrainingOverdueSweepNow() {
+    const queryClient = useQueryClient();
+    return useMutation({
+        mutationFn: () => qcApi.runTrainingOverdueSweepNow(),
+        onSuccess: () => {
+            queryClient.invalidateQueries({ queryKey: ['training', 'overdue-config'] });
+            queryClient.invalidateQueries({ queryKey: ['training', 'assignments-overview'] });
+        },
+    });
+}
+
 export function useTeamTrainingProgress(options = {}) {
     return useQuery({
         queryKey: queryKeys.trainingTeamProgress,

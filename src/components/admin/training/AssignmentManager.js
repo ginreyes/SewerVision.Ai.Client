@@ -12,6 +12,7 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { useAlert } from "@/components/providers/AlertProvider";
 import { useTrainingAssignmentsOverview, useRemindTrainingAssignment } from "@/hooks/useQueryHooks";
+import OverdueSweepCard from "./OverdueSweepCard";
 
 const STATUS_COLORS = {
   assigned: "bg-blue-100 text-blue-700 border-blue-200",
@@ -101,6 +102,8 @@ export default function AssignmentManager({ modules, progress, assignments, assi
 
   return (
     <div className="space-y-5">
+      <OverdueSweepCard />
+
       {/* Assign form */}
       <Card className="border-rose-200 bg-rose-50/20">
         <CardHeader className="pb-2">

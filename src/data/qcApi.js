@@ -443,6 +443,21 @@ export const qcApi = {
     if (!response.ok) throw new Error(response.data?.message || 'Failed to duplicate module');
     return response.data?.data;
   },
+  async getTrainingOverdueConfig() {
+    const response = await api('/api/training/overdue-config', 'GET');
+    if (!response.ok) throw new Error(response.data?.message || 'Failed to fetch overdue config');
+    return response.data?.data;
+  },
+  async updateTrainingOverdueConfig(patch) {
+    const response = await api('/api/training/overdue-config', 'PATCH', patch);
+    if (!response.ok) throw new Error(response.data?.message || 'Failed to update overdue config');
+    return response.data?.data;
+  },
+  async runTrainingOverdueSweepNow() {
+    const response = await api('/api/training/overdue-config/run-now', 'POST');
+    if (!response.ok) throw new Error(response.data?.message || 'Sweep failed');
+    return response.data?.data;
+  },
   async getTeamTrainingProgress() {
     const response = await api('/api/training/team-progress', 'GET');
     if (!response.ok) throw new Error(response.data?.error || 'Failed to fetch team progress');
