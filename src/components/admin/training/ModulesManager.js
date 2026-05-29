@@ -1,13 +1,13 @@
 "use client";
 
 import React, { useState } from "react";
-import { Plus, Edit, Trash2, BookOpen, HelpCircle, Loader2 } from "lucide-react";
+import { Plus, Edit, Trash2, Copy, BookOpen, HelpCircle, Loader2 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { useAlert } from "@/components/providers/AlertProvider";
 import { useDialog } from "@/components/providers/DialogProvider";
-import { useDeleteTrainingModule } from "@/hooks/useQueryHooks";
+import { useDeleteTrainingModule, useDuplicateTrainingModule } from "@/hooks/useQueryHooks";
 import { DIFF_COLORS } from "@/components/shared/training/constants";
 import ModuleFormModal from "./ModuleFormModal";
 
@@ -21,12 +21,30 @@ export default function ModulesManager({ modules }) {
   const { showAlert } = useAlert();
   const { showDelete } = useDialog();
   const deleteMutation = useDeleteTrainingModule();
+  const duplicateMutation = useDuplicateTrainingModule();
 
   const [modalOpen, setModalOpen] = useState(false);
   const [editing, setEditing] = useState(null);
+  const [duplicatingId, setDuplicatingId] = useState(null);
 
   const openCreate = () => { setEditing(null); setModalOpen(true); };
   const openEdit = (mod) => { setEditing(mod); setModalOpen(true); };
+
+  const handleDuplicate = async (mod) => {
+    const id = mod._id || mod.id;
+    setDuplicatingId(id);
+    try {
+      const clone = await duplicateMutation.mutateAsync(id);
+      showAlert(`Duplicated "${mod.title}"`, "success");
+      // Open the form pre-filled so the admin can edit the copy before saving.
+      setEditing(clone);
+      setModalOpen(true);
+    } catch (e) {
+      showAlert(e?.message || "Failed to duplicate module", "error");
+    } finally {
+      setDuplicatingId(null);
+    }
+  };
 
   const handleDelete = (mod) => {
     showDelete({
@@ -88,6 +106,11 @@ export default function ModulesManager({ modules }) {
                     <td className="px-4 py-3 text-center text-xs font-bold text-gray-700">{mod.passingScore || 70}%</td>
                     <td className="px-4 py-3">
                       <div className="flex items-center justify-end gap-1">
+                        <button onClick={() => handleDuplicate(mod)} title="Duplicate"
+                          disabled={duplicatingId === (mod._id || mod.id)}
+                          className="p-1.5 rounded-md hover:bg-indigo-50 text-gray-400 hover:text-indigo-600 transition-colors">
+                          {duplicatingId === (mod._id || mod.id) ? <Loader2 className="w-4 h-4 animate-spin" /> : <Copy className="w-4 h-4" />}
+                        </button>
                         <button onClick={() => openEdit(mod)} title="Edit"
                           className="p-1.5 rounded-md hover:bg-blue-50 text-gray-400 hover:text-blue-600 transition-colors">
                           <Edit className="w-4 h-4" />

@@ -548,6 +548,14 @@ export function useDeleteTrainingModule() {
     });
 }
 
+export function useDuplicateTrainingModule() {
+    const queryClient = useQueryClient();
+    return useMutation({
+        mutationFn: (id) => qcApi.duplicateTrainingModule(id),
+        onSuccess: () => { queryClient.invalidateQueries({ queryKey: ['training', 'modules'] }); },
+    });
+}
+
 export function useTeamTrainingProgress(options = {}) {
     return useQuery({
         queryKey: queryKeys.trainingTeamProgress,
@@ -600,12 +608,20 @@ export function useTrainingAnalytics(options = {}) {
     });
 }
 
-export function useTrainingAssignmentsOverview(options = {}) {
+export function useTrainingAssignmentsOverview(role, options = {}) {
+    // Backwards-compat: callers that passed an options object as the first arg
+    // (the pre-June-3 signature) still work — detect and forward.
+    let effectiveRole = role;
+    let effectiveOptions = options;
+    if (role && typeof role === 'object' && !Array.isArray(role)) {
+        effectiveRole = undefined;
+        effectiveOptions = role;
+    }
     return useQuery({
-        queryKey: queryKeys.trainingAssignmentsOverview,
-        queryFn: () => qcApi.getTrainingAssignmentsOverview(),
+        queryKey: queryKeys.trainingAssignmentsOverview(effectiveRole),
+        queryFn: () => qcApi.getTrainingAssignmentsOverview(effectiveRole),
         staleTime: 1000 * 60 * 2,
-        ...options,
+        ...effectiveOptions,
     });
 }
 

@@ -22,22 +22,31 @@ const STATUS_COLORS = {
 
 const STATUS_FILTERS = ["all", "assigned", "in-progress", "completed", "overdue"];
 
+const ROLE_FILTERS = [
+  { value: "all",            label: "All roles" },
+  { value: "qc-technician",  label: "QC Tech" },
+  { value: "operator",       label: "Operator" },
+  { value: "user",           label: "Team Lead" },
+];
+
 export default function AssignmentManager({ modules, progress, assignments, assignMutation, isLoading }) {
   const { showAlert } = useAlert();
   const [selectedModules, setSelectedModules] = useState([]);
   const [selectedUsers, setSelectedUsers] = useState([]);
   const [dueDate, setDueDate] = useState("");
   const [statusFilter, setStatusFilter] = useState("all");
+  const [roleFilter, setRoleFilter] = useState("all");
   const [remindingId, setRemindingId] = useState(null);
 
   // Live overview (computes isOverdue + promotes past-due rows) and the
   // reminder fan-out. Falls back to the prop list if the overview is loading.
-  const { data: overview } = useTrainingAssignmentsOverview();
+  const { data: overview } = useTrainingAssignmentsOverview(roleFilter === "all" ? undefined : roleFilter);
   const remindMutation = useRemindTrainingAssignment();
 
   const mods = Array.isArray(modules) ? modules : [];
   const team = Array.isArray(progress) ? progress : [];
   const counts = overview?.counts;
+  const summary = overview?.summary;
 
   const allAssignments = useMemo(() => {
     const overviewAssignments = Array.isArray(overview?.assignments) ? overview.assignments : null;
@@ -173,6 +182,43 @@ export default function AssignmentManager({ modules, progress, assignments, assi
                 <AlertTriangle className="w-3 h-3" /> {counts.overdue} overdue
               </Badge>
             )}
+          </div>
+          {/* Summary strip — served by GET /api/training/assignments-overview's `summary` block */}
+          {summary && summary.total > 0 && (
+            <div className="mt-3 grid grid-cols-2 md:grid-cols-5 gap-2 text-xs">
+              <div className="rounded border border-gray-200 bg-white px-2.5 py-1.5">
+                <div className="text-[10px] uppercase tracking-wide text-gray-500">Total</div>
+                <div className="font-semibold tabular-nums">{summary.total}</div>
+              </div>
+              <div className="rounded border border-red-200 bg-red-50 px-2.5 py-1.5">
+                <div className="text-[10px] uppercase tracking-wide text-red-700">Overdue</div>
+                <div className="font-semibold tabular-nums text-red-700">{summary.overdue}</div>
+              </div>
+              <div className="rounded border border-amber-200 bg-amber-50 px-2.5 py-1.5">
+                <div className="text-[10px] uppercase tracking-wide text-amber-700">In Progress</div>
+                <div className="font-semibold tabular-nums text-amber-700">{summary.inProgress}</div>
+              </div>
+              <div className="rounded border border-emerald-200 bg-emerald-50 px-2.5 py-1.5">
+                <div className="text-[10px] uppercase tracking-wide text-emerald-700">Completed</div>
+                <div className="font-semibold tabular-nums text-emerald-700">{summary.completed}</div>
+              </div>
+              <div className="rounded border border-gray-200 bg-gray-50 px-2.5 py-1.5">
+                <div className="text-[10px] uppercase tracking-wide text-gray-500">Avg days to complete</div>
+                <div className="font-semibold tabular-nums">{summary.avgCompletionDays || "—"}</div>
+              </div>
+            </div>
+          )}
+          {/* Role filter chips */}
+          <div className="flex items-center gap-1 mt-2 flex-wrap">
+            <span className="text-[10px] uppercase tracking-wide text-gray-400 mr-1">Role</span>
+            {ROLE_FILTERS.map((r) => (
+              <button key={r.value} onClick={() => setRoleFilter(r.value)}
+                className={`px-2.5 py-1 rounded-md text-[11px] font-medium transition-colors ${
+                  roleFilter === r.value ? "bg-indigo-100 text-indigo-700" : "text-gray-500 hover:bg-gray-100"
+                }`}>
+                {r.label}
+              </button>
+            ))}
           </div>
           {/* Status filter chips */}
           <div className="flex items-center gap-1 mt-2 flex-wrap">

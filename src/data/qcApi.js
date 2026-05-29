@@ -438,6 +438,11 @@ export const qcApi = {
     if (!response.ok) throw new Error(response.data?.message || 'Failed to delete module');
     return response.data;
   },
+  async duplicateTrainingModule(id) {
+    const response = await api(`/api/training/modules/${id}/duplicate`, 'POST');
+    if (!response.ok) throw new Error(response.data?.message || 'Failed to duplicate module');
+    return response.data?.data;
+  },
   async getTeamTrainingProgress() {
     const response = await api('/api/training/team-progress', 'GET');
     if (!response.ok) throw new Error(response.data?.error || 'Failed to fetch team progress');
@@ -466,10 +471,19 @@ export const qcApi = {
     if (!response.ok) throw new Error(response.data?.error || 'Failed to fetch analytics');
     return response.data?.data;
   },
-  async getTrainingAssignmentsOverview() {
-    const response = await api('/api/training/assignments-overview', 'GET');
+  async getTrainingAssignmentsOverview(role) {
+    const qs = role ? `?role=${encodeURIComponent(role)}` : '';
+    const response = await api(`/api/training/assignments-overview${qs}`, 'GET');
     if (!response.ok) throw new Error(response.data?.error || 'Failed to fetch assignments overview');
-    return response.data?.data;
+    // Surface the additive summary + filter + allowedRoles fields shipped
+    // June 3 alongside the existing { assignments, counts } payload so the
+    // AssignmentManager can render the summary strip without a second call.
+    return {
+      ...(response.data?.data || {}),
+      summary: response.data?.summary || null,
+      filter: response.data?.filter || null,
+      allowedRoles: response.data?.allowedRoles || ['qc-technician', 'operator', 'user'],
+    };
   },
   async remindTrainingAssignment(id) {
     const response = await api(`/api/training/assignments/${id}/remind`, 'POST');
