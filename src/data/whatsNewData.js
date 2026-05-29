@@ -1,10 +1,56 @@
 
 export const whatsNewData = [
     {
+        id: "v2.8.0",
+        date: "May 29 – June 5, 2026",
+        label: "SLA & Training Summary Endpoints + Cache Safety + Overdue Cron + 158 New Backend Tests",
+        isNew: true,
+        updates: {
+            admin: [
+                {
+                    type: 'feature',
+                    title: 'Training Center Polish',
+                    description: 'Assignments tab gains a role filter and a summary strip; Modules Manager gains a one-click Duplicate; overdue sweep is now a scheduled background job with admin-tunable cadence.',
+                    details: [
+                        'GET /api/training/assignments-overview returns an additive summary block (counts by status + overdue + avg time-to-complete days) and accepts ?role=qc-technician|operator|user for scoped views',
+                        'Admin Training Center > Assignments tab: All / QC Tech / Operator / Team Lead chip filter and a Summary strip above the table matching the SLA-strip visual language',
+                        'Modules Manager: per-row Duplicate action clones the source module with its question bank intact, suffixes the title with " (Copy)", and opens the form pre-filled so the admin can edit before saving',
+                        'Overdue sweep promoted from a read-side side effect to a node-cron job (every 30 min, single bulk updateMany, fans reminders through NotificationService, respects per-user reminder cooldown)',
+                        'New OverdueSweepCard on the Assignments tab: Overdue Sweep on/off toggle + Reminder Cadence (1d / 3d / 7d) radio, last-sweep timestamp + counts (scanned / flipped / reminded / cooldown-skipped) shown in-card, plus a "Run sweep now" button',
+                    ],
+                },
+                {
+                    type: 'feature',
+                    title: 'SLA Summary at a Glance',
+                    description: 'Team-lead dashboard gains a Total / Overdue / At-Risk / On-Track summary strip above the active-projects table, computed server-side so the numbers cannot drift from the list.',
+                    details: [
+                        'GET /api/project-pipeline/sla-status returns a new top-level summary block: { total, overdue, atRisk, onTrack, averagePercentUsed, complianceRate } where at-risk = ≥80% of target used but not yet overdue',
+                        'New SLASummaryStrip frontend component (team-lead indigo accent, dark-mode aware) mounted above the project table; loading + empty states reuse the existing skeleton/empty patterns',
+                        'Compliance % is computed inline against the same `now` the rest of the response uses, so test-time and prod-time stay consistent',
+                    ],
+                },
+            ],
+            user: [
+                {
+                    type: 'improvement',
+                    title: 'Backend Stability + Cache Safety',
+                    description: 'Background hardening that the user surface inherits — same UX, fewer surprising edge cases.',
+                    details: [
+                        'MemoryCache.deletePattern now treats every regex metacharacter (except glob `*`) as literal and left-anchors the pattern, so a key like "user.123abc" can no longer be incidentally invalidated by a pattern targeting a different namespace',
+                        'UpstashCache and the redis-backed cache wrapper share the same glob semantics; a new assertSafeGlobPattern guard rejects Redis-glob extras (`?`, `[]`, `\\`) that the in-memory fallback cannot honor, eliminating any silent divergence during Upstash outages',
+                        'formatFileSize no longer renders "NaN undefined" or "1 undefined" for negative / NaN / Infinity / exabyte-scale inputs — invalid values render "0 Bytes" and large values cap at the largest known unit',
+                        'getFileType now returns "data" for text/csv (was incorrectly "document" because the text branch ran before the csv/json/xml branch)',
+                        '158 new backend unit tests across the week (50 → 208) covering fileUtils, slaCalculator, cache.memory, encryption, forecastCalculator, responseOptimizer, auditHelper, globMatch, trainingAssignmentSummary, and overdueReminder — all pure-function, no Mongo connection',
+                    ],
+                },
+            ],
+        },
+    },
+    {
         id: "v2.7.0",
         date: "May 26, 2026",
         label: "Admin Bulk-Op Audit Trail + Reminder Cooldown Override + Health Rollup Polling",
-        isNew: true,
+        isNew: false,
         updates: {
             admin: [
                 {
