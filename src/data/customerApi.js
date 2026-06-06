@@ -217,6 +217,22 @@ export const customerApi = {
     },
 
     /**
+     * Send a test notification to verify the customer's preferences let it through.
+     * Returns { delivered: bool, data, hint?: string } — hint is populated when
+     * prefs suppressed the notification (snooze / muted / type disabled).
+     */
+    async sendTestNotification(userId) {
+        const response = await api(
+            `/api/customer/notification-preferences/${userId}/test`,
+            'POST'
+        );
+        if (!response.ok) {
+            throw new Error(response.data?.message || 'Failed to send test notification');
+        }
+        return response.data;
+    },
+
+    /**
      * Get AI detections for a project (for snapshot images)
      */
     async getProjectDetections(projectId) {

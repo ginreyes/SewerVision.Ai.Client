@@ -183,6 +183,21 @@ export function useUpdateCustomerNotificationPreferences() {
 }
 
 /**
+ * Mutation: Send a test notification — proves the user's current preferences
+ * actually let a notification through. Returns { delivered: bool, hint?: string }
+ * so the UI can explain when it was suppressed by snooze / muted-conv / type-off.
+ */
+export function useSendTestNotification() {
+    const queryClient = useQueryClient();
+    return useMutation({
+        mutationFn: (userId) => customerApi.sendTestNotification(userId),
+        onSuccess: (_data, userId) => {
+            queryClient.invalidateQueries({ queryKey: queryKeys.customerNotifications(userId) });
+        },
+    });
+}
+
+/**
  * Mutation: Submit support ticket
  */
 export function useSubmitCustomerSupportTicket() {

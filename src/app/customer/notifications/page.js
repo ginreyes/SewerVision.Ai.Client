@@ -191,6 +191,7 @@ const NotificationPageCustomer = () => {
             <NotificationPreferences
               preferences={preferences}
               onToggle={togglePreference}
+              userId={userId}
             />
           </NotificationCenter>
         </TabsContent>
