@@ -44,6 +44,14 @@ import { Label } from '@/components/ui/label';
 import { Input } from '@/components/ui/input';
 import { TabsContent } from '@/components/ui/tabs';
 import {
+  Dialog,
+  DialogContent,
+  DialogDescription,
+  DialogFooter,
+  DialogHeader,
+  DialogTitle,
+} from '@/components/ui/dialog';
+import {
   useStorageConfig,
   useStorageUsage,
   useUpdateStorageConfig,
@@ -99,6 +107,7 @@ const StorageTab = ({ systemStats = {}, loading = false }) => {
   const [showSecret, setShowSecret] = useState(false);
   const [testResult, setTestResult] = useState(null);
   const [saveMessage, setSaveMessage] = useState(null);
+  const [confirmOpen, setConfirmOpen] = useState(false);
 
   // Hydrate form from server config once it loads
   React.useEffect(() => {
@@ -139,6 +148,7 @@ const StorageTab = ({ systemStats = {}, loading = false }) => {
 
   const handleSave = async () => {
     setSaveMessage(null);
+    setConfirmOpen(false);
     try {
       await updateConfig.mutateAsync({
         provider: providerMode,
@@ -159,6 +169,20 @@ const StorageTab = ({ systemStats = {}, loading = false }) => {
       setSaveMessage({ type: 'error', text: err?.message || 'Failed to save.' });
     }
   };
+
+  // Provider switches are the dangerous case (single → single with no migration
+  // can strand files). Route those through a confirm; everything else (creds-only
+  // edits or no-op saves) goes straight through.
+  const providerSwitchPending = config && providerMode !== config.active;
+  const handleSaveClick = () => {
+    if (providerSwitchPending) {
+      setConfirmOpen(true);
+    } else {
+      handleSave();
+    }
+  };
+
+  const lastTest = config?.lastTest || null;
 
   const handleStartMigration = async () => {
     try {
@@ -206,17 +230,44 @@ const StorageTab = ({ systemStats = {}, loading = false }) => {
               </div>
             </div>
             {config && (
-              <Badge
-                className={
-                  providerMode === 'dual'
-                    ? 'bg-purple-100 text-purple-700 border-purple-200'
-                    : providerMode === 's3'
-                      ? 'bg-amber-100 text-amber-700 border-amber-200'
-                      : 'bg-emerald-100 text-emerald-700 border-emerald-200'
-                }
-              >
-                {PROVIDER_LABELS[providerMode] || 'Loading...'}
-              </Badge>
+              <div className="flex items-center gap-2">
+                {lastTest ? (
+                  <Badge
+                    className={
+                      lastTest.ok
+                        ? 'bg-emerald-100 text-emerald-700 border-emerald-200'
+                        : 'bg-rose-100 text-rose-700 border-rose-200'
+                    }
+                    title={
+                      lastTest.ok
+                        ? `Last test passed against ${lastTest.bucket || '(bucket)'} in ${lastTest.region || '(region)'} at ${new Date(lastTest.testedAt).toLocaleString()}`
+                        : `Last test failed: ${lastTest.error || 'unknown error'}`
+                    }
+                  >
+                    {lastTest.ok ? (
+                      <CheckCircle2 className="w-3 h-3 mr-1" />
+                    ) : (
+                      <AlertTriangle className="w-3 h-3 mr-1" />
+                    )}
+                    {lastTest.ok ? 'Credentials OK' : 'Credentials FAIL'}
+                  </Badge>
+                ) : (
+                  <Badge className="bg-gray-100 text-gray-600 border-gray-200" title="No credential test has been run yet">
+                    Never tested
+                  </Badge>
+                )}
+                <Badge
+                  className={
+                    providerMode === 'dual'
+                      ? 'bg-purple-100 text-purple-700 border-purple-200'
+                      : providerMode === 's3'
+                        ? 'bg-amber-100 text-amber-700 border-amber-200'
+                        : 'bg-emerald-100 text-emerald-700 border-emerald-200'
+                  }
+                >
+                  {PROVIDER_LABELS[providerMode] || 'Loading...'}
+                </Badge>
+              </div>
             )}
           </div>
         </CardHeader>
@@ -393,7 +444,7 @@ const StorageTab = ({ systemStats = {}, loading = false }) => {
                   </Button>
                   <Button
                     size="sm"
-                    onClick={handleSave}
+                    onClick={handleSaveClick}
                     disabled={!dirty || updateConfig.isPending}
                     className="bg-blue-600 hover:bg-blue-700 text-white"
                   >
@@ -614,6 +665,87 @@ const StorageTab = ({ systemStats = {}, loading = false }) => {
           onCancel={() => cancelMigration.mutate(activeJobId)}
         />
       )}
+
+      {/* June 10: confirm dialog for provider switches — avoids an accidental
+          flip that could strand files on the previous provider. */}
+      <Dialog open={confirmOpen} onOpenChange={setConfirmOpen}>
+        <DialogContent>
+          <DialogHeader>
+            <DialogTitle className="flex items-center gap-2">
+              <AlertTriangle className="w-5 h-5 text-amber-500" />
+              Switch storage provider?
+            </DialogTitle>
+            <DialogDescription>
+              You're about to change the active provider from{' '}
+              <span className="font-semibold">{config?.active}</span> to{' '}
+              <span className="font-semibold">{providerMode}</span>.
+              Existing files keep serving from wherever they were originally written —
+              but new uploads will go to the new provider.
+            </DialogDescription>
+          </DialogHeader>
+
+          <div className="space-y-2 text-sm">
+            {lastTest ? (
+              <div
+                className={`flex items-start gap-2 p-3 rounded-md border ${
+                  lastTest.ok
+                    ? 'bg-emerald-50 border-emerald-200 text-emerald-800'
+                    : 'bg-rose-50 border-rose-200 text-rose-800'
+                }`}
+              >
+                {lastTest.ok ? (
+                  <CheckCircle2 className="w-4 h-4 mt-0.5 shrink-0" />
+                ) : (
+                  <AlertTriangle className="w-4 h-4 mt-0.5 shrink-0" />
+                )}
+                <div>
+                  <p className="font-medium">
+                    Last credential test: {lastTest.ok ? 'PASSED' : 'FAILED'}
+                  </p>
+                  <p className="text-xs mt-0.5 opacity-90">
+                    Tested {new Date(lastTest.testedAt).toLocaleString()}
+                    {lastTest.bucket ? ` against bucket ${lastTest.bucket}` : ''}
+                  </p>
+                  {!lastTest.ok && lastTest.error && (
+                    <p className="text-xs mt-1 font-mono break-all">{lastTest.error}</p>
+                  )}
+                </div>
+              </div>
+            ) : (
+              <div className="flex items-start gap-2 p-3 rounded-md border bg-amber-50 border-amber-200 text-amber-800">
+                <AlertTriangle className="w-4 h-4 mt-0.5 shrink-0" />
+                <p>
+                  No credential test has been recorded. Consider clicking{' '}
+                  <span className="font-medium">Test Connection</span> before saving so you can verify
+                  the credentials work on the new provider.
+                </p>
+              </div>
+            )}
+
+            <p className="text-xs text-gray-500">
+              If you've already migrated files to the new provider, you can ignore this. Otherwise
+              consider starting a migration before flipping the active provider.
+            </p>
+          </div>
+
+          <DialogFooter>
+            <Button variant="outline" size="sm" onClick={() => setConfirmOpen(false)}>
+              Cancel
+            </Button>
+            <Button
+              size="sm"
+              onClick={handleSave}
+              className={
+                lastTest?.ok === false
+                  ? 'bg-rose-600 hover:bg-rose-700 text-white'
+                  : 'bg-blue-600 hover:bg-blue-700 text-white'
+              }
+            >
+              Switch to {providerMode}
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
     </TabsContent>
   );
 };
