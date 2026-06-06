@@ -1,10 +1,64 @@
 
 export const whatsNewData = [
     {
+        id: "v2.9.0",
+        date: "June 8 – 12, 2026",
+        label: "Email Security + Storage Polish + Customer Notification Test + 58 New Backend Tests",
+        isNew: true,
+        updates: {
+            admin: [
+                {
+                    type: 'feature',
+                    title: 'Storage Admin Polish',
+                    description: 'Provider-switch confirm dialog avoids accidental flips; "last credential test" chip surfaces whether the current credentials actually work without re-running a test.',
+                    details: [
+                        'Active Provider header now shows a "Credentials OK" / "Credentials FAIL" / "Never tested" chip backed by the new StorageConfigTestLog persistence — survives page refresh and tooltips show the bucket / region / timestamp of the last test',
+                        'Save now routes through a confirm dialog when providerMode differs from config.active. The dialog surfaces the last-test result inline (passed/failed/never), shows the raw error if it failed, and recolors the confirm button rose when the last test FAILED so the risk is visible before clicking through',
+                        'Creds-only edits and primaryRead-only changes still save without a confirm — only provider flips get the speed bump',
+                        'New pure utils/storageProviderSwitch.ts classifyProviderSwitch helper classifies changes as none / info / warning / danger and lists human-readable reasons; backed by 8 unit tests',
+                    ],
+                },
+                {
+                    type: 'fix',
+                    title: 'Email HTML Injection Closed',
+                    description: 'All 6 transactional email templates (deliverable ready, AI complete, QC assignment, system alert, project status, support survey) now HTML-escape every user-controlled value and reject javascript:/data:/vbscript: action URLs.',
+                    details: [
+                        'New utils/htmlEscape.ts: escapeHtml / safeHtml tagged template / safeUrl helpers',
+                        'Subjects + plain-text bodies intentionally left as-is (mail clients render Subject headers verbatim per RFC 2822; plain-text recipients see the literal characters)',
+                        '25 new tests pin the escape behavior and prove each template no longer renders a `<script>alert(1)</script>` payload as live HTML',
+                    ],
+                },
+            ],
+            user: [
+                {
+                    type: 'feature',
+                    title: 'Verify Your Notification Settings',
+                    description: 'Customer notifications page gains a "Send test notification" card so you can confirm in one click whether your toggles actually let a notification through.',
+                    details: [
+                        'New POST /api/customer/notification-preferences/:userId/test runs the test through the same dispatch path as any real event — if your settings (push off, snoozed, conversation muted) would suppress it, the response tells you exactly why',
+                        'Tri-state result line: emerald "delivered, check your inbox" / amber "suppressed by your prefs" with the specific reason / rose error on transport failure',
+                        'Closes a quiet UX gap where you used to only learn the next time a real event happened whether the change took effect',
+                    ],
+                },
+                {
+                    type: 'improvement',
+                    title: 'Background Hardening',
+                    description: 'Defensive cleanups across the notification dispatch and the project-chat-mention path.',
+                    details: [
+                        'Notification dispatch decision (per-type / muted / snoozed) extracted into a pure helper with 16 unit tests; the local copies that lived in NotificationService were removed',
+                        'PUT /api/customer/notification-preferences/:userId now trims the request body to a strict allowlist of customer-settable fields before Mongoose sees it — closes a mass-assignment surface',
+                        'src/services/projectChatMentions.ts now uses the shared escapeRegex helper instead of its own duplicate copy; the dead exampleService.ts stub was removed',
+                        'Drive-by fix: calculateComplianceRate threads `now` through so the SLA test fixture no longer drifts as wall-clock moves past the May 29 fixture date',
+                    ],
+                },
+            ],
+        },
+    },
+    {
         id: "v2.8.0",
         date: "May 29 – June 5, 2026",
         label: "SLA & Training Summary Endpoints + Cache Safety + Overdue Cron + 158 New Backend Tests",
-        isNew: true,
+        isNew: false,
         updates: {
             admin: [
                 {
