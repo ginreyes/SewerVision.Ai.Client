@@ -1,10 +1,121 @@
 
 export const whatsNewData = [
     {
+        id: "v2.10.0",
+        date: "June 15 – 19, 2026",
+        label: "Playwright E2E + Admin Users Refinement + Role Capability Matrix + 4 New Role Features",
+        isNew: true,
+        updates: {
+            admin: [
+                {
+                    type: 'feature',
+                    title: 'Inline Role Change with Impact Preview',
+                    description: 'Admin users page picks up a per-row role select with an impact-confirm dialog so you can see what changes before you change it.',
+                    details: [
+                        'New PATCH /api/users/:userId/role + GET /api/users/:userId/role-impact endpoints; both admin-only',
+                        'New utils/userRoleChange.ts enforces the guards: invalid target, no-op, self-demotion of acting admin, and last-admin demotion are all rejected at the source with explicit reasons; 18 unit tests pin every branch',
+                        'Confirm dialog renders project / device / managed-member counts plus warnings ("Team lead manages N members; they will become unassigned"; "Demoting an admin: their audit-log + system-management access is revoked")',
+                        'Bulk role change emits one audit row per accepted flip; new user_role_change / user_bulk_role_change actions added to ADMIN_BULK_ACTIONS so the /audit/bulk history tab surfaces them',
+                    ],
+                },
+                {
+                    type: 'feature',
+                    title: 'Role Capability Matrix',
+                    description: 'Read-only grid of every active SecurityModule × every role with allow/deny dots, per-role counts, and a "things worth reviewing" card flagging orphaned and over-shared modules.',
+                    details: [
+                        'GET /api/security-modules/capability-matrix, admin-only, gated behind FEATURE_ROLE_MATRIX=1 env flag',
+                        'New utils/roleCapabilityMatrix.ts: buildMatrix sorts by group + itemOrder, countByRole gives the summary strip numbers, detectAnomalies surfaces orphaned modules and modules visible to every internal role',
+                        '11 unit tests pin the sort order, the inactive-filter, and the anomaly classification',
+                    ],
+                },
+                {
+                    type: 'feature',
+                    title: 'Training Center Polish — Bulk Reassign + Activity Timeline',
+                    description: 'Modules can be revised in-place and in-flight assignments moved to the new version without losing assignedAt / dueDate. Per-assignment timeline drawer shows the full lifecycle.',
+                    details: [
+                        'POST /api/training/assignments/bulk-reassign with partial-success result shape; completed assignments are skipped',
+                        'GET /api/training/assignments/:id/timeline synthesizes assigned / reassigned / reminded / attempt / completed events into one descending list',
+                    ],
+                },
+                {
+                    type: 'feature',
+                    title: 'Notification Throughput + Storage Dry-Run',
+                    description: 'Two operational tabs landed: last-24h dispatch counters by channel with top suppression/error reasons; and a tiny round-trip "dry run" against the configured storage provider with measured latency.',
+                    details: [
+                        'New utils/notificationThroughput.ts buckets sent/suppressed/error by hour × channel (push/email/in-app) with top 10 reason rollup',
+                        'Storage dry-run extends the June 10 StorageConfigTestLog so the "last test" chip can survive a real round-trip, not just a config-validation check',
+                    ],
+                },
+            ],
+            user: [
+                {
+                    type: 'feature',
+                    title: 'Team Coverage Calendar',
+                    description: 'PTO + training-due + on-call overlaid into one calendar so you can see availability gaps before scheduling, not after.',
+                    details: [
+                        'New utils/teamCoverageCalendar.ts produces per-day rollups with pto_overlap flags at warn (25% out) / danger (40% out), no_oncall flag on weekdays with no coverage, training_pile flag when 3+ items are due the same day',
+                        'GET /api/june18/team-coverage takes a window + team size and returns the seeded day map (every day in the window has a row, so the calendar renders even on quiet days)',
+                    ],
+                },
+                {
+                    type: 'feature',
+                    title: 'Bulk Approve / Reject for Approvals Queue',
+                    description: 'PATCH /api/user/approvals/bulk lands the partial-success batch decision; per-row pending checks are reused from the single-row endpoints so a mixed batch returns a clean succeeded/failed split.',
+                },
+            ],
+            operator: [
+                {
+                    type: 'feature',
+                    title: 'Pre-Shift Equipment Self-Check',
+                    description: 'Quick flag picker + photo URL list + free-text note before you connect the device. Blocking flags (cable damage / water intrusion / control lag) stop deployment; major flags require photo evidence; result feeds the Equipment Issues queue.',
+                    details: [
+                        'New utils/preShiftSelfCheck.ts classifies 8 flags into none / minor / major / block severities, strips unknown flag values, clamps notes to 1000 chars',
+                        'POST /api/june18/pre-shift-check returns the score + a ready-to-write issueDraft so the Equipment Issues row can be created in one round-trip on the next pass',
+                    ],
+                },
+            ],
+            'qc-technician': [
+                {
+                    type: 'feature',
+                    title: 'Defect Pattern Heatmap',
+                    description: 'Week-over-week defect-code rollup by project section, with a per-code trend chip (up / down / flat / sparse) computed from first-half vs second-half averages.',
+                    details: [
+                        'New utils/defectPatternHeatmap.ts ships with an ISO-week formatter (YYYY-Www, UTC-stable) and a sparse-cell representation so the UI grid stays cheap',
+                        'POST /api/june18/defect-heatmap takes a flat observation list and returns the full grid + per-code totals + trend classification',
+                    ],
+                },
+            ],
+            'customer-rep': [
+                {
+                    type: 'feature',
+                    title: 'Customer Health Score',
+                    description: 'Composite 0-100 score from open complaints, average response time, escalations in last 30 days, and satisfaction trend. Bucketed critical / at-risk / healthy with a per-input breakdown.',
+                    details: [
+                        'New utils/customerHealthScore.ts caps each penalty (complaints -30, response -20, escalations -25) and applies satisfaction trend last (+10 up / -15 down)',
+                        'GET /api/june18/customer-health/:customerId accepts inputs via query so the dashboard can precompute scores for a list of customers in one round-trip without N+1 queries',
+                    ],
+                },
+            ],
+            shared: [
+                {
+                    type: 'feature',
+                    title: 'Playwright E2E in Both Repos',
+                    description: 'Real end-to-end coverage joins the 266-test pure vitest suite. Backend gets an api project against http://localhost:5000; frontend gets a chromium project that auto-starts next dev on port 3100 and a per-role login fixture for all six roles.',
+                    details: [
+                        'Backend: playwright.config.ts + playwright/helpers/auth.ts + health / auth / admin-users / role-matrix / june18-features specs',
+                        'Frontend: playwright.config.ts with auto webServer + playwright/fixtures/auth.ts + smoke / admin-nav / admin-users / admin-role-matrix / thursday-pages specs',
+                        'npm scripts: e2e, e2e:ui, e2e:headed (plus e2e:codegen on the frontend). Vitest stays separate so the fast suite keeps running in ~1.3s',
+                        'Boundary kept clean: vitest = pure functions, Playwright = full HTTP + Mongo + middleware stack. Both required before tag cut.',
+                    ],
+                },
+            ],
+        },
+    },
+    {
         id: "v2.9.0",
         date: "June 8 – 12, 2026",
         label: "Email Security + Storage Polish + Customer Notification Test + 58 New Backend Tests",
-        isNew: true,
+        isNew: false,
         updates: {
             admin: [
                 {
