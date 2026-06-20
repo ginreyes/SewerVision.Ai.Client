@@ -1,10 +1,94 @@
 
 export const whatsNewData = [
     {
+        id: "v2.12.0",
+        date: "June 29 – July 3, 2026",
+        label: "AI Engine + Frame-Hash Caching + Chat Read Receipts + Threaded Replies + In-Conversation Search",
+        isNew: true,
+        updates: {
+            admin: [
+                {
+                    type: 'feature',
+                    title: 'AIEngine Pluggable Inference Layer',
+                    description: 'All AI scanning routes through a single AIEngine interface so swapping providers (Roboflow / Mock / future Anthropic Vision) is a config change.',
+                    details: [
+                        'New services/aiEngine/ — AIEngine interface, RoboflowProvider (wraps existing roboflowService, zero behavior change), MockProvider (deterministic for tests), CachingProvider (persistent cache layer), engineFactory.ts reading AI_PROVIDER env',
+                        '26 unit tests including a provider-contract suite every new provider must pass',
+                        'Default scanBatch fans across Promise.allSettled so one bad frame cannot kill a batch',
+                    ],
+                },
+                {
+                    type: 'feature',
+                    title: 'AI Result Cache + Frame-Hash Dedup',
+                    description: 'Persistent cache keyed by sha256(frameBuffer) | workflowId | modelVersion. Reprocessing a video should now hit cache on identical frames.',
+                    details: [
+                        'AIResultCache model with 7-day TTL via Mongo expireAfterSeconds (tunable via AI_CACHE_TTL_DAYS)',
+                        'CachingProvider wraps any other provider — cache hits return cached:true, misses persist in background, lookup failures fall through',
+                        'Model version change invalidates by changing the key, not by sweeping',
+                    ],
+                },
+                {
+                    type: 'feature',
+                    title: 'POST /api/ai/scan-batch — up to 25 frames at once',
+                    description: 'Admin + qc-technician can submit batches of frame URLs; each frame goes through the cache layer.',
+                    details: [
+                        'Buffers fetched in parallel; one bad URL does not kill the batch',
+                        'Response includes batchSize / cachedCount / errorCount so callers see cache hit rate at a glance',
+                    ],
+                },
+            ],
+            shared: [
+                {
+                    type: 'feature',
+                    title: 'Chat Read Receipts (Bulk Per-Message)',
+                    description: 'PATCH /messages/read pushes the caller into readBy on every message older-or-equal-to an anchor in one Mongo update.',
+                    details: [
+                        'Single messages-read socket event covers the whole bulk — clients update Read by N pills in one render pass',
+                        'New ReadByPill component tones emerald when everyone else has read, zinc otherwise',
+                    ],
+                },
+                {
+                    type: 'feature',
+                    title: 'Typing Indicator with Server-Side Debounce',
+                    description: 'utils/typingDebounce collapses keystroke bursts to one is-typing emit per 2s per (conversation, user) pair, plus a server-armed 3s auto-stop.',
+                    details: [
+                        '8 unit tests with fake timers covering throttle, per-user isolation, auto-stop timer cancellation',
+                        'TypingIndicator component + useChatPresence hook with 1s client-side throttle and 4s stale-clear',
+                        'Net effect: 5 active typists drop server emits from 50+/sec to ~2.5/sec',
+                    ],
+                },
+                {
+                    type: 'feature',
+                    title: 'Threaded Replies (Reply to Specific Message)',
+                    description: 'replyToMessageId already existed on the model; Thursday wires the UI.',
+                    details: [
+                        'ReplyComposerPreview shows quoted parent above the composer with X to cancel',
+                        'QuotedParent renders inside reply messages — collapsible with chevron, Jump to original link scrolls and highlights the parent',
+                    ],
+                },
+                {
+                    type: 'feature',
+                    title: 'In-Conversation Search',
+                    description: 'GET /messages/search?q=... scoped per conversation, returns matches with 2 messages of context each side.',
+                    details: [
+                        'Min 2 chars; case-insensitive regex on text; deleted messages excluded',
+                        'Sorted newest-first, capped at 50 with truncated flag',
+                        'SearchPanel component with 250ms input debounce, jump-to-message on click',
+                    ],
+                },
+                {
+                    type: 'improvement',
+                    title: 'Chat Drag-Drop Visual Affordance',
+                    description: 'DropOverlay shows a Drop to attach target when files are dragged over the chat drawer. Upload path already worked — this makes the feature discoverable.',
+                },
+            ],
+        },
+    },
+    {
         id: "v2.11.0",
         date: "June 22 – 26, 2026",
         label: "Refactor + Bug Burndown: Auth Gates, Response Standardization, Cache Service, Storage Live Wiring",
-        isNew: true,
+        isNew: false,
         updates: {
             admin: [
                 {
