@@ -90,6 +90,42 @@ export const api = async (path, method = "GET", body = null, headers = {}) => {
   }
 };
 
+// June 22 — backward-compat unwrap for the response-shape migration.
+// Backend is migrating from { status: 'error', message } -> { ok, message,
+// statusCode }. unwrap() reads either shape and normalizes so callsites don't
+// have to special-case. When every controller is migrated, the legacy branches
+// can be deleted.
+export const unwrap = (apiResult) => {
+  if (!apiResult || typeof apiResult !== "object") {
+    return { ok: false, data: null, message: "No response", statusCode: 0 };
+  }
+  const httpOk = apiResult.ok === true && apiResult.status >= 200 && apiResult.status < 300;
+  const body = apiResult.data;
+  if (body && typeof body === "object") {
+    if ("ok" in body) {
+      return {
+        ok: !!body.ok && httpOk,
+        data: body.ok ? body.data : null,
+        message: body.message || (httpOk ? "" : "Request failed"),
+        statusCode: body.statusCode || apiResult.status,
+        code: body.code,
+      };
+    }
+    if (body.status === "error") {
+      return { ok: false, data: null, message: body.message || "Request failed", statusCode: apiResult.status };
+    }
+    if (body.status === "success") {
+      return { ok: true, data: body.data ?? body, message: "", statusCode: apiResult.status };
+    }
+  }
+  return {
+    ok: httpOk,
+    data: httpOk ? body : null,
+    message: httpOk ? "" : (body && body.message) || "Request failed",
+    statusCode: apiResult.status,
+  };
+};
+
 /**
  * API helper for fetching blob responses (files, images, videos, etc.)
  * Follows the same pattern as the main api helper
