@@ -1,10 +1,91 @@
 
 export const whatsNewData = [
     {
+        id: "v2.11.0",
+        date: "June 22 – 26, 2026",
+        label: "Refactor + Bug Burndown: Auth Gates, Response Standardization, Cache Service, Storage Live Wiring",
+        isNew: true,
+        updates: {
+            admin: [
+                {
+                    type: 'security',
+                    title: 'User Routes Authentication Burndown',
+                    description: 'Closed 15 previously public user-related endpoints behind authenticateToken; admin-only operations additionally gated by role.',
+                    details: [
+                        'Previously: GET /role/:username, /get-all-user, /get-user, /profile, /get-customers, /get-user-details, /avatar uploads, /logo uploads, /delete-account, /send-email, /admin-change-password, /create-user, /change-info, /change-account, /profile patch — all publicly reachable. User enumeration + unauthenticated password reset + unauthenticated avatar overwrite were live.',
+                        'Now: every route except /avatar/:id and /company-logo/:id (read-only static lookups) requires a valid token. Admin-write operations (get-all-user, create-user, delete-account, admin-change-password, send-email, get-customers) additionally require admin role.',
+                        'No public API contract change for legitimate callers — frontend already sends the bearer token on these routes.',
+                    ],
+                },
+                {
+                    type: 'feature',
+                    title: 'Storage Dry-Run Live',
+                    description: 'Admin Storage page "Run a dry-run" now performs a real provider PUT + GET + DELETE round-trip with measured latency, instead of the June 18 setTimeout stub.',
+                    details: [
+                        'storageService.dryRun() uploads a 7-byte test object to the active provider, reads it back, deletes the test object in finally (best-effort cleanup), returns { ok, latencyMs, provider, bytesUploaded, bytesDownloaded }',
+                        'Failures return ok: false + error message rather than throwing so the admin Storage page renders the failure inline',
+                        'Provider chosen from cfg.provider (or cfg.primaryRead in dual mode) so the dry-run reflects the active config, not stale defaults',
+                    ],
+                },
+            ],
+            shared: [
+                {
+                    type: 'improvement',
+                    title: 'Response Shape Standardization + asyncHandler',
+                    description: 'New utils/sendResponse.ts and utils/asyncHandler.ts replace the scattered try/catch/res.status(500) pattern with a standardized { ok, data, meta? } / { ok: false, message, statusCode, code?, details? } shape and an error-swallowing wrapper.',
+                    details: [
+                        'asyncHandler catches async throws, logs server-side, and emits the standard 500 shape — production strips error.message + stack from the response, dev includes them for debugging',
+                        'sendResponse provides ok / created / noContent / fail / badRequest / unauthorized / forbidden / notFound / conflict / serverError',
+                        'Frontend api() helper learns unwrap() that reads both new and legacy shapes during transition — callsites do not need to special-case',
+                        'june18Features controller migrated as the proof-of-pattern; further migrations land as controllers are touched',
+                        '22 new unit tests pin every helper + every convenience wrapper',
+                    ],
+                },
+                {
+                    type: 'improvement',
+                    title: 'Cache Invalidation Service',
+                    description: 'New services/cacheInvalidation.ts centralizes the 12 scattered deletePattern callsites into named methods (invalidateUserList, invalidateOvertime, invalidateProjectScoped, invalidateQcReviewerScope, etc.).',
+                    details: [
+                        'Pairs cache reads (cacheKeys.*) with their busts so they stay in lockstep; one place to add tracing/metrics later',
+                        'Failures swallowed at the boundary so a cache outage cannot break writes',
+                        '15 unit tests pin every method pattern + the failure-swallow behavior',
+                        'Callsite migration deferred to the next time each controller is touched (invasive migration in one branch invites cross-controller refactor risk)',
+                    ],
+                },
+                {
+                    type: 'improvement',
+                    title: 'user.controller.ts Domain Split',
+                    description: 'Started the split of the 1845-line user.controller.ts into focused per-domain files. Legacy file becomes a thin barrel so routes/user.ts keeps working unchanged.',
+                    details: [
+                        'controllers/user/user.qc.controller.ts — QC-tech preferences (allowlist preserved exactly)',
+                        'controllers/user/user.shared.controller.ts — getUserRole (public role lookup) + sendEmailToUser (admin email passthrough)',
+                        'controllers/user/README.md captures the migration plan + barrel pattern + status table',
+                        'Remaining 17 handlers migrate as they are touched — lazy not big-bang',
+                    ],
+                },
+                {
+                    type: 'fix',
+                    title: 'Hardcoded Localhost Fallbacks Replaced',
+                    description: 'New utils/requireEnv.ts throws at first access in production when an env var is missing.',
+                    details: [
+                        'project.controller.ts:1013 was emitting localhost report links in customer deliverable emails if CLIENT_URL was unset in production',
+                        'clientConversation.controller.ts:392 proxy URLs would resolve to localhost on the customer browser if BACKEND_URL was unset',
+                        'Both now route through requireEnv() — production boots fail-fast instead of silently leaking unreachable URLs',
+                    ],
+                },
+                {
+                    type: 'fix',
+                    title: 'Silent AI Processing Failures Now Logged',
+                    description: 'ai.controller.ts:39 and video.controller.ts:115 were silently double-swallowing both the processVideo failure AND the secondary status-update failure with { try { ... } catch {} }. Now both errors are logged with the relevant projectId / videoFileId so a missed flip is visible in the operator log.',
+                },
+            ],
+        },
+    },
+    {
         id: "v2.10.0",
         date: "June 15 – 19, 2026",
         label: "Playwright E2E + Admin Users Refinement + Role Capability Matrix + 4 New Role Features",
-        isNew: true,
+        isNew: false,
         updates: {
             admin: [
                 {
