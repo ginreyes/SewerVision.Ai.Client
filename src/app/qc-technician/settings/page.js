@@ -168,7 +168,10 @@ function QCSettingsContent() {
       try {
         const response = await api('/api/users/me/qc-preferences', 'GET');
         if (response?.ok && response?.data?.data) {
-          const prefs = response.data.data;
+          // June 23 moved this endpoint to { ok, data: { preferences } };
+          // legacy shape was { status, data: <prefs> }. Read both.
+          const body = response.data.data;
+          const prefs = body.preferences ?? body;
           setSettings(prev => ({
             ...prev,
             autoSave: prefs.autoSave ?? prev.autoSave,

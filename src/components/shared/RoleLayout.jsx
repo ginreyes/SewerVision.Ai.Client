@@ -20,7 +20,7 @@ import UnifiedSidebar from "@/components/ui/UnifiedSidebar";
 import RoleThemeProvider from "@/components/providers/RoleThemeProvider";
 import { TourGuide, useTourGuide } from "@/components/TourGuide";
 import { SyncProvider } from "@/components/providers/SyncContext";
-import { api, getCookie, deleteCookie } from "@/lib/helper";
+import { api, unwrap, getCookie, deleteCookie } from "@/lib/helper";
 
 const CommandPalette = dynamic(
   () => import("@/components/shared/CommandPalette").then((m) => m.CommandPalette),
@@ -80,11 +80,15 @@ export default function RoleLayout({ role: expectedRole, children }) {
           return;
         }
 
-        const { data, error } = await api(`/api/users/role/${storedUsername}`, "GET");
+        // June 23 moved getUserRole to the new { ok, data: { role } } envelope.
+        // unwrap() reads both the new and legacy shapes so this gate can't
+        // log users out on a response-shape change again.
+        const result = unwrap(await api(`/api/users/role/${storedUsername}`, "GET"));
+        const fetchedRole = result.data?.role;
 
-        if (!error && data?.role) {
-          if (data.role !== expectedRole) {
-            router.push(`/${data.role}/dashboard`);
+        if (result.ok && fetchedRole) {
+          if (fetchedRole !== expectedRole) {
+            router.push(`/${fetchedRole}/dashboard`);
             return;
           }
           setRole(expectedRole);
