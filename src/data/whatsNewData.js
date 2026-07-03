@@ -1,10 +1,74 @@
 
 export const whatsNewData = [
     {
+        id: "v2.14.0",
+        date: "July 13 – 17, 2026",
+        label: "Security Audit + AI Engine Speedups: Rate Limit, Input Hardening, Single-Flight, Batch Coalescer",
+        isNew: true,
+        updates: {
+            admin: [
+                {
+                    type: 'security',
+                    title: 'Rate Limiter for Auth-Critical Paths',
+                    description: 'utils/rateLimit.ts — fixed-window in-memory limiter; middleware factory usable on any route.',
+                    details: [
+                        'Emits X-RateLimit-Limit + X-RateLimit-Remaining on every response; Retry-After on the 429 branch',
+                        'Default IP-scoped; keyFn(req) lets a route key on userId (post-auth abuse) or body.email (pre-auth enum)',
+                        '7 unit tests cover under-limit passthrough, 429 boundary, IP scoping, keyFn customization, header behavior, window reset',
+                    ],
+                },
+                {
+                    type: 'security',
+                    title: 'Input Hardening Helpers',
+                    description: 'utils/safeInput.ts — safeString, safeObjectId, safeInt, safeEnum, escapeForRegex, pickAllowed.',
+                    details: [
+                        'safeString trims + strips control chars + caps length + optional pattern gate',
+                        'safeInt clamps min/max + truncates decimals + fallback on NaN so callers cannot request limit=1000000',
+                        'pickAllowed centralizes the mass-assignment guard pattern the June 11 notification-preferences fix used',
+                        '24 unit tests cover every helper',
+                    ],
+                },
+            ],
+            shared: [
+                {
+                    type: 'improvement',
+                    title: 'AI Engine — Single-Flight Dedupe',
+                    description: 'SingleFlightProvider collapses concurrent identical scanFrame calls (same cacheKey) to one upstream request.',
+                    details: [
+                        'CachingProvider makes repeat scans free after the first cache write; SingleFlight closes the gap for scans arriving before that write completes',
+                        'Common in scan-batch requests where a video sends 25 frames that dedupe to ~15 after hash collapse',
+                        '7 unit tests cover concurrent dedupe, distinct-key isolation, slot clear on success + failure',
+                    ],
+                },
+                {
+                    type: 'improvement',
+                    title: 'AI Engine — Batch Coalescer',
+                    description: 'BatchCoalescerProvider queues scanFrame calls arriving within a window and flushes as one upstream scanBatch.',
+                    details: [
+                        'Roboflow serverless charges per-request more than per-frame — one 25-frame call is faster + cheaper than 25 parallel calls',
+                        'Env overrides: AI_BATCH_WINDOW_MS (default 25ms), AI_BATCH_MAX (default 25)',
+                        'Upstream throw rejects every waiter with the same error; direct scanBatch callers bypass the queue',
+                        '7 unit tests',
+                    ],
+                },
+                {
+                    type: 'improvement',
+                    title: 'Layered AI Engine Stack',
+                    description: 'engineFactory now composes 4 providers: base → BatchCoalescer → SingleFlight → Caching. Each layer opt-outable via env.',
+                    details: [
+                        'AI_CACHE=off / AI_SINGLE_FLIGHT=off / AI_BATCH_COALESCE=off individually disable',
+                        'Cache hits short-circuit before any of the wrappers fire',
+                        'Expected end-to-end: reprocessing a 500-frame video (200 unique post-hash-collapse) hits ~40 upstream requests instead of 500',
+                    ],
+                },
+            ],
+        },
+    },
+    {
         id: "v2.13.0",
         date: "July 6 – 10, 2026",
         label: "Perf Week 1: Module-Switching, ETag / 304, Payload Trim, Hot-Path Indexes",
-        isNew: true,
+        isNew: false,
         updates: {
             admin: [
                 {
