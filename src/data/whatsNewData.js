@@ -1,10 +1,69 @@
 
 export const whatsNewData = [
     {
+        id: "v2.13.0",
+        date: "July 6 – 10, 2026",
+        label: "Perf Week 1: Module-Switching, ETag / 304, Payload Trim, Hot-Path Indexes",
+        isNew: true,
+        updates: {
+            admin: [
+                {
+                    type: 'improvement',
+                    title: 'Faster Module Switches',
+                    description: 'Sidebar links prewarm the destination module on hover; TanStack Query staleTime raised to 30s so second-switches paint from cache instantly.',
+                    details: [
+                        'hooks/usePrefetchOnHover.js debounces 120ms so a fast mouse trail does not spam prefetch; onFocus fires immediately for keyboard nav',
+                        'lib/queryClientDefaults.js: staleTime 30s, gcTime 5min, keepPreviousData default, refetchOnWindowFocus off (real-time queries opt in individually)',
+                        'components/shared/ModuleTransition.jsx records wall-clock switch times to sessionStorage under xmodswitch — window.__moduleSwitchMetrics for devtools inspection',
+                    ],
+                },
+                {
+                    type: 'improvement',
+                    title: 'ETag / 304 for List Endpoints',
+                    description: 'utils/etag.ts helper wraps list-endpoint responses with a weak ETag + Cache-Control. Repeat module-switches within staleTime hit 304 with no body.',
+                    details: [
+                        'sendJsonWithEtag(req, res, payload, ?tag) — computed or caller-supplied fingerprint',
+                        'ifNoneMatchOr(req, fingerprint) — check the incoming tag before doing DB work',
+                        '12 unit tests pin freshness, 304 branch, tag stability across identical payloads',
+                    ],
+                },
+                {
+                    type: 'improvement',
+                    title: 'Payload-Trim Helper + Canonical Projections',
+                    description: 'utils/projectionHelper.ts centralizes projection specs (userList, deviceListLite, uploadListLite, notificationListLite, auditListLite) with a PROJECTION_VERSION baked into ETag fingerprints — shape changes invalidate caches automatically.',
+                    details: [
+                        'buildListFingerprint(projectionKey, filters, lastModifiedAt) — deterministic, order-insensitive, anchored to last-modified',
+                        '11 unit tests cover determinism, order insensitivity, version embedding',
+                    ],
+                },
+                {
+                    type: 'improvement',
+                    title: 'Hot-Path Mongo Indexes',
+                    description: 'src/scripts/syncPerfIndexesJul9.ts creates 9 indexes on the paths the recon flagged as scanning full collections — users, uploads, notifications, auditlogs, projects, projectmessages.',
+                    details: [
+                        'Idempotent — skips indexes that already exist by name',
+                        'background:true so runs on live production do not block writes',
+                        'Exits non-zero on failure so it can be wired into a release check',
+                    ],
+                },
+                {
+                    type: 'feature',
+                    title: 'Bundle-Split Shim for Heavy Modules',
+                    description: 'components/shared/LazyModule.jsx: Suspense + error boundary + matched-height skeleton for admin routes that pull chart.js / xlsx / heavy tables.',
+                    details: [
+                        'Retry button on load failure (dynamic import errors are usually transient)',
+                        'data-module attribute so telemetry can key against module names',
+                        'Wiring 3-4 heaviest admin routes to LazyModule is the next-touch task',
+                    ],
+                },
+            ],
+        },
+    },
+    {
         id: "v2.12.0",
         date: "June 29 – July 3, 2026",
         label: "AI Engine + Frame-Hash Caching + Chat Read Receipts + Threaded Replies + In-Conversation Search",
-        isNew: true,
+        isNew: false,
         updates: {
             admin: [
                 {
